@@ -1,0 +1,80 @@
+button{font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;letter-spacing:.04em;border:1px solid var(--border);background:transparent;color:var(--text);padding:4px 11px;border-radius:4px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap;}
+button:hover{border-color:var(--accent);color:var(--accent);}
+button.primary{background:var(--accent);color:#0f0f11;border-color:var(--accent);}
+button.primary:hover{background:#b0d82a;}
+button.danger{border-color:var(--danger);color:var(--danger);}
+button.danger:hover{background:var(--danger);color:#fff;}
+button.sm{padding:3px 8px;font-size:10px;}
+button.sm.active{border-color:var(--accent2);color:var(--accent2);background:rgba(91,229,200,.08);}
+
+.eng-card{display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto;gap:6px;align-items:center;padding:5px 7px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:grab;}
+.eng-card:active{cursor:grabbing;opacity:.6;}
+.eng-card.drag-over{border-color:var(--accent2);background:rgba(91,229,200,.06);}
+.eng-drag-handle{color:var(--muted);font-size:12px;cursor:grab;padding:0 2px;flex-shrink:0;}
+.eng-card-inp{background:transparent;border:none;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;outline:none;width:100%;padding:1px 3px;}
+.eng-card-inp:focus{background:rgba(255,255,255,.05);border-radius:3px;}
+.eng-card-label{font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.04em;margin-bottom:1px;}
+.eng-card-field{display:flex;flex-direction:column;}
+.eng-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ── SCHEDULE / GANTT REDESIGN ── */
+.sched-section-title{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;
+  margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.ms-icon-sel{display:flex;flex-wrap:wrap;gap:4px;padding:6px;background:var(--bg);
+  border:1px solid var(--border);border-radius:4px;margin-top:4px;}
+.ms-icon-opt{width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;border-radius:3px;cursor:pointer;border:1px solid transparent;
+  transition:border-color .1s,background .1s;}
+.ms-icon-opt:hover{border-color:var(--accent);background:rgba(200,241,53,.08);}
+.ms-icon-opt.sel-icon{border-color:var(--accent);background:rgba(200,241,53,.15);}
+/* dependency tag picker */
+.dep-picker{display:flex;flex-wrap:wrap;gap:4px;padding:5px;background:var(--bg);
+  border:1px solid var(--border);border-radius:4px;min-height:28px;cursor:default;}
+.dep-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;
+  font-size:10px;font-family:IBM Plex Mono,monospace;cursor:pointer;border:1px solid;
+  transition:opacity .1s;}
+.dep-tag.task-tag{background:rgba(91,229,200,.12);border-color:rgba(91,229,200,.3);color:var(--accent2);}
+.dep-tag.ms-tag{background:rgba(200,241,53,.10);border-color:rgba(200,241,53,.3);color:var(--accent);}
+.dep-tag.sel-tag{opacity:1;} .dep-tag:not(.sel-tag){opacity:.45;}
+.dep-hint{font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;
+  padding:3px 0;align-self:center;}
+
+/* ── SKILLS & ID CARD MODALS ── */
+.eng-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:800;align-items:center;justify-content:center;}
+.eng-modal-overlay.show{display:flex;}
+.eng-modal-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px 26px;width:min(640px,95vw);max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;box-shadow:0 16px 48px rgba(0,0,0,.8);}
+.eng-modal-box h2{font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.07em;margin:0;}
+.skill-cat-row{display:flex;flex-direction:column;gap:6px;}
+.skill-cat-title{font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:.07em;padding:3px 0;}
+.skill-cat-title.crit{color:#f14335;}
+.skill-cat-title.diff{color:#a78bfa;}
+.skill-cat-title.mand{color:#f1a435;}
+.skill-pills{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:5px;}
+.skill-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-family:IBM Plex Mono,monospace;cursor:default;border:1px solid;}
+.skill-pill.crit{background:rgba(241,67,53,.12);border-color:rgba(241,67,53,.3);color:#f14335;}
+.skill-pill.diff{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.3);color:#a78bfa;}
+.skill-pill.mand{background:rgba(241,164,53,.12);border-color:rgba(241,164,53,.3);color:#f1a435;}
+.skill-pill-del{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;padding:0;line-height:1;opacity:.6;}
+.skill-pill-del:hover{opacity:1;}
+.skill-input-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.skill-add-input{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none;flex:1;min-width:120px;}
+.skill-add-input:focus{border-color:var(--accent);}
+.skill-dict-wrap{display:flex;flex-wrap:wrap;gap:4px;padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:5px;max-height:120px;overflow-y:auto;}
+.skill-dict-chip{padding:2px 8px;border-radius:10px;font-size:10px;font-family:IBM Plex Mono,monospace;cursor:pointer;border:1px solid var(--border);color:var(--muted);transition:all .1s;}
+.skill-dict-chip:hover{border-color:var(--accent);color:var(--accent);}
+/* ID card */
+.id-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.id-card-field{display:flex;flex-direction:column;gap:3px;}
+.id-card-field label{font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;}
+.id-card-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none;width:100%;}
+.id-card-inp:focus{border-color:var(--accent);}
+.id-card-textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:11px;padding:6px 8px;border-radius:4px;outline:none;width:100%;resize:vertical;min-height:60px;}
+.id-card-textarea:focus{border-color:var(--accent);}
+/* auto-save indicator */
+.roster-saved{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);opacity:0;transition:opacity .3s;}
+.roster-saved.show{opacity:1;}
+
+/* ── ORG CHART ── */
+.org-node{cursor:pointer;transition:filter .15s;}
+.org-node:hover{filter:brightness(1.15);}
+.org-node rect{rx:8;}

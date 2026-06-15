@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Matrix</title>
+<!-- {{CSS}} -->
+</head>
+<body>
+<header>
+  <h1 style="letter-spacing:.04em;font-size:13px">PROJECT<br><span style="color:var(--accent)">MATRIX</span></h1>
+
+  <!-- GROUP 1: Create -->
+  <div class="hdr-group">
+    <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
+    <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
+    <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+  </div>
+
+  <div class="hdr-sep"></div>
+
+  <!-- GROUP 2: Y-axis view -->
+  <div class="hdr-group">
+    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">Y-AXIS</span>
+    <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
+    <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
+    <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+  </div>
+
+  <div class="hdr-sep"></div>
+
+  <!-- GROUP 3: Navigate to panels -->
+  <div class="hdr-group">
+    <button onclick="openOrgChart()" title="Org chart · key O">🗂 ORG</button>
+    <button onclick="openRes()"      title="Resource plan · key P">👷 RESOURCES</button>
+    <button onclick="openCompare()"  title="Compare views · key C">⊞ COMPARE</button>
+    <button onclick="openSummary()"  title="Summary dashboard · key S">▤ SUMMARY</button>
+  </div>
+
+  <div class="hdr-sep"></div>
+
+  <!-- GROUP 4: Data -->
+  <div class="hdr-group">
+
+    <button onclick="exportFullBackup()" title="Full backup — state + all photos in one file" style="border-color:var(--accent2);color:var(--accent2)">⬡ BACKUP</button>
+    <button onclick="importFullBackup()" title="Restore from full backup file" style="border-color:var(--accent2);color:var(--accent2)">⬡ RESTORE</button>
+    <button onclick="openProjectBriefExport()" title="Export project brief with team allocation" style="border-color:var(--accent2);color:var(--accent2)">📄 BRIEF</button>
+    <button onclick="openSnap()" title="Snapshots (Z)" id="snap-btn">🕐 SNAPS</button>
+  </div>
+
+  <!-- Active overlay indicator + status -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center">
+    <span id="active-overlay-pill" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;
+      color:var(--accent);background:rgba(200,241,53,.08);border:1px solid rgba(200,241,53,.2);
+      border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
+  </div>
+
+  <!-- GROUP 5: System -->
+  <div class="hdr-group" style="gap:6px">
+    <span id="idb-status" style="font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;cursor:pointer"></span>
+    <!-- Storage health indicator -->
+    <span id="storage-health" title="localStorage usage" onclick="showStorageDetail()"
+      style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
+      <span id="storage-bar-wrap" style="width:36px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <span id="storage-bar" style="display:block;height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .4s,background .4s"></span>
+      </span>
+      <span id="storage-pct">—</span>
+    </span>
+    <span id="save-indicator" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">● auto-save ON</span>
+    <button onclick="openHelp()" title="Help &amp; shortcuts (?)">? HELP</button>
+  </div>
+
+</header>
+
+<!-- HELP OVERLAY -->
+<div id="help-overlay">
+  <div id="help-box">
+    <h2>⌨ KEYBOARD SHORTCUTS</h2>
+    <div style="background:rgba(200,241,53,.06);border:1px solid rgba(200,241,53,.12);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
+      <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px">WHAT IS PROJECT MATRIX?</strong><br>
+      Prioritize R&amp;D initiatives on an impact/effort matrix. Use <strong style="color:var(--text)">Resources</strong> to plan team allocation and track costs. Use <strong style="color:var(--text)">Org Chart</strong> to visualize reporting structure and plan headcount. Use <strong style="color:var(--text)">Skill Risk</strong> to identify knowledge gaps and single points of failure.
+    </div>
+    <div class="help-section">
+      <h3>NAVIGATION</h3>
+      <div class="help-grid">
+        <div class="help-row"><span class="help-key">?</span><span class="help-desc">Open this help panel</span></div>
+        <div class="help-row"><span class="help-key">Esc</span><span class="help-desc">Close any open panel</span></div>
+        <div class="help-row"><span class="help-key">S</span><span class="help-desc">Open Summary dashboard</span></div>
+        <div class="help-row"><span class="help-key">C</span><span class="help-desc">Open Compare view</span></div>
+        <div class="help-row"><span class="help-key">P</span><span class="help-desc">Open Resource Plan</span></div>
+        <div class="help-row"><span class="help-key">O</span><span class="help-desc">Open Org Chart</span></div>
+      </div>
+    </div>
+    <div class="help-section">
+      <h3>Y-AXIS MODE</h3>
+      <div class="help-grid">
+        <div class="help-row"><span class="help-key">1</span><span class="help-desc">Switch to Impact mode</span></div>
+        <div class="help-row"><span class="help-key">2</span><span class="help-desc">Switch to Visibility mode</span></div>
+        <div class="help-row"><span class="help-key">3</span><span class="help-desc">Switch to Enabler mode</span></div>
+      </div>
+    </div>
+    <div class="help-section">
+      <h3>PROJECTS</h3>
+      <div class="help-grid">
+        <div class="help-row"><span class="help-key">N</span><span class="help-desc">New project</span></div>
+        <div class="help-row"><span class="help-key">Del</span><span class="help-desc">Delete selected project</span></div>
+        <div class="help-row"><span class="help-key">E</span><span class="help-desc">Edit selected project</span></div>
+        <div class="help-row"><span class="help-key">H</span><span class="help-desc">Toggle selected project visibility</span></div>
+      </div>
+    </div>
+    <div class="help-section">
+      <h3>DRAWING TOOLS</h3>
+      <div class="help-grid">
+        <div class="help-row"><span class="help-key">V</span><span class="help-desc">Select / move tool</span></div>
+        <div class="help-row"><span class="help-key">L</span><span class="help-desc">Line tool</span></div>
+        <div class="help-row"><span class="help-key">D</span><span class="help-desc">Dashed line tool</span></div>
+        <div class="help-row"><span class="help-key">A</span><span class="help-desc">Arrow tool</span></div>
+        <div class="help-row"><span class="help-key">T</span><span class="help-desc">Text annotation tool</span></div>
+      </div>
+    </div>
+    <div class="help-section">
+      <h3>VIEW</h3>
+      <div class="help-grid">
+        <div class="help-row"><span class="help-key">Scroll</span><span class="help-desc">Zoom in / out (toward cursor)</span></div>
+        <div class="help-row"><span class="help-key">R</span><span class="help-desc">Reset zoom to 1:1</span></div>
+        <div class="help-row"><span class="help-key">Z</span><span class="help-desc">Open Snapshots</span></div>
+        <div class="help-row"><span class="help-key">X</span><span class="help-desc">Export JSON</span></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);letter-spacing:.05em;margin-bottom:3px">⚠ DANGER ZONE</div>
+        <div style="font-size:10px;color:var(--muted)">Reset all data to defaults. A snapshot is taken first.</div>
+      </div>
+      <button class="danger" onclick="closeHelp();resetAll()" title="Reset all data — cannot be undone">RESET ALL</button>
+      <button onclick="closeHelp()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE OVERLAY -->
+<div id="compare-overlay">
+  <div id="compare-header">
+    <h2>⊞ COMPARE Y-AXIS MODES</h2>
+    <label style="font-size:11px;color:var(--muted);font-family:IBM Plex Mono,monospace">LEFT:</label>
+    <select id="cmp-left"  onchange="renderCompare()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px;outline:none">
+      <option value="impact">Impact</option>
+      <option value="visibility">Visibility</option>
+      <option value="enabler">Enabler</option>
+    </select>
+    <label style="font-size:11px;color:var(--muted);font-family:IBM Plex Mono,monospace">RIGHT:</label>
+    <select id="cmp-right" onchange="renderCompare()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px;outline:none">
+      <option value="impact">Impact</option>
+      <option value="visibility" selected>Visibility</option>
+      <option value="enabler">Enabler</option>
+    </select>
+    <button onclick="closeCompare()">✕ CLOSE</button>
+  </div>
+  <div id="compare-panes">
+    <div class="cmp-pane">
+      <div class="cmp-title" id="cmp-left-title" style="color:var(--accent)">IMPACT</div>
+      <div class="cmp-svg-wrap" id="cmp-left-wrap"><svg class="cmp-svg" id="cmp-left-svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+    <div class="cmp-pane">
+      <div class="cmp-title" id="cmp-right-title" style="color:var(--accent2)">VISIBILITY</div>
+      <div class="cmp-svg-wrap" id="cmp-right-wrap"><svg class="cmp-svg" id="cmp-right-svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY OVERLAY -->
+<div id="summary-overlay">
+  <div id="summary-header">
+    <h2>▤ PORTFOLIO SUMMARY</h2>
+    <button onclick="closeSummary()">✕ CLOSE</button>
+  </div>
+  <div id="summary-body"></div>
+</div>
+
+<main>
+  <aside id="sidebar">
+    <div class="sb-head">
+      <span>PROJECTS <span id="count-badge" style="color:var(--accent)">0</span></span>
+      <span id="selected-hint" style="font-size:10px;color:var(--muted)"></span>
+    </div>
+    <div id="project-list"></div>
+    <div id="editor" style="display:none">
+      <h2>EDIT PROJECT</h2>
+      <div class="field"><label>NAME</label><input type="text" id="e-name"></div>
+      <div class="frow">
+        <div class="field"><label id="e-x-label">X</label><input type="number" id="e-x" step="0.1"></div>
+        <div class="field"><label>IMPACT</label><input type="number" id="e-y" step="0.1" min="0" max="10"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>VISIBILITY</label><input type="number" id="e-vis" step="0.1" min="0" max="10" placeholder="0-10"></div>
+        <div class="field"><label>ENABLER VAL.</label><input type="number" id="e-ena" step="0.1" min="0" max="10" placeholder="0-10"></div>
+      </div>
+      <div class="field"><label>SECTION</label>
+        <select id="e-section"><option value="">— No section —</option></select>
+      </div>
+      <div class="field"><label>SECTOR / DOMAIN</label><input type="text" id="e-sector" placeholder="e.g. HVAC, Power, Digital"></div>
+      <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
+      <div class="field"><label>NOTE</label><input type="text" id="e-note" placeholder="Optional"></div>
+      <div class="field"><label>COLOR</label>
+        <div class="color-row"><input type="color" id="e-color" value="#c8f135">
+        <span id="e-color-hex" style="font-family:monospace;font-size:11px;color:var(--muted)">#c8f135</span></div>
+      </div>
+      <hr class="ed-sep">
+      <div class="field"><label>CURRENT GATE</label><input type="text" id="e-current-gate" placeholder="e.g. Gate 2 – Concept"></div>
+      <div class="field"><label>NEXT GATE</label><input type="text" id="e-gate" placeholder="e.g. Gate 3 – Design Review"></div>
+      <div class="field"><label>ETA</label><input type="date" id="e-eta"></div>
+      <hr class="ed-sep">
+      <div class="field"><label>TODO LIST</label>
+        <div id="todo-list"></div>
+        <div class="todo-add-row">
+          <input type="text" id="todo-new" placeholder="New task…">
+          <button class="sm" onclick="addTodo()">+</button>
+        </div>
+      </div>
+      <hr class="ed-sep">
+      <div id="editor-actions">
+        <button class="primary" onclick="saveEdit()">SAVE</button>
+        <button class="danger" onclick="deleteSelected()">DELETE</button>
+        <button onclick="closeEditor()">CLOSE</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="matrix-wrap">
+    <div id="axis-bar">
+      <label>X</label>
+      <input type="text" id="ax-x-name" value="Effort" oninput="onAxisChange()">
+      <input type="number" id="ax-x-min" value="0" step="1" oninput="onAxisChange()">
+      <span style="color:var(--muted);font-size:11px;font-family:monospace">→</span>
+      <input type="number" id="ax-x-max" value="10" step="1" oninput="onAxisChange()">
+      <button class="sm active" id="btn-x-lin" onclick="setScale('x','lin')">LIN</button>
+      <button class="sm" id="btn-x-log" onclick="setScale('x','log')">LOG</button>
+      <div class="bar-sep"></div>
+      <label>Y</label>
+      <input type="number" id="ax-y-min" value="0" step="1" oninput="onAxisChange()">
+      <span style="color:var(--muted);font-size:11px;font-family:monospace">↑</span>
+      <input type="number" id="ax-y-max" value="10" step="1" oninput="onAxisChange()">
+      <button class="sm active" id="btn-y-lin" onclick="setScale('y','lin')">LIN</button>
+      <button class="sm" id="btn-y-log" onclick="setScale('y','log')">LOG</button>
+      <div class="bar-sep"></div>
+      <label>SEP-X</label>
+      <input type="number" id="sep-x-val" value="5" step="0.1" oninput="onSepInput('x')" style="width:48px">
+      <label>SEP-Y</label>
+      <input type="number" id="sep-y-val" value="5" step="0.1" oninput="onSepInput('y')" style="width:48px">
+      <div class="bar-sep"></div>
+      <label>GRID</label>
+      <input type="number" id="ax-grid" value="5" min="2" max="20" step="1" oninput="render()" style="width:36px">
+      <div class="bar-sep"></div>
+      <button class="sm" onclick="resetZoom()">⊙ ZOOM RESET</button>
+    </div>
+
+    <div id="draw-bar">
+      <label>DRAW:</label>
+      <button class="sm" id="dt-none"  onclick="setDrawTool('none')">↖ SELECT</button>
+      <button class="sm" id="dt-line"  onclick="setDrawTool('line')">— LINE</button>
+      <button class="sm" id="dt-dash"  onclick="setDrawTool('dash')">╌ DASHED</button>
+      <button class="sm" id="dt-arrow" onclick="setDrawTool('arrow')">→ ARROW</button>
+      <button class="sm" id="dt-text"  onclick="setDrawTool('text')">T TEXT</button>
+      <input type="color" id="draw-color" value="#c8f135">
+      <input type="text"  id="draw-text-input" placeholder="Type then click…">
+      <div class="bar-sep"></div>
+      <button class="sm danger" onclick="clearAnnotations()">✕ CLEAR ALL</button>
+    </div>
+
+    <div id="canvas-wrap">
+      <div id="y-label">IMPACT</div>
+      <div id="svg-container">
+        <svg id="matrix-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="x-label">EFFORT</div>
+    </div>
+  </div>
+</main>
+
+<!-- RIGHT-CLICK MENU -->
+<div id="ctx-menu">
+  <div class="ctx-title" id="ctx-proj-name">PROJECT</div>
+  <div class="ctx-item" onclick="openRiskTab()"><span class="ci">⚠</span>Risk Management</div>
+  <div class="ctx-item" onclick="openScheduleTab()"><span class="ci">📅</span>Schedule / Gantt</div>
+  <div class="ctx-item" onclick="openActionsTab()"><span class="ci">👥</span>Team Actions</div>
+  <div class="ctx-item" onclick="selectProject(ctxProjId);closeCtx()"><span class="ci">✎</span>Edit Project</div>
+</div>
+<div id="tooltip"></div>
+
+<!-- PROJECT TAB WINDOW -->
+<div id="proj-tab-win" class="proj-tab-win">
+  <div class="ptw-header" title="Drag to move · Resize from bottom-right corner">
+    <span class="ptw-title" id="ptw-title">PROJECT</span>
+    <div style="display:flex;gap:6px">
+      <button class="sm primary" onclick="saveProjTab()">SAVE</button>
+      <button class="ptw-close" onclick="closeProjTab()">✕</button>
+    </div>
+  </div>
+  <div class="ptw-tabs">
+    <div class="ptw-tab active" id="tab-risk-btn"  onclick="showProjTab('risk')">⚠ RISK</div>
+    <div class="ptw-tab"        id="tab-sched-btn"   onclick="showProjTab('sched')">📅 SCHEDULE</div>
+    <div class="ptw-tab"        id="tab-actions-btn" onclick="showProjTab('actions')">👥 ACTIONS</div>
+  </div>
+  <div class="ptw-body" id="ptw-body"></div>
+</div>
+
+<!-- QUADRANT PANEL -->
+<div id="q-panel" class="overlay">
+  <div id="q-box" class="modal-box">
+    <h2>&#9647; CONFIGURE QUADRANTS</h2>
+    <p class="q-hint">Name each quadrant per Y-axis mode. Colors are shared across all three modes.</p>
+    <div style="display:grid;grid-template-columns:24px 86px 1fr 1fr 1fr 30px;gap:6px;padding:4px 0 6px;border-bottom:1px solid var(--border)">
+      <span></span><span></span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent);letter-spacing:.06em;text-align:center">IMPACT</span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent2);letter-spacing:.06em;text-align:center">VISIBILITY</span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#a78bfa;letter-spacing:.06em;text-align:center">ENABLER</span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-align:center">COLOR</span>
+    </div>
+    <div id="q-rows"></div>
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="primary" onclick="saveQPanel()">APPLY</button>
+      <button onclick="closeQPanel()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div id="add-overlay" class="overlay">
+  <div id="add-modal" class="modal-box">
+    <h2>NEW PROJECT</h2>
+    <div class="field"><label>NAME</label><input type="text" id="m-name" placeholder="Project name"></div>
+    <div class="frow">
+      <div class="field"><label id="m-x-label">X</label><input type="number" id="m-x" value="5" step="0.5"></div>
+      <div class="field"><label id="m-y-label">IMPACT</label><input type="number" id="m-y" value="5" step="0.5"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>VISIBILITY</label><input type="number" id="m-vis" value="5" step="0.5" min="0" max="10"></div>
+      <div class="field"><label>ENABLER VAL.</label><input type="number" id="m-ena" value="5" step="0.5" min="0" max="10"></div>
+    </div>
+    <div class="field"><label>SECTION</label>
+      <select id="m-section"><option value="">— No section —</option></select>
+    </div>
+    <div class="field"><label>NOTE</label><input type="text" id="m-note" placeholder="Optional"></div>
+    <div class="field"><label>COLOR</label>
+      <div class="color-row"><input type="color" id="m-color" value="#c8f135">
+      <span id="m-color-hex" style="font-family:monospace;font-size:11px;color:var(--muted)">#c8f135</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" onclick="confirmAdd()">ADD</button>
+      <button onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+<!-- {{JS}} -->
+
+<!-- RESOURCE PLAN OVERLAY -->
+
+<div id="res-overlay">
+  <div id="res-header">
+    <input id="res-title-input" value="Resource Plan" title="Click to rename">
+    <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
+      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">FROM</label>
+      <input type="month" id="res-start" onchange="saveState()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;" onchange="buildAllocTable()">
+      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">TO</label>
+      <input type="month" id="res-end" onchange="saveState()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;" onchange="buildAllocTable()">
+    </div>
+    <div style="flex:1"></div>
+    <button onclick="showResTab('roster')">Roster</button>
+    <button onclick="showResTab('plan')">Planning</button>
+    <button onclick="showResTab('dashboard')">📊 Dashboard</button>
+    <button onclick="showResTab('skills')">◈ Skills</button>
+    <button onclick="showResTab('skillrisk')">🛡 Skill Risk</button>
+    <button onclick="showResTab('profiles')">👤 Team Profiles</button>
+    <button onclick="showResTab('ninebox')">⊞ Nine-Box</button>
+    <button onclick="showResTab('disc')">◉ DISC</button>
+    <button onclick="showResTab('timeline')">⊟ Timeline</button>
+    <button onclick="showResTab('development')">★ Development</button>
+    <button onclick="showResTab('heatmap')">🌡 Heatmap</button>
+    <input type="file" id="roster-file-input" accept=".json" style="display:none" onchange="handleRosterImport(event)">
+    <button onclick="closeRes()">✕ CLOSE</button>
+  </div>
+  <div id="res-body"></div>
+</div>
+
+<!-- ICON PICKER (permanent, outside ptw-body) -->
+<div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
+  <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:8px">SELECT MILESTONE ICON</div>
+  <div class="ms-icon-sel" id="icon-picker-grid" style="max-width:260px"></div>
+  <button class="sm" style="margin-top:8px;width:100%" onclick="closeIconPicker()">CLOSE</button>
+</div>
+
+<!-- SNAPSHOT OVERLAY -->
+<div id="snap-overlay">
+  <div id="snap-header">
+    <h2>🕐 SNAPSHOTS <span id="snap-count-badge" style="font-size:10px;color:var(--muted);font-weight:300"></span></h2>
+    <button onclick="importSnapFile()" title="Import a snapshot exported from another computer">↑ IMPORT SNAPSHOT</button>
+    <input type="file" id="snap-import-input" accept=".json" style="display:none" onchange="handleSnapImport(event)">
+    <button onclick="closeSnap()">✕ CLOSE</button>
+  </div>
+  <div id="snap-body"></div>
+</div>
+<div id="alloc-ctx">
+  <div class="alloc-ctx-item" onclick="ctxFillRow()">→ Fill row with value</div>
+  <div class="alloc-ctx-item" onclick="ctxFillCol()">↓ Fill column with value</div>
+  <div class="alloc-ctx-sep"></div>
+  <div class="alloc-ctx-item" onclick="ctxCopyCell()">⧉ Copy cell value</div>
+  <div class="alloc-ctx-item" onclick="ctxPasteCell()">⇥ Paste to selection</div>
+  <div class="alloc-ctx-sep"></div>
+  <div class="alloc-ctx-item" onclick="ctxClearRow()">✕ Clear row</div>
+  <div class="alloc-ctx-item" onclick="ctxClearCol()">✕ Clear column</div>
+  <div class="alloc-ctx-sep"></div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatus('m')">🟣 M — Medical leave (cell)</div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatus('p')">🟦 P — Paid time off (cell)</div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatus('r')">🔴 R — Resigned / not hired (cell)</div>
+  <div class="alloc-ctx-sep"></div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatusRow('m')">🟣 M — Fill entire row</div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatusRow('p')">🟦 P — Fill entire row</div>
+  <div class="alloc-ctx-item" onclick="ctxSetStatusRow('r')">🔴 R — Fill entire row</div>
+</div>
+
+<!-- SKILLS MODAL -->
+<div id="skills-modal-overlay" class="eng-modal-overlay">
+  <div class="eng-modal-box" style="width:min(760px,96vw)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2 id="skills-modal-title">SKILLS</h2>
+      <span id="skills-modal-subtitle" style="font-size:11px;color:var(--muted)"></span>
+      <div style="flex:1"></div>
+      <button onclick="openSkillDomainMgr()" title="Manage domains" style="font-size:10px;padding:3px 8px">⚙ DOMAINS</button>
+      <button onclick="openSkillCatMgr()" title="Manage skill categories" style="font-size:10px;padding:3px 8px">⚙ CATEGORIES</button>
+      <button onclick="closeSkillsModal()">✕</button>
+    </div>
+
+    <!-- Add skill form -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:8px">ADD SKILL</div>
+      <div class="skill-input-row">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:2">
+          <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">SKILL NAME</label>
+          <input id="skill-new-inp" class="skill-add-input" placeholder="Type or pick from library below…" oninput="filterSkillDict(this.value)">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DOMAIN</label>
+          <select id="skill-new-domain" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none;min-width:130px">
+            <option value="">— No domain —</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">CATEGORY</label>
+          <select id="skill-new-cat" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none;">
+            <option value="crit">🔴 Critical</option>
+            <option value="diff">🟣 Differentiating</option>
+            <option value="mand">🟡 Mandatory</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">LEVEL</label>
+          <select id="skill-new-lvl" title="Proficiency level" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none;width:64px">
+            <option value="1">L1</option>
+            <option value="2">L2</option>
+            <option value="3" selected>L3</option>
+            <option value="4">L4</option>
+            <option value="5">L5</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;justify-content:flex-end">
+          <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:transparent">ADD</label>
+          <button class="primary" onclick="addSkillToEng()" style="padding:5px 14px">+ ADD</button>
+        </div>
+      </div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-top:6px">
+        L1 Awareness &nbsp;·&nbsp; L2 Basic &nbsp;·&nbsp; L3 Proficient &nbsp;·&nbsp; L4 Advanced &nbsp;·&nbsp; L5 Expert
+      </div>
+    </div>
+
+    <!-- Skill library with domain filter -->
+    <div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">SKILL LIBRARY</span>
+        <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">— click to pre-fill, then adjust &amp; add:</span>
+      </div>
+      <div id="skill-domain-filters" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+      <div class="skill-dict-wrap" id="skill-dict-chips"></div>
+    </div>
+
+    <!-- Current skills grouped by domain then category -->
+    <div id="skills-current-wrap"></div>
+
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="primary" onclick="saveSkillsModal()">SAVE</button>
+      <button onclick="closeSkillsModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKILL DOMAIN MANAGER -->
+<div id="skill-domain-mgr" class="eng-modal-overlay">
+  <div class="eng-modal-box" style="width:min(420px,95vw)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2>⚙ SKILL DOMAINS</h2>
+      <div style="flex:1"></div>
+      <button onclick="closeSkillDomainMgr()">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:0">Domains group skills in the library and PDF report. Edit, reorder, or delete as needed.</p>
+    <div id="skill-domain-list" style="display:flex;flex-direction:column;gap:6px;margin:8px 0"></div>
+    <div style="display:flex;gap:8px">
+      <input id="skill-domain-new" class="skill-add-input" placeholder="New domain name…" style="flex:1">
+      <button class="primary" onclick="addSkillDomain()">+ ADD</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="primary" onclick="saveSkillDomains()">SAVE</button>
+      <button onclick="closeSkillDomainMgr()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKILL CATEGORY MANAGER -->
+<div id="skill-cat-mgr" class="eng-modal-overlay">
+  <div class="eng-modal-box" style="width:min(480px,95vw)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2>⚙ SKILL CATEGORIES</h2>
+      <div style="flex:1"></div>
+      <button onclick="closeSkillCatMgr()">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 10px">Add, rename, recolor or delete categories. Built-in IDs (crit/diff/mand) can be renamed but not deleted while skills use them.</p>
+    <div id="skill-cat-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;flex-wrap:wrap">
+      <input id="cat-new-id"    placeholder="id (e.g. arch)" style="width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px">
+      <input id="cat-new-label" placeholder="Label (e.g. Architecture)" style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px">
+      <input id="cat-new-emoji" placeholder="🔵" style="width:40px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:14px;padding:4px 5px;border-radius:4px;text-align:center">
+      <input id="cat-new-color" type="color" value="#5be5c8" style="width:34px;height:30px;padding:2px;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+      <button class="primary" onclick="addSkillCat()" style="padding:4px 10px;font-size:10px">+ ADD</button>
+    </div>
+  </div>
+</div>
+
+<!-- ID CARD MODAL -->
+<div id="idcard-modal-overlay" class="eng-modal-overlay">
+  <div class="eng-modal-box">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2 id="idcard-modal-title">EMPLOYEE PROFILE</h2>
+      <div style="flex:1"></div>
+      <button onclick="closeIdCardModal()">✕</button>
+    </div>
+    <div class="id-card-grid">
+      <div class="id-card-field"><label>FULL NAME</label><input class="id-card-inp" id="idc-name"></div>
+      <div class="id-card-field"><label>ROLE / TITLE</label><input class="id-card-inp" id="idc-role"></div>
+      <div class="id-card-field"><label>LOCATION</label><input class="id-card-inp" id="idc-location"></div>
+      <div class="id-card-field" style="grid-column:1/-1">
+        <label>REPORTS TO</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="id-card-inp" id="idc-reportsto" style="flex:1;min-width:160px" onchange="syncManagerDisplayName(this)">
+            <option value="">— No manager (root node) —</option>
+          </select>
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:130px">
+            <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DISPLAY NAME OVERRIDE <span style="font-weight:300">(optional)</span></label>
+            <input class="id-card-inp" id="idc-manager" placeholder="e.g. external manager name…" style="font-size:11px">
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Select from roster to link the org chart hierarchy. Override the display name if the manager is external or has a different title.</div>
+      </div>
+      <div class="id-card-field" style="grid-column:1/-1">
+        <label>PHOTO</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div id="idc-photo-preview" style="width:60px;height:60px;border-radius:50%;background:var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);border:2px solid var(--border)">👤</div>
+          <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px">
+            <input type="file" id="idc-photo-file" accept="image/*" style="display:none" onchange="idcPhotoSelected(this)">
+            <div style="display:flex;gap:6px">
+              <button class="sm" onclick="G('idc-photo-file').click()">📷 Upload photo</button>
+              <button class="sm" onclick="idcPhotoClear()" style="font-size:10px;color:var(--danger);border-color:var(--danger)">✕ Remove</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">QUALITY</label>
+              <input type="range" id="idc-photo-quality" min="40" max="95" value="82" step="5"
+                style="flex:1;accent-color:var(--accent);height:4px"
+                oninput="G('idc-quality-val').textContent=this.value+'%'">
+              <span id="idc-quality-val" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent);width:32px">82%</span>
+            </div>
+            <span id="idc-photo-storage-hint" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"></span>
+          </div>
+        </div>
+      </div>
+      <div class="id-card-field" style="grid-column:1/-1">
+        <label>CONTRACT TYPE &amp; TALENT MATRIX INCLUSION</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <select class="id-card-inp" id="idc-contract" style="flex:1;min-width:160px">
+            <option value="">— Select —</option>
+            <option>Permanent</option><option>Fixed-term</option><option>Contractor</option><option>Intern</option><option>Consultant</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg)">
+            <input type="checkbox" id="idc-include-talent" style="accent-color:var(--accent);width:14px;height:14px">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);font-weight:600">Include in Nine-Box &amp; DISC</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Uncheck for contractors, interns, consultants</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="id-card-field"><label>GENDER</label>
+        <select class="id-card-inp" id="idc-gender">
+          <option value="">— Prefer not to say —</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+          <option value="NB">Non-binary</option>
+          <option value="O">Other</option>
+        </select>
+      </div>
+      <div class="id-card-field"><label>SENIORITY</label>
+        <select class="id-card-inp" id="idc-seniority">
+          <option value="">— Select —</option>
+          <optgroup label="── Individual Contributor ──">
+            <option>Junior</option>
+            <option>Mid-level</option>
+            <option>Senior</option>
+            <option>Staff</option>
+            <option>Principal</option>
+          </optgroup>
+          <optgroup label="── Tech Leadership ──">
+            <option>Tech Lead</option>
+            <option>Principal Tech Lead</option>
+            <option>Distinguished Engineer</option>
+            <option>Fellow</option>
+          </optgroup>
+          <optgroup label="── Management ──">
+            <option>Team Lead</option>
+            <option>Engineering Manager</option>
+            <option>Senior Manager</option>
+            <option>Director</option>
+            <option>Senior Director</option>
+            <option>VP Engineering</option>
+            <option>CTO</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="id-card-field"><label>START DATE</label><input class="id-card-inp" id="idc-startdate" type="date"></div>
+      <div class="id-card-field"><label>NEXT REVIEW DATE</label><input class="id-card-inp" id="idc-reviewdate" type="date"></div>
+      <div class="id-card-field"><label>MONTHLY COST €</label><input class="id-card-inp" id="idc-cost" type="number" min="0" step="100"></div>
+      <div class="id-card-field"><label>COMPA-RATIO %<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">salary vs market mid (100=midpoint)</span></label><input class="id-card-inp" id="idc-comparatio" type="number" min="50" max="200" step="1" placeholder="e.g. 95" title="Compa-ratio: 100% = at market midpoint. &lt;100 = below market, &gt;100 = above market."></div>
+      <div class="id-card-field"><label>GRADE<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">career grade (1–11)</span></label><input class="id-card-inp" id="idc-grade" type="number" min="1" max="11" step="1" placeholder="1–11" title="Career grade — integer between 1 and 11."></div>
+      <div class="id-card-field"><label>LANGUAGES</label><input class="id-card-inp" id="idc-languages" placeholder="e.g. EN, FR, ZH"></div>
+    </div>
+    <div class="id-card-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <label style="margin:0">RECOMMENDED NEXT MOVE</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2)">
+          <input type="checkbox" id="idc-nextmove-show" style="accent-color:var(--accent2);width:13px;height:13px">
+          Show on org chart (detailed mode)
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="id-card-inp" id="idc-nextmove-pos" style="flex:2;min-width:160px" placeholder="Target position — e.g. Staff Engineer">
+        <input class="id-card-inp" id="idc-nextmove-time" style="flex:1;min-width:120px" placeholder="Timeline — e.g. 6–12 months">
+      </div>
+    </div>
+    <div class="id-card-field"><label>CAREER ASPIRATIONS</label>
+      <textarea class="id-card-textarea" id="idc-aspirations" placeholder="What does this person want to grow towards?"></textarea>
+    </div>
+    <div class="id-card-field"><label>KEY STRENGTHS</label>
+      <textarea class="id-card-textarea" id="idc-strengths" placeholder="Notable strengths observed…"></textarea>
+    </div>
+    <div class="id-card-field"><label>DEVELOPMENT AREAS</label>
+      <textarea class="id-card-textarea" id="idc-devarea" placeholder="Areas to grow or watch…"></textarea>
+    </div>
+    <div class="id-card-field"><label>NOTES</label>
+      <textarea class="id-card-textarea" id="idc-notes" placeholder="Any other important information…"></textarea>
+    </div>
+
+    <!-- CoP section (collapsible) -->
+    <div class="id-card-field" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none"
+           onclick="(function(el){var b=document.getElementById('idc-cop-body');var a=el.querySelector('.cop-arrow');if(b){b.style.display=b.style.display==='none'?'block':'none';a.textContent=b.style.display==='none'?'▶':'▼';}})(this)">
+        <span class="cop-arrow" style="font-size:9px;color:var(--muted)">▶</span>
+        <label style="cursor:pointer;margin:0">COMMUNITIES OF PRACTICE</label>
+        <span id="idc-cop-count" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"></span>
+        <div style="flex:1"></div>
+      </div>
+      <div id="idc-cop-body" style="display:none;margin-top:8px">
+        <div id="idc-cop-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="add-row-btn" onclick="idcAddCop()" style="font-size:10px;padding:3px 10px">+ ADD CoP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance reviews section (collapsible) -->
+    <div class="id-card-field" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none"
+           onclick="(function(el){var b=document.getElementById('idc-rev-body');var a=el.querySelector('.rev-arrow');if(b){b.style.display=b.style.display==='none'?'block':'none';a.textContent=b.style.display==='none'?'▶':'▼';}})(this)">
+        <span class="rev-arrow" style="font-size:9px;color:var(--muted)">▶</span>
+        <label style="cursor:pointer;margin:0">PERFORMANCE REVIEWS</label>
+        <span id="idc-rev-count" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"></span>
+        <div style="flex:1"></div>
+      </div>
+      <div id="idc-rev-body" style="display:none;margin-top:8px">
+        <div id="idc-rev-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="add-row-btn" onclick="idcAddReview()" style="font-size:10px;padding:3px 10px">+ ADD REVIEW</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="primary" onclick="saveIdCardModal()">SAVE</button>
+      <button onclick="closeIdCardModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ORG CHART OVERLAY -->
+<div id="org-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;">
+  <div id="org-header" style="display:flex;flex-direction:column;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0">
+
+    <!-- ROW 1: Title · View controls · Close -->
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;flex-wrap:nowrap;overflow-x:auto">
+      <h2 style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.08em;white-space:nowrap;margin-right:4px">🗂 ORG CHART</h2>
+      <select id="org-filter-grp" onchange="renderOrgChart()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none;max-width:130px">
+        <option value="">All Groups</option>
+      </select>
+      <button class="sm primary" onclick="orgAddRoot()" title="Add a new root-level person">+ PERSON</button>
+      <button class="sm" onclick="orgAddVacancyRoot()" title="Add open position" style="border-color:#f1a435;color:#f1a435">◻ VACANCY</button>
+      <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
+      <button class="sm" onclick="orgZoom(1.2)" title="Zoom in">＋</button>
+      <button class="sm" onclick="orgZoom(0.8)" title="Zoom out">－</button>
+      <button class="sm" onclick="orgResetView()" title="Fit to screen">⊡ FIT</button>
+      <button class="sm" onclick="_orgPositions={};renderOrgChart()" title="Reset manual positions to auto-layout">⟳ AUTO</button>
+      <button class="sm" onclick="orgToggleKPI()" id="org-kpi-btn" title="Headcount KPIs">📊 KPI</button>
+      <button class="sm" id="org-snap-btn" onclick="orgToggleSnap()" title="Toggle 40px grid snap">⊞ SNAP: OFF</button>
+      <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
+      <button class="sm" id="org-arrows-btn" onclick="orgToggleArrows()" title="Show/hide hierarchy arrows">↗ ARROWS: ON</button>
+      <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" title="Show nine-box rating &amp; recommended next move on each card">◔ DETAILS: OFF</button>
+
+      <div style="flex:1"></div>
+      <button class="sm" onclick="orgExportSVG()" title="Download SVG">↓ SVG</button>
+      <button class="sm" onclick="orgExportPNG()" title="Download PNG">↓ PNG</button>
+
+
+      <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
+      <button onclick="closeOrgChart()" style="font-weight:600;padding:4px 12px">✕ CLOSE</button>
+    </div>
+
+    <!-- ROW 2: Drawing tools · Selection · Annotations -->
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:rgba(0,0,0,.15);border-top:1px solid var(--border);flex-wrap:nowrap;overflow-x:auto">
+
+      <!-- Selection tool (standalone — different from draw modes) -->
+      <button class="sm" id="otool-select" onclick="orgSetTool('select')"
+        title="Select &amp; move nodes" style="border-color:var(--accent)">↖ SELECT</button>
+      <div style="width:1px;background:var(--border);height:14px;flex-shrink:0;margin:0 2px"></div>
+
+      <!-- Draw mode group — visually bracketed -->
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DRAW:</span>
+      <div style="display:flex;gap:3px;border:1px solid var(--border);border-radius:5px;padding:2px 4px;background:rgba(0,0,0,.2)">
+        <button class="sm" id="otool-text"    onclick="orgSetTool('text')"    title="Click to place a text label">T</button>
+        <button class="sm" id="otool-rect"    onclick="orgSetTool('rect')"    title="Drag to draw a rectangle">▭</button>
+        <button class="sm" id="otool-ellipse" onclick="orgSetTool('ellipse')" title="Drag to draw an ellipse">○</button>
+        <button class="sm" id="otool-arrow"   onclick="orgSetTool('arrow')"   title="Drag to draw a free arrow">→</button>
+      </div>
+      <button class="sm" onclick="orgDeleteSelectedAnnot()" title="Delete selected shape (Del)">✕ DEL</button>
+      <button class="sm" id="org-annot-bg-btn" onclick="orgToggleAnnotBg()"
+        title="FG = shapes on top (interactive) · BG = shapes behind nodes">▭ FG/BG</button>
+
+      <div style="flex:1"></div>
+
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);white-space:nowrap" id="org-sel-hint">
+        Click=select · Shift+click=add/remove · Drag=pan · Drag node=move or reassign
+      </span>
+    </div>
+
+  </div>
+  <div id="org-body" style="flex:1;overflow:hidden;position:relative;cursor:grab">
+    <svg id="org-svg" style="width:100%;height:100%;display:block"></svg>
+  </div>
+  <!-- Hover card -->
+
+<!-- ORG KPI PANEL -->
+<div id="org-kpi-panel" style="display:none;position:absolute;top:0;right:0;width:240px;height:100%;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;z-index:200;padding:14px;flex-direction:column;gap:10px">
+</div>
+
+  <div id="org-hover-card" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;min-width:240px;max-width:320px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.7);pointer-events:auto"></div>
+</div>
+
+
+<!-- ORG ARROW CONTEXT MENU -->
+<div id="org-arrow-ctx" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 0;z-index:700;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.7)">
+  <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);padding:6px 14px 4px;border-bottom:1px solid var(--border)" id="org-arrow-ctx-label"></div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgArrowDelete()">✕ Remove this link</div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgArrowMakeRoot()">⬆ Make child a root node</div>
+</div>
+
+<!-- ORG CONTEXT MENU -->
+<div id="org-ctx-menu" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 0;z-index:700;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.7)">
+  <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);padding:6px 14px 4px;border-bottom:1px solid var(--border);margin-bottom:2px" id="org-ctx-label"></div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgCtxEdit()">👤 Edit profile</div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgCtxAddReport()">➕ Add direct report</div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgCtxAddVacancy()">◻ Add vacancy (open position)</div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background=''" onclick="orgCtxMakeRoot()">⬆ Make root node</div>
+  <div style="height:1px;background:var(--border);margin:3px 0"></div>
+  <div style="padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--danger)" onmouseenter="this.style.background='rgba(241,67,53,.08)'" onmouseleave="this.style.background=''" onclick="orgCtxDelete()">× Remove from org</div>
+</div>
+
+
+<!-- PROJECT BRIEF EXPORT MODAL -->
+<div id="brief-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">📄 EXPORT PROJECT BRIEF</h2>
+      <button onclick="G('brief-overlay').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div style="padding:16px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">SELECT PROJECTS</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
+          <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
+          <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
+        </div>
+        <div id="brief-proj-list" style="display:flex;flex-direction:column;gap:4px;max-height:250px;overflow-y:auto"></div>
+      </div>
+      <div>
+        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">OPTIONS</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
+          <input type="checkbox" id="brief-include-team" checked> Include team allocation
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
+          <input type="checkbox" id="brief-include-risks"> Include project risks
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
+          <input type="checkbox" id="brief-include-todos" checked> Include open todos
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
+          <input type="checkbox" id="brief-include-milestones" checked> Include milestones
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
+          <input type="checkbox" id="brief-include-actions" checked> Include actions / Gantt
+        </label>
+      </div>
+      <div>
+        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">ALLOCATION PERIOD</label>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="month" id="brief-from" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
+          <span style="font-size:11px;color:var(--muted)">→</span>
+          <input type="month" id="brief-to" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
+          <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
+          <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
+        </div>
+        <div style="font-size:9px;color:var(--dim);margin-top:4px">Leave blank to include all allocation data.</div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button class="primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
+      <button onclick="exportProjectBriefHTML()">↓ HTML</button>
+      <button onclick="G('brief-overlay').style.display='none'" style="margin-left:auto">CANCEL</button>
+    </div>
+  </div>
+</div>
+  <script src="matrix-tour.js"></script>
+</body>
