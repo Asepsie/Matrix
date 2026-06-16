@@ -23,6 +23,7 @@ export function makeIdCard(overrides = {}) {
     manager:       '',
     seniority:     '',
     potential:     '',              // Level of potential (GTP): Low / Medium / High
+    mobility:      '',              // geographic / work-mode mobility, e.g. "Open to relocation"
     startdate:     '',
     reviewdate:    '',
     languages:     '',

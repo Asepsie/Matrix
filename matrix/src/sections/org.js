@@ -443,13 +443,24 @@ function renderOrgChart(){
 
       var nm=c.nextMove||{};
       if(nm.show&&(nm.position||'').trim()){
-        var moveTxt='→ '+nm.position+((nm.timeline||'').trim()?' · '+nm.timeline:'');
-        if(moveTxt.length>40)moveTxt=moveTxt.slice(0,39)+'…';
-        var my=dy;
-        s+='<rect x="0" y="'+my+'" width="'+ORG_NW+'" height="17" rx="4"'
+        // next move position — its own line
+        var posTxt='→ '+nm.position;
+        if(posTxt.length>40)posTxt=posTxt.slice(0,39)+'…';
+        s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
           +' fill="rgba(91,229,200,0.10)" stroke="#5be5c8" stroke-width="1"/>';
-        s+='<text x="7" y="'+(my+12)+'" font-size="8" fill="#5be5c8"'
-          +' font-family="IBM Plex Mono,monospace">'+escH(moveTxt)+'</text>';
+        s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="#5be5c8"'
+          +' font-family="IBM Plex Mono,monospace">'+escH(posTxt)+'</text>';
+        dy+=20;
+        // move timeline — separate line
+        var tlTxt=(nm.timeline||'').trim();
+        if(tlTxt){
+          if(tlTxt.length>40)tlTxt=tlTxt.slice(0,39)+'…';
+          s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
+            +' fill="rgba(91,229,200,0.06)" stroke="#5be5c8" stroke-width="1"/>';
+          s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="#5be5c8"'
+            +' font-family="IBM Plex Mono,monospace">'+escH('⏱ '+tlTxt)+'</text>';
+          dy+=20;
+        }
       }
     }
 
@@ -574,6 +585,31 @@ function orgBindGlobalEvents(){
       window.addEventListener('mousemove',onLHMove);
       window.addEventListener('mouseup',onLHUp);
       e.stopPropagation();
+      return;
+    }
+
+    var annotResize=e.target.closest('[data-annotresize]');
+    if(annotResize&&_orgDrawTool==='select'){
+      e.stopPropagation();
+      var raid=+annotResize.dataset.annotresize;
+      var rann=_orgAnnotations.find(function(x){return x.id===raid;});
+      if(rann){
+        _orgEditAnnotId=raid;
+        var rsx=e.clientX, rsy=e.clientY, rw0=rann.w||220, rh0=rann.h||150;
+        function onRMove(ev){
+          rann.w=Math.max(80,Math.round(rw0+(ev.clientX-rsx)/_orgScale));
+          rann.h=Math.max(40,Math.round(rh0+(ev.clientY-rsy)/_orgScale));
+          var al=G('org-annot-layer');
+          if(al){var tmp='';_orgAnnotations.forEach(function(a){tmp+=orgAnnotSVG(a);});al.innerHTML=tmp;}
+        }
+        function onRUp(){
+          window.removeEventListener('mousemove',onRMove);
+          window.removeEventListener('mouseup',onRUp);
+          saveState();renderOrgChart();
+        }
+        window.addEventListener('mousemove',onRMove);
+        window.addEventListener('mouseup',onRUp);
+      }
       return;
     }
 
@@ -889,6 +925,24 @@ function orgToggleDetail(){
   }
   renderOrgChart();
 }
+// adds an editable, resizable legend card (org-node styling) near the centre of the view
+function orgAddLegend(){
+  var def=['• Potential electrifier','• Electrifier','',
+           '• Willing to relocate','• Talent not willing to relocate'].join('\n');
+  var svgR=G('org-svg').getBoundingClientRect();
+  var T=buildOrgTree();
+  var p=orgLayout(T.roots,T.children);
+  var v=Object.values(p);
+  var minX=v.length?Math.min.apply(null,v.map(function(q){return q.x;})):0;
+  var OX=60-minX, OY=60;
+  var x=(svgR.width*0.5-_orgPanX)/_orgScale-OX;
+  var y=(svgR.height*0.35-_orgPanY)/_orgScale-OY;
+  var a={id:_orgNextAnnotId++,type:'legend',x:Math.round(x),y:Math.round(y),
+    w:230,h:158,text:def,color:'#c8f135',fontSize:12};
+  _orgAnnotations.push(a);
+  _orgEditAnnotId=a.id;
+  saveState();renderOrgChart();
+}
 // deletes the currently selected annotation
 function orgDeleteSelectedAnnot(){
   if(_orgEditAnnotId===null)return;
@@ -909,7 +963,7 @@ function orgOpenAnnotEdit(a){
   var isText=a.type==='text';
   div.innerHTML='<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-bottom:10px">'
     +'EDIT '+a.type.toUpperCase()+' <button onclick="G(\'org-annot-editor\').remove()" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>'
-    +(isText||a.type==='rect'||a.type==='ellipse'?
+    +(isText||a.type==='rect'||a.type==='ellipse'||a.type==='legend'?
       '<div style="margin-bottom:6px"><label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">TEXT</label>'
       +'<textarea id="ae-text" style="display:block;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:5px;border-radius:4px;resize:vertical;min-height:50px;margin-top:2px;font-family:inherit">'+escH(a.text||'')+'</textarea></div>':'')
     +'<div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">'
@@ -1041,6 +1095,32 @@ function orgAnnotSVG(a){
       +' stroke="'+(a.color||'#f1a435')+'" stroke-width="2" marker-end="url(#orgarr)"/>';
     s+='<line x1="'+a.fromPt.x+'" y1="'+a.fromPt.y+'" x2="'+a.toPt.x+'" y2="'+a.toPt.y+'"'
       +' stroke="transparent" stroke-width="12"/>';
+    s+='</g>';
+  } else if(a.type==='legend'){
+    // editable, resizable card styled like an org-chart node
+    var lw=a.w||220, lh=a.h||150;
+    var lcol=a.color||'#c8f135';
+    var lfs=a.fontSize||12;
+    s+='<g data-annotid="'+a.id+'" class="org-annot" style="cursor:move">';
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="'+lh+'" rx="8"'
+      +' fill="#18181c" stroke="'+lcol+'" stroke-width="1.5" filter="url(#orgsh)"/>';
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="5" rx="4" fill="'+lcol+'"/>';
+    var lly=(a.text||'').split('\n');
+    var llh=lfs*1.7;
+    lly.forEach(function(ln,i){
+      if(ln.trim())
+        s+='<text x="'+(a.x+12)+'" y="'+(a.y+24+lfs+i*llh)+'" font-size="'+lfs+'"'
+          +' fill="#e8e8ea" font-family="IBM Plex Sans,sans-serif">'+escH(ln)+'</text>';
+    });
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="'+lh+'"'
+      +' fill="transparent" '+selRing+' rx="8"/>';
+    // resize grip (bottom-right)
+    var grx=a.x+lw, gry=a.y+lh;
+    s+='<g data-annotresize="'+a.id+'" style="cursor:nwse-resize">';
+    s+='<rect x="'+(grx-15)+'" y="'+(gry-15)+'" width="15" height="15" fill="transparent"/>';
+    s+='<path d="M'+(grx-4)+','+(gry-12)+' L'+(grx-4)+','+(gry-4)+' L'+(grx-12)+','+(gry-4)+'"'
+      +' fill="none" stroke="'+lcol+'" stroke-width="1.5"/>';
+    s+='</g>';
     s+='</g>';
   }
   return s;
@@ -1239,7 +1319,7 @@ function orgBuildExportSVG(){
   if(!engs.length)return null;
 
   var ENW=220, ENH=100;
-  var EHGAP=36, EVGAP=80;
+  var EHGAP=36, EVGAP=104;
 
   var ePos={};
   var eCounter={v:0};
@@ -1425,12 +1505,20 @@ function orgBuildExportSVG(){
       }
       var nmE=c.nextMove||{};
       if(nmE.show&&(nmE.position||'').trim()){
-        var moveTxtE='→ '+nmE.position+((nmE.timeline||'').trim()?' · '+nmE.timeline:'');
-        if(moveTxtE.length>38)moveTxtE=moveTxtE.slice(0,37)+'…';
+        var posTxtE='→ '+nmE.position;
+        if(posTxtE.length>38)posTxtE=posTxtE.slice(0,37)+'…';
         var myE=ryE+24;
         s+='<rect x="0" y="'+myE+'" width="'+ENW+'" height="20" rx="5"'
           +' fill="rgba(91,229,200,0.10)" stroke="#5be5c8" stroke-width="1"/>';
-        s+='<text x="8" y="'+(myE+14)+'" font-size="9.5" fill="#5be5c8">'+escH(moveTxtE)+'</text>';
+        s+='<text x="8" y="'+(myE+14)+'" font-size="9.5" fill="#5be5c8">'+escH(posTxtE)+'</text>';
+        var tlTxtE=(nmE.timeline||'').trim();
+        if(tlTxtE){
+          if(tlTxtE.length>38)tlTxtE=tlTxtE.slice(0,37)+'…';
+          var myE2=myE+24;
+          s+='<rect x="0" y="'+myE2+'" width="'+ENW+'" height="20" rx="5"'
+            +' fill="rgba(91,229,200,0.06)" stroke="#5be5c8" stroke-width="1"/>';
+          s+='<text x="8" y="'+(myE2+14)+'" font-size="9.5" fill="#5be5c8">'+escH('⏱ '+tlTxtE)+'</text>';
+        }
       }
     }
 

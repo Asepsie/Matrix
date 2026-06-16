@@ -799,6 +799,7 @@ function makeIdCard(overrides = {}) {
     manager:       '',
     seniority:     '',
     potential:     '',              // Level of potential (GTP): Low / Medium / High
+    mobility:      '',              // geographic / work-mode mobility, e.g. "Open to relocation"
     startdate:     '',
     reviewdate:    '',
     languages:     '',
@@ -924,7 +925,7 @@ const PAD={l:38,r:14,t:14,b:26};
 const Y_LABELS={impact:'IMPACT',visibility:'VISIBILITY',enabler:'ENABLER VALUE'};
 
 /* ── Org chart constants ── */
-const ORG_NW=206, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=70;
+const ORG_NW=206, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=96;
 const ORG_GRID=40;
 
 /* ── Performance ratings config ── */
@@ -8956,6 +8957,7 @@ function openIdCardModal(engId){
   var itCb=G('idc-include-talent');if(itCb)itCb.checked=(eng.includeTalent!==false);
   G('idc-seniority').value=c.seniority||'';
   var potSel=G('idc-potential');if(potSel)potSel.value=c.potential||'';
+  var mobInp=G('idc-mobility');if(mobInp)mobInp.value=c.mobility||'';
   G('idc-startdate').value=c.startdate||'';
   G('idc-reviewdate').value=c.reviewdate||'';
   G('idc-languages').value=c.languages||'';
@@ -9064,6 +9066,7 @@ function saveIdCardModal(){
   var itCb2=G('idc-include-talent');eng.includeTalent=itCb2?itCb2.checked:true;
   eng.idcard.seniority=G('idc-seniority').value;
   eng.idcard.potential=G('idc-potential')?G('idc-potential').value:'';
+  eng.idcard.mobility=G('idc-mobility')?G('idc-mobility').value:'';
   eng.idcard.startdate=G('idc-startdate').value;
   eng.idcard.reviewdate=G('idc-reviewdate').value;
   eng.idcard.languages=G('idc-languages').value;
@@ -9586,13 +9589,24 @@ function renderOrgChart(){
 
       var nm=c.nextMove||{};
       if(nm.show&&(nm.position||'').trim()){
-        var moveTxt='→ '+nm.position+((nm.timeline||'').trim()?' · '+nm.timeline:'');
-        if(moveTxt.length>40)moveTxt=moveTxt.slice(0,39)+'…';
-        var my=dy;
-        s+='<rect x="0" y="'+my+'" width="'+ORG_NW+'" height="17" rx="4"'
+        // next move position — its own line
+        var posTxt='→ '+nm.position;
+        if(posTxt.length>40)posTxt=posTxt.slice(0,39)+'…';
+        s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
           +' fill="rgba(91,229,200,0.10)" stroke="#5be5c8" stroke-width="1"/>';
-        s+='<text x="7" y="'+(my+12)+'" font-size="8" fill="#5be5c8"'
-          +' font-family="IBM Plex Mono,monospace">'+escH(moveTxt)+'</text>';
+        s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="#5be5c8"'
+          +' font-family="IBM Plex Mono,monospace">'+escH(posTxt)+'</text>';
+        dy+=20;
+        // move timeline — separate line
+        var tlTxt=(nm.timeline||'').trim();
+        if(tlTxt){
+          if(tlTxt.length>40)tlTxt=tlTxt.slice(0,39)+'…';
+          s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
+            +' fill="rgba(91,229,200,0.06)" stroke="#5be5c8" stroke-width="1"/>';
+          s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="#5be5c8"'
+            +' font-family="IBM Plex Mono,monospace">'+escH('⏱ '+tlTxt)+'</text>';
+          dy+=20;
+        }
       }
     }
 
@@ -9717,6 +9731,31 @@ function orgBindGlobalEvents(){
       window.addEventListener('mousemove',onLHMove);
       window.addEventListener('mouseup',onLHUp);
       e.stopPropagation();
+      return;
+    }
+
+    var annotResize=e.target.closest('[data-annotresize]');
+    if(annotResize&&_orgDrawTool==='select'){
+      e.stopPropagation();
+      var raid=+annotResize.dataset.annotresize;
+      var rann=_orgAnnotations.find(function(x){return x.id===raid;});
+      if(rann){
+        _orgEditAnnotId=raid;
+        var rsx=e.clientX, rsy=e.clientY, rw0=rann.w||220, rh0=rann.h||150;
+        function onRMove(ev){
+          rann.w=Math.max(80,Math.round(rw0+(ev.clientX-rsx)/_orgScale));
+          rann.h=Math.max(40,Math.round(rh0+(ev.clientY-rsy)/_orgScale));
+          var al=G('org-annot-layer');
+          if(al){var tmp='';_orgAnnotations.forEach(function(a){tmp+=orgAnnotSVG(a);});al.innerHTML=tmp;}
+        }
+        function onRUp(){
+          window.removeEventListener('mousemove',onRMove);
+          window.removeEventListener('mouseup',onRUp);
+          saveState();renderOrgChart();
+        }
+        window.addEventListener('mousemove',onRMove);
+        window.addEventListener('mouseup',onRUp);
+      }
       return;
     }
 
@@ -10032,6 +10071,24 @@ function orgToggleDetail(){
   }
   renderOrgChart();
 }
+// adds an editable, resizable legend card (org-node styling) near the centre of the view
+function orgAddLegend(){
+  var def=['• Potential electrifier','• Electrifier','',
+           '• Willing to relocate','• Talent not willing to relocate'].join('\n');
+  var svgR=G('org-svg').getBoundingClientRect();
+  var T=buildOrgTree();
+  var p=orgLayout(T.roots,T.children);
+  var v=Object.values(p);
+  var minX=v.length?Math.min.apply(null,v.map(function(q){return q.x;})):0;
+  var OX=60-minX, OY=60;
+  var x=(svgR.width*0.5-_orgPanX)/_orgScale-OX;
+  var y=(svgR.height*0.35-_orgPanY)/_orgScale-OY;
+  var a={id:_orgNextAnnotId++,type:'legend',x:Math.round(x),y:Math.round(y),
+    w:230,h:158,text:def,color:'#c8f135',fontSize:12};
+  _orgAnnotations.push(a);
+  _orgEditAnnotId=a.id;
+  saveState();renderOrgChart();
+}
 // deletes the currently selected annotation
 function orgDeleteSelectedAnnot(){
   if(_orgEditAnnotId===null)return;
@@ -10052,7 +10109,7 @@ function orgOpenAnnotEdit(a){
   var isText=a.type==='text';
   div.innerHTML='<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-bottom:10px">'
     +'EDIT '+a.type.toUpperCase()+' <button onclick="G(\'org-annot-editor\').remove()" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>'
-    +(isText||a.type==='rect'||a.type==='ellipse'?
+    +(isText||a.type==='rect'||a.type==='ellipse'||a.type==='legend'?
       '<div style="margin-bottom:6px"><label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">TEXT</label>'
       +'<textarea id="ae-text" style="display:block;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:5px;border-radius:4px;resize:vertical;min-height:50px;margin-top:2px;font-family:inherit">'+escH(a.text||'')+'</textarea></div>':'')
     +'<div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">'
@@ -10184,6 +10241,32 @@ function orgAnnotSVG(a){
       +' stroke="'+(a.color||'#f1a435')+'" stroke-width="2" marker-end="url(#orgarr)"/>';
     s+='<line x1="'+a.fromPt.x+'" y1="'+a.fromPt.y+'" x2="'+a.toPt.x+'" y2="'+a.toPt.y+'"'
       +' stroke="transparent" stroke-width="12"/>';
+    s+='</g>';
+  } else if(a.type==='legend'){
+    // editable, resizable card styled like an org-chart node
+    var lw=a.w||220, lh=a.h||150;
+    var lcol=a.color||'#c8f135';
+    var lfs=a.fontSize||12;
+    s+='<g data-annotid="'+a.id+'" class="org-annot" style="cursor:move">';
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="'+lh+'" rx="8"'
+      +' fill="#18181c" stroke="'+lcol+'" stroke-width="1.5" filter="url(#orgsh)"/>';
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="5" rx="4" fill="'+lcol+'"/>';
+    var lly=(a.text||'').split('\n');
+    var llh=lfs*1.7;
+    lly.forEach(function(ln,i){
+      if(ln.trim())
+        s+='<text x="'+(a.x+12)+'" y="'+(a.y+24+lfs+i*llh)+'" font-size="'+lfs+'"'
+          +' fill="#e8e8ea" font-family="IBM Plex Sans,sans-serif">'+escH(ln)+'</text>';
+    });
+    s+='<rect x="'+a.x+'" y="'+a.y+'" width="'+lw+'" height="'+lh+'"'
+      +' fill="transparent" '+selRing+' rx="8"/>';
+    // resize grip (bottom-right)
+    var grx=a.x+lw, gry=a.y+lh;
+    s+='<g data-annotresize="'+a.id+'" style="cursor:nwse-resize">';
+    s+='<rect x="'+(grx-15)+'" y="'+(gry-15)+'" width="15" height="15" fill="transparent"/>';
+    s+='<path d="M'+(grx-4)+','+(gry-12)+' L'+(grx-4)+','+(gry-4)+' L'+(grx-12)+','+(gry-4)+'"'
+      +' fill="none" stroke="'+lcol+'" stroke-width="1.5"/>';
+    s+='</g>';
     s+='</g>';
   }
   return s;
@@ -10382,7 +10465,7 @@ function orgBuildExportSVG(){
   if(!engs.length)return null;
 
   var ENW=220, ENH=100;
-  var EHGAP=36, EVGAP=80;
+  var EHGAP=36, EVGAP=104;
 
   var ePos={};
   var eCounter={v:0};
@@ -10568,12 +10651,20 @@ function orgBuildExportSVG(){
       }
       var nmE=c.nextMove||{};
       if(nmE.show&&(nmE.position||'').trim()){
-        var moveTxtE='→ '+nmE.position+((nmE.timeline||'').trim()?' · '+nmE.timeline:'');
-        if(moveTxtE.length>38)moveTxtE=moveTxtE.slice(0,37)+'…';
+        var posTxtE='→ '+nmE.position;
+        if(posTxtE.length>38)posTxtE=posTxtE.slice(0,37)+'…';
         var myE=ryE+24;
         s+='<rect x="0" y="'+myE+'" width="'+ENW+'" height="20" rx="5"'
           +' fill="rgba(91,229,200,0.10)" stroke="#5be5c8" stroke-width="1"/>';
-        s+='<text x="8" y="'+(myE+14)+'" font-size="9.5" fill="#5be5c8">'+escH(moveTxtE)+'</text>';
+        s+='<text x="8" y="'+(myE+14)+'" font-size="9.5" fill="#5be5c8">'+escH(posTxtE)+'</text>';
+        var tlTxtE=(nmE.timeline||'').trim();
+        if(tlTxtE){
+          if(tlTxtE.length>38)tlTxtE=tlTxtE.slice(0,37)+'…';
+          var myE2=myE+24;
+          s+='<rect x="0" y="'+myE2+'" width="'+ENW+'" height="20" rx="5"'
+            +' fill="rgba(91,229,200,0.06)" stroke="#5be5c8" stroke-width="1"/>';
+          s+='<text x="8" y="'+(myE2+14)+'" font-size="9.5" fill="#5be5c8">'+escH('⏱ '+tlTxtE)+'</text>';
+        }
       }
     }
 
@@ -10876,6 +10967,7 @@ function renderProfilesTab(){
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
       +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="Edit this profile" style="font-size:9px;padding:2px 8px;font-weight:700">✏ EDIT</button>'
       +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="Export this profile as PDF" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
+      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="Export this profile as SVG" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
       +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="Export this profile as CSV" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
       +'</div>';
 
@@ -10884,12 +10976,16 @@ function renderProfilesTab(){
     h+='<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:4px">';
 
     const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
+    const _nm=c.nextMove||{};
+    const nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     const details=[
       ['📍 Location',e.location||c.location||'—'],
       ['📊 Seniority',c.seniority||'—'],
       ['📋 Contract',c.contract||'—'],
       ['📅 Start date',c.startdate||'—'],
       ['🚀 Potential (GTP)',c.potential||'—'],
+      ['🧭 Mobility',c.mobility||'—'],
+      ['🎯 Next move',nmStr],
       ['👤 Reports to',mgrName],
       ['🌐 Languages',c.languages||'—'],
     ];
@@ -11003,6 +11099,7 @@ function profileExportCSV(engId){
     ['Group',(engGroups.find(function(g){return g.id===e.groupId;})||{}).name||''],
     ['Seniority',c.seniority||''],['Contract',c.contract||''],
     ['Potential (GTP)',c.potential||''],
+    ['Mobility',c.mobility||''],
     ['Reports To',mgr?mgr.name:(c.manager||'')],
     ['Languages',c.languages||''],['Start Date',c.startdate||''],
     ['Review Date',c.reviewdate||''],['Gender',c.gender||''],
@@ -11026,7 +11123,7 @@ function profilesExportCSV(){
   const CAT_LABEL=getSkillCatLabel(false);
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   function csvCell(v){const s=String(v==null?'':v);return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;}
-  const rows=[['Name','Group','Role','Location','Seniority','Contract','Reports To','Languages','Gender','Start','Review','Skill','Category','Domain','Level','Level Label','Gaps']];
+  const rows=[['Name','Group','Role','Location','Seniority','Contract','Mobility','Reports To','Languages','Gender','Start','Review','Skill','Category','Domain','Level','Level Label','Gaps']];
   engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
     const c=e.idcard||{};
     const grp=(engGroups.find(function(g){return g.id===e.groupId;})||{}).name||'';
@@ -11034,10 +11131,10 @@ function profilesExportCSV(){
     const mgrName=mgr?mgr.name:(c.manager||'');
     const skills=e.skills||[];
     if(!skills.length){
-      rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'','','','','','','']);
+      rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',c.mobility||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'','','','','','','']);
     } else {
       skills.forEach(function(s){
-        rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'',s.name,CAT_LABEL[s.cat]||s.cat,s.domain||'General','L'+(s.level||3),LEVEL_LABEL[s.level||3]||'',s.gaps||'']);
+        rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',c.mobility||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'',s.name,CAT_LABEL[s.cat]||s.cat,s.domain||'General','L'+(s.level||3),LEVEL_LABEL[s.level||3]||'',s.gaps||'']);
       });
     }
   });
@@ -11047,78 +11144,62 @@ function profilesExportCSV(){
   a.download='all_profiles.csv';a.click();
 }
 
-// opens a print-ready single-profile page in a new window
+// opens a print-ready single-profile page (themed ID card, matches the on-screen profile)
 function profileExportPDF(engId){
   const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const c=e.idcard||{};
-  const col=engGroupColor(e);
-  const grp=engGroups.find(function(g){return g.id===e.groupId;});
-  const mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
-  const mgrName=mgr?mgr.name:(c.manager||'—');
-  const photo=idbGetPhoto(e.id)||(c.photo||'');
-  const CAT_COL=getSkillCatCol();
-  const CAT_LABEL=getSkillCatLabel(false);
-  const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-  const skills=e.skills||[];
-  const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
-  const _spofMap=buildSkillMap();
-  const spofSkills=skills.filter(function(s){var k=s.name.toLowerCase().trim();return _spofMap[k]&&_spofMap[k].holders.length===1;});
-
-  const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
-  let skillsHTML=domains.map(function(dom){
-    const ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-    return '<div style="margin-bottom:10px">'
-      +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;margin-bottom:4px;letter-spacing:.06em">'+dom+'</div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
-      +ds.map(function(s){
-        const cc=CAT_COL[s.cat]||'#888';
-        return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
-          +s.name+' <sup>L'+(s.level||3)+'</sup>'
-          +(showInd&&s.gaps?'<br><span style="font-size:8px;color:#c0392b">⚠ '+s.gaps+'</span>':'')
-          +'</span>';
-      }).join('')
-      +'</div></div>';
-  }).join('');
-
-  const avatarHTML=photo
-    ?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+col+'">'
-    :'<div style="width:60px;height:60px;border-radius:50%;background:'+col+'33;border:3px solid '+col
-      +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+col+'">'+engInitials(e.name)+'</div>';
-
+  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
   const win=window.open('','_blank');
   if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Profile — '+e.name+'</title>'
-    +'<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:24px;}'
-    +'h1{font-size:18px;font-weight:700;}h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:4px;}'
-    +'.row{display:flex;gap:6px;margin-bottom:4px;font-size:11px;}.label{color:#888;min-width:110px;flex-shrink:0;}'
-    +'@media print{@page{size:A4;margin:12mm;}body{padding:0;}}'
-    +'</style></head><body>'
-    +'<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:3px solid '+col+'">'
-    +avatarHTML
-    +'<div><h1>'+e.name+'</h1>'
-    +'<div style="font-size:13px;color:#444;margin-top:3px">'+(e.role||'')+'</div>'
-    +(grp?'<div style="font-size:11px;color:'+grp.color+';margin-top:2px">'+grp.name+'</div>':'')
-    +'</div></div>'
-    +'<h2>Profile</h2>'
-    +'<div class="row"><span class="label">Location</span><span>'+(e.location||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Seniority</span><span>'+(c.seniority||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Contract</span><span>'+(c.contract||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Start date</span><span>'+(c.startdate||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Potential (GTP)</span><span>'+(c.potential||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Reports to</span><span>'+mgrName+'</span></div>'
-    +'<div class="row"><span class="label">Languages</span><span>'+(c.languages||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Review date</span><span>'+(c.reviewdate||'—')+'</span></div>'
-    +(spofSkills.length&&showInd?'<div class="row"><span class="label">⚠ SPOF</span><span style="color:#c0392b">'+spofSkills.map(function(s){return s.name;}).join(', ')+'</span></div>':'')
-    +(showInd&&c.aspirations?'<h2>Aspirations</h2><p style="font-size:11px;line-height:1.6">'+c.aspirations+'</p>':'')
-    +(c.strengths?'<h2>Strengths</h2><p style="font-size:11px;line-height:1.6">'+c.strengths+'</p>':'')
-    +(c.devarea?'<h2>Development Areas</h2><p style="font-size:11px;line-height:1.6">'+c.devarea+'</p>':'')
-    +(skills.length?'<h2>Skills ('+skills.length+')</h2>'+skillsHTML:'')
-    +(showInd&&c.notes?'<h2>Notes</h2><p style="font-size:11px;line-height:1.6">'+c.notes+'</p>':'')
-    +'<div style="margin-top:20px;font-size:9px;color:#bbb;text-align:right">Generated by Project Matrix · '+new Date().toLocaleDateString()+'</div>'
-    +'<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>'
-    +'</body></html>');
+  win.document.write(buildSingleProfilePageHTML(e,fullMode));
+  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>');
   win.document.close();
+}
+
+// downloads a single profile as a standalone themed SVG (matches the on-screen ID card)
+function profileExportSVG(engId){
+  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
+  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
+  const V=getProfileExportPalette();
+  const html=buildSingleProfilePageHTML(e,fullMode);
+  const width=488;
+
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+width+'px;height:10px;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  setTimeout(function(){
+    var h=iframe.contentDocument.body.scrollHeight+40;
+    document.body.removeChild(iframe);
+
+    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
+    var styleCSS=styleMatch?styleMatch[1]:'';
+    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    var bodyContent=bodyMatch?bodyMatch[1]:html;
+
+    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
+      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+      +' width="'+width+'" height="'+h+'">\n'
+      +'<rect width="'+width+'" height="'+h+'" fill="'+V.bg+'"/>\n'
+      +'<foreignObject x="0" y="0" width="'+width+'" height="'+h+'">\n'
+      +'<body xmlns="http://www.w3.org/1999/xhtml"'
+      +' style="margin:0;padding:24px;background:'+V.bg+';font-family:Arial,sans-serif;'
+      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
+      +'<style>'+styleCSS+'</style>\n'
+      +bodyContent
+      +'\n</body>\n'
+      +'</foreignObject>\n'
+      +'</svg>';
+
+    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(e.name||'profile').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_profile.svg';
+    a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+  },300);
 }
 
 // opens one print-ready page per filtered profile
@@ -11202,11 +11283,24 @@ function profilesExportAllPDF(){
 }
 
 /* ►► SECTION: PROFILE-EXPORT ◄◄ Profile card builder, dashboard PNG/SVG/HTML/PDF export */
-// builds the profile-card HTML array (themed for screen/export)
+// resolves the live theme palette (with dark fallback) so exports match the interface
+function getProfileExportPalette(){
+  var cs=getComputedStyle(document.documentElement);
+  return {
+    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
+    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
+    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
+    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
+    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
+    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
+    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
+    danger:cs.getPropertyValue('--danger').trim()||'#f14335'
+  };
+}
+// builds the profile-card HTML array — faithful copy of the on-screen card
+// in renderProfilesTab (honours Full-detail + SPOF/gaps/notes toggles, minus action buttons)
 function buildProfileCardHTMLs(engs, fullMode, vars){
   var CAT_COL=getSkillCatCol();
-  var CAT_LABEL=getSkillCatLabel(true);
-  var LVL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   var V=vars||{
     bg:'#0f0f11',surface:'#18181c',border:'#2a2a32',
     text:'#e8e8ea',muted:'#6b6b78',accent:'#c8f135',
@@ -11214,6 +11308,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
   };
 
   var showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
+  var sm=buildSkillMap();
   return engs.map(function(e){
     var c=e.idcard||{};
     var col=engGroupColor(e);
@@ -11222,7 +11317,6 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     var mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
     var mgrName=mgr?mgr.name:(c.manager||'—');
     var skills=e.skills||[];
-    var sm=buildSkillMap();
     var spof=skills.filter(function(s){
       var k=s.name.toLowerCase().trim();
       return sm[k]&&sm[k].holders.length===1;
@@ -11230,54 +11324,99 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
 
     var avatarHTML=photo
       ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+photo+'" style="width:100%;height:100%;object-fit:cover"></div>'
-      :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:monospace">'+engInitials(e.name)+'</div>';
+      :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace">'+escH(engInitials(e.name))+'</div>';
 
+    var _nm=c.nextMove||{};
+    var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     var details=[
-      ['📍',e.location||c.location||'—'],
-      ['📊',c.seniority||'—'],
-      ['📋',c.contract||'—'],
-      ['📅',c.startdate||'—'],
-      ['🚀',c.potential||'—'],
-      ['👤',mgrName],
-      ['🌐',c.languages||'—'],
+      ['📍 Location',e.location||c.location||'—'],
+      ['📊 Seniority',c.seniority||'—'],
+      ['📋 Contract',c.contract||'—'],
+      ['📅 Start date',c.startdate||'—'],
+      ['🚀 Potential (GTP)',c.potential||'—'],
+      ['🧭 Mobility',c.mobility||'—'],
+      ['🎯 Next move',nmStr],
+      ['👤 Reports to',mgrName],
+      ['🌐 Languages',c.languages||'—'],
     ];
+    var inTalent=e.includeTalent!==false;
 
-    var skillHTML='';
+    var html='<div style="background:'+V.surface+';border:1px solid '+V.border
+      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
+      +'<div style="height:5px;background:'+col+'"></div>'
+      +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
+      +avatarHTML
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
+      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
+      +(grp?'<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>':'')
+      +'</div></div>'
+      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">'
+      +details.map(function(d){
+        return '<div style="display:flex;gap:6px;font-size:10px">'
+          +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">'+d[0]+'</span>'
+          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
+      }).join('')
+      +'<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
+      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; Matrices</span>'
+      +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
+      +(inTalent
+        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; Nine-Box &amp; DISC'
+        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; Excluded (contractor/intern)')
+      +'</span></div>';
+
+    if(fullMode){
+      var hasCompa=c.comparatio!=null&&c.comparatio!=='';
+      var hasGrade=c.grade!=null&&c.grade!=='';
+      var compaCol=!hasCompa?V.muted:(c.comparatio<90?'#f1a435':(c.comparatio>110?V.accent2:V.accent));
+      html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid '+V.border+'">'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Compa-ratio</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
+        +'</div>'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Grade</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?V.text:V.muted)+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
+        +'</div>'
+        +'</div>';
+    }
+
     if(skills.length){
       if(fullMode){
         var domains=[];
         skills.forEach(function(s){var d=s.domain||'General';if(!domains.includes(d))domains.push(d);});
-        skillHTML='<div style="margin-top:8px">';
+        html+='<div style="margin-top:8px">';
         domains.forEach(function(dom){
           var ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-          skillHTML+='<div style="font-size:9px;color:'+V.muted+';font-family:monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
-          skillHTML+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
+          html+='<div style="font-size:9px;color:'+V.muted+';font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
+          html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             var cc=CAT_COL[s.cat]||'#888';
             var hasGap=showInd&&s.gaps&&s.gaps.trim();
-            skillHTML+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
+            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
               +escH(s.name)
-              +'<span style="font-family:monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
-              +(hasGap?'<span style="font-size:9px;margin-left:2px" title="'+escH(s.gaps)+'">⚠</span>':'')
-              +(s.comment?'<span style="font-size:9px;margin-left:2px" title="'+escH(s.comment)+'">💬</span>':'')
+              +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
+              +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
               +'</span>';
           });
-          skillHTML+='</div>';
+          html+='</div>';
         });
-        skillHTML+='</div>';
+        html+='</div>';
       } else {
-        skillHTML='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
-        var shown=skills.slice(0,16);
-        shown.forEach(function(s){
+        html+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
+        skills.slice(0,16).forEach(function(s){
           var cc=CAT_COL[s.cat]||'#888';
-          skillHTML+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
+          html+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
         });
-        if(skills.length>16)skillHTML+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' more</span>';
-        skillHTML+='</div>';
+        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' more</span>';
+        html+='</div>';
       }
     }
 
-    var fullHTML='';
+    if(spof.length&&showInd){
+      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
+    }
+
     if(fullMode){
       var extras=[
         ['💡 Aspirations',c.aspirations,true],
@@ -11288,38 +11427,36 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       extras.forEach(function(f){
         if(f[2]&&!showInd)return;
         if(!f[1]||!f[1].trim())return;
-        fullHTML+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
-          +'<div style="font-size:9px;color:'+V.muted+';font-family:monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
+        html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+V.muted+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
           +'<div style="font-size:10px;color:'+V.text+';line-height:1.55">'+escH(f[1])+'</div>'
           +'</div>';
       });
     }
 
-    var spofHTML=spof.length&&showInd
-      ?'<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>'
-      :'';
-
-    return '<div style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
-      +'<div style="height:5px;background:'+col+'"></div>'
-      +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
-      +avatarHTML
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
-      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
-      +(grp?'<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>':'')
-      +'</div></div>'
-      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:3px">'
-      +details.map(function(d){
-        return '<div style="display:flex;gap:6px;font-size:10px">'
-          +'<span style="color:'+V.muted+';min-width:20px;flex-shrink:0">'+d[0]+'</span>'
-          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
-      }).join('')
-      +skillHTML
-      +spofHTML
-      +fullHTML
-      +'</div></div>';
+    html+='</div></div>';
+    return html;
   });
+}
+
+// builds a standalone print-ready page for a single profile card (themed, matches the interface)
+function buildSingleProfilePageHTML(e, fullMode){
+  var V=getProfileExportPalette();
+  var card=buildProfileCardHTMLs([e],fullMode,V)[0]||'';
+  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH('Profile — '+e.name)+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0;}'
+    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;padding:24px;'
+    +'-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
+    +'.wrap{max-width:440px;margin:0 auto;}'
+    +'.rf{margin-top:14px;font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;font-family:monospace;}'
+    +'@media print{@page{size:A4;margin:14mm;}html,body{padding:0;background:'+V.bg+'!important;}'
+    +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}'
+    +'</style></head><body><div class="wrap">'
+    +card
+    +'<div class="rf"><span>Project Matrix</span><span>'+dateStr+'</span></div>'
+    +'</div></body></html>';
 }
 
 // returns the filtered engineer set + full-detail flag for export
@@ -11335,17 +11472,7 @@ function getProfileExportEngs(){
 
 // builds the standalone profiles dashboard HTML page
 function buildProfilesPageHTML(engs, fullMode, cols){
-  var cs=getComputedStyle(document.documentElement);
-  var V={
-    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger:cs.getPropertyValue('--danger').trim()||'#f14335',
-  };
+  var V=getProfileExportPalette();
 
   var cards=buildProfileCardHTMLs(engs,fullMode,V);
   var numCols=cols||3;
@@ -13692,25 +13819,26 @@ updateSnapBadge();
           <option>High</option>
         </select>
       </div>
+      <div class="id-card-field"><label>MOBILITY<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">relocation / work-mode</span></label><input class="id-card-inp" id="idc-mobility" placeholder="e.g. Open to relocation · Remote only · EU-based"></div>
+      <div class="id-card-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <label style="margin:0">RECOMMENDED NEXT MOVE</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2)">
+            <input type="checkbox" id="idc-nextmove-show" style="accent-color:var(--accent2);width:13px;height:13px">
+            Show on org chart (detailed mode)
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="id-card-inp" id="idc-nextmove-pos" style="flex:2;min-width:160px" placeholder="Target position — e.g. Staff Engineer">
+          <input class="id-card-inp" id="idc-nextmove-time" style="flex:1;min-width:120px" placeholder="Timeline — e.g. 6–12 months">
+        </div>
+      </div>
       <div class="id-card-field"><label>START DATE</label><input class="id-card-inp" id="idc-startdate" type="date"></div>
       <div class="id-card-field"><label>NEXT REVIEW DATE</label><input class="id-card-inp" id="idc-reviewdate" type="date"></div>
       <div class="id-card-field"><label>MONTHLY COST €</label><input class="id-card-inp" id="idc-cost" type="number" min="0" step="100"></div>
       <div class="id-card-field"><label>COMPA-RATIO %<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">salary vs market mid (100=midpoint)</span></label><input class="id-card-inp" id="idc-comparatio" type="number" min="50" max="200" step="1" placeholder="e.g. 95" title="Compa-ratio: 100% = at market midpoint. &lt;100 = below market, &gt;100 = above market."></div>
       <div class="id-card-field"><label>GRADE<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">career grade (1–11)</span></label><input class="id-card-inp" id="idc-grade" type="number" min="1" max="11" step="1" placeholder="1–11" title="Career grade — integer between 1 and 11."></div>
       <div class="id-card-field"><label>LANGUAGES</label><input class="id-card-inp" id="idc-languages" placeholder="e.g. EN, FR, ZH"></div>
-    </div>
-    <div class="id-card-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <label style="margin:0">RECOMMENDED NEXT MOVE</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2)">
-          <input type="checkbox" id="idc-nextmove-show" style="accent-color:var(--accent2);width:13px;height:13px">
-          Show on org chart (detailed mode)
-        </label>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input class="id-card-inp" id="idc-nextmove-pos" style="flex:2;min-width:160px" placeholder="Target position — e.g. Staff Engineer">
-        <input class="id-card-inp" id="idc-nextmove-time" style="flex:1;min-width:120px" placeholder="Timeline — e.g. 6–12 months">
-      </div>
     </div>
     <div class="id-card-field"><label>CAREER ASPIRATIONS</label>
       <textarea class="id-card-textarea" id="idc-aspirations" placeholder="What does this person want to grow towards?"></textarea>
@@ -13816,6 +13944,7 @@ updateSnapBadge();
         <button class="sm" id="otool-arrow"   onclick="orgSetTool('arrow')"   title="Drag to draw a free arrow">→</button>
       </div>
       <button class="sm" onclick="orgDeleteSelectedAnnot()" title="Delete selected shape (Del)">✕ DEL</button>
+      <button class="sm" onclick="orgAddLegend()" title="Add an editable, resizable legend card">▤ LEGEND</button>
       <button class="sm" id="org-annot-bg-btn" onclick="orgToggleAnnotBg()"
         title="FG = shapes on top (interactive) · BG = shapes behind nodes">▭ FG/BG</button>
 

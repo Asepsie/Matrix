@@ -639,25 +639,26 @@
           <option>High</option>
         </select>
       </div>
+      <div class="id-card-field"><label>MOBILITY<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">relocation / work-mode</span></label><input class="id-card-inp" id="idc-mobility" placeholder="e.g. Open to relocation · Remote only · EU-based"></div>
+      <div class="id-card-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <label style="margin:0">RECOMMENDED NEXT MOVE</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2)">
+            <input type="checkbox" id="idc-nextmove-show" style="accent-color:var(--accent2);width:13px;height:13px">
+            Show on org chart (detailed mode)
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="id-card-inp" id="idc-nextmove-pos" style="flex:2;min-width:160px" placeholder="Target position — e.g. Staff Engineer">
+          <input class="id-card-inp" id="idc-nextmove-time" style="flex:1;min-width:120px" placeholder="Timeline — e.g. 6–12 months">
+        </div>
+      </div>
       <div class="id-card-field"><label>START DATE</label><input class="id-card-inp" id="idc-startdate" type="date"></div>
       <div class="id-card-field"><label>NEXT REVIEW DATE</label><input class="id-card-inp" id="idc-reviewdate" type="date"></div>
       <div class="id-card-field"><label>MONTHLY COST €</label><input class="id-card-inp" id="idc-cost" type="number" min="0" step="100"></div>
       <div class="id-card-field"><label>COMPA-RATIO %<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">salary vs market mid (100=midpoint)</span></label><input class="id-card-inp" id="idc-comparatio" type="number" min="50" max="200" step="1" placeholder="e.g. 95" title="Compa-ratio: 100% = at market midpoint. &lt;100 = below market, &gt;100 = above market."></div>
       <div class="id-card-field"><label>GRADE<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">career grade (1–11)</span></label><input class="id-card-inp" id="idc-grade" type="number" min="1" max="11" step="1" placeholder="1–11" title="Career grade — integer between 1 and 11."></div>
       <div class="id-card-field"><label>LANGUAGES</label><input class="id-card-inp" id="idc-languages" placeholder="e.g. EN, FR, ZH"></div>
-    </div>
-    <div class="id-card-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <label style="margin:0">RECOMMENDED NEXT MOVE</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2)">
-          <input type="checkbox" id="idc-nextmove-show" style="accent-color:var(--accent2);width:13px;height:13px">
-          Show on org chart (detailed mode)
-        </label>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input class="id-card-inp" id="idc-nextmove-pos" style="flex:2;min-width:160px" placeholder="Target position — e.g. Staff Engineer">
-        <input class="id-card-inp" id="idc-nextmove-time" style="flex:1;min-width:120px" placeholder="Timeline — e.g. 6–12 months">
-      </div>
     </div>
     <div class="id-card-field"><label>CAREER ASPIRATIONS</label>
       <textarea class="id-card-textarea" id="idc-aspirations" placeholder="What does this person want to grow towards?"></textarea>
@@ -763,6 +764,7 @@
         <button class="sm" id="otool-arrow"   onclick="orgSetTool('arrow')"   title="Drag to draw a free arrow">→</button>
       </div>
       <button class="sm" onclick="orgDeleteSelectedAnnot()" title="Delete selected shape (Del)">✕ DEL</button>
+      <button class="sm" onclick="orgAddLegend()" title="Add an editable, resizable legend card">▤ LEGEND</button>
       <button class="sm" id="org-annot-bg-btn" onclick="orgToggleAnnotBg()"
         title="FG = shapes on top (interactive) · BG = shapes behind nodes">▭ FG/BG</button>
 

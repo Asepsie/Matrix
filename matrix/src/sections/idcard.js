@@ -52,6 +52,7 @@ export function openIdCardModal(engId){
   var itCb=G('idc-include-talent');if(itCb)itCb.checked=(eng.includeTalent!==false);
   G('idc-seniority').value=c.seniority||'';
   var potSel=G('idc-potential');if(potSel)potSel.value=c.potential||'';
+  var mobInp=G('idc-mobility');if(mobInp)mobInp.value=c.mobility||'';
   G('idc-startdate').value=c.startdate||'';
   G('idc-reviewdate').value=c.reviewdate||'';
   G('idc-languages').value=c.languages||'';
@@ -160,6 +161,7 @@ export function saveIdCardModal(){
   var itCb2=G('idc-include-talent');eng.includeTalent=itCb2?itCb2.checked:true;
   eng.idcard.seniority=G('idc-seniority').value;
   eng.idcard.potential=G('idc-potential')?G('idc-potential').value:'';
+  eng.idcard.mobility=G('idc-mobility')?G('idc-mobility').value:'';
   eng.idcard.startdate=G('idc-startdate').value;
   eng.idcard.reviewdate=G('idc-reviewdate').value;
   eng.idcard.languages=G('idc-languages').value;

@@ -105,6 +105,7 @@ function renderProfilesTab(){
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
       +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="Edit this profile" style="font-size:9px;padding:2px 8px;font-weight:700">✏ EDIT</button>'
       +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="Export this profile as PDF" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
+      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="Export this profile as SVG" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
       +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="Export this profile as CSV" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
       +'</div>';
 
@@ -113,12 +114,16 @@ function renderProfilesTab(){
     h+='<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:4px">';
 
     const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
+    const _nm=c.nextMove||{};
+    const nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     const details=[
       ['📍 Location',e.location||c.location||'—'],
       ['📊 Seniority',c.seniority||'—'],
       ['📋 Contract',c.contract||'—'],
       ['📅 Start date',c.startdate||'—'],
       ['🚀 Potential (GTP)',c.potential||'—'],
+      ['🧭 Mobility',c.mobility||'—'],
+      ['🎯 Next move',nmStr],
       ['👤 Reports to',mgrName],
       ['🌐 Languages',c.languages||'—'],
     ];
@@ -232,6 +237,7 @@ function profileExportCSV(engId){
     ['Group',(engGroups.find(function(g){return g.id===e.groupId;})||{}).name||''],
     ['Seniority',c.seniority||''],['Contract',c.contract||''],
     ['Potential (GTP)',c.potential||''],
+    ['Mobility',c.mobility||''],
     ['Reports To',mgr?mgr.name:(c.manager||'')],
     ['Languages',c.languages||''],['Start Date',c.startdate||''],
     ['Review Date',c.reviewdate||''],['Gender',c.gender||''],
@@ -255,7 +261,7 @@ function profilesExportCSV(){
   const CAT_LABEL=getSkillCatLabel(false);
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   function csvCell(v){const s=String(v==null?'':v);return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;}
-  const rows=[['Name','Group','Role','Location','Seniority','Contract','Reports To','Languages','Gender','Start','Review','Skill','Category','Domain','Level','Level Label','Gaps']];
+  const rows=[['Name','Group','Role','Location','Seniority','Contract','Mobility','Reports To','Languages','Gender','Start','Review','Skill','Category','Domain','Level','Level Label','Gaps']];
   engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
     const c=e.idcard||{};
     const grp=(engGroups.find(function(g){return g.id===e.groupId;})||{}).name||'';
@@ -263,10 +269,10 @@ function profilesExportCSV(){
     const mgrName=mgr?mgr.name:(c.manager||'');
     const skills=e.skills||[];
     if(!skills.length){
-      rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'','','','','','','']);
+      rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',c.mobility||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'','','','','','','']);
     } else {
       skills.forEach(function(s){
-        rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'',s.name,CAT_LABEL[s.cat]||s.cat,s.domain||'General','L'+(s.level||3),LEVEL_LABEL[s.level||3]||'',s.gaps||'']);
+        rows.push([e.name,grp,e.role||'',e.location||'',c.seniority||'',c.contract||'',c.mobility||'',mgrName,c.languages||'',c.gender||'',c.startdate||'',c.reviewdate||'',s.name,CAT_LABEL[s.cat]||s.cat,s.domain||'General','L'+(s.level||3),LEVEL_LABEL[s.level||3]||'',s.gaps||'']);
       });
     }
   });
@@ -276,78 +282,62 @@ function profilesExportCSV(){
   a.download='all_profiles.csv';a.click();
 }
 
-// opens a print-ready single-profile page in a new window
+// opens a print-ready single-profile page (themed ID card, matches the on-screen profile)
 function profileExportPDF(engId){
   const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const c=e.idcard||{};
-  const col=engGroupColor(e);
-  const grp=engGroups.find(function(g){return g.id===e.groupId;});
-  const mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
-  const mgrName=mgr?mgr.name:(c.manager||'—');
-  const photo=idbGetPhoto(e.id)||(c.photo||'');
-  const CAT_COL=getSkillCatCol();
-  const CAT_LABEL=getSkillCatLabel(false);
-  const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-  const skills=e.skills||[];
-  const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
-  const _spofMap=buildSkillMap();
-  const spofSkills=skills.filter(function(s){var k=s.name.toLowerCase().trim();return _spofMap[k]&&_spofMap[k].holders.length===1;});
-
-  const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
-  let skillsHTML=domains.map(function(dom){
-    const ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-    return '<div style="margin-bottom:10px">'
-      +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;margin-bottom:4px;letter-spacing:.06em">'+dom+'</div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
-      +ds.map(function(s){
-        const cc=CAT_COL[s.cat]||'#888';
-        return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
-          +s.name+' <sup>L'+(s.level||3)+'</sup>'
-          +(showInd&&s.gaps?'<br><span style="font-size:8px;color:#c0392b">⚠ '+s.gaps+'</span>':'')
-          +'</span>';
-      }).join('')
-      +'</div></div>';
-  }).join('');
-
-  const avatarHTML=photo
-    ?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+col+'">'
-    :'<div style="width:60px;height:60px;border-radius:50%;background:'+col+'33;border:3px solid '+col
-      +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+col+'">'+engInitials(e.name)+'</div>';
-
+  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
   const win=window.open('','_blank');
   if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Profile — '+e.name+'</title>'
-    +'<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:24px;}'
-    +'h1{font-size:18px;font-weight:700;}h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:4px;}'
-    +'.row{display:flex;gap:6px;margin-bottom:4px;font-size:11px;}.label{color:#888;min-width:110px;flex-shrink:0;}'
-    +'@media print{@page{size:A4;margin:12mm;}body{padding:0;}}'
-    +'</style></head><body>'
-    +'<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:3px solid '+col+'">'
-    +avatarHTML
-    +'<div><h1>'+e.name+'</h1>'
-    +'<div style="font-size:13px;color:#444;margin-top:3px">'+(e.role||'')+'</div>'
-    +(grp?'<div style="font-size:11px;color:'+grp.color+';margin-top:2px">'+grp.name+'</div>':'')
-    +'</div></div>'
-    +'<h2>Profile</h2>'
-    +'<div class="row"><span class="label">Location</span><span>'+(e.location||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Seniority</span><span>'+(c.seniority||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Contract</span><span>'+(c.contract||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Start date</span><span>'+(c.startdate||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Potential (GTP)</span><span>'+(c.potential||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Reports to</span><span>'+mgrName+'</span></div>'
-    +'<div class="row"><span class="label">Languages</span><span>'+(c.languages||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Review date</span><span>'+(c.reviewdate||'—')+'</span></div>'
-    +(spofSkills.length&&showInd?'<div class="row"><span class="label">⚠ SPOF</span><span style="color:#c0392b">'+spofSkills.map(function(s){return s.name;}).join(', ')+'</span></div>':'')
-    +(showInd&&c.aspirations?'<h2>Aspirations</h2><p style="font-size:11px;line-height:1.6">'+c.aspirations+'</p>':'')
-    +(c.strengths?'<h2>Strengths</h2><p style="font-size:11px;line-height:1.6">'+c.strengths+'</p>':'')
-    +(c.devarea?'<h2>Development Areas</h2><p style="font-size:11px;line-height:1.6">'+c.devarea+'</p>':'')
-    +(skills.length?'<h2>Skills ('+skills.length+')</h2>'+skillsHTML:'')
-    +(showInd&&c.notes?'<h2>Notes</h2><p style="font-size:11px;line-height:1.6">'+c.notes+'</p>':'')
-    +'<div style="margin-top:20px;font-size:9px;color:#bbb;text-align:right">Generated by Project Matrix · '+new Date().toLocaleDateString()+'</div>'
-    +'<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>'
-    +'</body></html>');
+  win.document.write(buildSingleProfilePageHTML(e,fullMode));
+  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>');
   win.document.close();
+}
+
+// downloads a single profile as a standalone themed SVG (matches the on-screen ID card)
+function profileExportSVG(engId){
+  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
+  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
+  const V=getProfileExportPalette();
+  const html=buildSingleProfilePageHTML(e,fullMode);
+  const width=488;
+
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+width+'px;height:10px;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  setTimeout(function(){
+    var h=iframe.contentDocument.body.scrollHeight+40;
+    document.body.removeChild(iframe);
+
+    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
+    var styleCSS=styleMatch?styleMatch[1]:'';
+    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    var bodyContent=bodyMatch?bodyMatch[1]:html;
+
+    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
+      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+      +' width="'+width+'" height="'+h+'">\n'
+      +'<rect width="'+width+'" height="'+h+'" fill="'+V.bg+'"/>\n'
+      +'<foreignObject x="0" y="0" width="'+width+'" height="'+h+'">\n'
+      +'<body xmlns="http://www.w3.org/1999/xhtml"'
+      +' style="margin:0;padding:24px;background:'+V.bg+';font-family:Arial,sans-serif;'
+      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
+      +'<style>'+styleCSS+'</style>\n'
+      +bodyContent
+      +'\n</body>\n'
+      +'</foreignObject>\n'
+      +'</svg>';
+
+    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(e.name||'profile').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_profile.svg';
+    a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+  },300);
 }
 
 // opens one print-ready page per filtered profile
@@ -431,11 +421,24 @@ function profilesExportAllPDF(){
 }
 
 /* ►► SECTION: PROFILE-EXPORT ◄◄ Profile card builder, dashboard PNG/SVG/HTML/PDF export */
-// builds the profile-card HTML array (themed for screen/export)
+// resolves the live theme palette (with dark fallback) so exports match the interface
+function getProfileExportPalette(){
+  var cs=getComputedStyle(document.documentElement);
+  return {
+    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
+    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
+    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
+    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
+    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
+    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
+    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
+    danger:cs.getPropertyValue('--danger').trim()||'#f14335'
+  };
+}
+// builds the profile-card HTML array — faithful copy of the on-screen card
+// in renderProfilesTab (honours Full-detail + SPOF/gaps/notes toggles, minus action buttons)
 function buildProfileCardHTMLs(engs, fullMode, vars){
   var CAT_COL=getSkillCatCol();
-  var CAT_LABEL=getSkillCatLabel(true);
-  var LVL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   var V=vars||{
     bg:'#0f0f11',surface:'#18181c',border:'#2a2a32',
     text:'#e8e8ea',muted:'#6b6b78',accent:'#c8f135',
@@ -443,6 +446,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
   };
 
   var showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
+  var sm=buildSkillMap();
   return engs.map(function(e){
     var c=e.idcard||{};
     var col=engGroupColor(e);
@@ -451,7 +455,6 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     var mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
     var mgrName=mgr?mgr.name:(c.manager||'—');
     var skills=e.skills||[];
-    var sm=buildSkillMap();
     var spof=skills.filter(function(s){
       var k=s.name.toLowerCase().trim();
       return sm[k]&&sm[k].holders.length===1;
@@ -459,54 +462,99 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
 
     var avatarHTML=photo
       ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+photo+'" style="width:100%;height:100%;object-fit:cover"></div>'
-      :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:monospace">'+engInitials(e.name)+'</div>';
+      :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace">'+escH(engInitials(e.name))+'</div>';
 
+    var _nm=c.nextMove||{};
+    var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     var details=[
-      ['📍',e.location||c.location||'—'],
-      ['📊',c.seniority||'—'],
-      ['📋',c.contract||'—'],
-      ['📅',c.startdate||'—'],
-      ['🚀',c.potential||'—'],
-      ['👤',mgrName],
-      ['🌐',c.languages||'—'],
+      ['📍 Location',e.location||c.location||'—'],
+      ['📊 Seniority',c.seniority||'—'],
+      ['📋 Contract',c.contract||'—'],
+      ['📅 Start date',c.startdate||'—'],
+      ['🚀 Potential (GTP)',c.potential||'—'],
+      ['🧭 Mobility',c.mobility||'—'],
+      ['🎯 Next move',nmStr],
+      ['👤 Reports to',mgrName],
+      ['🌐 Languages',c.languages||'—'],
     ];
+    var inTalent=e.includeTalent!==false;
 
-    var skillHTML='';
+    var html='<div style="background:'+V.surface+';border:1px solid '+V.border
+      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
+      +'<div style="height:5px;background:'+col+'"></div>'
+      +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
+      +avatarHTML
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
+      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
+      +(grp?'<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>':'')
+      +'</div></div>'
+      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">'
+      +details.map(function(d){
+        return '<div style="display:flex;gap:6px;font-size:10px">'
+          +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">'+d[0]+'</span>'
+          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
+      }).join('')
+      +'<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
+      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; Matrices</span>'
+      +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
+      +(inTalent
+        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; Nine-Box &amp; DISC'
+        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; Excluded (contractor/intern)')
+      +'</span></div>';
+
+    if(fullMode){
+      var hasCompa=c.comparatio!=null&&c.comparatio!=='';
+      var hasGrade=c.grade!=null&&c.grade!=='';
+      var compaCol=!hasCompa?V.muted:(c.comparatio<90?'#f1a435':(c.comparatio>110?V.accent2:V.accent));
+      html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid '+V.border+'">'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Compa-ratio</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
+        +'</div>'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Grade</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?V.text:V.muted)+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
+        +'</div>'
+        +'</div>';
+    }
+
     if(skills.length){
       if(fullMode){
         var domains=[];
         skills.forEach(function(s){var d=s.domain||'General';if(!domains.includes(d))domains.push(d);});
-        skillHTML='<div style="margin-top:8px">';
+        html+='<div style="margin-top:8px">';
         domains.forEach(function(dom){
           var ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-          skillHTML+='<div style="font-size:9px;color:'+V.muted+';font-family:monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
-          skillHTML+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
+          html+='<div style="font-size:9px;color:'+V.muted+';font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
+          html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             var cc=CAT_COL[s.cat]||'#888';
             var hasGap=showInd&&s.gaps&&s.gaps.trim();
-            skillHTML+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
+            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
               +escH(s.name)
-              +'<span style="font-family:monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
-              +(hasGap?'<span style="font-size:9px;margin-left:2px" title="'+escH(s.gaps)+'">⚠</span>':'')
-              +(s.comment?'<span style="font-size:9px;margin-left:2px" title="'+escH(s.comment)+'">💬</span>':'')
+              +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
+              +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
               +'</span>';
           });
-          skillHTML+='</div>';
+          html+='</div>';
         });
-        skillHTML+='</div>';
+        html+='</div>';
       } else {
-        skillHTML='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
-        var shown=skills.slice(0,16);
-        shown.forEach(function(s){
+        html+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
+        skills.slice(0,16).forEach(function(s){
           var cc=CAT_COL[s.cat]||'#888';
-          skillHTML+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
+          html+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
         });
-        if(skills.length>16)skillHTML+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' more</span>';
-        skillHTML+='</div>';
+        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' more</span>';
+        html+='</div>';
       }
     }
 
-    var fullHTML='';
+    if(spof.length&&showInd){
+      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
+    }
+
     if(fullMode){
       var extras=[
         ['💡 Aspirations',c.aspirations,true],
@@ -517,38 +565,36 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       extras.forEach(function(f){
         if(f[2]&&!showInd)return;
         if(!f[1]||!f[1].trim())return;
-        fullHTML+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
-          +'<div style="font-size:9px;color:'+V.muted+';font-family:monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
+        html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+V.muted+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
           +'<div style="font-size:10px;color:'+V.text+';line-height:1.55">'+escH(f[1])+'</div>'
           +'</div>';
       });
     }
 
-    var spofHTML=spof.length&&showInd
-      ?'<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>'
-      :'';
-
-    return '<div style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
-      +'<div style="height:5px;background:'+col+'"></div>'
-      +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
-      +avatarHTML
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
-      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
-      +(grp?'<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>':'')
-      +'</div></div>'
-      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:3px">'
-      +details.map(function(d){
-        return '<div style="display:flex;gap:6px;font-size:10px">'
-          +'<span style="color:'+V.muted+';min-width:20px;flex-shrink:0">'+d[0]+'</span>'
-          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
-      }).join('')
-      +skillHTML
-      +spofHTML
-      +fullHTML
-      +'</div></div>';
+    html+='</div></div>';
+    return html;
   });
+}
+
+// builds a standalone print-ready page for a single profile card (themed, matches the interface)
+function buildSingleProfilePageHTML(e, fullMode){
+  var V=getProfileExportPalette();
+  var card=buildProfileCardHTMLs([e],fullMode,V)[0]||'';
+  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH('Profile — '+e.name)+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0;}'
+    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;padding:24px;'
+    +'-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
+    +'.wrap{max-width:440px;margin:0 auto;}'
+    +'.rf{margin-top:14px;font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;font-family:monospace;}'
+    +'@media print{@page{size:A4;margin:14mm;}html,body{padding:0;background:'+V.bg+'!important;}'
+    +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}'
+    +'</style></head><body><div class="wrap">'
+    +card
+    +'<div class="rf"><span>Project Matrix</span><span>'+dateStr+'</span></div>'
+    +'</div></body></html>';
 }
 
 // returns the filtered engineer set + full-detail flag for export
@@ -564,17 +610,7 @@ function getProfileExportEngs(){
 
 // builds the standalone profiles dashboard HTML page
 function buildProfilesPageHTML(engs, fullMode, cols){
-  var cs=getComputedStyle(document.documentElement);
-  var V={
-    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger:cs.getPropertyValue('--danger').trim()||'#f14335',
-  };
+  var V=getProfileExportPalette();
 
   var cards=buildProfileCardHTMLs(engs,fullMode,V);
   var numCols=cols||3;
