@@ -9243,7 +9243,8 @@ function closeOrgChart(){
 // builds the reports-to tree (roots/children/byId) from engineers
 function buildOrgTree(){
   var grpFilter=G('org-filter-grp')?G('org-filter-grp').value:'';
-  var engs=engineers.slice();
+  // planning resources never appear in the org chart (planning-only, not real headcount)
+  var engs=engineers.filter(function(e){ return !e.planningOnly; });
   if(grpFilter) engs=engs.filter(function(e){ return String(e.groupId)===grpFilter; });
 
   var byId={};
@@ -10690,7 +10691,9 @@ function orgRenderKPI(){
   var panel=G('org-kpi-panel');if(!panel)return;
   var T=buildOrgTree();
   var engs=T.engs;
-  var allEngs=engineers;
+  // planning resources are excluded from all headcount KPIs (consistent with the cost dashboard)
+  var allEngs=engineers.filter(function(e){return !e.planningOnly;});
+  var planningCount=engineers.filter(function(e){return e.planningOnly;}).length;
   var vacants=allEngs.filter(function(e){return e.vacant;});
   var active=allEngs.filter(function(e){return !e.vacant;});
 
@@ -10703,16 +10706,15 @@ function orgRenderKPI(){
   });
   var pos=orgLayout(T.roots,T.children);
 
-  var genderCount={M:0,F:0,NB:0,O:0,X:0};
-  active.forEach(function(e){
+  // female / male ratio across permanent resources only
+  var permActive=active.filter(function(e){return ((e.idcard&&e.idcard.contract)||'')==='Permanent';});
+  var permF=0,permM=0;
+  permActive.forEach(function(e){
     var g=(e.idcard&&e.idcard.gender)||'';
-    if(g==='M')genderCount.M++;
-    else if(g==='F')genderCount.F++;
-    else if(g==='NB')genderCount.NB++;
-    else if(g==='O')genderCount.O++;
-    else genderCount.X++;
+    if(g==='F')permF++;
+    else if(g==='M')permM++;
   });
-  var gTotal=active.length||1;
+  var permKnown=permF+permM;
 
   var byGroup={};
   allEngs.forEach(function(e){
@@ -10736,7 +10738,33 @@ function orgRenderKPI(){
     +'<div style="font-size:22px;font-weight:700;color:var(--accent)">'+active.length+'</div>'
     +'<div style="font-size:10px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">TOTAL HEADCOUNT</div>'
     +(vacants.length?'<div style="font-size:10px;color:#f1a435;margin-top:4px">◻ '+vacants.length+' open position'+(vacants.length>1?'s':'')+'</div>':'')
+    +(planningCount?'<div style="font-size:10px;color:var(--muted);margin-top:4px">⊘ excl. '+planningCount+' planning resource'+(planningCount>1?'s':'')+'</div>':'')
     +'</div>';
+
+  if(permActive.length){
+    var femPct=permKnown?Math.round(permF/permKnown*100):0;
+    var malePct=permKnown?100-femPct:0;
+    var ratioStr;
+    if(!permKnown)ratioStr='—';
+    else if(!permF)ratioStr='0 : '+permM;
+    else if(!permM)ratioStr=permF+' : 0';
+    else ratioStr='1 : '+(Math.round(permM/permF*100)/100);
+    h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">'
+      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">⚥ F / M RATIO · PERMANENT</div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">'
+      +'<span style="color:#f472b6">♀ Female</span>'
+      +'<span style="color:var(--text);font-weight:700">'+permF+' <span style="color:var(--muted);font-weight:400">('+femPct+'%)</span></span></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:5px">'
+      +'<span style="color:#60a5fa">♂ Male</span>'
+      +'<span style="color:var(--text);font-weight:700">'+permM+' <span style="color:var(--muted);font-weight:400">('+malePct+'%)</span></span></div>'
+      +'<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border)">'
+      +(femPct?'<div style="width:'+femPct+'%;background:#f472b6"></div>':'')
+      +(malePct?'<div style="width:'+malePct+'%;background:#60a5fa"></div>':'')
+      +'</div>'
+      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--accent);margin-top:6px;text-align:center">F : M = '+ratioStr+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">'+permActive.length+' permanent'+(permKnown<permActive.length?' · '+(permActive.length-permKnown)+' undisclosed':'')+'</div>'
+      +'</div>';
+  }
 
   var SENIORITY_ORDER2=['Junior','Mid-level','Senior','Staff','Principal',
     'Tech Lead','Principal Tech Lead','Distinguished Engineer','Fellow',
