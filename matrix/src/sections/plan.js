@@ -69,8 +69,6 @@ export function renderResPlan(){
 
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">
     <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">VIEW:</span>
-    <button class="sm${planViewMode==='flat'?' active':''}"       onclick="setPlanView('flat')">FLAT</button>
-    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">GROUP:</span>
     <button class="sm${planViewMode==='flat'?' active':''}" onclick="setPlanView('flat')">FLAT</button>
     ${planViewMode==='flat' ? `
     <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">sort:</span>

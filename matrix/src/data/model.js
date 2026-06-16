@@ -22,6 +22,7 @@ export function makeIdCard(overrides = {}) {
     reportsTo:     '',
     manager:       '',
     seniority:     '',
+    potential:     '',              // Level of potential (GTP): Low / Medium / High
     startdate:     '',
     reviewdate:    '',
     languages:     '',

@@ -385,35 +385,67 @@ function renderOrgChart(){
     s+='<rect x="0" y="0" width="'+ORG_NW+'" height="'+ORG_NH+'"'
       +' fill="transparent" data-hitid="'+e.id+'"/>';
 
-    // Detailed mode: nine-box rating + recommended next move, in the gap below the card
+    // Detailed mode: nine-box rating (or contract type) + GTP status + next move, in the gap below the card
     if(_orgDetailMode&&!isVacant){
-      var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
-      var nbCell=(_nbByKey&&nbKey)?_nbByKey[nbKey]:null;
-      var ratFill=nbCell?nbCell.colorSolid:'#1a1a1e';
-      var ratCol=nbCell?nbCell.badge:'#6b6b78';
-      var ratTxt=nbCell?nbCell.label:'NOT RATED';
-      if(ratTxt.length>26)ratTxt=ratTxt.slice(0,25)+'…';
       var ry=ORG_NH+11;
-      s+='<rect x="0" y="'+ry+'" width="'+ORG_NW+'" height="17" rx="4"'
-        +' fill="'+ratFill+'" stroke="'+ratCol+'" stroke-width="1"/>';
-      if(nbCell){
-        // numbered box chip (1–9) + profile type
-        s+='<rect x="3" y="'+(ry+2.5)+'" width="12" height="12" rx="3" fill="'+ratCol+'"/>';
-        s+='<text x="9" y="'+(ry+11.3)+'" text-anchor="middle" font-size="8.5" font-weight="bold"'
-          +' fill="#0f0f11" font-family="IBM Plex Mono,monospace">'+nbCell.box+'</text>';
-        s+='<text x="20" y="'+(ry+12)+'" font-size="8" fill="'+ratCol+'"'
-          +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(ratTxt)+'</text>';
+      var contractRaw=(c.contract||'').trim();
+      var isPerm=!contractRaw||/permanent/i.test(contractRaw);
+
+      if(isPerm){
+        // Permanent contract: keep the nine-box rating (or NOT RATED)
+        var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
+        var nbCell=(_nbByKey&&nbKey)?_nbByKey[nbKey]:null;
+        var ratFill=nbCell?nbCell.colorSolid:'#1a1a1e';
+        var ratCol=nbCell?nbCell.badge:'#6b6b78';
+        var ratTxt=nbCell?nbCell.label:'NOT RATED';
+        if(ratTxt.length>26)ratTxt=ratTxt.slice(0,25)+'…';
+        s+='<rect x="0" y="'+ry+'" width="'+ORG_NW+'" height="17" rx="4"'
+          +' fill="'+ratFill+'" stroke="'+ratCol+'" stroke-width="1"/>';
+        if(nbCell){
+          // numbered box chip (1–9) + profile type
+          s+='<rect x="3" y="'+(ry+2.5)+'" width="12" height="12" rx="3" fill="'+ratCol+'"/>';
+          s+='<text x="9" y="'+(ry+11.3)+'" text-anchor="middle" font-size="8.5" font-weight="bold"'
+            +' fill="#0f0f11" font-family="IBM Plex Mono,monospace">'+nbCell.box+'</text>';
+          s+='<text x="20" y="'+(ry+12)+'" font-size="8" fill="'+ratCol+'"'
+            +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(ratTxt)+'</text>';
+        } else {
+          s+='<circle cx="9" cy="'+(ry+8.5)+'" r="3" fill="'+ratCol+'"/>';
+          s+='<text x="17" y="'+(ry+12)+'" font-size="8" fill="'+ratCol+'"'
+            +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(ratTxt)+'</text>';
+        }
       } else {
-        s+='<circle cx="9" cy="'+(ry+8.5)+'" r="3" fill="'+ratCol+'"/>';
-        s+='<text x="17" y="'+(ry+12)+'" font-size="8" fill="'+ratCol+'"'
-          +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(ratTxt)+'</text>';
+        // Non-permanent (intern, contractor, consultant, …): show the contract type instead of a rating
+        var ctTxt=contractRaw.toUpperCase();
+        if(ctTxt.length>26)ctTxt=ctTxt.slice(0,25)+'…';
+        var ctCol='#f1a435';
+        s+='<rect x="0" y="'+ry+'" width="'+ORG_NW+'" height="17" rx="4"'
+          +' fill="rgba(241,164,53,0.10)" stroke="'+ctCol+'" stroke-width="1"/>';
+        s+='<circle cx="9" cy="'+(ry+8.5)+'" r="3" fill="'+ctCol+'"/>';
+        s+='<text x="17" y="'+(ry+12)+'" font-size="8" fill="'+ctCol+'"'
+          +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(ctTxt)+'</text>';
+      }
+
+      // running y for the stacked detail lines below the rating/contract line
+      var dy=ry+20;
+
+      // GTP status (level of potential) — Low / Medium / High, from the resource profile
+      var pot=(c.potential||'').trim();
+      if(pot){
+        var potCol=/high/i.test(pot)?'#5be5c8':(/med/i.test(pot)?'#f1a435':'#8a8a96');
+        s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
+          +' fill="rgba(255,255,255,0.03)" stroke="'+potCol+'" stroke-width="1"/>';
+        s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="'+C.muted+'"'
+          +' font-family="IBM Plex Mono,monospace">GTP</text>';
+        s+='<text x="'+(ORG_NW-7)+'" y="'+(dy+12)+'" text-anchor="end" font-size="8" font-weight="bold"'
+          +' fill="'+potCol+'" font-family="IBM Plex Mono,monospace">'+escH(pot.toUpperCase())+'</text>';
+        dy+=20;
       }
 
       var nm=c.nextMove||{};
       if(nm.show&&(nm.position||'').trim()){
         var moveTxt='→ '+nm.position+((nm.timeline||'').trim()?' · '+nm.timeline:'');
-        if(moveTxt.length>34)moveTxt=moveTxt.slice(0,33)+'…';
-        var my=ry+20;
+        if(moveTxt.length>40)moveTxt=moveTxt.slice(0,39)+'…';
+        var my=dy;
         s+='<rect x="0" y="'+my+'" width="'+ORG_NW+'" height="17" rx="4"'
           +' fill="rgba(91,229,200,0.10)" stroke="#5be5c8" stroke-width="1"/>';
         s+='<text x="7" y="'+(my+12)+'" font-size="8" fill="#5be5c8"'

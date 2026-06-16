@@ -57,6 +57,12 @@ function renderProfilesTab(){
     +'<input type="checkbox" id="prf-fullmode"'+(G('prf-fullmode')&&G('prf-fullmode').checked?' checked':'')
     +' onchange="renderProfilesTab()">'
     +'Full detail view</label>';
+  var showIndChecked=!G('prf-show-ind')||G('prf-show-ind').checked;
+  h+='<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;white-space:nowrap"'
+    +' title="Show / hide SPOF, gaps, aspirations and notes on the cards">'
+    +'<input type="checkbox" id="prf-show-ind"'+(showIndChecked?' checked':'')
+    +' onchange="renderProfilesTab()">'
+    +'SPOF / gaps / notes</label>';
   h+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-left:auto">'+engs.length+' profiles</span>';
   h+='</div>';
 
@@ -106,10 +112,13 @@ function renderProfilesTab(){
 
     h+='<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:4px">';
 
+    const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
     const details=[
       ['📍 Location',e.location||c.location||'—'],
       ['📊 Seniority',c.seniority||'—'],
       ['📋 Contract',c.contract||'—'],
+      ['📅 Start date',c.startdate||'—'],
+      ['🚀 Potential (GTP)',c.potential||'—'],
       ['👤 Reports to',mgrName],
       ['🌐 Languages',c.languages||'—'],
     ];
@@ -155,7 +164,7 @@ function renderProfilesTab(){
           h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             const cc=CAT_COL[s.cat]||'#888';
-            const hasGap=s.gaps&&s.gaps.trim();
+            const hasGap=showInd&&s.gaps&&s.gaps.trim();
             h+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc
               +'" title="'+(hasGap?'⚠ Gap: '+s.gaps:'')+'">'
               +escH(s.name)
@@ -178,18 +187,19 @@ function renderProfilesTab(){
       }
     }
 
-    if(spofSkills.length){
+    if(spofSkills.length&&showInd){
       h+='<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ SPOF: '+spofSkills.map(function(s){return s.name;}).join(', ')+'</div>';
     }
 
     if(fullMode){
       var extraFields=[
-        ['💡 Aspirations',c.aspirations],
-        ['💪 Strengths',c.strengths],
-        ['📈 Development areas',c.devarea],
-        ['📝 Notes',c.notes]
+        ['💡 Aspirations',c.aspirations,true],
+        ['💪 Strengths',c.strengths,false],
+        ['📈 Development areas',c.devarea,false],
+        ['📝 Notes',c.notes,true]
       ];
       extraFields.forEach(function(f){
+        if(f[2]&&!showInd)return;
         if(!f[1]||!f[1].trim())return;
         h+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border)">'
           +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
@@ -221,6 +231,7 @@ function profileExportCSV(engId){
     ['Name',e.name],['Role',e.role||''],['Location',e.location||''],
     ['Group',(engGroups.find(function(g){return g.id===e.groupId;})||{}).name||''],
     ['Seniority',c.seniority||''],['Contract',c.contract||''],
+    ['Potential (GTP)',c.potential||''],
     ['Reports To',mgr?mgr.name:(c.manager||'')],
     ['Languages',c.languages||''],['Start Date',c.startdate||''],
     ['Review Date',c.reviewdate||''],['Gender',c.gender||''],
@@ -278,6 +289,9 @@ function profileExportPDF(engId){
   const CAT_LABEL=getSkillCatLabel(false);
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   const skills=e.skills||[];
+  const showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
+  const _spofMap=buildSkillMap();
+  const spofSkills=skills.filter(function(s){var k=s.name.toLowerCase().trim();return _spofMap[k]&&_spofMap[k].holders.length===1;});
 
   const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
   let skillsHTML=domains.map(function(dom){
@@ -289,7 +303,7 @@ function profileExportPDF(engId){
         const cc=CAT_COL[s.cat]||'#888';
         return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
           +s.name+' <sup>L'+(s.level||3)+'</sup>'
-          +(s.gaps?'<br><span style="font-size:8px;color:#c0392b">⚠ '+s.gaps+'</span>':'')
+          +(showInd&&s.gaps?'<br><span style="font-size:8px;color:#c0392b">⚠ '+s.gaps+'</span>':'')
           +'</span>';
       }).join('')
       +'</div></div>';
@@ -319,15 +333,17 @@ function profileExportPDF(engId){
     +'<div class="row"><span class="label">Location</span><span>'+(e.location||'—')+'</span></div>'
     +'<div class="row"><span class="label">Seniority</span><span>'+(c.seniority||'—')+'</span></div>'
     +'<div class="row"><span class="label">Contract</span><span>'+(c.contract||'—')+'</span></div>'
+    +'<div class="row"><span class="label">Start date</span><span>'+(c.startdate||'—')+'</span></div>'
+    +'<div class="row"><span class="label">Potential (GTP)</span><span>'+(c.potential||'—')+'</span></div>'
     +'<div class="row"><span class="label">Reports to</span><span>'+mgrName+'</span></div>'
     +'<div class="row"><span class="label">Languages</span><span>'+(c.languages||'—')+'</span></div>'
-    +'<div class="row"><span class="label">Start date</span><span>'+(c.startdate||'—')+'</span></div>'
     +'<div class="row"><span class="label">Review date</span><span>'+(c.reviewdate||'—')+'</span></div>'
-    +(c.aspirations?'<h2>Aspirations</h2><p style="font-size:11px;line-height:1.6">'+c.aspirations+'</p>':'')
+    +(spofSkills.length&&showInd?'<div class="row"><span class="label">⚠ SPOF</span><span style="color:#c0392b">'+spofSkills.map(function(s){return s.name;}).join(', ')+'</span></div>':'')
+    +(showInd&&c.aspirations?'<h2>Aspirations</h2><p style="font-size:11px;line-height:1.6">'+c.aspirations+'</p>':'')
     +(c.strengths?'<h2>Strengths</h2><p style="font-size:11px;line-height:1.6">'+c.strengths+'</p>':'')
     +(c.devarea?'<h2>Development Areas</h2><p style="font-size:11px;line-height:1.6">'+c.devarea+'</p>':'')
     +(skills.length?'<h2>Skills ('+skills.length+')</h2>'+skillsHTML:'')
-    +(c.notes?'<h2>Notes</h2><p style="font-size:11px;line-height:1.6">'+c.notes+'</p>':'')
+    +(showInd&&c.notes?'<h2>Notes</h2><p style="font-size:11px;line-height:1.6">'+c.notes+'</p>':'')
     +'<div style="margin-top:20px;font-size:9px;color:#bbb;text-align:right">Generated by Project Matrix · '+new Date().toLocaleDateString()+'</div>'
     +'<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>'
     +'</body></html>');
@@ -383,6 +399,7 @@ function profilesExportAllPDF(){
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Location</span>'+(e.location||'—')+'</div>'
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Seniority</span>'+(c.seniority||'—')+'</div>'
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Contract</span>'+(c.contract||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Potential</span>'+(c.potential||'—')+'</div>'
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Reports to</span>'+mgrName+'</div>'
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Languages</span>'+(c.languages||'—')+'</div>'
       +'<div><span style="color:#888;min-width:90px;display:inline-block">Start date</span>'+(c.startdate||'—')+'</div>'
@@ -425,6 +442,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     accent2:'#5be5c8',danger:'#f14335'
   };
 
+  var showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
   return engs.map(function(e){
     var c=e.idcard||{};
     var col=engGroupColor(e);
@@ -447,6 +465,8 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       ['📍',e.location||c.location||'—'],
       ['📊',c.seniority||'—'],
       ['📋',c.contract||'—'],
+      ['📅',c.startdate||'—'],
+      ['🚀',c.potential||'—'],
       ['👤',mgrName],
       ['🌐',c.languages||'—'],
     ];
@@ -463,7 +483,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
           skillHTML+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             var cc=CAT_COL[s.cat]||'#888';
-            var hasGap=s.gaps&&s.gaps.trim();
+            var hasGap=showInd&&s.gaps&&s.gaps.trim();
             skillHTML+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
               +escH(s.name)
               +'<span style="font-family:monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
@@ -489,12 +509,13 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     var fullHTML='';
     if(fullMode){
       var extras=[
-        ['💡 Aspirations',c.aspirations],
-        ['💪 Strengths',c.strengths],
-        ['📈 Development areas',c.devarea],
-        ['📝 Notes',c.notes]
+        ['💡 Aspirations',c.aspirations,true],
+        ['💪 Strengths',c.strengths,false],
+        ['📈 Development areas',c.devarea,false],
+        ['📝 Notes',c.notes,true]
       ];
       extras.forEach(function(f){
+        if(f[2]&&!showInd)return;
         if(!f[1]||!f[1].trim())return;
         fullHTML+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
           +'<div style="font-size:9px;color:'+V.muted+';font-family:monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
@@ -503,7 +524,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       });
     }
 
-    var spofHTML=spof.length
+    var spofHTML=spof.length&&showInd
       ?'<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>'
       :'';
 

@@ -11,7 +11,7 @@ export const PAD={l:38,r:14,t:14,b:26};
 export const Y_LABELS={impact:'IMPACT',visibility:'VISIBILITY',enabler:'ENABLER VALUE'};
 
 /* ── Org chart constants ── */
-export const ORG_NW=172, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=70;
+export const ORG_NW=206, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=70;
 export const ORG_GRID=40;
 
 /* ── Performance ratings config ── */

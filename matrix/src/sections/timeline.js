@@ -75,7 +75,7 @@ function renderTimeline(){
     engMonthSum[eng.id]={};
     months.forEach(function(m){
       engMonthSum[eng.id][m]=allocRows.filter(function(r){return r.engId===eng.id;})
-        .reduce(function(s,r){return s+(r.allocs&&r.allocs[m]?+r.allocs[m]:0);},0);
+        .reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
     });
   });
 
@@ -145,7 +145,7 @@ function renderTimeline(){
     projEngs=[...new Map(projEngs.map(function(e){return [e.id,e];})).values()];
 
     // Project bar: presence per month
-    var projPresence=months.map(function(m){return projRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]?+r.allocs[m]:0);},0);});
+    var projPresence=months.map(function(m){return projRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);});
     var projStartIdx=projPresence.findIndex(function(v){return v>0;});
     var projEndIdx=projPresence.length-1-[...projPresence].reverse().findIndex(function(v){return v>0;});
 
@@ -192,7 +192,7 @@ function renderTimeline(){
        +'</div>'
        +'<div style="display:flex">'
        +months.map(function(m){
-         var v=engRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]?+r.allocs[m]:0);},0);
+         var v=engRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
          var totalV=engMonthSum[eng.id]&&engMonthSum[eng.id][m]||0;
          var isConflict=totalV>1.005;
          var isCur=m===cur;
