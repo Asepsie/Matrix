@@ -9208,6 +9208,7 @@ let _orgNextAnnotId=1;
 let _orgDrawTool='select';
 let _orgAnnotsBg=false;
 let _orgShowArrows=true;
+let _orgLightMode=false;   // white/presentation theme + straight reporting arrows (toolbar toggle)
 var _LEVEL_DEFAULTS=['Executive','Director','Manager','Senior','Individual'];
 // returns the display name for an org hierarchy level
 function getLevelLabel(d){return _orgLevelNames[d]||_LEVEL_DEFAULTS[d]||('Level '+d);}
@@ -9371,7 +9372,17 @@ function renderOrgChart(){
     _orgPanY=24;
   }
 
-  var C={bg:'#0f0f11',surface:'#18181c',text:'#e8e8ea',muted:'#6b6b78',border:'#2a2a32'};
+  var L=_orgLightMode;
+  var C=L
+    ?{bg:'#ffffff',surface:'#ffffff',text:'#1a1a2e',muted:'#5b6b7b',border:'#d4d9e0'}
+    :{bg:'#0f0f11',surface:'#18181c',text:'#e8e8ea',muted:'#6b6b78',border:'#2a2a32'};
+  var bandRGB=L?'0,0,0':'255,255,255';            // level-band tint base
+  var lblCol1=L?'#9aa4b2':'#383848';              // level label
+  var lblCol2=L?'#b4bdc8':'#2a2a3a';              // level sub-label
+  var arrowCol=L?'#64748b':'#3a3a50';             // reporting-line stroke + arrowhead
+  var notRatedFill=L?'#eef2f7':'#1a1a1e';         // detail-mode "NOT RATED" box
+  var subtleFill=L?'rgba(0,0,0,0.03)':'rgba(255,255,255,0.03)';
+  svg.style.background=L?'#ffffff':'';
 
   var photoDefs='';
   engs.forEach(function(e){
@@ -9384,7 +9395,7 @@ function renderOrgChart(){
     +'<filter id="orgsh" x="-10%" y="-10%" width="120%" height="140%">'
     +'<feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/></filter>'
     +'<marker id="orgarr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">'
-    +'<path d="M0,1 L6,3.5 L0,6 Z" fill="#4a4a5a"/></marker>'
+    +'<path d="M0,1 L6,3.5 L0,6 Z" fill="'+arrowCol+'"/></marker>'
     +photoDefs+'</defs>';
 
   s+='<g id="org-root" transform="translate('+_orgPanX+','+_orgPanY+') scale('+_orgScale+')">';
@@ -9395,11 +9406,11 @@ function renderOrgChart(){
     var lh=ORG_NH+ORG_VGAP;
     var alpha=d%2?'0.025':'0.012';
     s+='<rect x="'+(minX-55)+'" y="'+ly+'" width="'+(tW+40)+'" height="'+lh
-      +'" fill="rgba(255,255,255,'+alpha+')" rx="0"/>';
+      +'" fill="rgba('+bandRGB+','+alpha+')" rx="0"/>';
     var lbl=getLevelLabel(d).toUpperCase();
-    s+='<text x="'+(minX-50)+'" y="'+(ly+16)+'" font-size="8" fill="#383848"'
+    s+='<text x="'+(minX-50)+'" y="'+(ly+16)+'" font-size="8" fill="'+lblCol1+'"'
       +' font-family="IBM Plex Mono,monospace" font-weight="bold">'+escH(lbl)+'</text>';
-    s+='<text x="'+(minX-50)+'" y="'+(ly+27)+'" font-size="8" fill="#2a2a3a"'
+    s+='<text x="'+(minX-50)+'" y="'+(ly+27)+'" font-size="8" fill="'+lblCol2+'"'
       +' font-family="IBM Plex Mono,monospace">L'+d+'</text>';
   }
 
@@ -9413,9 +9424,11 @@ function renderOrgChart(){
     var x1=pp.x+ORG_NW/2, y1=pp.y+ORG_NH;
     var x2=pe.x+ORG_NW/2, y2=pe.y;
     var my=(y1+y2)/2;
-    var pathD='M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2;
+    var pathD=L
+      ?'M'+x1+','+y1+' L'+x2+','+y2
+      :'M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2;
     s+='<path d="'+pathD+'"'
-      +' fill="none" stroke="#3a3a50" stroke-width="1.8" marker-end="url(#orgarr)"/>';
+      +' fill="none" stroke="'+arrowCol+'" stroke-width="1.8" marker-end="url(#orgarr)"/>';
     s+='<path d="'+pathD+'"'
       +' fill="none" stroke="transparent" stroke-width="12"'
       +' data-arrowfrom="'+pid+'" data-arrowto="'+e.id+'"'
@@ -9542,7 +9555,7 @@ function renderOrgChart(){
         // Permanent contract: keep the nine-box rating (or NOT RATED)
         var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
         var nbCell=(_nbByKey&&nbKey)?_nbByKey[nbKey]:null;
-        var ratFill=nbCell?nbCell.colorSolid:'#1a1a1e';
+        var ratFill=nbCell?nbCell.colorSolid:notRatedFill;
         var ratCol=nbCell?nbCell.badge:'#6b6b78';
         var ratTxt=nbCell?nbCell.label:'NOT RATED';
         if(ratTxt.length>26)ratTxt=ratTxt.slice(0,25)+'…';
@@ -9580,7 +9593,7 @@ function renderOrgChart(){
       if(pot){
         var potCol=/high/i.test(pot)?'#5be5c8':(/med/i.test(pot)?'#f1a435':'#8a8a96');
         s+='<rect x="0" y="'+dy+'" width="'+ORG_NW+'" height="17" rx="4"'
-          +' fill="rgba(255,255,255,0.03)" stroke="'+potCol+'" stroke-width="1"/>';
+          +' fill="'+subtleFill+'" stroke="'+potCol+'" stroke-width="1"/>';
         s+='<text x="7" y="'+(dy+12)+'" font-size="8" fill="'+C.muted+'"'
           +' font-family="IBM Plex Mono,monospace">GTP</text>';
         s+='<text x="'+(ORG_NW-7)+'" y="'+(dy+12)+'" text-anchor="end" font-size="8" font-weight="bold"'
@@ -10072,6 +10085,16 @@ function orgToggleDetail(){
   }
   renderOrgChart();
 }
+// toggles the white/presentation theme (light cards + straight reporting arrows)
+function orgToggleLight(){
+  _orgLightMode=!_orgLightMode;
+  var b=G('org-light-btn');
+  if(b){b.textContent='☀ WHITE: '+(_orgLightMode?'ON':'OFF');
+    b.style.borderColor=_orgLightMode?'var(--accent)':'';
+    b.style.color=_orgLightMode?'var(--accent)':'';
+  }
+  renderOrgChart();
+}
 // adds an editable, resizable legend card (org-node styling) near the centre of the view
 function orgAddLegend(){
   var def=['• Potential electrifier','• Electrifier','',
@@ -10515,14 +10538,25 @@ function orgBuildExportSVG(){
   });
 
   var showArrows=_orgShowArrows;
+  var L=_orgLightMode;
+  var eBg=L?'#ffffff':'#0f0f11';
+  var eSurface=L?'#ffffff':'#18181c';
+  var eText=L?'#1a1a2e':'#e8e8ea';
+  var eRole=L?'#5b6b7b':'#9a9aaa';
+  var eMuted=L?'#5b6b7b':'#6b6b78';
+  var eBandRGB=L?'0,0,0':'255,255,255';
+  var eLbl1=L?'#9aa4b2':'#3a3a4a';
+  var eLbl2=L?'#b4bdc8':'#2a2a34';
+  var eArrow=L?'#64748b':'#3a3a50';
+  var eNotRated=L?'#eef2f7':'#1a1a1e';
 
   var s='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"'
     +' xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
     +'<defs>'
-    +'<filter id="sh" x="-5%" y="-5%" width="110%" height="130%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.45"/></filter>'
-    +(showArrows?'<marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,1 L6,3.5 L0,6 Z" fill="#4a4a5a"/></marker>':'')
+    +'<filter id="sh" x="-5%" y="-5%" width="110%" height="130%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="'+(L?'0.18':'0.45')+'"/></filter>'
+    +(showArrows?'<marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,1 L6,3.5 L0,6 Z" fill="'+eArrow+'"/></marker>':'')
     +photoDefs+'</defs>';
-  s+='<rect width="'+W+'" height="'+H+'" fill="#0f0f11"/>';
+  s+='<rect width="'+W+'" height="'+H+'" fill="'+eBg+'"/>';
   s+='<g transform="translate('+(OX-minX)+','+OY+')">';
 
   for(var d=0;d<=maxD;d++){
@@ -10530,10 +10564,10 @@ function orgBuildExportSVG(){
     var lyE=0;for(var dd=0;dd<d;dd++){lyE+=_orgLevelH[dd]!==undefined?_orgLevelH[dd]:(ENH+EVGAP);}
     lyE-=EVGAP/2;
     s+='<rect x="'+(minX-60)+'" y="'+lyE+'" width="'+(maxX-minX+100)+'" height="'+(ENH+EVGAP)+'"'
-      +' fill="rgba(255,255,255,'+(d%2?'0.025':'0.012')+')" rx="0"/>';
+      +' fill="rgba('+eBandRGB+','+(d%2?'0.025':'0.012')+')" rx="0"/>';
     var lbl=(getLevelLabel(d)).toUpperCase();
-    s+='<text x="'+(minX-54)+'" y="'+(lyE+18)+'" font-size="9" fill="#3a3a4a" font-weight="bold">'+escH(lbl)+'</text>';
-    s+='<text x="'+(minX-54)+'" y="'+(lyE+30)+'" font-size="8" fill="#2a2a34">L'+d+'</text>';
+    s+='<text x="'+(minX-54)+'" y="'+(lyE+18)+'" font-size="9" fill="'+eLbl1+'" font-weight="bold">'+escH(lbl)+'</text>';
+    s+='<text x="'+(minX-54)+'" y="'+(lyE+30)+'" font-size="8" fill="'+eLbl2+'">L'+d+'</text>';
   }
 
   if(showArrows){
@@ -10541,8 +10575,9 @@ function orgBuildExportSVG(){
       var raw=(e.idcard||{}).reportsTo;if(!raw)return;
       var pe=ePos[e.id],pp=ePos[raw]||ePos[+raw];if(!pe||!pp)return;
       var x1=pp.x+ENW/2,y1=pp.y+ENH,x2=pe.x+ENW/2,y2=pe.y,my=(y1+y2)/2;
-      s+='<path d="M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2+'"'
-        +' fill="none" stroke="#3a3a50" stroke-width="2" marker-end="url(#arr)"/>';
+      var eD=L?('M'+x1+','+y1+' L'+x2+','+y2):('M'+x1+','+y1+' C'+x1+','+my+' '+x2+','+my+' '+x2+','+y2);
+      s+='<path d="'+eD+'"'
+        +' fill="none" stroke="'+eArrow+'" stroke-width="2" marker-end="url(#arr)"/>';
     });
   }
 
@@ -10580,7 +10615,7 @@ function orgBuildExportSVG(){
       s+='<rect x="0" y="0" width="'+ENW+'" height="'+ENH+'" rx="9" fill="rgba(241,164,53,0.06)" stroke="'+vacCol+'" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#sh)"/>';
       s+='<rect x="0" y="0" width="'+ENW+'" height="5" rx="4" fill="rgba(241,164,53,0.3)"/>';
     } else {
-      s+='<rect x="0" y="0" width="'+ENW+'" height="'+ENH+'" rx="9" fill="#18181c" stroke="'+col+'" stroke-width="1.8" filter="url(#sh)"/>';
+      s+='<rect x="0" y="0" width="'+ENW+'" height="'+ENH+'" rx="9" fill="'+eSurface+'" stroke="'+col+'" stroke-width="1.8" filter="url(#sh)"/>';
       s+='<rect x="0" y="0" width="'+ENW+'" height="6" rx="5" fill="'+col+'"/>';
       s+='<rect x="0" y="3" width="'+ENW+'" height="3" fill="'+col+'"/>';
     }
@@ -10608,8 +10643,8 @@ function orgBuildExportSVG(){
       s+='<text x="'+AX+'" y="'+(AY+6)+'" text-anchor="middle" font-size="14" font-weight="bold" fill="'+col+'">'+escH(initials)+'</text>';
     }
 
-    s+='<text x="'+AX+'" y="62" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#e8e8ea">'+escH(nameS)+'</text>';
-    if(roleS)s+='<text x="'+AX+'" y="75" text-anchor="middle" font-size="9.5" fill="#9a9aaa">'+escH(roleS)+'</text>';
+    s+='<text x="'+AX+'" y="62" text-anchor="middle" font-size="11.5" font-weight="bold" fill="'+eText+'">'+escH(nameS)+'</text>';
+    if(roleS)s+='<text x="'+AX+'" y="75" text-anchor="middle" font-size="9.5" fill="'+eRole+'">'+escH(roleS)+'</text>';
 
     var meta=[];
     if(locS)meta.push('📍 '+locS);
@@ -10617,7 +10652,7 @@ function orgBuildExportSVG(){
     if(meta.length){
       var metaStr=meta.join('  ·  ');
       if(metaStr.length>34)metaStr=metaStr.slice(0,33)+'…';
-      s+='<text x="'+AX+'" y="88" text-anchor="middle" font-size="8.5" fill="#6b6b78">'+escH(metaStr)+'</text>';
+      s+='<text x="'+AX+'" y="88" text-anchor="middle" font-size="8.5" fill="'+eMuted+'">'+escH(metaStr)+'</text>';
     }
 
     if(skillN&&!isVacant){
@@ -10626,7 +10661,7 @@ function orgBuildExportSVG(){
     }
 
     if(kidsN){
-      s+='<circle cx="'+(ENW/2)+'" cy="'+ENH+'" r="10" fill="#18181c" stroke="'+col+'" stroke-width="1.5"/>';
+      s+='<circle cx="'+(ENW/2)+'" cy="'+ENH+'" r="10" fill="'+eSurface+'" stroke="'+col+'" stroke-width="1.5"/>';
       s+='<text x="'+(ENW/2)+'" y="'+(ENH+4)+'" text-anchor="middle" font-size="9" fill="'+col+'">'+kidsN+'</text>';
     }
 
@@ -10634,7 +10669,7 @@ function orgBuildExportSVG(){
     if(_orgDetailMode&&!isVacant){
       var nbKeyE=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
       var nbCellE=(_nbByKeyE&&nbKeyE)?_nbByKeyE[nbKeyE]:null;
-      var ratFillE=nbCellE?nbCellE.colorSolid:'#1a1a1e';
+      var ratFillE=nbCellE?nbCellE.colorSolid:eNotRated;
       var ratColE=nbCellE?nbCellE.badge:'#6b6b78';
       var ratTxtE=nbCellE?nbCellE.label:'NOT RATED';
       if(ratTxtE.length>30)ratTxtE=ratTxtE.slice(0,29)+'…';
@@ -13944,6 +13979,7 @@ updateSnapBadge();
       <button class="sm" id="org-snap-btn" onclick="orgToggleSnap()" title="Toggle 40px grid snap">⊞ SNAP: OFF</button>
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
       <button class="sm" id="org-arrows-btn" onclick="orgToggleArrows()" title="Show/hide hierarchy arrows">↗ ARROWS: ON</button>
+      <button class="sm" id="org-light-btn" onclick="orgToggleLight()" title="White presentation theme + straight arrows">☀ WHITE: OFF</button>
       <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" title="Show nine-box rating &amp; recommended next move on each card">◔ DETAILS: OFF</button>
 
       <div style="flex:1"></div>
