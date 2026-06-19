@@ -45,6 +45,7 @@ const JS_FILES = [
   'sections/heatmap.js',
   'sections/ninebox.js',
   'sections/disc.js',
+  'sections/analytics.js',
   'sections/backup.js',
   'sections/nav.js',
   'sections/boot.js',

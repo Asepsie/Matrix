@@ -1,0 +1,1133 @@
+/* ►► SECTION: ANALYTICS ◄◄ People Analytics tab — pure-SVG charts, no libraries
+ *
+ * Public entry points (referenced by nav.js / index.html):
+ *   renderAnalyticsTab()          — called by showResTab('analytics'); renders into #res-body
+ *   buildAnalyticsDataset()       — flat row-per-active-engineer with all computed fields
+ *   ANALYTICS_DIMENSIONS[]        — dimension catalogue
+ *   ANALYTICS_TEMPLATES[]         — template registry (single-dim, two-dim, story views)
+ *
+ * NOTE on the bundle: this whole project compiles to ONE flat script bundle (build.js).
+ * Every top-level name here shares scope with the rest of the app, so all internal
+ * helpers/state are prefixed `an`/`_an` to avoid collisions. `export` is stripped at build.
+ *
+ * Adaptations vs. the original spec (intentional — see project reality):
+ *   - getMonthRange() takes no args; it reads the #res-start/#res-end header inputs.
+ *   - SENIORITY_ORDER is defined here (no such global existed; org.js had a local copy).
+ *   - _ktPlans is keyed by SKILL NAME and entries only carry learnerEngId (no teacherEngId);
+ *     hasKTPlan reflects that.
+ *   - SPOF is computed in a real second pass (the spec's was unreachable after `return`).
+ */
+
+/* ── Ordered seniority ladder (matches the #idc-seniority dropdown exactly) ── */
+export const SENIORITY_ORDER = [
+  'Junior','Mid-level','Senior','Staff','Principal',
+  'Tech Lead','Principal Tech Lead','Distinguished Engineer','Fellow',
+  'Team Lead','Engineering Manager','Senior Manager','Director','Senior Director',
+  'VP Engineering','CTO',
+];
+
+/* ── Performance rating → numeric (for ordering/comparison) ── */
+export const AN_RATING_NUM = {'E+':5,'E':4,'M+':3,'M':2,'D':1,'U':0};
+export const AN_RATING_ORDER = ['U','D','M','M+','E','E+'];      // low → high
+export const AN_RATING_COLOR = {'U':'#f14335','D':'#f1a435','M':'#5be5c8','M+':'#3bd4b8','E':'#a8e820','E+':'#c8f135'};
+
+/* ── Chart palette (mirrors the dark theme / CSS vars) ── */
+export const AN_COLORS = {
+  primary:'#c8f135', secondary:'#5be5c8', danger:'#f14335', warn:'#f1a435',
+  purple:'#a78bfa', blue:'#60a5fa', muted:'#5a6380',
+  surface:'#0e1117', border:'#1e2330', text:'#e2e8f4',
+};
+
+/* ── Coded ordinal/boolean values → human-readable axis labels ── */
+export const AN_VALUE_LABELS = {
+  nineBoxPerf: { 1:'Low', 2:'Moderate', 3:'High' },   // performance band
+  nineBoxPot:  { 1:'Low', 2:'Moderate', 3:'High' },   // potential band
+  isManager:   { true:'Manager', false:'Individual Contributor' },
+  gender:      { M:'Male', F:'Female', NB:'Non-binary', O:'Other' },
+};
+// Format a raw dimension value for display on an axis / legend.
+function anFmtVal(dimId, v){
+  const m = AN_VALUE_LABELS[dimId];
+  if (m && m[v] != null) return m[v];   // numeric keys coerce, so m['2'] hits m[2]
+  return (v === '' || v == null) ? '—' : String(v);
+}
+
+/* ── Tab state (single object, re-render swaps #an-main only) ── */
+export let _anState = {
+  story:    null,          // story-view id, or null when in compare mode
+  dimA:     null,          // dimension id
+  dimB:     null,          // dimension id or null
+  template: null,          // selected template id
+  filters:  { group:new Set(), location:new Set(), seniority:new Set() },
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   1. DATASET — one row per active engineer with all computed fields
+   ══════════════════════════════════════════════════════════════════ */
+export function buildAnalyticsDataset() {
+  const months = getMonthRange();   // reads #res-start / #res-end
+  const rows = engineers
+    .filter(e => !e.vacant && !e.planningOnly && !e.excludeFromCalc)
+    .map(e => {
+      const c = e.idcard || {};
+      const nb = _nineBoxPlacements[e.id] || null;
+      const disc = _discPlacements[e.id] || null;
+
+      // Tenure
+      const startMs = c.startdate ? new Date(c.startdate).getTime() : null;
+      const tenureMonths = (startMs && !isNaN(startMs))
+        ? Math.max(0, Math.floor((Date.now() - startMs) / 2628e6)) : null;
+
+      // Allocation over the selected period
+      const myRows = allocRows.filter(r => r.engId === e.id);
+      const totalFTE = months.reduce((s, m) =>
+        s + myRows.reduce((rs, r) => rs + _allocNum(r.allocs ? r.allocs[m] : 0), 0), 0);
+      const utilizationRate = months.length > 0 ? totalFTE / months.length : 0;
+
+      // Performance reviews (newest first)
+      const reviews = (c.reviews || []).slice()
+        .filter(r => r && r.year)
+        .sort((a, b) => String(b.year).localeCompare(String(a.year)));
+      const latestRating = reviews[0] ? reviews[0].rating || null : null;
+      const latestRatingNum = (latestRating != null && AN_RATING_NUM[latestRating] != null)
+        ? AN_RATING_NUM[latestRating] : null;
+      const ratingTrend = reviews.length >= 2
+        ? (AN_RATING_NUM[reviews[0].rating] || 0) - (AN_RATING_NUM[reviews[1].rating] || 0)
+        : null;
+
+      // Skills
+      const skills = e.skills || [];
+      const critSkills = skills.filter(s => s.cat === 'crit');
+      const diffSkills = skills.filter(s => s.cat === 'diff');
+
+      // Nine-box parts (key = 'perf-pot', e.g. '3-2')
+      const nbParts = nb ? nb.split('-').map(Number) : [null, null];
+
+      // Org
+      const group = engGroups.find(g => g.id === e.groupId);
+      const directReports = engineers.filter(x =>
+        String((x.idcard || {}).reportsTo) === String(e.id)).length;
+
+      // KT: _ktPlans is keyed by skill; entries carry learnerEngId only
+      const hasKTPlan = Object.values(_ktPlans || {}).some(arr =>
+        (arr || []).some(p => String(p.learnerEngId) === String(e.id)));
+
+      const srank = SENIORITY_ORDER.indexOf(c.seniority || '');
+
+      return {
+        // Identity
+        id:e.id, name:e.name, role:e.role || '',
+        group: group ? group.name : 'Ungrouped',
+        groupColor: group ? group.color : '#888',
+        location: e.location || 'Unknown',
+        gender: c.gender || '',
+        // Compensation
+        monthlyCost: e.monthlyCost || 0,
+        annualCost: (e.monthlyCost || 0) * 12,
+        comparatio: (c.comparatio != null ? c.comparatio : null),
+        // Grade / career
+        seniority: c.seniority || '',
+        seniorityRank: srank >= 0 ? srank + 1 : 0,
+        grade: (c.grade != null ? c.grade : null),
+        potential: c.potential || '',
+        // Tenure
+        startdate: c.startdate || null,
+        tenureMonths,
+        tenureYears: tenureMonths != null ? +(tenureMonths / 12).toFixed(1) : null,
+        // Allocation / capacity
+        utilizationRate,
+        utilizationPct: Math.round(utilizationRate * 100),
+        totalFTE,
+        projectCount: [...new Set(myRows.map(r => r.projectId).filter(Boolean))].length,
+        // Talent
+        nineBoxKey: nb, nineBoxPerf: nbParts[0], nineBoxPot: nbParts[1],
+        discProfile: disc,
+        // Performance
+        latestRating, latestRatingNum, ratingTrend,
+        reviewCount: reviews.length, reviews,
+        // Skills
+        skillCount: skills.length,
+        critSkillCount: critSkills.length,
+        diffSkillCount: diffSkills.length,
+        skills,
+        spofSkills: [],          // filled in second pass below
+        // Org
+        directReports, isManager: directReports > 0, hasKTPlan,
+        // Raw refs
+        _eng: e, _group: group,
+      };
+    });
+
+  // ── Second pass: SPOF — critical skills held by exactly one person in this set ──
+  const holders = {};   // skillName → count
+  rows.forEach(r => r.skills.forEach(s => {
+    if (!s.name) return;
+    holders[s.name] = (holders[s.name] || 0) + 1;
+  }));
+  rows.forEach(r => {
+    r.spofSkills = r.skills
+      .filter(s => s.cat === 'crit' && holders[s.name] === 1)
+      .map(s => s.name);
+  });
+
+  return rows;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   2. DIMENSIONS catalogue
+   ══════════════════════════════════════════════════════════════════ */
+export const ANALYTICS_DIMENSIONS = [
+  // Compensation
+  {id:'monthlyCost', label:'Monthly Cost (€)', type:'numeric',     group:'Compensation'},
+  {id:'annualCost',  label:'Annual Cost (€)',  type:'numeric',     group:'Compensation'},
+  {id:'comparatio',  label:'Compa-ratio (%)',  type:'numeric',     group:'Compensation'},
+  // Grade & career
+  {id:'seniority',   label:'Seniority / Grade', type:'ordinal',    group:'Career', order:SENIORITY_ORDER},
+  {id:'grade',       label:'Career Grade (1–11)', type:'numeric',  group:'Career'},
+  {id:'role',        label:'Role',             type:'categorical', group:'Career'},
+  {id:'tenureYears', label:'Tenure (years)',   type:'numeric',     group:'Career'},
+  // Performance & talent
+  {id:'latestRating',   label:'Latest Perf Rating', type:'ordinal', group:'Performance', order:AN_RATING_ORDER},
+  {id:'latestRatingNum',label:'Rating (numeric)',   type:'numeric', group:'Performance'},
+  {id:'ratingTrend',    label:'Rating Trend',       type:'numeric', group:'Performance'},
+  {id:'potential',      label:'Potential (GTP)',    type:'categorical', group:'Talent'},
+  {id:'nineBoxPerf', label:'Nine-Box Performance', type:'ordinal', group:'Talent', order:[1,2,3]},
+  {id:'nineBoxPot',  label:'Nine-Box Potential',   type:'ordinal', group:'Talent', order:[1,2,3]},
+  {id:'nineBoxKey',  label:'Nine-Box Position',    type:'ninebox', group:'Talent'},
+  {id:'discProfile', label:'DISC Profile',         type:'categorical', group:'Talent'},
+  // Organisation / DEI
+  {id:'group',    label:'Team / Group', type:'categorical', group:'Organisation'},
+  {id:'location', label:'Location',     type:'categorical', group:'Organisation'},
+  {id:'gender',   label:'Gender',       type:'categorical', group:'DEI'},
+  {id:'isManager',label:'Is Manager',   type:'boolean',     group:'Organisation'},
+  {id:'directReports', label:'Direct Reports', type:'numeric', group:'Organisation'},
+  // Capacity
+  {id:'utilizationPct', label:'Utilisation (%)', type:'numeric', group:'Capacity'},
+  {id:'projectCount',   label:'Project Count',   type:'numeric', group:'Capacity'},
+  // Skills
+  {id:'skillCount',     label:'Skill Count',     type:'numeric', group:'Skills'},
+  {id:'critSkillCount', label:'Critical Skills', type:'numeric', group:'Skills'},
+];
+
+export function anDim(id){ return ANALYTICS_DIMENSIONS.find(d => d.id === id) || null; }
+
+/* ══════════════════════════════════════════════════════════════════
+   3. CHART PRIMITIVES — return SVG strings (responsive via viewBox)
+   ══════════════════════════════════════════════════════════════════ */
+function anSvgOpen(w, h){
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" '
+    + 'style="width:100%;height:auto;max-height:480px;font-family:IBM Plex Mono,monospace" '
+    + 'xmlns="http://www.w3.org/2000/svg">';
+}
+function anTxt(x,y,s,opt){
+  opt = opt || {};
+  return '<text x="'+x+'" y="'+y+'" fill="'+(opt.fill||AN_COLORS.text)+'" '
+    + 'font-size="'+(opt.size||11)+'" '
+    + (opt.anchor?'text-anchor="'+opt.anchor+'" ':'')
+    + (opt.weight?'font-weight="'+opt.weight+'" ':'')
+    + (opt.pe===false?'pointer-events="none" ':'')
+    + '>'+escH(s)+'</text>';
+}
+// data-tip attribute fragment for the shared hover tooltip (see anBindTips)
+function anTip(text){ return ' data-tip="'+escH(String(text))+'"'; }
+function anNiceNum(v){
+  if (v == null || isNaN(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1000) return Math.round(v).toLocaleString();
+  return (Math.round(v*10)/10).toString();
+}
+
+// Horizontal bar chart — items: [{label, value, color}]
+// opt: { valLabel (x-axis title incl. unit), catLabel (y-axis title) }
+function anBarChart(items, opt){
+  opt = opt || {};
+  if (!items.length) return anEmpty('No data');
+  const axes = !!(opt.valLabel || opt.catLabel);
+  const W = 640, rowH = 26, padL = 162, padR = 70, padT = 14, padB = axes ? 44 : 12;
+  const axisY = padT + items.length * rowH;
+  const H = axisY + padB;
+  const plotW = W - padL - padR;
+  const max = Math.max(1, ...items.map(d => d.value));
+  const xOf = v => padL + (v / max) * plotW;
+  let s = anSvgOpen(W, H);
+  // value (x) axis baseline
+  s += '<line x1="'+padL+'" y1="'+axisY+'" x2="'+(W-padR)+'" y2="'+axisY+'" stroke="'+AN_COLORS.border+'"/>';
+  items.forEach((d, i) => {
+    const y = padT + i * rowH;
+    const bw = (xOf(d.value) - padL);
+    s += anTxt(padL - 8, y + rowH/2 + 4, anTrunc(d.label, 22), {anchor:'end', size:11});
+    s += '<rect x="'+padL+'" y="'+(y+4)+'" width="'+Math.max(1,bw)+'" height="'+(rowH-10)+'" '
+       + 'rx="2" fill="'+(d.color||AN_COLORS.primary)+'"'+anTip(d.label+': '+d.value)+'></rect>';
+    s += anTxt(padL + bw + 6, y + rowH/2 + 4, anNiceNum(d.value), {size:10, fill:AN_COLORS.muted});
+  });
+  if (axes){
+    s += anTxt(padL, axisY + 13, '0', {size:9, fill:AN_COLORS.muted});
+    s += anTxt(W - padR, axisY + 13, anNiceNum(max), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+    if (opt.valLabel) s += anTxt((padL + W - padR)/2, axisY + 30, opt.valLabel, {size:10, weight:600, fill:AN_COLORS.text, anchor:'middle'});
+  }
+  return s + '</svg>';
+}
+
+// Histogram — auto-bucketed numeric values
+function anHistogram(values, opt){
+  opt = opt || {};
+  const vals = values.filter(v => v != null && !isNaN(v));
+  if (vals.length < 3) return anEmpty('Need ≥3 data points');
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const nb = Math.min(12, Math.max(4, Math.ceil(Math.sqrt(vals.length))));
+  const span = (max - min) || 1, bw = span / nb;
+  const buckets = new Array(nb).fill(0);
+  vals.forEach(v => { let i = Math.floor((v - min) / bw); if (i >= nb) i = nb - 1; buckets[i]++; });
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const sorted = vals.slice().sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length/2)];
+  const W = 640, H = 320, padL = 52, padR = 16, padT = 16, padB = 56;
+  const cw = (W - padL - padR) / nb, maxC = Math.max(...buckets);
+  const plotH = H - padT - padB;
+  const xOf = v => padL + ((v - min) / span) * (W - padL - padR);
+  let s = anSvgOpen(W, H);
+  s += '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
+  s += '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
+  buckets.forEach((c, i) => {
+    const bh = maxC > 0 ? (c / maxC) * plotH : 0;
+    const x = padL + i * cw;
+    s += '<rect x="'+(x+2)+'" y="'+(H-padB-bh)+'" width="'+(cw-4)+'" height="'+bh+'" rx="2" fill="'+AN_COLORS.primary+'"'
+       + anTip(anNiceNum(min+i*bw)+'–'+anNiceNum(min+(i+1)*bw)+': '+c+' people')+'></rect>';
+  });
+  // mean / median markers
+  s += '<line x1="'+xOf(mean)+'" y1="'+padT+'" x2="'+xOf(mean)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.warn+'" stroke-dasharray="4 3"/>';
+  s += anTxt(xOf(mean), padT+10, 'mean '+anNiceNum(mean), {fill:AN_COLORS.warn, size:9, anchor:'middle'});
+  s += '<line x1="'+xOf(median)+'" y1="'+padT+'" x2="'+xOf(median)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.secondary+'" stroke-dasharray="4 3"/>';
+  s += anTxt(xOf(median), H-padB+24, 'median '+anNiceNum(median), {fill:AN_COLORS.secondary, size:9, anchor:'middle'});
+  // y-axis (count) ticks + title
+  s += anTxt(padL - 6, padT + 6, String(maxC), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  s += anTxt(padL - 6, H - padB, '0', {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  s += '<text x="14" y="'+((padT + H - padB)/2)+'" fill="'+AN_COLORS.text+'" font-size="10" font-weight="600" text-anchor="middle" transform="rotate(-90 14 '+((padT + H - padB)/2)+')">Headcount</text>';
+  // x-axis range + title (with unit, from the dimension label)
+  s += anTxt(padL, H-padB+14, anNiceNum(min), {size:9, fill:AN_COLORS.muted});
+  s += anTxt(W-padR, H-padB+14, anNiceNum(max), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  if (opt.xLabel) s += anTxt((padL + W - padR)/2, H-8, opt.xLabel, {size:10, weight:600, fill:AN_COLORS.text, anchor:'middle'});
+  return s + '</svg>';
+}
+
+// Box plot — groups: [{label, values:[]}]
+// opt: { xLabel (numeric axis title incl. unit), catLabel (category axis title), ref (reference value line) }
+function anBoxPlot(groups, opt){
+  opt = opt || {};
+  const g = groups.filter(x => x.values.filter(v => v != null && !isNaN(v)).length > 0);
+  if (!g.length) return anEmpty('No data');
+  let all = g.flatMap(x => x.values).filter(v => v != null && !isNaN(v));
+  let min = Math.min(...all), max = Math.max(...all);
+  if (opt.ref != null){ min = Math.min(min, opt.ref); max = Math.max(max, opt.ref); }
+  const span = (max - min) || 1;
+  const W = 660, rowH = 46, padL = 168, padR = 50, padT = 16, padB = 46;
+  const axisY = padT + g.length * rowH;
+  const H = axisY + padB;
+  const xOf = v => padL + ((v - min) / span) * (W - padL - padR);
+  const q = (arr, p) => { const a = arr.slice().sort((x, y) => x - y); const i = (a.length - 1) * p; const lo = Math.floor(i); return a[lo] + (a[Math.ceil(i)] - a[lo]) * (i - lo); };
+  let s = anSvgOpen(W, H);
+  // reference line (e.g. compa-ratio = 100)
+  if (opt.ref != null){
+    s += '<line x1="'+xOf(opt.ref)+'" y1="'+padT+'" x2="'+xOf(opt.ref)+'" y2="'+axisY+'" stroke="'+AN_COLORS.secondary+'" stroke-dasharray="4 3"/>';
+    s += anTxt(xOf(opt.ref), padT - 4, (opt.refLabel || ('ref ' + anNiceNum(opt.ref))), {size:9, fill:AN_COLORS.secondary, anchor:'middle'});
+  }
+  s += '<line x1="'+padL+'" y1="'+axisY+'" x2="'+(W-padR)+'" y2="'+axisY+'" stroke="'+AN_COLORS.border+'"/>';
+  g.forEach((grp, i) => {
+    const v = grp.values.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b);
+    const y = padT + i * rowH + rowH/2;
+    const q1 = q(v, .25), med = q(v, .5), q3 = q(v, .75), lo = v[0], hi = v[v.length-1];
+    s += anTxt(padL - 8, y + 4, anTrunc(grp.label, 24), {anchor:'end', size:11});
+    const tip = grp.label+'\nn='+v.length+'\nmedian '+anNiceNum(med)+'\nIQR '+anNiceNum(q1)+'–'+anNiceNum(q3)+'\nrange '+anNiceNum(lo)+'–'+anNiceNum(hi);
+    s += '<line x1="'+xOf(lo)+'" y1="'+y+'" x2="'+xOf(hi)+'" y2="'+y+'" stroke="'+AN_COLORS.muted+'"/>';
+    s += '<rect x="'+xOf(q1)+'" y="'+(y-9)+'" width="'+Math.max(1,xOf(q3)-xOf(q1))+'" height="18" rx="2" fill="rgba(200,241,53,.18)" stroke="'+AN_COLORS.primary+'"'+anTip(tip)+'/>';
+    s += '<line x1="'+xOf(med)+'" y1="'+(y-9)+'" x2="'+xOf(med)+'" y2="'+(y+9)+'" stroke="'+AN_COLORS.primary+'" stroke-width="2" pointer-events="none"/>';
+    s += anTxt(xOf(hi)+6, y+4, 'n='+v.length, {size:9, fill:AN_COLORS.muted});
+  });
+  // numeric (x) axis range + titles
+  s += anTxt(padL, axisY+13, anNiceNum(min), {size:9, fill:AN_COLORS.muted});
+  s += anTxt(W-padR, axisY+13, anNiceNum(max), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  if (opt.xLabel) s += anTxt((padL + W - padR)/2, axisY+30, opt.xLabel, {size:10, weight:600, fill:AN_COLORS.text, anchor:'middle'});
+  return s + '</svg>';
+}
+
+// Stacked bar — rows: [{label, segs:[{value,color,key}]}]
+// opt: { valLabel (x-axis title), catLabel (y-axis title), legend:[{key,color}] }
+function anStackedBar(rows, opt){
+  opt = opt || {};
+  if (!rows.length) return anEmpty('No data');
+  const legend = opt.legend || [];
+  const W = 660, rowH = 30, padL = 162, padR = 60, padT = legend.length ? 30 : 14;
+  const axisLabels = !!(opt.valLabel || opt.catLabel);
+  const padB = axisLabels ? 40 : 12;
+  const axisY = padT + rows.length * rowH;
+  const H = axisY + padB;
+  const plotW = W - padL - padR;
+  const max = Math.max(1, ...rows.map(r => r.segs.reduce((s, x) => s + x.value, 0)));
+  let s = anSvgOpen(W, H);
+  // legend across the top
+  if (legend.length){
+    let lx = padL;
+    legend.forEach(item => {
+      s += '<rect x="'+lx+'" y="6" width="11" height="11" rx="2" fill="'+item.color+'"/>';
+      s += anTxt(lx + 15, 15, item.key, {size:10, fill:AN_COLORS.muted});
+      lx += 15 + (String(item.key).length * 7) + 14;
+    });
+  }
+  s += '<line x1="'+padL+'" y1="'+axisY+'" x2="'+(W-padR)+'" y2="'+axisY+'" stroke="'+AN_COLORS.border+'"/>';
+  rows.forEach((r, i) => {
+    const y = padT + i * rowH;
+    let x = padL; const tot = r.segs.reduce((a, b) => a + b.value, 0);
+    s += anTxt(padL - 8, y + rowH/2 + 4, anTrunc(r.label, 22), {anchor:'end', size:11});
+    r.segs.forEach(seg => {
+      if (!seg.value) return;
+      const w = (seg.value / max) * plotW;
+      s += '<rect x="'+x+'" y="'+(y+4)+'" width="'+w+'" height="'+(rowH-10)+'" fill="'+seg.color+'"'
+         + anTip(r.label+' · '+seg.key+': '+seg.value)+'></rect>';
+      x += w;
+    });
+    s += anTxt(x + 6, y + rowH/2 + 4, String(tot), {size:10, fill:AN_COLORS.muted});
+  });
+  if (axisLabels){
+    s += anTxt(padL, axisY + 13, '0', {size:9, fill:AN_COLORS.muted});
+    s += anTxt(W - padR, axisY + 13, anNiceNum(max), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+    if (opt.valLabel) s += anTxt((padL + W - padR)/2, axisY + 30, opt.valLabel, {size:10, weight:600, fill:AN_COLORS.text, anchor:'middle'});
+  }
+  return s + '</svg>';
+}
+
+// Scatter — points: [{x,y,label,color}]
+function anScatter(points, opt){
+  opt = opt || {};
+  const pts = points.filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
+  if (pts.length < 3) return anEmpty('Need ≥3 data points');
+  const W = 640, H = 380, padL = 52, padR = 20, padT = 18, padB = 40;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const xs2 = (xmax - xmin) || 1, ys2 = (ymax - ymin) || 1;
+  const X = v => padL + ((v - xmin) / xs2) * (W - padL - padR);
+  const Y = v => (H - padB) - ((v - ymin) / ys2) * (H - padT - padB);
+  let s = anSvgOpen(W, H);
+  s += '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
+  s += '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
+  if (opt.xLabel) s += anTxt((padL+W-padR)/2, H-6, opt.xLabel, {size:10, fill:AN_COLORS.muted, anchor:'middle'});
+  if (opt.yLabel) s += '<text x="14" y="'+((padT+H-padB)/2)+'" fill="'+AN_COLORS.muted+'" font-size="10" text-anchor="middle" transform="rotate(-90 14 '+((padT+H-padB)/2)+')">'+escH(opt.yLabel)+'</text>';
+  // optional trend line (least squares)
+  if (opt.trend && pts.length >= 3) {
+    const n = pts.length, sx = xs.reduce((a,b)=>a+b,0), sy = ys.reduce((a,b)=>a+b,0);
+    const sxy = pts.reduce((a,p)=>a+p.x*p.y,0), sxx = xs.reduce((a,b)=>a+b*b,0);
+    const slope = (n*sxy - sx*sy) / ((n*sxx - sx*sx) || 1), icpt = (sy - slope*sx) / n;
+    s += '<line x1="'+X(xmin)+'" y1="'+Y(slope*xmin+icpt)+'" x2="'+X(xmax)+'" y2="'+Y(slope*xmax+icpt)+'" stroke="'+AN_COLORS.warn+'" stroke-dasharray="5 4"/>';
+  }
+  if (opt.corr && pts.length >= 3) {
+    const n = pts.length, sx = xs.reduce((a,b)=>a+b,0), sy = ys.reduce((a,b)=>a+b,0);
+    const sxy = pts.reduce((a,p)=>a+p.x*p.y,0), sxx = xs.reduce((a,b)=>a+b*b,0), syy = ys.reduce((a,b)=>a+b*b,0);
+    const r = (n*sxy - sx*sy) / (Math.sqrt((n*sxx - sx*sx) * (n*syy - sy*sy)) || 1);
+    s += anTxt(W-padR, padT+6, 'r = '+(Math.round(r*100)/100), {anchor:'end', size:10, fill:AN_COLORS.warn});
+  }
+  pts.forEach(p => {
+    s += '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="5" fill="'+(p.color||AN_COLORS.primary)+'" fill-opacity="0.8" stroke="'+AN_COLORS.surface+'"'
+       + anTip((p.label?p.label+'\n':'')+'x='+anNiceNum(p.x)+', y='+anNiceNum(p.y))+'></circle>';
+  });
+  s += anTxt(padL, H-padB+14, anNiceNum(xmin), {size:9, fill:AN_COLORS.muted});
+  s += anTxt(W-padR, H-padB+14, anNiceNum(xmax), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  s += anTxt(padL-6, H-padB, anNiceNum(ymin), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  s += anTxt(padL-6, padT+8, anNiceNum(ymax), {size:9, fill:AN_COLORS.muted, anchor:'end'});
+  return s + '</svg>';
+}
+
+// Nine-box 3×3 grid with headcount + names (uses the app's actual cell labels)
+function anNineBox(data, opt){
+  const labels = {
+    '1-3':'Enigma','2-3':'Future Star','3-3':'Consistent Star',
+    '1-2':'Under Performer','2-2':'Core Player','3-2':'High Performer',
+    '1-1':'Risk','2-1':'Effective Contributor','3-1':'Expert',
+  };
+  const cellFill = {
+    '3-3':'rgba(200,241,53,.14)','2-3':'rgba(91,229,200,.12)','3-2':'rgba(91,229,200,.12)',
+    '2-2':'rgba(120,120,140,.10)','1-3':'rgba(241,164,53,.10)','3-1':'rgba(120,120,140,.10)',
+    '1-2':'rgba(241,164,53,.10)','2-1':'rgba(241,164,53,.10)','1-1':'rgba(241,67,53,.12)',
+  };
+  const by = {}; data.forEach(d => { if (d.nineBoxKey) (by[d.nineBoxKey] = by[d.nineBoxKey] || []).push(d.name); });
+  if (!Object.keys(by).length) return anEmpty('No nine-box placements yet (place engineers on the Nine-Box tab)');
+  const W = 560, H = 560, padL = 50, padB = 50, cell = (W - padL) / 3;
+  let s = anSvgOpen(W, H);
+  // rows top→bottom = potential 3,2,1 ; cols left→right = perf 1,2,3
+  for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
+    const perf = col + 1, pot = 3 - row, key = perf + '-' + pot;
+    const x = padL + col * cell, y = row * cell;
+    const names = by[key] || [];
+    s += '<rect x="'+x+'" y="'+y+'" width="'+(cell-3)+'" height="'+(cell-3)+'" rx="4" fill="'+(cellFill[key]||'rgba(120,120,140,.08)')+'" stroke="'+AN_COLORS.border+'"/>';
+    s += anTxt(x+8, y+18, labels[key], {size:10, weight:700, fill:AN_COLORS.text});
+    s += anTxt(x+cell-12, y+20, String(names.length), {size:15, weight:700, anchor:'end', fill:AN_COLORS.primary});
+    names.slice(0, 6).forEach((nm, k) => s += anTxt(x+8, y+38 + k*14, anTrunc(nm, 18), {size:9, fill:AN_COLORS.muted}));
+    if (names.length > 6) s += anTxt(x+8, y+38 + 6*14, '+'+(names.length-6)+' more', {size:9, fill:AN_COLORS.muted});
+  }
+  s += anTxt(W/2, H-16, 'PERFORMANCE →', {size:10, fill:AN_COLORS.muted, anchor:'middle'});
+  s += '<text x="16" y="'+(H-padB)/2+'" fill="'+AN_COLORS.muted+'" font-size="10" text-anchor="middle" transform="rotate(-90 16 '+(H-padB)/2+')">POTENTIAL →</text>';
+  return s + '</svg>';
+}
+
+// Heatmap / matrix — matrix[row][col] = count, density-coloured
+// opt: { rowLabel (y-axis title), colLabel (x-axis title), unit (tooltip noun) }
+function anHeatmap(matrix, rowLabels, colLabels, opt){
+  opt = opt || {};
+  if (!rowLabels.length || !colLabels.length) return anEmpty('No data');
+  let max = 0; matrix.forEach(r => r.forEach(v => { if (v > max) max = v; }));
+  const padL = 168, padT = 70, cell = Math.min(64, Math.max(34, (640 - padL) / colLabels.length));
+  const W = padL + colLabels.length * cell + 14, H = padT + rowLabels.length * cell + 30;
+  const unit = opt.unit || 'count';
+  let s = anSvgOpen(W, H);
+  // column header axis title
+  if (opt.colLabel) s += anTxt(padL + colLabels.length * cell / 2, 14, opt.colLabel, {size:10, weight:600, fill:AN_COLORS.text, anchor:'middle'});
+  colLabels.forEach((c, ci) => {
+    const x = padL + ci * cell + cell/2;
+    s += '<text x="'+x+'" y="'+(padT-8)+'" fill="'+AN_COLORS.muted+'" font-size="10" text-anchor="start" '
+       + 'transform="rotate(-40 '+x+' '+(padT-8)+')">'+escH(anTrunc(String(c), 16))+'</text>';
+  });
+  rowLabels.forEach((r, ri) => {
+    const y = padT + ri * cell;
+    s += anTxt(padL - 8, y + cell/2 + 4, anTrunc(String(r), 22), {anchor:'end', size:11});
+    colLabels.forEach((c, ci) => {
+      const v = matrix[ri][ci] || 0, x = padL + ci * cell;
+      const alpha = max > 0 && v ? 0.10 + 0.80 * (v / max) : 0.04;
+      s += '<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cell-2)+'" height="'+(cell-2)+'" rx="2" '
+         + 'fill="rgba(200,241,53,'+alpha+')" stroke="'+AN_COLORS.border+'"'+anTip(r+' × '+c+'\n'+v+' '+unit)+'></rect>';
+      if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? '#0a0c10' : AN_COLORS.text});
+    });
+  });
+  // row axis title (rotated, far left)
+  if (opt.rowLabel){ const cy = padT + rowLabels.length * cell / 2;
+    s += '<text x="13" y="'+cy+'" fill="'+AN_COLORS.text+'" font-size="10" font-weight="600" text-anchor="middle" transform="rotate(-90 13 '+cy+')">'+escH(opt.rowLabel)+'</text>'; }
+  return s + '</svg>';
+}
+function anCell(d, dim){ const v = d[dim.id]; return (v === '' || v == null) ? '—' : v; }
+function anCatValues(data, dim){
+  const set = [...new Set(data.map(d => anCell(d, dim)))];
+  if (dim.order) set.sort((a, b) => {
+    const ai = dim.order.indexOf(a), bi = dim.order.indexOf(b);
+    if (ai < 0 && bi < 0) return String(a).localeCompare(String(b));
+    if (ai < 0) return 1; if (bi < 0) return -1; return ai - bi;
+  });
+  else set.sort((a, b) => String(a).localeCompare(String(b)));
+  return set;
+}
+
+function anEmpty(msg){
+  return '<div style="padding:48px 20px;text-align:center;color:var(--muted);font-size:13px">'
+    + '⌀ '+escH(msg)+'</div>';
+}
+function anTrunc(s, n){ s = String(s||''); return s.length > n ? s.slice(0, n-1) + '…' : s; }
+
+// Resolve a template's display name (dynamic for dimension-pair templates)
+function anTplName(t, dimA, dimB){
+  if (t.nameFn && dimA) { try { return t.nameFn(dimA, dimB); } catch (e) {} }
+  return t.name;
+}
+
+// Shared hover tooltip: one floating div, populated from data-tip on the hovered SVG shape.
+// Re-bound on each render because #an-chart's innerHTML is replaced.
+function anBindTips(container){
+  if (!container) return;
+  let tip = G('an-tip');
+  if (!tip){
+    tip = document.createElement('div');
+    tip.id = 'an-tip';
+    tip.style.cssText = 'position:fixed;z-index:99999;pointer-events:none;display:none;'
+      + 'background:#0e1117;border:1px solid '+AN_COLORS.primary+';color:'+AN_COLORS.text+';'
+      + 'font:11px IBM Plex Mono,monospace;padding:5px 8px;border-radius:5px;max-width:260px;'
+      + 'white-space:pre-line;box-shadow:0 6px 20px rgba(0,0,0,.6)';
+    document.body.appendChild(tip);
+  }
+  container.addEventListener('mousemove', e => {
+    const t = e.target && e.target.getAttribute && e.target.getAttribute('data-tip');
+    if (!t) { tip.style.display = 'none'; return; }
+    tip.textContent = t;
+    tip.style.display = 'block';
+    const r = tip.getBoundingClientRect(), pad = 14;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + r.width  > window.innerWidth)  x = e.clientX - r.width  - pad;
+    if (y + r.height > window.innerHeight) y = e.clientY - r.height - pad;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+  container.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+}
+
+/* ── Summary stats (HTML block) ── */
+function anSummaryStats(values){
+  const v = values.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b);
+  if (!v.length) return '<div style="color:var(--muted);font-size:11px">n = 0</div>';
+  const n = v.length, sum = v.reduce((a, b) => a + b, 0), mean = sum / n;
+  const q = p => { const i = (n - 1) * p, lo = Math.floor(i); return v[lo] + (v[Math.ceil(i)] - v[lo]) * (i - lo); };
+  const sd = Math.sqrt(v.reduce((a, x) => a + (x - mean) ** 2, 0) / n);
+  const stat = (k, val) => '<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:2px 0">'
+    + '<span style="color:var(--muted)">'+k+'</span><span style="color:var(--text);font-weight:600">'+val+'</span></div>';
+  return stat('n', n) + stat('mean', anNiceNum(mean)) + stat('median', anNiceNum(q(.5)))
+    + stat('p25', anNiceNum(q(.25))) + stat('p75', anNiceNum(q(.75)))
+    + stat('min', anNiceNum(v[0])) + stat('max', anNiceNum(v[n-1])) + stat('std dev', anNiceNum(sd));
+}
+
+/* ── "How to read a box plot" explainer (shown beneath the summary) ── */
+function anBoxLegend(hasRef){
+  const W = 180, H = 56, cy = 24, x0 = 16, x1 = 164, q1 = 60, q3 = 122, med = 96;
+  let g = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">';
+  g += '<line x1="'+x0+'" y1="'+cy+'" x2="'+x1+'" y2="'+cy+'" stroke="'+AN_COLORS.muted+'"/>';
+  g += '<line x1="'+x0+'" y1="'+(cy-5)+'" x2="'+x0+'" y2="'+(cy+5)+'" stroke="'+AN_COLORS.muted+'"/>';
+  g += '<line x1="'+x1+'" y1="'+(cy-5)+'" x2="'+x1+'" y2="'+(cy+5)+'" stroke="'+AN_COLORS.muted+'"/>';
+  g += '<rect x="'+q1+'" y="'+(cy-9)+'" width="'+(q3-q1)+'" height="18" rx="2" fill="rgba(200,241,53,.18)" stroke="'+AN_COLORS.primary+'"/>';
+  g += '<line x1="'+med+'" y1="'+(cy-9)+'" x2="'+med+'" y2="'+(cy+9)+'" stroke="'+AN_COLORS.primary+'" stroke-width="2"/>';
+  g += anTxt(x0, cy+18, 'min', {size:8, anchor:'middle', fill:AN_COLORS.muted});
+  g += anTxt((q1+q3)/2, cy+18, 'IQR', {size:8, anchor:'middle', fill:AN_COLORS.muted});
+  g += anTxt(x1, cy+18, 'max', {size:8, anchor:'middle', fill:AN_COLORS.muted});
+  g += anTxt(med, cy-13, 'median', {size:8, anchor:'middle', fill:AN_COLORS.primary});
+  g += '</svg>';
+  const row = (c, t) => '<div style="display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--muted);padding:1px 0">'
+    + '<span style="color:var(--text);font-weight:600;min-width:54px">'+c+'</span><span>'+t+'</span></div>';
+  return '<div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg)">'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">HOW TO READ</div>'
+    + g
+    + '<div style="margin-top:8px">'
+    + row('Box', 'middle 50% of people (Q1–Q3, the IQR)')
+    + row('Line', 'median (50th percentile)')
+    + row('Whiskers', 'min to max')
+    + (hasRef ? '<div style="display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--muted);padding:1px 0"><span style="color:'+AN_COLORS.secondary+';font-weight:600;min-width:54px">Dashed</span><span>reference (midpoint 100%)</span></div>' : '')
+    + '</div></div>';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4. TEMPLATES registry + selection logic
+   ══════════════════════════════════════════════════════════════════ */
+function anTypeMatches(actual, required){
+  if (required === 'any') return true;
+  if (Array.isArray(required)) return required.includes(actual);
+  return actual === required;
+}
+
+export function getAvailableTemplates(dimA, dimB){
+  return ANALYTICS_TEMPLATES.filter(t => {
+    if (t.isStoryView) return false;            // story views shown separately as pills
+    if (t.match) return t.match(dimA, dimB);    // template-specific predicate overrides type logic
+    if (!dimA) return false;
+    if (!dimB) return t.dims === 1 && anTypeMatches(dimA.type, t.dimTypes[0]);
+    return t.dims === 2 && (
+      (anTypeMatches(dimA.type, t.dimTypes[0]) && anTypeMatches(dimB.type, t.dimTypes[1])) ||
+      (anTypeMatches(dimA.type, t.dimTypes[1]) && anTypeMatches(dimB.type, t.dimTypes[0]))
+    );
+  });
+}
+
+// Helper: pick whichever dim matches a required type (for order-independent 2-dim templates)
+function anWhich(dimA, dimB, typeReq){
+  if (anTypeMatches(dimA.type, typeReq)) return [dimA, dimB];
+  return [dimB, dimA];
+}
+function anGroupBy(data, dimId){
+  const m = {};
+  data.forEach(d => { const k = (d[dimId] === '' || d[dimId] == null) ? '—' : d[dimId]; (m[k] = m[k] || []).push(d); });
+  return m;
+}
+
+export const ANALYTICS_TEMPLATES = [
+  /* ── Single-dimension ── */
+  { id:'histogram', name:'Distribution', icon:'📊', dims:1, dimTypes:[['numeric']],
+    desc:'Histogram with mean & median',
+    render(data, a){ const vals = data.map(d => d[a.id]); return { chart: anHistogram(vals, { xLabel: a.label }), stats: vals }; } },
+
+  { id:'bar_count', name:'Count by Category', icon:'▤', dims:1, dimTypes:[['categorical','ordinal','boolean']],
+    nameFn:(a) => 'Headcount by ' + a.label,
+    desc:'Horizontal bars sorted by count',
+    render(data, a){
+      const g = anGroupBy(data, a.id);
+      let items = Object.keys(g).map(k => ({ raw: k, label: anFmtVal(a.id, k), value: g[k].length, color: AN_COLORS.primary }));
+      if (a.order){ const numeric = typeof a.order[0] === 'number'; const idx = v => a.order.indexOf(numeric ? +v : v);
+        items.sort((x, y) => idx(x.raw) - idx(y.raw)); }
+      else items.sort((x, y) => y.value - x.value);
+      return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:a.label }), stats: null };
+    } },
+
+  { id:'seniority_pyramid', name:'Seniority Pyramid', icon:'🔺', dims:1, dimTypes:[['ordinal']],
+    match:(a, b) => !!(a && !b && a.id === 'seniority'),
+    desc:'Headcount per grade, junior → senior',
+    render(data, a){
+      const g = anGroupBy(data, 'seniority');
+      const items = SENIORITY_ORDER.filter(s => g[s]).map(s => ({ label: s, value: g[s].length, color: AN_COLORS.secondary }));
+      return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Seniority / Grade' }), stats: null };
+    } },
+
+  { id:'rating_dist', name:'Rating Distribution', icon:'⭐', dims:1, dimTypes:[['ordinal']],
+    match:(a, b) => !!(a && !b && a.id === 'latestRating'),
+    desc:'Colour-coded latest-rating mix',
+    render(data){
+      const g = anGroupBy(data.filter(d => d.latestRating), 'latestRating');
+      const items = AN_RATING_ORDER.filter(r => g[r]).map(r => ({ label: r, value: g[r].length, color: AN_RATING_COLOR[r] }));
+      return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Latest Perf Rating' }), stats: null };
+    } },
+
+  { id:'ninebox_grid', name:'Nine-Box Grid', icon:'⊞', dims:1, dimTypes:[['ninebox']],
+    desc:'3×3 talent grid with names',
+    render(data){ return { chart: anNineBox(data), stats: null }; } },
+
+  /* ── Two-dimension ── */
+  { id:'pay_by_grade', name:'Box Plot by Category', icon:'💶', dims:2, dimTypes:[['ordinal','categorical'],['numeric']],
+    nameFn:(a, b) => { const num = a.type === 'numeric' ? a : b, cat = num === a ? b : a; return num.label + ' by ' + cat.label; },
+    desc:'Distribution (median / IQR / range) of a metric per category',
+    render(data, a, b){
+      const [ord, num] = anWhich(a, b, ['ordinal','categorical']);
+      const g = anGroupBy(data, ord.id);
+      const keys = ord.order ? ord.order.filter(k => g[k]) : Object.keys(g);
+      const groups = keys.map(k => ({ label: anFmtVal(ord.id, k), values: g[k].map(d => d[num.id]) }));
+      const ref = ord.id === 'comparatio' || num.id === 'comparatio' ? 100 : null;
+      return { chart: anBoxPlot(groups, { xLabel:num.label, ref, refLabel: ref ? 'midpoint 100%' : '' }), stats: data.map(d => d[num.id]), kind:'box', ref: ref != null };
+    } },
+
+  { id:'perf_by_grade', name:'Performance by Grade', icon:'▥', dims:2, dimTypes:[['ordinal'],['ordinal']],
+    match:(a, b) => !!(a && b && a.id !== b.id && (
+      (a.id === 'latestRating' && b.type === 'ordinal') ||
+      (b.id === 'latestRating' && a.type === 'ordinal'))),
+    desc:'Stacked rating mix per grade',
+    render(data, a, b){
+      // one axis must be the rating dimension
+      const ratingDim = (a.id==='latestRating') ? a : (b.id==='latestRating' ? b : null);
+      const gradeDim  = ratingDim === a ? b : a;
+      if (!ratingDim) return { chart: anEmpty('One axis must be Latest Perf Rating'), stats: null };
+      const g = anGroupBy(data.filter(d => d.latestRating), gradeDim.id);
+      const keys = gradeDim.order ? gradeDim.order.filter(k => g[k]) : Object.keys(g);
+      const rows = keys.map(k => ({
+        label: anFmtVal(gradeDim.id, k),
+        segs: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r], value: g[k].filter(d => d.latestRating===r).length })),
+      }));
+      return { chart: anStackedBar(rows, { valLabel:'Headcount', catLabel:gradeDim.label,
+        legend: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r] })) }), stats: null };
+    } },
+
+  { id:'pay_perf_matrix', name:'Pay × Performance', icon:'🎯', dims:2, dimTypes:[['numeric'],['ordinal']],
+    match:(a, b) => !!(a && b && (
+      (a.type === 'numeric' && b.id === 'latestRating') ||
+      (b.type === 'numeric' && a.id === 'latestRating'))),
+    desc:'Compa-ratio × rating, flight/cost-risk quadrants',
+    render(data, a, b){
+      const num = a.type==='numeric' ? a : b;
+      const ord = num===a ? b : a;
+      const pts = data.filter(d => d[num.id] != null && d[ord.id] != null).map(d => ({
+        x: d[num.id],
+        y: ord.id==='latestRating' ? AN_RATING_NUM[d[ord.id]] : +d[ord.id],
+        label: d.name + ' · '+d[num.id]+' / '+d[ord.id],
+        color: d.groupColor,
+      }));
+      return { chart: anScatter(pts, { xLabel:num.label, yLabel:ord.label, trend:true }), stats: data.map(d => d[num.id]) };
+    } },
+
+  { id:'scatter', name:'Scatter Plot', icon:'📈', dims:2, dimTypes:[['numeric'],['numeric']],
+    desc:'Numeric × numeric, group-coloured',
+    render(data, a, b){
+      const pts = data.filter(d => d[a.id] != null && d[b.id] != null).map(d => ({
+        x:d[a.id], y:d[b.id], label:d.name, color:d.groupColor }));
+      return { chart: anScatter(pts, { xLabel:a.label, yLabel:b.label, trend:true, corr:true }), stats: null };
+    } },
+
+  { id:'tenure_pay', name:'Tenure vs Pay', icon:'📉', dims:2, dimTypes:[['numeric'],['numeric']],
+    match:(a, b) => !!(a && b && a.type === 'numeric' && b.type === 'numeric' &&
+      (a.id === 'tenureYears' || b.id === 'tenureYears') && a.id !== b.id),
+    desc:'Scatter + trend & r — detect pay drift',
+    render(data, a, b){
+      const ten = a.id === 'tenureYears' ? a : b, pay = ten === a ? b : a;
+      const pts = data.filter(d => d[ten.id] != null && d[pay.id] != null)
+        .map(d => ({ x:d[ten.id], y:d[pay.id], label:d.name, color:d.groupColor }));
+      return { chart: anScatter(pts, { xLabel:ten.label, yLabel:pay.label, trend:true, corr:true }), stats: data.map(d => d[pay.id]) };
+    } },
+
+  { id:'util_by_group', name:'Avg by Category', icon:'📶', dims:2, dimTypes:[['categorical'],['numeric']],
+    desc:'Mean metric per category (util over/under coloured)',
+    render(data, a, b){
+      const cat = a.type === 'categorical' ? a : b, num = cat === a ? b : a;
+      const g = anGroupBy(data, cat.id);
+      const items = Object.keys(g).map(k => {
+        const vals = g[k].map(d => d[num.id]).filter(v => v != null && !isNaN(v));
+        const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+        let color = AN_COLORS.primary;
+        if (num.id === 'utilizationPct') color = avg > 100 ? AN_COLORS.danger : (avg < 60 ? AN_COLORS.warn : AN_COLORS.secondary);
+        return { label: anFmtVal(cat.id, k), value: Math.round(avg * 10) / 10, color };
+      }).sort((x, y) => y.value - x.value);
+      return { chart: anBarChart(items, { valLabel: 'Avg ' + num.label, catLabel: cat.label }), stats: data.map(d => d[num.id]) };
+    } },
+
+  { id:'heatmap_2d', name:'Heatmap', icon:'▦', dims:2, dimTypes:[['categorical','ordinal'],['categorical','ordinal']],
+    desc:'Count matrix, density-coloured',
+    render(data, a, b){
+      const rowVals = anCatValues(data, a), colVals = anCatValues(data, b);
+      const matrix = rowVals.map(rv => colVals.map(cv =>
+        data.filter(d => String(anCell(d, a)) === String(rv) && String(anCell(d, b)) === String(cv)).length));
+      const rowDisp = rowVals.map(v => anFmtVal(a.id, v)), colDisp = colVals.map(v => anFmtVal(b.id, v));
+      return { chart: anHeatmap(matrix, rowDisp, colDisp, { rowLabel:a.label, colLabel:b.label, unit:'people' }), stats: null };
+    } },
+
+  /* ── Story views (always available; no dimensions) ── */
+  { id:'retention_risk', name:'Retention Risk', icon:'🔥', dims:0, isStoryView:true,
+    desc:'Stars & Key Players paid below market',
+    render(data){ return { chart: anStoryRetention(data), stats: null }; } },
+
+  { id:'pay_equity_full', name:'Pay Equity', icon:'⚖', dims:0, isStoryView:true,
+    desc:'Compa-ratio distribution by grade',
+    render(data){ return { chart: anStoryPayEquity(data), stats: data.map(d => d.comparatio), kind:'box', ref:true }; } },
+
+  { id:'succession', name:'Succession', icon:'🌱', dims:0, isStoryView:true,
+    desc:'High-potential talent by grade',
+    render(data){ return { chart: anStorySuccession(data), stats: null }; } },
+
+  { id:'capacity_health', name:'Capacity Health', icon:'🩺', dims:0, isStoryView:true,
+    desc:'Utilisation buckets, bench & over-allocation',
+    render(data){ return { chart: anStoryCapacity(data), stats: data.map(d => d.utilizationPct) }; } },
+
+  { id:'skill_coverage', name:'Skill Coverage', icon:'🧩', dims:0, isStoryView:true,
+    desc:'Skill domain × team, with SPOF flags',
+    render(data){ return { chart: anStorySkillCoverage(data), stats: null }; } },
+
+  { id:'disc_team', name:'Team Dynamics', icon:'◉', dims:0, isStoryView:true,
+    desc:'DISC distribution by team',
+    render(data){ return { chart: anStoryDiscTeam(data), stats: null }; } },
+];
+
+/* ── Story view bodies ── */
+function anStoryRetention(data){
+  // High value (nine-box perf or pot = 3, or rating E/E+) + comparatio < 95 = flight risk
+  const flagged = data.filter(d => {
+    const star = (d.nineBoxPerf === 3 || d.nineBoxPot === 3 || ['E','E+'].includes(d.latestRating));
+    return star && d.comparatio != null && d.comparatio < 95;
+  }).sort((a, b) => (a.comparatio||0) - (b.comparatio||0));
+  if (!flagged.length) return anEmpty('No flight-risk engineers (need nine-box / rating + compa-ratio data)');
+  let h = '<div style="display:flex;flex-direction:column;gap:8px">';
+  flagged.forEach(d => {
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-left:3px solid '+AN_COLORS.danger+';border-radius:6px;background:rgba(241,67,53,.05)">'
+      + '<div style="flex:1"><div style="font-weight:600;color:var(--text)">'+escH(d.name)+'</div>'
+      + '<div style="font-size:10px;color:var(--muted)">'+escH(d.seniority||d.role||'')+' · '+escH(d.group)
+      + (d.nineBoxKey?' · 9box '+escH(d.nineBoxKey):'')+(d.latestRating?' · '+escH(d.latestRating):'')+'</div></div>'
+      + '<div style="text-align:right"><div style="font-weight:700;color:'+AN_COLORS.danger+'">'+d.comparatio+'%</div>'
+      + '<div style="font-size:9px;color:var(--muted)">compa-ratio</div></div></div>';
+  });
+  return h + '</div>';
+}
+
+function anChips(list, color, label, sub){
+  if (!list.length) return '';
+  return '<div style="margin-top:12px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px">'+escH(label)+' · '+list.length+'</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    + list.map(d => '<span style="border:1px solid var(--border);border-left:3px solid '+color+';border-radius:5px;padding:4px 8px;font-size:11px;color:var(--text)">'
+      + escH(d.name) + (sub ? ' <span style="color:var(--muted);font-size:9px">'+escH(sub(d))+'</span>' : '') + '</span>').join('')
+    + '</div></div>';
+}
+
+function anStoryCapacity(data){
+  if (!data.length) return anEmpty('No engineers match the current filters');
+  const buckets = [
+    {key:'Bench (<10%)',     test:u => u < 10,            color:AN_COLORS.muted},
+    {key:'Under (10–70%)',   test:u => u >= 10 && u < 70, color:AN_COLORS.warn},
+    {key:'Healthy (70–105%)',test:u => u >= 70 && u <= 105,color:AN_COLORS.secondary},
+    {key:'Over (>105%)',     test:u => u > 105,           color:AN_COLORS.danger},
+  ];
+  const items = buckets.map(b => ({ label:b.key, value:data.filter(d => b.test(d.utilizationPct)).length, color:b.color }));
+  const over  = data.filter(d => d.utilizationPct > 105).sort((a, b) => b.utilizationPct - a.utilizationPct);
+  const bench = data.filter(d => d.utilizationPct < 10);
+  return anBarChart(items, { valLabel:'Headcount', catLabel:'Utilisation band' })
+    + anChips(over,  AN_COLORS.danger, 'OVER-ALLOCATED', d => d.utilizationPct + '%')
+    + anChips(bench, AN_COLORS.muted,  'ON THE BENCH',   d => d.utilizationPct + '%');
+}
+
+function anStorySkillCoverage(data){
+  const teams = [...new Set(data.map(d => d.group))].sort();
+  const domains = skillDomains.slice();
+  data.forEach(d => d.skills.forEach(s => { const dom = s.domain || 'General'; if (domains.indexOf(dom) < 0) domains.push(dom); }));
+  const rows = [], rowLabels = [];
+  domains.forEach(dom => {
+    const r = teams.map(tm => data.filter(d => d.group === tm)
+      .reduce((s, d) => s + d.skills.filter(sk => (sk.domain || 'General') === dom).length, 0));
+    if (r.some(v => v > 0)) { rows.push(r); rowLabels.push(dom); }
+  });
+  const heat = rowLabels.length ? anHeatmap(rows, rowLabels, teams, { rowLabel:'Skill domain', colLabel:'Team', unit:'skills' }) : anEmpty('No skills recorded yet');
+  const spof = [];
+  data.forEach(d => d.spofSkills.forEach(sk => spof.push({ name:d.name, _sk:sk })));
+  let spofH = '';
+  if (spof.length) {
+    spofH = '<div style="margin-top:14px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:'+AN_COLORS.danger+';letter-spacing:.06em;margin-bottom:5px">⚠ SPOF — CRITICAL SKILLS WITH A SINGLE HOLDER · '+spof.length+'</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + spof.map(p => '<span style="border:1px solid var(--border);border-left:3px solid '+AN_COLORS.danger+';border-radius:5px;padding:4px 8px;font-size:11px;color:var(--text)">'
+        + escH(p._sk) + ' <span style="color:var(--muted);font-size:9px">'+escH(p.name)+'</span></span>').join('')
+      + '</div></div>';
+  }
+  return heat + spofH;
+}
+
+function anStoryDiscTeam(data){
+  const withDisc = data.filter(d => d.discProfile);
+  if (!withDisc.length) return anEmpty('No DISC placements yet (place engineers on the DISC tab)');
+  const DCOL = {D:'#f14335', I:'#c8f135', S:'#5be5c8', C:'#9090f0'};
+  const teams = [...new Set(withDisc.map(d => d.group))].sort();
+  const rows = teams.map(tm => {
+    const members = withDisc.filter(d => d.group === tm);
+    return { label:tm, segs:['D','I','S','C'].map(k => ({ key:k, color:DCOL[k], value:members.filter(d => d.discProfile === k).length })) };
+  });
+  const discNames = { D:'D — Dominance', I:'I — Influence', S:'S — Steadiness', C:'C — Conscientiousness' };
+  const legend = '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:10px">'
+    + ['D','I','S','C'].map(k => '<span style="color:var(--muted)"><span style="display:inline-block;width:10px;height:10px;background:'+DCOL[k]+';border-radius:2px;margin-right:4px;vertical-align:middle"></span>'+discNames[k]+'</span>').join('')
+    + '</div>';
+  return legend + anStackedBar(rows, { valLabel:'Headcount', catLabel:'Team' });
+}
+
+function anStorySuccession(data){
+  // High potential = nine-box potential 3, or GTP potential 'High'
+  const hp = data.filter(d => d.nineBoxPot === 3 || d.potential === 'High');
+  if (!hp.length) return anEmpty('No high-potential talent flagged (set Nine-Box potential = high, or GTP Potential = High)');
+  const g = {};
+  hp.forEach(d => { const k = d.seniority || '—'; (g[k] = g[k] || []).push(d); });
+  const keys = SENIORITY_ORDER.filter(k => g[k]);
+  Object.keys(g).forEach(k => { if (keys.indexOf(k) < 0) keys.push(k); });
+  let h = '<div style="display:flex;flex-direction:column;gap:10px">';
+  keys.forEach(k => {
+    h += '<div><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px">'+escH(k)+' · '+g[k].length+'</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    g[k].forEach(d => h += '<span style="border:1px solid var(--border);border-left:3px solid '+AN_COLORS.secondary
+      + ';border-radius:5px;padding:5px 9px;font-size:11px;background:rgba(91,229,200,.06);color:var(--text)">'+escH(d.name)
+      + (d.nineBoxKey ? ' <span style="color:var(--muted);font-size:9px">'+escH(d.nineBoxKey)+'</span>' : '')+'</span>');
+    h += '</div></div>';
+  });
+  return h + '</div>';
+}
+
+function anStoryPayEquity(data){
+  const g = anGroupBy(data.filter(d => d.comparatio != null), 'seniority');
+  const keys = SENIORITY_ORDER.filter(k => g[k]);
+  if (!keys.length) return anEmpty('No compa-ratio data by grade');
+  const groups = keys.map(k => ({ label: k, values: g[k].map(d => d.comparatio) }));
+  return anBoxPlot(groups, { ref: 100, refLabel: 'midpoint 100%', xLabel: 'Compa-ratio (%)', catLabel: 'Seniority / Grade' });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   5. TAB SHELL + render orchestration
+   ══════════════════════════════════════════════════════════════════ */
+export function renderAnalyticsTab(){
+  const dimsByGroup = {};
+  ANALYTICS_DIMENSIONS.forEach(d => { (dimsByGroup[d.group] = dimsByGroup[d.group] || []).push(d); });
+  const dimOpts = sel => '<option value="">— none —</option>' + Object.keys(dimsByGroup).map(grp =>
+    '<optgroup label="'+escH(grp)+'">' + dimsByGroup[grp].map(d =>
+      '<option value="'+d.id+'"'+(sel===d.id?' selected':'')+'>'+escH(d.label)+'</option>').join('') + '</optgroup>').join('');
+
+  const stories = ANALYTICS_TEMPLATES.filter(t => t.isStoryView);
+  const ds = buildAnalyticsDataset();
+  const groups = [...new Set(ds.map(d => d.group))].sort();
+  const locs   = [...new Set(ds.map(d => d.location))].sort();
+  const sens   = SENIORITY_ORDER.filter(s => ds.some(d => d.seniority === s));
+
+  const pill = (id, name, icon, active) =>
+    '<button onclick="anPickStory(\''+id+'\')" style="background:'+(active?'rgba(200,241,53,.12)':'var(--bg)')
+    + ';border:1px solid '+(active?'var(--accent)':'var(--border)')+';color:'+(active?'var(--accent)':'var(--text)')
+    + ';font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer">'+icon+' '+escH(name)+'</button>';
+
+  const selStyle = 'background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;min-width:170px';
+
+  let h = '<div style="padding:14px 16px">';
+  // Story pills
+  h += '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px">STORY VIEWS</div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + stories.map(s => pill(s.id, s.name, s.icon, _anState.story === s.id)).join('') + '</div>';
+  // Compare row
+  h += '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">COMPARE</span>'
+    + '<label style="font-size:11px;color:var(--muted)">A <select id="an-dimA" onchange="anPickDim()" style="'+selStyle+'">'+dimOpts(_anState.dimA)+'</select></label>'
+    + '<span style="color:var(--muted)">×</span>'
+    + '<label style="font-size:11px;color:var(--muted)">B <select id="an-dimB" onchange="anPickDim()" style="'+selStyle+'">'+dimOpts(_anState.dimB)+'</select></label>'
+    + '</div>';
+  // Filter row (reuse the app's multi-select dropdown helper)
+  h += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">FILTER</span>'
+    + multiSelectHTML('an-fgroup', groups, _anState.filters.group, 'anFilterGroup', 'Group: All')
+    + multiSelectHTML('an-floc',   locs,   _anState.filters.location, 'anFilterLoc', 'Location: All')
+    + multiSelectHTML('an-fsen',   sens,   _anState.filters.seniority, 'anFilterSen', 'Seniority: All')
+    + '<button onclick="anClearFilters()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer">✕ Clear</button>'
+    + '</div>';
+  // Main (swapped on every interaction)
+  h += '<div id="an-main"></div>';
+  h += '</div>';
+  G('res-body').innerHTML = h;
+  anRenderMain();
+}
+
+function anApplyFilters(data){
+  const f = _anState.filters;
+  return data.filter(d =>
+    (f.group.size === 0 || f.group.has(d.group)) &&
+    (f.location.size === 0 || f.location.has(d.location)) &&
+    (f.seniority.size === 0 || f.seniority.has(d.seniority)));
+}
+
+function anActiveTemplate(){
+  if (_anState.story) return ANALYTICS_TEMPLATES.find(t => t.id === _anState.story) || null;
+  const dimA = anDim(_anState.dimA), dimB = anDim(_anState.dimB);
+  const avail = getAvailableTemplates(dimA, dimB);
+  if (!avail.length) return null;
+  let t = avail.find(x => x.id === _anState.template);
+  if (!t) { t = avail[0]; _anState.template = t.id; }
+  return t;
+}
+
+function anRenderMain(){
+  const main = G('an-main'); if (!main) return;
+  const dataAll = anApplyFilters(buildAnalyticsDataset());
+  const dimA = anDim(_anState.dimA), dimB = anDim(_anState.dimB);
+
+  let h = '';
+  // Template card row (compare mode only)
+  if (!_anState.story) {
+    const avail = getAvailableTemplates(dimA, dimB);
+    if (!dimA && !dimB) {
+      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">Pick a dimension above, or choose a story view.</div>';
+    } else if (!avail.length) {
+      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">No template fits that dimension combination. Try another pairing.</div>';
+    } else {
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
+      avail.forEach(t => {
+        const sel = t.id === _anState.template;
+        h += '<button onclick="anPickTemplate(\''+t.id+'\')" title="'+escH(t.desc)+'" '
+          + 'style="background:'+(sel?'rgba(200,241,53,.10)':'var(--bg)')+';border:1px solid '+(sel?'var(--accent)':'var(--border)')
+          + ';border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;min-width:130px;max-width:170px">'
+          + '<div style="font-size:18px;margin-bottom:4px">'+t.icon+'</div>'
+          + '<div style="font-size:11px;font-weight:600;color:'+(sel?'var(--accent)':'var(--text)')+'">'+escH(anTplName(t, dimA, dimB))+(sel?' ✓':'')+'</div>'
+          + '<div style="font-size:9px;color:var(--muted);margin-top:2px">'+escH(t.desc)+'</div>'
+          + '</button>';
+      });
+      h += '</div>';
+    }
+  }
+
+  const tpl = anActiveTemplate();
+  let chartKind = null, chartRef = false;
+  h += '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">';
+  h += '<div id="an-chart" style="flex:1;min-width:340px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--surface)">';
+  if (tpl) {
+    if (dataAll.length < 1 && tpl.dims) h += anEmpty('No engineers match the current filters');
+    else {
+      let out;
+      try { out = tpl.render(dataAll, dimA, dimB); }
+      catch (err) { out = { chart: anEmpty('Render error: ' + err.message), stats: null }; }
+      h += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">'+tpl.icon+' '+escH(anTplName(tpl, dimA, dimB))+'</div>';
+      h += out.chart;
+      main._anStats = out.stats;
+      chartKind = out.kind || null; chartRef = !!out.ref;
+    }
+  } else {
+    h += anEmpty('Select a dimension or story view to begin');
+    main._anStats = null;
+  }
+  h += '</div>';
+
+  // Right column: summary panel + (for box plots) a "how to read" legend
+  const stats = (tpl && main._anStats) ? main._anStats : null;
+  h += '<div style="width:180px;flex-shrink:0">';
+  h += '<div id="an-summary" style="border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg)">'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">SUMMARY</div>'
+    + (stats ? anSummaryStats(stats) : '<div style="font-size:11px;color:var(--muted)">n = '+dataAll.length+'<br><span style="font-size:10px">(no numeric series)</span></div>')
+    + '</div>';
+  if (chartKind === 'box') h += anBoxLegend(chartRef);
+  h += '</div>';
+  h += '</div>';
+
+  // Export bar
+  h += '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button onclick="anExportCSV()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ CSV</button>'
+    + '<button onclick="anExportPNG()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PNG</button>'
+    + '<button onclick="anExportPDF()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PDF</button>'
+    + '</div>';
+
+  main.innerHTML = h;
+  anBindTips(G('an-chart'));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   6. Interaction handlers (global — called from inline onclick/onchange)
+   ══════════════════════════════════════════════════════════════════ */
+export function anPickStory(id){
+  _anState.story = (_anState.story === id) ? null : id;
+  if (_anState.story) { _anState.dimA = null; _anState.dimB = null; _anState.template = null; }
+  renderAnalyticsTab();
+}
+export function anPickDim(){
+  const hadStory = !!_anState.story;
+  _anState.dimA = G('an-dimA').value || null;
+  _anState.dimB = G('an-dimB').value || null;
+  _anState.story = null;
+  _anState.template = null;
+  // If we were in a story view, the shell pills need re-rendering to drop the highlight.
+  if (hadStory) renderAnalyticsTab(); else anRenderMain();
+}
+export function anPickTemplate(id){ _anState.template = id; anRenderMain(); }
+export function anFilterGroup(s){ _anState.filters.group = s; anRenderMain(); }
+export function anFilterLoc(s){ _anState.filters.location = s; anRenderMain(); }
+export function anFilterSen(s){ _anState.filters.seniority = s; anRenderMain(); }
+export function anClearFilters(){
+  _anState.filters = { group:new Set(), location:new Set(), seniority:new Set() };
+  renderAnalyticsTab();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   7. Exports — CSV (flat dataset) + PNG (svg→canvas)
+   ══════════════════════════════════════════════════════════════════ */
+export function anExportCSV(){
+  const data = anApplyFilters(buildAnalyticsDataset());
+  const cols = ['name','group','role','location','gender','seniority','tenureYears',
+    'monthlyCost','comparatio','latestRating','nineBoxKey','discProfile',
+    'utilizationPct','projectCount','skillCount','critSkillCount'];
+  const esc = v => { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  let csv = cols.join(',') + '\n';
+  data.forEach(d => csv += cols.map(c => esc(d[c])).join(',') + '\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'matrix-analytics.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// PDF — open a print-optimised window with the current chart + summary, then print.
+// Keeps the dark background (print-color-adjust:exact) so the light-on-dark SVG stays legible.
+export function anExportPDF(){
+  const chart = G('an-chart'), summary = G('an-summary');
+  if (!chart) { alert('No chart to export'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up blocked — allow pop-ups to export PDF'); return; }
+  const title = ((chart.querySelector('div') || {}).innerText || 'Analytics').replace(/^[^A-Za-z0-9(]+/, '').trim();
+  const s = (G('res-start') || {}).value || '', e = (G('res-end') || {}).value || '';
+  const today = new Date().toISOString().slice(0, 10);
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'
+    + escH('Matrix Analytics — ' + title) + '</title><style>'
+    + 'html,body{background:#0a0c10;color:#e2e8f4;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + 'body{font-family:Arial,Helvetica,sans-serif;margin:28px;}'
+    + 'h1{font-size:16px;margin:0 0 2px;} .meta{color:#5a6380;font-size:11px;margin-bottom:18px;}'
+    + 'svg{max-width:100%;height:auto;} .sum{margin-top:18px;font-size:12px;max-width:280px;}'
+    + '.sum>div{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px solid #1e2330;}'
+    + '</style></head><body>'
+    + '<h1>📊 People Analytics — ' + escH(title) + '</h1>'
+    + '<div class="meta">Project Matrix · ' + escH(today) + (s ? ' · period ' + escH(s) + ' → ' + escH(e) : '') + '</div>'
+    + chart.innerHTML
+    + (summary ? '<div class="sum">' + summary.innerHTML + '</div>' : '')
+    + '</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(() => { try { w.print(); } catch (err) {} }, 300);
+}
+
+export function anExportPNG(){
+  const svg = G('an-main') && G('an-main').querySelector('svg');
+  if (!svg) { alert('No chart to export'); return; }
+  const xml = new XMLSerializer().serializeToString(svg);
+  const vb = svg.viewBox.baseVal;
+  const W = (vb && vb.width) || 800, H = (vb && vb.height) || 600;
+  const img = new Image();
+  img.onload = function(){
+    const cv = document.createElement('canvas');
+    cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0a0c10'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = 'matrix-analytics.png';
+    a.click();
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+}
