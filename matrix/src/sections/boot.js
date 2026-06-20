@@ -58,6 +58,27 @@ new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(render,50);}).observe(G('
    ══════════════════════════════════════════════════════════════════ */
 /* ═══════════════════ INIT ═══════════════════ */
 loadState();
+// Global From/To period: make it persistent & consistent across every Resources tab.
+// IMPORTANT: the bundled script runs mid-body, so the #res-start/#res-end inputs (and
+// the other overlays) are NOT in the DOM yet at this point — that's the long-standing reason
+// the saved range never restored (loadState's el lookups were null, and opening Resources
+// only filled defaults). So we run this AFTER the DOM is parsed: restore directly from
+// storage (storage wins), default only if still empty, then persist so nothing can clobber it.
+function ensureResPeriod(){
+  try{
+    var saved = JSON.parse(localStorage.getItem(SK) || 'null');   // SK = 'eim_v4'
+    if(saved){
+      if(saved.resStart && G('res-start')) G('res-start').value = saved.resStart;
+      if(saved.resEnd   && G('res-end'))   G('res-end').value   = saved.resEnd;
+    }
+  }catch(e){}
+  var before = (G('res-start')?G('res-start').value:'')+'|'+(G('res-end')?G('res-end').value:'');
+  initResDefaults();                 // fills FROM/TO with defaults only if still empty
+  var after = (G('res-start')?G('res-start').value:'')+'|'+(G('res-end')?G('res-end').value:'');
+  if(before!==after) saveNow();      // persist the freshly-defaulted range immediately
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ensureResPeriod);
+else ensureResPeriod();
 // Boot photo IDB (async, non-blocking)
 idbBoot().then(function(){
   if(G('org-overlay')&&G('org-overlay').style.display!=='none')renderOrgChart();

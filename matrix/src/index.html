@@ -360,9 +360,9 @@
     <input id="res-title-input" value="Resource Plan" title="Click to rename">
     <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
       <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">FROM</label>
-      <input type="month" id="res-start" onchange="saveState();showResTab(resActiveTab)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
+      <input type="month" id="res-start" onchange="saveNow();showResTab(resActiveTab)" title="Global period start — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
       <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">TO</label>
-      <input type="month" id="res-end" onchange="saveState();showResTab(resActiveTab)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
+      <input type="month" id="res-end" onchange="saveNow();showResTab(resActiveTab)" title="Global period end — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
     </div>
     <div style="flex:1"></div>
     <button onclick="showResTab('roster')">Roster</button>

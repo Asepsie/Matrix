@@ -67,6 +67,7 @@ export function showResTab(tab){
 // sets default FROM/TO date inputs if empty
 export function initResDefaults(){
   const si=G('res-start'), ei=G('res-end');
+  if(!si||!ei)return;   // inputs not in DOM yet (script runs mid-body); caller retries on DOMContentLoaded
   if(!si.value){
     const now=new Date();
     si.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;

@@ -13115,7 +13115,11 @@ let _anState = {
   dimB:     null,          // dimension id or null
   template: null,          // selected template id
   filters:  { group:new Set(), location:new Set(), seniority:new Set() },
+  show:     { kpi:true, insights:true },   // collapsible header panels (persisted)
 };
+// Restore collapsible-panel preferences (persists across reloads)
+try { const _sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null'); if (_sv) Object.assign(_anState.show, _sv); } catch (e) {}
+function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify(_anState.show)); } catch (e) {} }
 
 /* ══════════════════════════════════════════════════════════════════
    1. DATASET — one row per active engineer with all computed fields
@@ -13286,6 +13290,11 @@ function anTxt(x,y,s,opt){
 }
 // data-tip attribute fragment for the shared hover tooltip (see anBindTips)
 function anTip(text){ return ' data-tip="'+escH(String(text))+'"'; }
+// data-ids + title attributes making a chart shape clickable for drill-down (see anBindDrill)
+function anIds(ids, title){
+  if (!ids || !ids.length) return '';
+  return ' data-ids="'+ids.join(',')+'"' + (title ? ' data-dtitle="'+escH(String(title))+'"' : '') + ' style="cursor:pointer"';
+}
 function anNiceNum(v){
   if (v == null || isNaN(v)) return '—';
   const a = Math.abs(v);
@@ -13313,7 +13322,7 @@ function anBarChart(items, opt){
     const bw = (xOf(d.value) - padL);
     s += anTxt(padL - 8, y + rowH/2 + 4, anTrunc(d.label, 22), {anchor:'end', size:11});
     s += '<rect x="'+padL+'" y="'+(y+4)+'" width="'+Math.max(1,bw)+'" height="'+(rowH-10)+'" '
-       + 'rx="2" fill="'+(d.color||AN_COLORS.primary)+'"'+anTip(d.label+': '+d.value)+'></rect>';
+       + 'rx="2" fill="'+(d.color||AN_COLORS.primary)+'"'+anTip(d.label+': '+d.value)+anIds(d.ids, d.label)+'></rect>';
     s += anTxt(padL + bw + 6, y + rowH/2 + 4, anNiceNum(d.value), {size:10, fill:AN_COLORS.muted});
   });
   if (axes){
@@ -13324,16 +13333,20 @@ function anBarChart(items, opt){
   return s + '</svg>';
 }
 
-// Histogram — auto-bucketed numeric values
-function anHistogram(values, opt){
+// Histogram — auto-bucketed numeric values. Accepts numbers or {v,id} rows (for drill).
+// opt: { xLabel, band:{lo,hi,label} (shaded target zone) }
+function anHistogram(input, opt){
   opt = opt || {};
-  const vals = values.filter(v => v != null && !isNaN(v));
-  if (vals.length < 3) return anEmpty('Need ≥3 data points');
+  const rows = (input || []).map(x => (x && typeof x === 'object') ? { v:+x.v, id:x.id } : { v:+x, id:null })
+    .filter(r => r.v != null && !isNaN(r.v));
+  if (rows.length < 3) return anEmpty('Need ≥3 data points');
+  const vals = rows.map(r => r.v);
   const min = Math.min(...vals), max = Math.max(...vals);
   const nb = Math.min(12, Math.max(4, Math.ceil(Math.sqrt(vals.length))));
   const span = (max - min) || 1, bw = span / nb;
   const buckets = new Array(nb).fill(0);
-  vals.forEach(v => { let i = Math.floor((v - min) / bw); if (i >= nb) i = nb - 1; buckets[i]++; });
+  const bucketIds = Array.from({ length: nb }, () => []);
+  rows.forEach(r => { let i = Math.floor((r.v - min) / bw); if (i >= nb) i = nb - 1; if (i < 0) i = 0; buckets[i]++; if (r.id != null) bucketIds[i].push(r.id); });
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
   const sorted = vals.slice().sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length/2)];
@@ -13342,13 +13355,21 @@ function anHistogram(values, opt){
   const plotH = H - padT - padB;
   const xOf = v => padL + ((v - min) / span) * (W - padL - padR);
   let s = anSvgOpen(W, H);
+  // target band (e.g. compa-ratio 95–105)
+  if (opt.band){
+    const bx0 = xOf(Math.max(min, opt.band.lo)), bx1 = xOf(Math.min(max, opt.band.hi));
+    if (bx1 > bx0){
+      s += '<rect x="'+bx0+'" y="'+padT+'" width="'+(bx1-bx0)+'" height="'+plotH+'" fill="rgba(91,229,200,.08)"/>';
+      if (opt.band.label) s += anTxt((bx0+bx1)/2, padT+9, opt.band.label, {size:8, fill:AN_COLORS.secondary, anchor:'middle'});
+    }
+  }
   s += '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
   s += '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.border+'"/>';
   buckets.forEach((c, i) => {
     const bh = maxC > 0 ? (c / maxC) * plotH : 0;
     const x = padL + i * cw;
     s += '<rect x="'+(x+2)+'" y="'+(H-padB-bh)+'" width="'+(cw-4)+'" height="'+bh+'" rx="2" fill="'+AN_COLORS.primary+'"'
-       + anTip(anNiceNum(min+i*bw)+'–'+anNiceNum(min+(i+1)*bw)+': '+c+' people')+'></rect>';
+       + anTip(anNiceNum(min+i*bw)+'–'+anNiceNum(min+(i+1)*bw)+': '+c+' people')+anIds(bucketIds[i], anNiceNum(min+i*bw)+'–'+anNiceNum(min+(i+1)*bw))+'></rect>';
   });
   // mean / median markers
   s += '<line x1="'+xOf(mean)+'" y1="'+padT+'" x2="'+xOf(mean)+'" y2="'+(H-padB)+'" stroke="'+AN_COLORS.warn+'" stroke-dasharray="4 3"/>';
@@ -13382,6 +13403,11 @@ function anBoxPlot(groups, opt){
   const xOf = v => padL + ((v - min) / span) * (W - padL - padR);
   const q = (arr, p) => { const a = arr.slice().sort((x, y) => x - y); const i = (a.length - 1) * p; const lo = Math.floor(i); return a[lo] + (a[Math.ceil(i)] - a[lo]) * (i - lo); };
   let s = anSvgOpen(W, H);
+  // target band (e.g. compa-ratio 95–105)
+  if (opt.band){
+    const bx0 = xOf(Math.max(min, opt.band.lo)), bx1 = xOf(Math.min(max, opt.band.hi));
+    if (bx1 > bx0) s += '<rect x="'+bx0+'" y="'+padT+'" width="'+(bx1-bx0)+'" height="'+(axisY-padT)+'" fill="rgba(91,229,200,.07)"/>';
+  }
   // reference line (e.g. compa-ratio = 100)
   if (opt.ref != null){
     s += '<line x1="'+xOf(opt.ref)+'" y1="'+padT+'" x2="'+xOf(opt.ref)+'" y2="'+axisY+'" stroke="'+AN_COLORS.secondary+'" stroke-dasharray="4 3"/>';
@@ -13395,7 +13421,7 @@ function anBoxPlot(groups, opt){
     s += anTxt(padL - 8, y + 4, anTrunc(grp.label, 24), {anchor:'end', size:11});
     const tip = grp.label+'\nn='+v.length+'\nmedian '+anNiceNum(med)+'\nIQR '+anNiceNum(q1)+'–'+anNiceNum(q3)+'\nrange '+anNiceNum(lo)+'–'+anNiceNum(hi);
     s += '<line x1="'+xOf(lo)+'" y1="'+y+'" x2="'+xOf(hi)+'" y2="'+y+'" stroke="'+AN_COLORS.muted+'"/>';
-    s += '<rect x="'+xOf(q1)+'" y="'+(y-9)+'" width="'+Math.max(1,xOf(q3)-xOf(q1))+'" height="18" rx="2" fill="rgba(200,241,53,.18)" stroke="'+AN_COLORS.primary+'"'+anTip(tip)+'/>';
+    s += '<rect x="'+xOf(q1)+'" y="'+(y-9)+'" width="'+Math.max(1,xOf(q3)-xOf(q1))+'" height="18" rx="2" fill="rgba(200,241,53,.18)" stroke="'+AN_COLORS.primary+'"'+anTip(tip)+anIds(grp.ids, grp.label)+'/>';
     s += '<line x1="'+xOf(med)+'" y1="'+(y-9)+'" x2="'+xOf(med)+'" y2="'+(y+9)+'" stroke="'+AN_COLORS.primary+'" stroke-width="2" pointer-events="none"/>';
     s += anTxt(xOf(hi)+6, y+4, 'n='+v.length, {size:9, fill:AN_COLORS.muted});
   });
@@ -13438,7 +13464,7 @@ function anStackedBar(rows, opt){
       if (!seg.value) return;
       const w = (seg.value / max) * plotW;
       s += '<rect x="'+x+'" y="'+(y+4)+'" width="'+w+'" height="'+(rowH-10)+'" fill="'+seg.color+'"'
-         + anTip(r.label+' · '+seg.key+': '+seg.value)+'></rect>';
+         + anTip(r.label+' · '+seg.key+': '+seg.value)+anIds(seg.ids, r.label+' · '+seg.key)+'></rect>';
       x += w;
     });
     s += anTxt(x + 6, y + rowH/2 + 4, String(tot), {size:10, fill:AN_COLORS.muted});
@@ -13482,7 +13508,7 @@ function anScatter(points, opt){
   }
   pts.forEach(p => {
     s += '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="5" fill="'+(p.color||AN_COLORS.primary)+'" fill-opacity="0.8" stroke="'+AN_COLORS.surface+'"'
-       + anTip((p.label?p.label+'\n':'')+'x='+anNiceNum(p.x)+', y='+anNiceNum(p.y))+'></circle>';
+       + anTip((p.label?p.label+'\n':'')+'x='+anNiceNum(p.x)+', y='+anNiceNum(p.y))+anIds(p.id != null ? [p.id] : null, p.label)+'></circle>';
   });
   s += anTxt(padL, H-padB+14, anNiceNum(xmin), {size:9, fill:AN_COLORS.muted});
   s += anTxt(W-padR, H-padB+14, anNiceNum(xmax), {size:9, fill:AN_COLORS.muted, anchor:'end'});
@@ -13503,7 +13529,8 @@ function anNineBox(data, opt){
     '2-2':'rgba(120,120,140,.10)','1-3':'rgba(241,164,53,.10)','3-1':'rgba(120,120,140,.10)',
     '1-2':'rgba(241,164,53,.10)','2-1':'rgba(241,164,53,.10)','1-1':'rgba(241,67,53,.12)',
   };
-  const by = {}; data.forEach(d => { if (d.nineBoxKey) (by[d.nineBoxKey] = by[d.nineBoxKey] || []).push(d.name); });
+  const by = {}, byId = {};
+  data.forEach(d => { if (d.nineBoxKey){ (by[d.nineBoxKey] = by[d.nineBoxKey] || []).push(d.name); (byId[d.nineBoxKey] = byId[d.nineBoxKey] || []).push(d.id); } });
   if (!Object.keys(by).length) return anEmpty('No nine-box placements yet (place engineers on the Nine-Box tab)');
   const W = 560, H = 560, padL = 50, padB = 50, cell = (W - padL) / 3;
   let s = anSvgOpen(W, H);
@@ -13512,11 +13539,11 @@ function anNineBox(data, opt){
     const perf = col + 1, pot = 3 - row, key = perf + '-' + pot;
     const x = padL + col * cell, y = row * cell;
     const names = by[key] || [];
-    s += '<rect x="'+x+'" y="'+y+'" width="'+(cell-3)+'" height="'+(cell-3)+'" rx="4" fill="'+(cellFill[key]||'rgba(120,120,140,.08)')+'" stroke="'+AN_COLORS.border+'"/>';
-    s += anTxt(x+8, y+18, labels[key], {size:10, weight:700, fill:AN_COLORS.text});
-    s += anTxt(x+cell-12, y+20, String(names.length), {size:15, weight:700, anchor:'end', fill:AN_COLORS.primary});
-    names.slice(0, 6).forEach((nm, k) => s += anTxt(x+8, y+38 + k*14, anTrunc(nm, 18), {size:9, fill:AN_COLORS.muted}));
-    if (names.length > 6) s += anTxt(x+8, y+38 + 6*14, '+'+(names.length-6)+' more', {size:9, fill:AN_COLORS.muted});
+    s += '<rect x="'+x+'" y="'+y+'" width="'+(cell-3)+'" height="'+(cell-3)+'" rx="4" fill="'+(cellFill[key]||'rgba(120,120,140,.08)')+'" stroke="'+AN_COLORS.border+'"'+anIds(byId[key], labels[key])+'/>';
+    s += anTxt(x+8, y+18, labels[key], {size:10, weight:700, fill:AN_COLORS.text, pe:false});
+    s += anTxt(x+cell-12, y+20, String(names.length), {size:15, weight:700, anchor:'end', fill:AN_COLORS.primary, pe:false});
+    names.slice(0, 6).forEach((nm, k) => s += anTxt(x+8, y+38 + k*14, anTrunc(nm, 18), {size:9, fill:AN_COLORS.muted, pe:false}));
+    if (names.length > 6) s += anTxt(x+8, y+38 + 6*14, '+'+(names.length-6)+' more', {size:9, fill:AN_COLORS.muted, pe:false});
   }
   s += anTxt(W/2, H-16, 'PERFORMANCE →', {size:10, fill:AN_COLORS.muted, anchor:'middle'});
   s += '<text x="16" y="'+(H-padB)/2+'" fill="'+AN_COLORS.muted+'" font-size="10" text-anchor="middle" transform="rotate(-90 16 '+(H-padB)/2+')">POTENTIAL →</text>';
@@ -13546,8 +13573,9 @@ function anHeatmap(matrix, rowLabels, colLabels, opt){
     colLabels.forEach((c, ci) => {
       const v = matrix[ri][ci] || 0, x = padL + ci * cell;
       const alpha = max > 0 && v ? 0.10 + 0.80 * (v / max) : 0.04;
+      const cellIds = opt.ids && opt.ids[ri] ? opt.ids[ri][ci] : null;
       s += '<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cell-2)+'" height="'+(cell-2)+'" rx="2" '
-         + 'fill="rgba(200,241,53,'+alpha+')" stroke="'+AN_COLORS.border+'"'+anTip(r+' × '+c+'\n'+v+' '+unit)+'></rect>';
+         + 'fill="rgba(200,241,53,'+alpha+')" stroke="'+AN_COLORS.border+'"'+anTip(r+' × '+c+'\n'+v+' '+unit)+anIds(cellIds, r+' × '+c)+'></rect>';
       if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? '#0a0c10' : AN_COLORS.text});
     });
   });
@@ -13606,6 +13634,125 @@ function anBindTips(container){
     tip.style.left = x + 'px'; tip.style.top = y + 'px';
   });
   container.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+}
+
+/* ── KPI scorecard + data-completeness chips (reflects current filters) ── */
+function anFlightRiskCount(data){ return data.filter(d => (d.nineBoxPerf === 3 || d.nineBoxPot === 3 || ['E','E+'].includes(d.latestRating)) && d.comparatio != null && d.comparatio < 95).length; }
+function anSpofSet(data){ const s = new Set(); data.forEach(d => d.spofSkills.forEach(x => s.add(x))); return s; }
+
+function anScorecard(data){
+  if (!data.length) return '';
+  const n = data.length;
+  const crv = data.filter(d => d.comparatio != null).map(d => d.comparatio);
+  const avgCR = crv.length ? Math.round(crv.reduce((a, b) => a + b, 0) / crv.length) : null;
+  const avgU = Math.round(data.reduce((a, d) => a + d.utilizationPct, 0) / n);
+  const fr = anFlightRiskCount(data);
+  const fF = data.filter(d => d.gender === 'F').length;
+  const pctF = Math.round(fF / n * 100);
+  const spof = anSpofSet(data).size;
+  const uColor = avgU > 100 ? AN_COLORS.danger : (avgU < 60 ? AN_COLORS.warn : AN_COLORS.secondary);
+  const tile = (label, val, sub, color) => '<div style="flex:1;min-width:104px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;background:var(--bg)">'
+    + '<div style="font-size:21px;font-weight:700;line-height:1.1;color:'+(color || 'var(--text)')+'">'+val+'</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+label+'</div>'
+    + (sub ? '<div style="font-size:9px;color:var(--muted);margin-top:1px">'+sub+'</div>' : '') + '</div>';
+  let h = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">';
+  h += tile('Headcount', n, '');
+  h += tile('Avg compa-ratio', avgCR != null ? avgCR + '%' : '—', avgCR != null ? '' : 'no data', avgCR != null && avgCR < 95 ? AN_COLORS.warn : null);
+  h += tile('Flight risk', fr, fr ? 'below-market stars' : 'none', fr ? AN_COLORS.danger : null);
+  h += tile('Avg utilisation', avgU + '%', avgU > 100 ? 'over-allocated' : (avgU < 60 ? 'under-used' : ''), uColor);
+  h += tile('Women', pctF + '%', fF + ' of ' + n, null);
+  h += tile('SPOF skills', spof, spof ? 'single-holder' : 'none', spof ? AN_COLORS.warn : null);
+  h += '</div>';
+  // completeness chips
+  const chip = (label, filled) => '<span style="font-size:10px;color:var(--muted)">'+label+' <b style="color:'+(filled === n ? AN_COLORS.secondary : (filled >= n * 0.6 ? 'var(--text)' : AN_COLORS.warn))+'">'+filled+'/'+n+'</b></span>';
+  h += '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">DATA COMPLETENESS</span>'
+    + chip('compa-ratio', crv.length) + chip('reviews', data.filter(d => d.latestRating).length)
+    + chip('nine-box', data.filter(d => d.nineBoxKey).length) + chip('DISC', data.filter(d => d.discProfile).length)
+    + '</div>';
+  return h;
+}
+
+/* ── Auto-insights: scan the (filtered) dataset, surface notable findings ── */
+function anInsights(data){
+  const out = [];
+  const meanCR = g => { const v = data.filter(d => d.gender === g && d.comparatio != null).map(d => d.comparatio); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const m = meanCR('M'), f = meanCR('F');
+  if (m != null && f != null){ const gap = Math.round((m - f) * 10) / 10; if (Math.abs(gap) >= 3) out.push({ sev:'danger', icon:'⚖', text:'Pay gap: women average ' + Math.abs(gap) + ' pts ' + (gap > 0 ? 'below' : 'above') + ' men (compa-ratio)', story:'pay_equity_full' }); }
+  const fr = anFlightRiskCount(data);
+  if (fr) out.push({ sev:'danger', icon:'🔥', text: fr + ' high performer' + (fr > 1 ? 's' : '') + ' paid below market (flight risk)', story:'retention_risk' });
+  const spof = anSpofSet(data).size;
+  if (spof) out.push({ sev:'warn', icon:'🧩', text: spof + ' critical skill' + (spof > 1 ? 's' : '') + ' held by one person (SPOF)', story:'skill_coverage' });
+  const over = data.filter(d => d.utilizationPct > 105).length;
+  if (over) out.push({ sev:'warn', icon:'🩺', text: over + ' engineer' + (over > 1 ? 's' : '') + ' over-allocated (>105%)', story:'capacity_health' });
+  const bench = data.filter(d => d.utilizationPct < 10).length;
+  if (bench) out.push({ sev:'info', icon:'🪑', text: bench + ' on the bench (<10% utilisation)', story:'capacity_health' });
+  const hipo = data.filter(d => d.nineBoxPot === 3 || d.potential === 'High').length;
+  if (hipo) out.push({ sev:'info', icon:'🌱', text: hipo + ' high-potential talent identified', story:'succession' });
+  const rank = { danger:0, warn:1, info:2 };
+  return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
+}
+
+function anInsightsBar(data){
+  const ins = anInsights(data);
+  if (!ins.length) return '';
+  const col = { danger:AN_COLORS.danger, warn:AN_COLORS.warn, info:AN_COLORS.secondary };
+  let h = '<div style="margin-bottom:14px">'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px">⚡ INSIGHTS</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+  ins.forEach(i => {
+    h += '<button onclick="anPickStory(\''+i.story+'\')" title="Open the related story view" '
+      + 'style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid '+col[i.sev]+';border-left:3px solid '+col[i.sev]
+      + ';border-radius:6px;padding:6px 11px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text)">'
+      + '<span>'+i.icon+'</span><span>'+escH(i.text)+'</span><span style="color:var(--muted);font-size:9px">→</span></button>';
+  });
+  return h + '</div></div>';
+}
+
+/* ── Drill-down: click a chart shape → list the people behind it ── */
+function anBindDrill(container){
+  if (!container) return;
+  container.addEventListener('click', e => {
+    let el = e.target;
+    while (el && el !== container && !(el.getAttribute && el.getAttribute('data-ids'))) el = el.parentNode;
+    if (!el || el === container) return;
+    const ids = el.getAttribute('data-ids').split(',').map(Number).filter(n => !isNaN(n));
+    if (!ids.length) return;
+    if (ids.length === 1){ anCloseDrill(); openIdCardModal(ids[0]); return; }
+    anShowDrill(ids, el.getAttribute('data-dtitle') || 'Selection');
+  });
+}
+function anDrillEsc(e){ if (e.key === 'Escape') anCloseDrill(); }
+function anCloseDrill(){ const ov = G('an-drill'); if (ov) ov.remove(); document.removeEventListener('keydown', anDrillEsc); }
+function anShowDrill(ids, title){
+  const set = new Set(ids);
+  const rows = buildAnalyticsDataset().filter(d => set.has(d.id)).sort((a, b) => (b.comparatio || 0) - (a.comparatio || 0));
+  anCloseDrill();
+  const ov = document.createElement('div');
+  ov.id = 'an-drill';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center';
+  ov.addEventListener('click', e => { if (e.target === ov) anCloseDrill(); });
+  let h = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;max-width:560px;width:92%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)">'
+    + '<div style="font-weight:700;color:var(--text);font-size:13px">'+escH(title)+' · '+rows.length+' '+(rows.length === 1 ? 'person' : 'people')+'</div>'
+    + '<button onclick="anCloseDrill()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px;padding:3px 9px">✕</button></div>'
+    + '<div style="padding:8px 10px">';
+  rows.forEach(d => {
+    h += '<div onclick="anCloseDrill();openIdCardModal('+d.id+')" '
+      + 'style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border-left:3px solid '+(d.groupColor || '#888')+'" '
+      + 'onmouseenter="this.style.background=\'rgba(200,241,53,.07)\'" onmouseleave="this.style.background=\'\'">'
+      + '<div style="flex:1"><div style="font-weight:600;color:var(--text);font-size:12px">'+escH(d.name)+'</div>'
+      + '<div style="font-size:10px;color:var(--muted)">'+escH(d.seniority || d.role || '—')+' · '+escH(d.group)+' · '+escH(d.location)+'</div></div>'
+      + '<div style="text-align:right;font-size:10px;color:var(--muted);min-width:64px">'
+      + (d.comparatio != null ? '<div>CR '+d.comparatio+'%</div>' : '')
+      + '<div>util '+d.utilizationPct+'%</div>'
+      + (d.latestRating ? '<div>rating '+escH(d.latestRating)+'</div>' : '')
+      + '</div></div>';
+  });
+  h += '</div><div style="padding:8px 16px 14px;font-size:10px;color:var(--muted)">Click a row to open their ID card.</div></div>';
+  ov.innerHTML = h;
+  document.body.appendChild(ov);
+  document.addEventListener('keydown', anDrillEsc);
 }
 
 /* ── Summary stats (HTML block) ── */
@@ -13686,14 +13833,20 @@ const ANALYTICS_TEMPLATES = [
   /* ── Single-dimension ── */
   { id:'histogram', name:'Distribution', icon:'📊', dims:1, dimTypes:[['numeric']],
     desc:'Histogram with mean & median',
-    render(data, a){ const vals = data.map(d => d[a.id]); return { chart: anHistogram(vals, { xLabel: a.label }), stats: vals }; } },
+    render(data, a){
+      const vals = data.map(d => d[a.id]);
+      const rows = data.map(d => ({ v: d[a.id], id: d.id }));
+      const band = a.id === 'comparatio' ? { lo:95, hi:105, label:'market 95–105' }
+        : a.id === 'utilizationPct' ? { lo:70, hi:90, label:'healthy 70–90' } : null;
+      return { chart: anHistogram(rows, { xLabel: a.label, band }), stats: vals };
+    } },
 
   { id:'bar_count', name:'Count by Category', icon:'▤', dims:1, dimTypes:[['categorical','ordinal','boolean']],
     nameFn:(a) => 'Headcount by ' + a.label,
     desc:'Horizontal bars sorted by count',
     render(data, a){
       const g = anGroupBy(data, a.id);
-      let items = Object.keys(g).map(k => ({ raw: k, label: anFmtVal(a.id, k), value: g[k].length, color: AN_COLORS.primary }));
+      let items = Object.keys(g).map(k => ({ raw: k, label: anFmtVal(a.id, k), value: g[k].length, color: AN_COLORS.primary, ids: g[k].map(d => d.id) }));
       if (a.order){ const numeric = typeof a.order[0] === 'number'; const idx = v => a.order.indexOf(numeric ? +v : v);
         items.sort((x, y) => idx(x.raw) - idx(y.raw)); }
       else items.sort((x, y) => y.value - x.value);
@@ -13705,7 +13858,7 @@ const ANALYTICS_TEMPLATES = [
     desc:'Headcount per grade, junior → senior',
     render(data, a){
       const g = anGroupBy(data, 'seniority');
-      const items = SENIORITY_ORDER.filter(s => g[s]).map(s => ({ label: s, value: g[s].length, color: AN_COLORS.secondary }));
+      const items = SENIORITY_ORDER.filter(s => g[s]).map(s => ({ label: s, value: g[s].length, color: AN_COLORS.secondary, ids: g[s].map(d => d.id) }));
       return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Seniority / Grade' }), stats: null };
     } },
 
@@ -13714,7 +13867,7 @@ const ANALYTICS_TEMPLATES = [
     desc:'Colour-coded latest-rating mix',
     render(data){
       const g = anGroupBy(data.filter(d => d.latestRating), 'latestRating');
-      const items = AN_RATING_ORDER.filter(r => g[r]).map(r => ({ label: r, value: g[r].length, color: AN_RATING_COLOR[r] }));
+      const items = AN_RATING_ORDER.filter(r => g[r]).map(r => ({ label: r, value: g[r].length, color: AN_RATING_COLOR[r], ids: g[r].map(d => d.id) }));
       return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Latest Perf Rating' }), stats: null };
     } },
 
@@ -13730,9 +13883,10 @@ const ANALYTICS_TEMPLATES = [
       const [ord, num] = anWhich(a, b, ['ordinal','categorical']);
       const g = anGroupBy(data, ord.id);
       const keys = ord.order ? ord.order.filter(k => g[k]) : Object.keys(g);
-      const groups = keys.map(k => ({ label: anFmtVal(ord.id, k), values: g[k].map(d => d[num.id]) }));
+      const groups = keys.map(k => ({ label: anFmtVal(ord.id, k), values: g[k].map(d => d[num.id]), ids: g[k].map(d => d.id) }));
       const ref = ord.id === 'comparatio' || num.id === 'comparatio' ? 100 : null;
-      return { chart: anBoxPlot(groups, { xLabel:num.label, ref, refLabel: ref ? 'midpoint 100%' : '' }), stats: data.map(d => d[num.id]), kind:'box', ref: ref != null };
+      const band = num.id === 'comparatio' ? { lo:95, hi:105 } : num.id === 'utilizationPct' ? { lo:70, hi:90 } : null;
+      return { chart: anBoxPlot(groups, { xLabel:num.label, ref, refLabel: ref ? 'midpoint 100%' : '', band }), stats: data.map(d => d[num.id]), kind:'box', ref: ref != null };
     } },
 
   { id:'perf_by_grade', name:'Performance by Grade', icon:'▥', dims:2, dimTypes:[['ordinal'],['ordinal']],
@@ -13749,7 +13903,7 @@ const ANALYTICS_TEMPLATES = [
       const keys = gradeDim.order ? gradeDim.order.filter(k => g[k]) : Object.keys(g);
       const rows = keys.map(k => ({
         label: anFmtVal(gradeDim.id, k),
-        segs: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r], value: g[k].filter(d => d.latestRating===r).length })),
+        segs: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r], value: g[k].filter(d => d.latestRating===r).length, ids: g[k].filter(d => d.latestRating===r).map(d => d.id) })),
       }));
       return { chart: anStackedBar(rows, { valLabel:'Headcount', catLabel:gradeDim.label,
         legend: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r] })) }), stats: null };
@@ -13767,7 +13921,7 @@ const ANALYTICS_TEMPLATES = [
         x: d[num.id],
         y: ord.id==='latestRating' ? AN_RATING_NUM[d[ord.id]] : +d[ord.id],
         label: d.name + ' · '+d[num.id]+' / '+d[ord.id],
-        color: d.groupColor,
+        color: d.groupColor, id: d.id,
       }));
       return { chart: anScatter(pts, { xLabel:num.label, yLabel:ord.label, trend:true }), stats: data.map(d => d[num.id]) };
     } },
@@ -13776,7 +13930,7 @@ const ANALYTICS_TEMPLATES = [
     desc:'Numeric × numeric, group-coloured',
     render(data, a, b){
       const pts = data.filter(d => d[a.id] != null && d[b.id] != null).map(d => ({
-        x:d[a.id], y:d[b.id], label:d.name, color:d.groupColor }));
+        x:d[a.id], y:d[b.id], label:d.name, color:d.groupColor, id:d.id }));
       return { chart: anScatter(pts, { xLabel:a.label, yLabel:b.label, trend:true, corr:true }), stats: null };
     } },
 
@@ -13787,7 +13941,7 @@ const ANALYTICS_TEMPLATES = [
     render(data, a, b){
       const ten = a.id === 'tenureYears' ? a : b, pay = ten === a ? b : a;
       const pts = data.filter(d => d[ten.id] != null && d[pay.id] != null)
-        .map(d => ({ x:d[ten.id], y:d[pay.id], label:d.name, color:d.groupColor }));
+        .map(d => ({ x:d[ten.id], y:d[pay.id], label:d.name, color:d.groupColor, id:d.id }));
       return { chart: anScatter(pts, { xLabel:ten.label, yLabel:pay.label, trend:true, corr:true }), stats: data.map(d => d[pay.id]) };
     } },
 
@@ -13801,7 +13955,7 @@ const ANALYTICS_TEMPLATES = [
         const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
         let color = AN_COLORS.primary;
         if (num.id === 'utilizationPct') color = avg > 100 ? AN_COLORS.danger : (avg < 60 ? AN_COLORS.warn : AN_COLORS.secondary);
-        return { label: anFmtVal(cat.id, k), value: Math.round(avg * 10) / 10, color };
+        return { label: anFmtVal(cat.id, k), value: Math.round(avg * 10) / 10, color, ids: g[k].map(d => d.id) };
       }).sort((x, y) => y.value - x.value);
       return { chart: anBarChart(items, { valLabel: 'Avg ' + num.label, catLabel: cat.label }), stats: data.map(d => d[num.id]) };
     } },
@@ -13810,10 +13964,11 @@ const ANALYTICS_TEMPLATES = [
     desc:'Count matrix, density-coloured',
     render(data, a, b){
       const rowVals = anCatValues(data, a), colVals = anCatValues(data, b);
-      const matrix = rowVals.map(rv => colVals.map(cv =>
-        data.filter(d => String(anCell(d, a)) === String(rv) && String(anCell(d, b)) === String(cv)).length));
+      const cellOf = (rv, cv) => data.filter(d => String(anCell(d, a)) === String(rv) && String(anCell(d, b)) === String(cv));
+      const matrix = rowVals.map(rv => colVals.map(cv => cellOf(rv, cv).length));
+      const ids = rowVals.map(rv => colVals.map(cv => cellOf(rv, cv).map(d => d.id)));
       const rowDisp = rowVals.map(v => anFmtVal(a.id, v)), colDisp = colVals.map(v => anFmtVal(b.id, v));
-      return { chart: anHeatmap(matrix, rowDisp, colDisp, { rowLabel:a.label, colLabel:b.label, unit:'people' }), stats: null };
+      return { chart: anHeatmap(matrix, rowDisp, colDisp, { rowLabel:a.label, colLabel:b.label, unit:'people', ids }), stats: null };
     } },
 
   /* ── Story views (always available; no dimensions) ── */
@@ -13879,7 +14034,7 @@ function anStoryCapacity(data){
     {key:'Healthy (70–105%)',test:u => u >= 70 && u <= 105,color:AN_COLORS.secondary},
     {key:'Over (>105%)',     test:u => u > 105,           color:AN_COLORS.danger},
   ];
-  const items = buckets.map(b => ({ label:b.key, value:data.filter(d => b.test(d.utilizationPct)).length, color:b.color }));
+  const items = buckets.map(b => ({ label:b.key, value:data.filter(d => b.test(d.utilizationPct)).length, color:b.color, ids:data.filter(d => b.test(d.utilizationPct)).map(d => d.id) }));
   const over  = data.filter(d => d.utilizationPct > 105).sort((a, b) => b.utilizationPct - a.utilizationPct);
   const bench = data.filter(d => d.utilizationPct < 10);
   return anBarChart(items, { valLabel:'Headcount', catLabel:'Utilisation band' })
@@ -13891,13 +14046,16 @@ function anStorySkillCoverage(data){
   const teams = [...new Set(data.map(d => d.group))].sort();
   const domains = skillDomains.slice();
   data.forEach(d => d.skills.forEach(s => { const dom = s.domain || 'General'; if (domains.indexOf(dom) < 0) domains.push(dom); }));
-  const rows = [], rowLabels = [];
+  const rows = [], rowLabels = [], idRows = [];
   domains.forEach(dom => {
     const r = teams.map(tm => data.filter(d => d.group === tm)
       .reduce((s, d) => s + d.skills.filter(sk => (sk.domain || 'General') === dom).length, 0));
-    if (r.some(v => v > 0)) { rows.push(r); rowLabels.push(dom); }
+    if (r.some(v => v > 0)) {
+      rows.push(r); rowLabels.push(dom);
+      idRows.push(teams.map(tm => data.filter(d => d.group === tm && d.skills.some(sk => (sk.domain || 'General') === dom)).map(d => d.id)));
+    }
   });
-  const heat = rowLabels.length ? anHeatmap(rows, rowLabels, teams, { rowLabel:'Skill domain', colLabel:'Team', unit:'skills' }) : anEmpty('No skills recorded yet');
+  const heat = rowLabels.length ? anHeatmap(rows, rowLabels, teams, { rowLabel:'Skill domain', colLabel:'Team', unit:'skills', ids:idRows }) : anEmpty('No skills recorded yet');
   const spof = [];
   data.forEach(d => d.spofSkills.forEach(sk => spof.push({ name:d.name, _sk:sk })));
   let spofH = '';
@@ -13918,7 +14076,7 @@ function anStoryDiscTeam(data){
   const teams = [...new Set(withDisc.map(d => d.group))].sort();
   const rows = teams.map(tm => {
     const members = withDisc.filter(d => d.group === tm);
-    return { label:tm, segs:['D','I','S','C'].map(k => ({ key:k, color:DCOL[k], value:members.filter(d => d.discProfile === k).length })) };
+    return { label:tm, segs:['D','I','S','C'].map(k => ({ key:k, color:DCOL[k], value:members.filter(d => d.discProfile === k).length, ids:members.filter(d => d.discProfile === k).map(d => d.id) })) };
   });
   const discNames = { D:'D — Dominance', I:'I — Influence', S:'S — Steadiness', C:'C — Conscientiousness' };
   const legend = '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:10px">'
@@ -13951,8 +14109,8 @@ function anStoryPayEquity(data){
   const g = anGroupBy(data.filter(d => d.comparatio != null), 'seniority');
   const keys = SENIORITY_ORDER.filter(k => g[k]);
   if (!keys.length) return anEmpty('No compa-ratio data by grade');
-  const groups = keys.map(k => ({ label: k, values: g[k].map(d => d.comparatio) }));
-  return anBoxPlot(groups, { ref: 100, refLabel: 'midpoint 100%', xLabel: 'Compa-ratio (%)', catLabel: 'Seniority / Grade' });
+  const groups = keys.map(k => ({ label: k, values: g[k].map(d => d.comparatio), ids: g[k].map(d => d.id) }));
+  return anBoxPlot(groups, { ref: 100, refLabel: 'midpoint 100%', xLabel: 'Compa-ratio (%)', catLabel: 'Seniority / Grade', band: { lo:95, hi:105 } });
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -13978,9 +14136,19 @@ function renderAnalyticsTab(){
 
   const selStyle = 'background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;min-width:170px';
 
+  // View-toggle button (collapse KPI / Insights panels to free up chart space)
+  const vtog = (key, label) => { const on = _anState.show[key];
+    return '<button onclick="anToggleView(\''+key+'\')" title="Show/hide the '+label+' panel" '
+      + 'style="background:'+(on?'rgba(200,241,53,.10)':'var(--bg)')+';border:1px solid '+(on?'var(--accent)':'var(--border)')
+      + ';color:'+(on?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">'
+      + (on?'▾ ':'▸ ')+label+'</button>'; };
+
   let h = '<div style="padding:14px 16px">';
-  // Story pills
-  h += '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px">STORY VIEWS</div>';
+  // Story pills + view toggles
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">STORY VIEWS</span>'
+    + '<span style="display:flex;gap:6px;align-items:center"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">PANELS</span>'
+    + vtog('kpi', 'KPIs') + vtog('insights', 'Insights') + '</span></div>';
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
     + stories.map(s => pill(s.id, s.name, s.icon, _anState.story === s.id)).join('') + '</div>';
   // Compare row
@@ -14029,6 +14197,9 @@ function anRenderMain(){
   const dimA = anDim(_anState.dimA), dimB = anDim(_anState.dimB);
 
   let h = '';
+  // Headline scorecard + auto-insights (reflect current filters; collapsible for chart space)
+  if (_anState.show.kpi) h += anScorecard(dataAll);
+  if (_anState.show.insights) h += anInsightsBar(dataAll);
   // Template card row (compare mode only)
   if (!_anState.story) {
     const avail = getAvailableTemplates(dimA, dimB);
@@ -14093,6 +14264,7 @@ function anRenderMain(){
 
   main.innerHTML = h;
   anBindTips(G('an-chart'));
+  anBindDrill(G('an-chart'));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -14113,6 +14285,7 @@ function anPickDim(){
   if (hadStory) renderAnalyticsTab(); else anRenderMain();
 }
 function anPickTemplate(id){ _anState.template = id; anRenderMain(); }
+function anToggleView(key){ _anState.show[key] = !_anState.show[key]; anSaveView(); renderAnalyticsTab(); }
 function anFilterGroup(s){ _anState.filters.group = s; anRenderMain(); }
 function anFilterLoc(s){ _anState.filters.location = s; anRenderMain(); }
 function anFilterSen(s){ _anState.filters.seniority = s; anRenderMain(); }
@@ -14495,6 +14668,7 @@ function showResTab(tab){
 // sets default FROM/TO date inputs if empty
 function initResDefaults(){
   const si=G('res-start'), ei=G('res-end');
+  if(!si||!ei)return;   // inputs not in DOM yet (script runs mid-body); caller retries on DOMContentLoaded
   if(!si.value){
     const now=new Date();
     si.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -14684,6 +14858,27 @@ new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(render,50);}).observe(G('
    ══════════════════════════════════════════════════════════════════ */
 /* ═══════════════════ INIT ═══════════════════ */
 loadState();
+// Global From/To period: make it persistent & consistent across every Resources tab.
+// IMPORTANT: the bundled script runs mid-body, so the #res-start/#res-end inputs (and
+// the other overlays) are NOT in the DOM yet at this point — that's the long-standing reason
+// the saved range never restored (loadState's el lookups were null, and opening Resources
+// only filled defaults). So we run this AFTER the DOM is parsed: restore directly from
+// storage (storage wins), default only if still empty, then persist so nothing can clobber it.
+function ensureResPeriod(){
+  try{
+    var saved = JSON.parse(localStorage.getItem(SK) || 'null');   // SK = 'eim_v4'
+    if(saved){
+      if(saved.resStart && G('res-start')) G('res-start').value = saved.resStart;
+      if(saved.resEnd   && G('res-end'))   G('res-end').value   = saved.resEnd;
+    }
+  }catch(e){}
+  var before = (G('res-start')?G('res-start').value:'')+'|'+(G('res-end')?G('res-end').value:'');
+  initResDefaults();                 // fills FROM/TO with defaults only if still empty
+  var after = (G('res-start')?G('res-start').value:'')+'|'+(G('res-end')?G('res-end').value:'');
+  if(before!==after) saveNow();      // persist the freshly-defaulted range immediately
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ensureResPeriod);
+else ensureResPeriod();
 // Boot photo IDB (async, non-blocking)
 idbBoot().then(function(){
   if(G('org-overlay')&&G('org-overlay').style.display!=='none')renderOrgChart();
@@ -14739,9 +14934,9 @@ updateSnapBadge();
     <input id="res-title-input" value="Resource Plan" title="Click to rename">
     <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
       <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">FROM</label>
-      <input type="month" id="res-start" onchange="saveState();showResTab(resActiveTab)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
+      <input type="month" id="res-start" onchange="saveNow();showResTab(resActiveTab)" title="Global period start — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
       <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">TO</label>
-      <input type="month" id="res-end" onchange="saveState();showResTab(resActiveTab)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
+      <input type="month" id="res-end" onchange="saveNow();showResTab(resActiveTab)" title="Global period end — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
     </div>
     <div style="flex:1"></div>
     <button onclick="showResTab('roster')">Roster</button>
