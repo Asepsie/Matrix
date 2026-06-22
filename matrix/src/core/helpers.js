@@ -37,12 +37,40 @@ export function _allocCost(v, monthlyCost){
   var n=+v; return isNaN(n)?0:n*(monthlyCost||0);
 }
 
-// Compute per-engineer utilisation map from ALL allocRows (not filtered)
+/* ══════════════════════════════════════════════════════════════════
+   MEMOISATION — cache expensive per-render computations.
+   Keyed by `_dataEpoch`; any data mutation bumps the epoch via
+   _invalidateMemo() (called from saveState/saveNow), clearing the cache.
+   Renders that don't change data (tab switches, filter toggles, hovers)
+   reuse cached results → no recompute. See globals for _dataEpoch.
+   ══════════════════════════════════════════════════════════════════ */
+export let _dataEpoch=0;
+export let _memoStore={};
+export function _invalidateMemo(){ _dataEpoch++; _memoStore={}; }
+export function _memo(key, fn){
+  var k=_dataEpoch+'|'+key;
+  if(Object.prototype.hasOwnProperty.call(_memoStore,k)) return _memoStore[k];
+  var v=fn();
+  _memoStore[k]=v;
+  return v;
+}
+// Stable cache key for a month range (the same FROM/TO produces the same key).
+export function _monthsKey(months){ return (months&&months.length)?(months[0]+'_'+months[months.length-1]+'_'+months.length):'none'; }
+// Indexed lookups built once per epoch (kills O(n²) .find()/.filter() in loops).
+export function _engByIdMap(){ return _memo('_engById', function(){ var m=new Map(); engineers.forEach(function(e){m.set(e.id,e);}); return m; }); }
+export function _projByIdMap(){ return _memo('_projById', function(){ var m=new Map(); projects.forEach(function(p){m.set(p.id,p);}); return m; }); }
+export function _rowsByEngMap(){ return _memo('_rowsByEng', function(){ var m=new Map(); allocRows.forEach(function(r){ var a=m.get(r.engId); if(!a){a=[];m.set(r.engId,a);} a.push(r); }); return m; }); }
+
+// Compute per-engineer utilisation map from ALL allocRows (not filtered). Memoised by month range.
 export function _buildEngUtil(months){
+  return _memo('engUtil:'+_monthsKey(months), function(){ return _computeEngUtil(months); });
+}
+function _computeEngUtil(months){
   var cur=_dashCur();
   var util={};
+  var rowsByEng=_rowsByEngMap();
   engineers.filter(function(e){return !e.vacant&&(!e.planningOnly||e.includeInCost);}).forEach(function(eng){
-    var rows=allocRows.filter(function(r){return r.engId===eng.id;});
+    var rows=rowsByEng.get(eng.id)||[];
     var eg=engGroups.find(function(g){return g.id===eng.groupId;});
     var monthAllocs={};
     var monthStatus={};
@@ -92,4 +120,37 @@ export function engInitials(name){
 export function engGroupColor(eng){
   const g=engGroups.find(g=>g.id===eng.groupId);
   return g?g.color:'#6b6b78';
+}
+
+/* ── Nine-box history (per-year snapshots) ──────────────────────────
+   _nineBoxPlacements is always the live view of _nineBoxHistory[_nbYear]
+   (same object reference) so all existing readers keep working unchanged.
+   nbEnsureHistory() is idempotent — call it from every load path. It also
+   migrates a legacy flat snapshot (no history) into a default year.
+─────────────────────────────────────────────────────────────────── */
+export function nbYears(){ return Object.keys(_nineBoxHistory||{}).sort(); }   // ascending
+export function nbEnsureHistory(){
+  if(!_nineBoxHistory||typeof _nineBoxHistory!=='object') _nineBoxHistory={};
+  if(!Object.keys(_nineBoxHistory).length){
+    // Migrate: drop any existing flat placements into a default year.
+    var seed=(_nineBoxPlacements&&typeof _nineBoxPlacements==='object'&&Object.keys(_nineBoxPlacements).length)?_nineBoxPlacements:{};
+    var y=_nbYear||String(new Date().getFullYear());
+    _nineBoxHistory[y]=seed; _nbYear=y;
+  }
+  if(!_nbYear||!_nineBoxHistory[_nbYear]){
+    var ys=nbYears(); _nbYear=ys[ys.length-1]||String(new Date().getFullYear());
+    if(!_nineBoxHistory[_nbYear]) _nineBoxHistory[_nbYear]={};
+  }
+  if(_nbCompareYear && !_nineBoxHistory[_nbCompareYear]) _nbCompareYear='';
+  _nineBoxPlacements=_nineBoxHistory[_nbYear];   // re-point the live view
+}
+// Composite score (perf+pot, 2..6) used to judge movement direction (toward top-right = better).
+export function nbScore(key){ if(!key)return null; var p=String(key).split('-').map(Number); return (p[0]||0)+(p[1]||0); }
+// Movement of an engineer between a previous and current placement.
+export function nbMove(curKey,prevKey){
+  if(!prevKey&&curKey) return 'new';
+  if(!curKey&&prevKey) return 'gone';
+  if(!curKey&&!prevKey) return 'none';
+  var c=nbScore(curKey), p=nbScore(prevKey);
+  return c>p?'up':(c<p?'down':'same');
 }

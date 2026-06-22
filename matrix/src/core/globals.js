@@ -101,8 +101,12 @@ export let resActiveTab='plan';
 export let devSort='priority';
 
 /* ── Nine-box / DISC placements ── */
-export let _nineBoxPlacements={};
+export let _nineBoxPlacements={};   // live view = _nineBoxHistory[_nbYear] (same object reference)
 export let _discPlacements={};
+/* ── Nine-box history (per-year talent snapshots) ── */
+export let _nineBoxHistory={};      // { [yearLabel]: { [engId]: 'perf-pot' } }
+export let _nbYear='';              // active year label (the snapshot shown/edited)
+export let _nbCompareYear='';       // optional comparison year for movement/trajectory
 
 /* ── Matrix canvas state ── */
 export let selId=null,ctxProjId=null,tabProjId=null,activeTab='risk';

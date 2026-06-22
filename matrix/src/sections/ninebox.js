@@ -66,7 +66,17 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
     if(forExport)return '';
     return '<div style="min-height:28px;color:var(--muted);font-size:10px;font-family:IBM Plex Mono,monospace;opacity:.5">Drop here</div>';
   }
+  var prevMap=(!forExport&&_nbCompareYear&&_nineBoxHistory[_nbCompareYear])?_nineBoxHistory[_nbCompareYear]:null;
   var chips=placed.map(function(e){
+    var moveBadge='';
+    if(prevMap){
+      var mv=nbMove(key,prevMap[e.id]);
+      if(mv!=='same'&&mv!=='none'){
+        var mc=({up:'#c8f135',down:'#f14335','new':'#5be5c8'})[mv]||'var(--muted)';
+        var ms=({up:'▲',down:'▼','new':'✦'})[mv]||'';
+        moveBadge='<span title="'+escH(mv+(prevMap[e.id]?(' — was '+prevMap[e.id]):'')+' vs '+_nbCompareYear)+'" style="color:'+mc+';font-size:9px;font-weight:700;margin-left:3px;flex-shrink:0">'+ms+'</span>';
+      }
+    }
     var photo=photoCache&&photoCache.get&&photoCache.get(e.id);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
     var avSz=forExport?26:28;
@@ -86,7 +96,7 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
       +' title="'+escH(e.name)+' — drag to move"'
       +' style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px;cursor:grab;position:relative;transition:background .12s"'
       +' onmouseenter="this.style.background=\'rgba(200,241,53,.1)\'" onmouseleave="this.style.background=\'var(--bg)\'">'
-      +av+nm
+      +av+nm+moveBadge
       +'<button onclick="event.stopPropagation();nbRemove('+e.id+')"'
       +' style="position:absolute;right:1px;top:1px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:9px;line-height:1;padding:1px"'
       +' onmouseenter="this.style.color=\'var(--accent)\'" onmouseleave="this.style.color=\'var(--muted)\'">×</button>'
@@ -109,11 +119,33 @@ export function renderNineBox(){
   var yTickLabels=['HIGH','MED','LOW'];
   var orderedCells=_nbOrderedCells(CELLS,_nbSwapAxes);
 
+  // Movement summary vs the comparison year (trajectory)
+  var moveSummary='';
+  if(_nbCompareYear&&_nineBoxHistory[_nbCompareYear]){
+    var prevY=_nineBoxHistory[_nbCompareYear];var up=0,dn=0,nw=0;
+    talentEngs.forEach(function(e){var k=_nineBoxPlacements[e.id];if(!k)return;var mv=nbMove(k,prevY[e.id]);if(mv==='up')up++;else if(mv==='down')dn++;else if(mv==='new')nw++;});
+    moveSummary=' · <span style="font-family:IBM Plex Mono,monospace;font-size:9px">since '+escH(_nbCompareYear)+': <span style="color:#c8f135">▲'+up+'</span> <span style="color:#f14335">▼'+dn+'</span> <span style="color:#5be5c8">✦'+nw+'</span></span>';
+  }
+  var yearsList=nbYears();
+
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">NINE-BOX TALENT MATRIX</h3>'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_nineBoxPlacements).length+' placed · '+unplaced.length+' unplaced</span>'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_nineBoxPlacements).length+' placed · '+unplaced.length+' unplaced'+moveSummary+'</span>'
     +'<div style="flex:1"></div>'
+    +'<div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">YEAR</span>'
+    +'<select onchange="nbSetYear(this.value)" title="Active snapshot year (placements you edit)" style="background:var(--bg);border:1px solid var(--border);color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px">'
+    +yearsList.map(function(y){return '<option value="'+escH(y)+'"'+(y===_nbYear?' selected':'')+'>'+escH(y)+'</option>';}).join('')
+    +'</select>'
+    +'<button class="add-row-btn" onclick="nbAddYear()" title="Add a new year (seeded from the current one)" style="font-size:11px;padding:1px 6px;line-height:1">＋</button>'
+    +'<span style="width:1px;background:var(--border);height:14px;margin:0 2px"></span>'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">vs</span>'
+    +'<select onchange="nbSetCompareYear(this.value)" title="Compare to a prior year — shows ▲/▼ movement on each chip" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 4px;border-radius:4px">'
+    +'<option value="">—</option>'
+    +yearsList.filter(function(y){return y!==_nbYear;}).map(function(y){return '<option value="'+escH(y)+'"'+(y===_nbCompareYear?' selected':'')+'>'+escH(y)+'</option>';}).join('')
+    +'</select>'
+    +'</div>'
     +'<div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">AXES</span>'
     +'<button class="add-row-btn" onclick="_nbSwapAxes=false;saveState();renderNineBox()" title="X=Performance Y=Potential"'
@@ -125,7 +157,7 @@ export function renderNineBox(){
     +'<button class="add-row-btn" onclick="exportNineBoxPDF()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PDF">&#8595; PDF</button>'
     +'<button class="add-row-btn" onclick="exportNineBoxPNG()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PNG">&#8595; PNG</button>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
-    +'<button class="add-row-btn" onclick="_nineBoxPlacements={};saveState();talentIdbSave();renderNineBox()" style="color:var(--muted);font-size:9px">&#8635; CLEAR</button>'
+    +'<button class="add-row-btn" onclick="nbClearYear()" title="Clear placements for the active year only" style="color:var(--muted);font-size:9px">&#8635; CLEAR '+escH(_nbYear)+'</button>'
     +'<button class="primary" style="font-size:10px;padding:3px 10px" onclick="saveState();flashSaved()">SAVE</button>'
     +'</div>';
 
@@ -304,8 +336,38 @@ export function nbDrop(event,cellKey){
   _nineBoxPlacements[engId]=cellKey;
   saveState();talentIdbSave();renderNineBox();
 }
-// removes an engineer from the nine-box
+// removes an engineer from the nine-box (active year)
 export function nbRemove(engId){
   delete _nineBoxPlacements[engId];
+  saveState();talentIdbSave();renderNineBox();
+}
+
+/* ── Year / history controls ── */
+// Switch the active snapshot year (re-points the live view, persists the choice).
+export function nbSetYear(y){
+  if(!_nineBoxHistory[y])_nineBoxHistory[y]={};
+  _nbYear=y; _nineBoxPlacements=_nineBoxHistory[_nbYear];
+  if(_nbCompareYear===_nbYear)_nbCompareYear='';
+  saveState();talentIdbSave();renderNineBox();
+}
+// Set (or clear, if same as active) the comparison year for movement indicators.
+export function nbSetCompareYear(y){
+  _nbCompareYear=(!y||y===_nbYear)?'':y;
+  saveState();renderNineBox();
+}
+// Add a new year, seeded from the current one so you can adjust the deltas.
+export function nbAddYear(){
+  var label=prompt('New nine-box year / label (e.g. 2024):','');
+  if(label==null)return; label=String(label).trim(); if(!label)return;
+  if(_nineBoxHistory[label]){ alert('"'+label+'" already exists — switching to it.'); nbSetYear(label); return; }
+  var seed={}, cur=_nineBoxHistory[_nbYear]||{};
+  Object.keys(cur).forEach(function(k){ seed[k]=cur[k]; });   // duplicate current year as a starting point
+  _nineBoxHistory[label]=seed; _nbYear=label; _nineBoxPlacements=_nineBoxHistory[_nbYear];
+  saveState();talentIdbSave();renderNineBox();
+}
+// Clear placements for the active year only (keeps other years).
+export function nbClearYear(){
+  if(!confirm('Clear all nine-box placements for '+_nbYear+'? (Other years are kept.)'))return;
+  _nineBoxHistory[_nbYear]={}; _nineBoxPlacements=_nineBoxHistory[_nbYear];
   saveState();talentIdbSave();renderNineBox();
 }

@@ -29,6 +29,7 @@ export function talentIdbSave(){
       var st=tx.objectStore('talent');
       st.put({
         nineBoxPlacements:_nineBoxPlacements,
+        nineBoxHistory:_nineBoxHistory,nbYear:_nbYear,nbCompareYear:_nbCompareYear,
         discPlacements:_discPlacements,
         nbSwapAxes:_nbSwapAxes
       },'placements');
@@ -47,8 +48,12 @@ export function talentIdbLoad(){
   }).then(function(data){
     if(!data)return;
     if(data.nineBoxPlacements&&typeof data.nineBoxPlacements==='object')_nineBoxPlacements=data.nineBoxPlacements;
+    if(data.nineBoxHistory&&typeof data.nineBoxHistory==='object')_nineBoxHistory=data.nineBoxHistory;
+    if(data.nbYear)_nbYear=data.nbYear;
+    if(data.nbCompareYear!=null)_nbCompareYear=data.nbCompareYear;
     if(data.discPlacements&&typeof data.discPlacements==='object')_discPlacements=data.discPlacements;
     if(data.nbSwapAxes!=null)_nbSwapAxes=!!data.nbSwapAxes;
+    nbEnsureHistory();
   }).catch(function(e){console.warn('[EIM] talentIdbLoad failed:',e);});
 }
 
@@ -133,6 +138,34 @@ export function idbPreloadAll(){
         }
       };
       req.onerror=function(e){reject(e.target.error);};
+    });
+  });
+}
+
+// ── Replace entire photo store from a {engId: dataURL} map ────────
+// Full-backup restore is a dataset SWAP: engIds are per-dataset counters,
+// so the previous dataset's photos (keyed by colliding ids) must not bleed
+// into the new one. We clear the store + cache and write only what the
+// backup carries, rebuilding the cache from that map (never via a cursor,
+// which would re-read any ghost rows). See idbSavePhoto (merge-only) for
+// the per-photo path used during normal editing.
+export function idbReplaceAllPhotos(photos){
+  photos=photos||{};
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(IDB_STORE,'readwrite');
+      var st=tx.objectStore(IDB_STORE);
+      st.clear();
+      Object.keys(photos).forEach(function(k){
+        if(photos[k])st.put(photos[k],String(k));
+      });
+      tx.oncomplete=resolve;
+      tx.onerror=function(e){reject(e.target.error);};
+    });
+  }).then(function(){
+    _photoCache.clear();
+    Object.keys(photos).forEach(function(k){
+      if(photos[k])_photoCache.set(String(k),photos[k]);
     });
   });
 }

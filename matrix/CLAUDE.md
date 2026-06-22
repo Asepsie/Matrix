@@ -4,13 +4,22 @@
 A single-file HTML R&D portfolio management tool that outputs dist/matrix.html.
 Source lives in src/. Build with: node build.js
 
+## Architecture context
+See **ARCHITECTURE.md** for non-obvious design context (read it before touching
+data/persistence). It currently covers data & persistence — the three storage
+layers, the per-dataset `eng.id` identity gotcha, and the restore invariant.
+Append a new section there whenever you learn something non-obvious about another
+area.
+
 ## Module map (read the relevant file, not the whole project)
 
 | Task | File to read |
 |------|-------------|
 | Add a field to Engineer | src/data/model.js only |
 | Fix allocation/cost bug | src/core/helpers.js |
-| Fix save/load/sanitise | src/core/persist.js |
+| Fix save/load/sanitise | src/core/persist.js (+ ARCHITECTURE.md) |
+| Fix photos / backup / restore | src/core/photo.js, src/sections/backup.js (+ ARCHITECTURE.md) |
+| AI advisor / chatbot (WebLLM) | src/sections/ai.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
 | Fix ID card modal | src/sections/idcard.js |

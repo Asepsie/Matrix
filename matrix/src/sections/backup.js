@@ -52,6 +52,7 @@ export function exportFullBackup(){
     orgCollapsed:_orgCollapsed,orgScale:_orgScale,
     orgPanX:_orgPanX,orgPanY:_orgPanY,
     nineBoxPlacements:_nineBoxPlacements,
+    nineBoxHistory:_nineBoxHistory,nbYear:_nbYear,nbCompareYear:_nbCompareYear,
     discPlacements:_discPlacements,
     nbSwapAxes:_nbSwapAxes,
     planFilterEng:[...planFilterEng],planFilterProj:[...planFilterProj],
@@ -166,6 +167,10 @@ export function importFullBackup(){
         if(d.orgPanX!=null)  _orgPanX=d.orgPanX;
         if(d.orgPanY!=null)  _orgPanY=d.orgPanY;
         if(d.nineBoxPlacements&&typeof d.nineBoxPlacements==='object')_nineBoxPlacements=d.nineBoxPlacements;
+        if(d.nineBoxHistory&&typeof d.nineBoxHistory==='object')_nineBoxHistory=d.nineBoxHistory;
+        if(d.nbYear)_nbYear=d.nbYear;
+        if(d.nbCompareYear!=null)_nbCompareYear=d.nbCompareYear;
+        nbEnsureHistory();
         if(d.discPlacements&&typeof d.discPlacements==='object')_discPlacements=d.discPlacements;
         if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
         if(d.planFilterEng&&Array.isArray(d.planFilterEng))planFilterEng=new Set(d.planFilterEng);
@@ -203,22 +208,21 @@ export function importFullBackup(){
           SV('ax-y-min',a.yMin??0);SV('ax-y-max',a.yMax??10);SV('ax-grid',a.grid??5);
         }
 
-        var photoPromises=Object.entries(photos).map(function(entry){
-          return idbSavePhoto(entry[0],entry[1]);
-        });
-
-        Promise.all(photoPromises).then(function(){
-          return idbPreloadAll();
-        }).then(function(){
+        // Dataset swap: photos + talent placements are keyed by per-dataset
+        // engIds, so replace them wholesale from the backup rather than merging
+        // (a merge leaves the previous dataset's photos attached to colliding
+        // ids — the classic "wrong face on the wrong person" mixup).
+        idbReplaceAllPhotos(photos).then(function(){
           idbUpdateStatus();
           saveState();
+          talentIdbSave();   // make EIM_TalentData match the restored dataset
           onAxisChange();renderList();render();updateSnapBadge();
           selId=null;G('editor').style.display='none';
           alert('Full backup restored successfully!\n\n'
             +'Restored:\n'
             +'  Projects:   '+projects.length+'\n'
             +'  Engineers:  '+engineers.filter(function(e){return !e.vacant;}).length+'\n'
-            +'  Photos:     '+photoPromises.length);
+            +'  Photos:     '+nPhotos);
         }).catch(function(err){
           saveState();onAxisChange();renderList();render();
           alert('Restore completed (photo restore error: '+err.message+')');

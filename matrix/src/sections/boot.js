@@ -58,6 +58,7 @@ new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(render,50);}).observe(G('
    ══════════════════════════════════════════════════════════════════ */
 /* ═══════════════════ INIT ═══════════════════ */
 loadState();
+nbEnsureHistory();   // guarantee nine-box history exists even on a first-run (empty) load
 // Global From/To period: make it persistent & consistent across every Resources tab.
 // IMPORTANT: the bundled script runs mid-body, so the #res-start/#res-end inputs (and
 // the other overlays) are NOT in the DOM yet at this point — that's the long-standing reason

@@ -142,6 +142,7 @@ export function _doSave(){
       orgScale:_orgScale,orgPanX:_orgPanX,orgPanY:_orgPanY,
       // UI/axis/dates
       nineBoxPlacements:_nineBoxPlacements,
+      nineBoxHistory:_nineBoxHistory,nbYear:_nbYear,nbCompareYear:_nbCompareYear,
       discPlacements:_discPlacements,
       nbSwapAxes:_nbSwapAxes,
       planFilterEng:[...planFilterEng],planFilterProj:[...planFilterProj],
@@ -174,6 +175,8 @@ export function _doSave(){
 }
 
 export function saveState(){
+  // Data is changing → drop memoised computations (see _memo in helpers.js)
+  _invalidateMemo();
   // Mark dirty immediately so indicator shows unsaved state
   _dirty=true;
   const el=G('save-indicator');
@@ -185,6 +188,7 @@ export function saveState(){
 
 export function saveNow(){
   // Immediate save — for deletes, restores, critical mutations
+  _invalidateMemo();
   clearTimeout(_saveTimer);
   _doSave();
 }
@@ -254,6 +258,10 @@ export function loadState(){
     if(d.resStart)     { const el=G('res-start'); if(el)el.value=d.resStart; }
     if(d.resEnd)       { const el=G('res-end');   if(el)el.value=d.resEnd;   }
     if(d.nineBoxPlacements&&typeof d.nineBoxPlacements==='object')_nineBoxPlacements=d.nineBoxPlacements;
+    if(d.nineBoxHistory&&typeof d.nineBoxHistory==='object')_nineBoxHistory=d.nineBoxHistory;
+    if(d.nbYear)_nbYear=d.nbYear;
+    if(d.nbCompareYear!=null)_nbCompareYear=d.nbCompareYear;
+    nbEnsureHistory();   // migrate legacy flat snapshot + sync the live view
     if(d.discPlacements&&typeof d.discPlacements==='object')_discPlacements=d.discPlacements;
     if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
     if(d.planFilterEng&&Array.isArray(d.planFilterEng))planFilterEng=new Set(d.planFilterEng);
@@ -486,6 +494,7 @@ function captureScope(scope){
     axis:{xName:V('ax-x-name'),xMin:V('ax-x-min'),xMax:V('ax-x-max'),
           yMin:V('ax-y-min'),yMax:V('ax-y-max'),grid:V('ax-grid')},
     nineBoxPlacements:_nineBoxPlacements,
+    nineBoxHistory:_nineBoxHistory,nbYear:_nbYear,nbCompareYear:_nbCompareYear,
     discPlacements:_discPlacements,
     nbSwapAxes:_nbSwapAxes,
     planFilterEng:[...planFilterEng],planFilterProj:[...planFilterProj],
@@ -660,6 +669,10 @@ function restoreSnap(id){
       if(d.orgPanX!=null)_orgPanX=d.orgPanX;
       if(d.orgPanY!=null)_orgPanY=d.orgPanY;
       if(d.nineBoxPlacements&&typeof d.nineBoxPlacements==='object')_nineBoxPlacements=d.nineBoxPlacements;
+      if(d.nineBoxHistory&&typeof d.nineBoxHistory==='object')_nineBoxHistory=d.nineBoxHistory;
+      if(d.nbYear)_nbYear=d.nbYear;
+      if(d.nbCompareYear!=null)_nbCompareYear=d.nbCompareYear;
+      nbEnsureHistory();
       if(d.discPlacements&&typeof d.discPlacements==='object')_discPlacements=d.discPlacements;
       if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
     }

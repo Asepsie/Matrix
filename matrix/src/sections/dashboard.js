@@ -19,16 +19,21 @@ export function _dashMonths(){ return getMonthRange(); }
 
 /* _dashCur() and _buildEngUtil() are defined in helpers.js (bundled earlier) — do not redeclare */
 
-// Compute cost maps
+// Compute cost maps. Memoised by month range + the active filter sets.
 export function _buildCostMaps(months,filterEng,filterProj){
+  var fk=(filterEng&&filterEng.size?[...filterEng].sort().join('~'):'*')+'#'+(filterProj&&filterProj.size?[...filterProj].sort().join('~'):'*');
+  return _memo('costMaps:'+_monthsKey(months)+':'+fk, function(){ return _computeCostMaps(months,filterEng,filterProj); });
+}
+function _computeCostMaps(months,filterEng,filterProj){
+  var engById=_engByIdMap(), projById=_projByIdMap();
   var projCost={},totalCost=0,unassignedCost=0;
   var filtered=allocRows.filter(function(r){
-    if(filterEng&&filterEng.size){var e=engineers.find(function(e){return e.id===r.engId;});if(!e||!filterEng.has(e.name))return false;}
-    if(filterProj&&filterProj.size){var p=projects.find(function(p){return p.id===r.projectId;});if(!p||!filterProj.has(p.name))return false;}
+    if(filterEng&&filterEng.size){var e=engById.get(r.engId);if(!e||!filterEng.has(e.name))return false;}
+    if(filterProj&&filterProj.size){var p=projById.get(r.projectId);if(!p||!filterProj.has(p.name))return false;}
     return true;
   });
   filtered.forEach(function(r){
-    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng)return;
+    var eng=engById.get(r.engId);if(!eng)return;
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     if(r.projectId){projCost[r.projectId]=(projCost[r.projectId]||0)+cost;}
     else{unassignedCost+=cost;}

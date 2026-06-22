@@ -70,6 +70,16 @@ function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify(
    ══════════════════════════════════════════════════════════════════ */
 export function buildAnalyticsDataset() {
   const months = getMonthRange();   // reads #res-start / #res-end
+  // Memoised by month range + active/compare year + placement counts (epoch handles other edits).
+  const pk = _nbYear + '|' + _nbCompareYear + '|' + Object.keys(_nineBoxPlacements).length + '/' + Object.keys(_discPlacements).length;
+  return _memo('analyticsDS:' + _monthsKey(months) + ':' + pk, () => _computeAnalyticsDataset(months));
+}
+function _computeAnalyticsDataset(months) {
+  const rowsByEng = _rowsByEngMap();
+  const prevPlace = (_nbCompareYear && _nineBoxHistory[_nbCompareYear]) ? _nineBoxHistory[_nbCompareYear] : null;
+  // Direct-reports count in one pass (was O(n²): engineers.filter per engineer)
+  const reportsCount = {};
+  engineers.forEach(x => { const rt = (x.idcard || {}).reportsTo; if (rt != null && rt !== '') reportsCount[String(rt)] = (reportsCount[String(rt)] || 0) + 1; });
   const rows = engineers
     .filter(e => !e.vacant && !e.planningOnly && !e.excludeFromCalc)
     .map(e => {
@@ -83,7 +93,7 @@ export function buildAnalyticsDataset() {
         ? Math.max(0, Math.floor((Date.now() - startMs) / 2628e6)) : null;
 
       // Allocation over the selected period
-      const myRows = allocRows.filter(r => r.engId === e.id);
+      const myRows = rowsByEng.get(e.id) || [];
       const totalFTE = months.reduce((s, m) =>
         s + myRows.reduce((rs, r) => rs + _allocNum(r.allocs ? r.allocs[m] : 0), 0), 0);
       const utilizationRate = months.length > 0 ? totalFTE / months.length : 0;
@@ -109,8 +119,7 @@ export function buildAnalyticsDataset() {
 
       // Org
       const group = engGroups.find(g => g.id === e.groupId);
-      const directReports = engineers.filter(x =>
-        String((x.idcard || {}).reportsTo) === String(e.id)).length;
+      const directReports = reportsCount[String(e.id)] || 0;
 
       // KT: _ktPlans is keyed by skill; entries carry learnerEngId only
       const hasKTPlan = Object.values(_ktPlans || {}).some(arr =>
@@ -145,6 +154,9 @@ export function buildAnalyticsDataset() {
         projectCount: [...new Set(myRows.map(r => r.projectId).filter(Boolean))].length,
         // Talent
         nineBoxKey: nb, nineBoxPerf: nbParts[0], nineBoxPot: nbParts[1],
+        nineBoxYear: _nbYear,
+        nineBoxPrevKey: prevPlace ? (prevPlace[e.id] || null) : null,
+        nineBoxMove: prevPlace ? nbMove(nb, prevPlace[e.id] || null) : null,
         discProfile: disc,
         // Performance
         latestRating, latestRatingNum, ratingTrend,
@@ -633,6 +645,16 @@ function anInsights(data){
   if (bench) out.push({ sev:'info', icon:'🪑', text: bench + ' on the bench (<10% utilisation)', story:'capacity_health' });
   const hipo = data.filter(d => d.nineBoxPot === 3 || d.potential === 'High').length;
   if (hipo) out.push({ sev:'info', icon:'🌱', text: hipo + ' high-potential talent identified', story:'succession' });
+  // Talent movement since a prior year (only when ≥2 nine-box years exist)
+  const years = nbYears();
+  if (years.length >= 2) {
+    const cur = _nbYear, prev = _nbCompareYear || years[years.indexOf(cur) - 1] || years[0];
+    if (prev && prev !== cur) {
+      const cm = _nineBoxHistory[cur] || {}, pm = _nineBoxHistory[prev] || {};
+      let up = 0, dn = 0; data.forEach(d => { const k = cm[d.id]; if (!k) return; const mv = nbMove(k, pm[d.id]); if (mv === 'up') up++; else if (mv === 'down') dn++; });
+      if (up || dn) out.push({ sev: dn > up ? 'warn' : 'info', icon:'📈', text: up + ' rising · ' + dn + ' declining in talent since ' + prev, story:'talent_trajectory' });
+    }
+  }
   const rank = { danger:0, warn:1, info:2 };
   return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
 }
@@ -928,6 +950,10 @@ export const ANALYTICS_TEMPLATES = [
     desc:'High-potential talent by grade',
     render(data){ return { chart: anStorySuccession(data), stats: null }; } },
 
+  { id:'talent_trajectory', name:'Talent Trajectory', icon:'📈', dims:0, isStoryView:true,
+    desc:'Nine-box movement between two years',
+    render(data){ return { chart: anStoryTrajectory(data), stats: null }; } },
+
   { id:'capacity_health', name:'Capacity Health', icon:'🩺', dims:0, isStoryView:true,
     desc:'Utilisation buckets, bench & over-allocation',
     render(data){ return { chart: anStoryCapacity(data), stats: data.map(d => d.utilizationPct) }; } },
@@ -1027,6 +1053,38 @@ function anStoryDiscTeam(data){
     + ['D','I','S','C'].map(k => '<span style="color:var(--muted)"><span style="display:inline-block;width:10px;height:10px;background:'+DCOL[k]+';border-radius:2px;margin-right:4px;vertical-align:middle"></span>'+discNames[k]+'</span>').join('')
     + '</div>';
   return legend + anStackedBar(rows, { valLabel:'Headcount', catLabel:'Team' });
+}
+
+function anStoryTrajectory(data){
+  const years = nbYears();
+  if (years.length < 2) return anEmpty('Add a second nine-box year (Nine-Box tab → ＋) to compare talent movement over time.');
+  const cur = _nbYear;
+  let prev = _nbCompareYear || years[years.indexOf(cur) - 1] || years[0];
+  if (prev === cur) prev = years[years.indexOf(cur) - 1] || years.find(y => y !== cur) || cur;
+  const curMap = _nineBoxHistory[cur] || {}, prevMap = _nineBoxHistory[prev] || {};
+  const NBL = { '1-3':'Enigma','2-3':'Future Star','3-3':'Star','1-2':'Under-perf','2-2':'Core','3-2':'High Perf','1-1':'Risk','2-1':'Effective','3-1':'Expert' };
+  const groups = { up:[], down:[], 'new':[], same:[] };
+  data.forEach(d => { const k = curMap[d.id]; if (!k) return; const mv = nbMove(k, prevMap[d.id]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.id] || null, to: k }); });
+  const order = [
+    { key:'up',   label:'RISING ▲',    color:'#c8f135' },
+    { key:'down', label:'DECLINING ▼', color:'#f14335' },
+    { key:'new',  label:'NEW ✦',       color:'#5be5c8' },
+    { key:'same', label:'STABLE •',    color:AN_COLORS.muted },
+  ];
+  let h = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Movement <b style="color:var(--text)">'+escH(prev)+'</b> → <b style="color:var(--accent)">'+escH(cur)+'</b></div>';
+  if (!order.some(o => groups[o.key].length)) return h + anEmpty('No placements to compare in these two years.');
+  order.forEach(o => {
+    const list = groups[o.key]; if (!list.length) return;
+    h += '<div style="margin-bottom:12px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:.06em;margin-bottom:5px;color:'+o.color+'">'+o.label+' · '+list.length+'</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    list.forEach(it => {
+      const path = (it.from ? (NBL[it.from]||it.from) : '—') + ' → ' + (NBL[it.to]||it.to);
+      h += '<span data-ids="'+it.d.id+'" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid '+o.color+';border-radius:5px;padding:4px 8px;font-size:11px;color:var(--text)">'
+        + escH(it.d.name) + ' <span style="color:var(--muted);font-size:9px">'+escH(path)+'</span></span>';
+    });
+    h += '</div></div>';
+  });
+  return h;
 }
 
 function anStorySuccession(data){
