@@ -25,14 +25,16 @@ body{padding-left:var(--rail);}
 #railnav.open{width:var(--rail-open);}
 
 .rn-top{
-  height:52px; flex:none; display:flex; align-items:center;
+  height:clamp(46px,calc(var(--rail) - 6px),86px); flex:none; display:flex; align-items:center;
   border-bottom:1px solid var(--border); overflow:hidden; white-space:nowrap;
 }
 .rn-pin{
-  width:32px; height:32px; flex:none; margin:0 auto; border:1px solid var(--border);
+  width:clamp(26px,calc(var(--rail) - 26px),56px); height:clamp(26px,calc(var(--rail) - 26px),56px);
+  flex:none; margin:0 auto; border:1px solid var(--border);
   background:var(--bg); color:var(--muted); border-radius:7px; cursor:pointer;
   display:grid; place-items:center; transition:.12s;
 }
+.rn-pin svg{ width:clamp(11px,calc(var(--rail) * .24),24px); height:clamp(11px,calc(var(--rail) * .24),24px); }
 #railnav.open .rn-pin{margin:0 10px 0 13px;}
 .rn-pin:hover{border-color:var(--accent); color:var(--accent);}
 .rn-brand{font-size:11px; letter-spacing:.05em; line-height:1.15; opacity:0; transition:opacity .12s; flex:1;}
@@ -45,7 +47,7 @@ body{padding-left:var(--rail);}
 
 .rn-dom{position:relative;}
 .rn-dom-head{
-  display:flex; align-items:center; gap:13px; height:46px; cursor:pointer;
+  display:flex; align-items:center; gap:13px; height:clamp(40px,calc(var(--rail) - 12px),80px); cursor:pointer;
   padding:0 14px; color:var(--muted); transition:.12s; white-space:nowrap; position:relative;
 }
 #railnav:not(.open) .rn-dom-head{padding:0; justify-content:center;}
@@ -56,9 +58,11 @@ body{padding-left:var(--rail);}
   background:var(--accent); border-radius:0 3px 3px 0;
 }
 .rn-dom-ico{
-  width:34px; height:34px; flex:none; border-radius:8px; display:grid; place-items:center;
+  width:clamp(28px,calc(var(--rail) - 24px),64px); height:clamp(28px,calc(var(--rail) - 24px),64px);
+  flex:none; border-radius:8px; display:grid; place-items:center;
   background:var(--surface2); border:1px solid var(--border); color:var(--muted); transition:.12s;
 }
+.rn-dom-ico svg{ width:clamp(16px,calc(var(--rail) * .345),34px); height:clamp(16px,calc(var(--rail) * .345),34px); }
 .rn-dom-head:hover .rn-dom-ico{color:var(--text); border-color:#3a3f46;}
 .rn-dom.active-dom .rn-dom-ico{color:var(--accent); border-color:rgba(200,241,53,.4); background:rgba(200,241,53,.08);}
 .rn-dom-name{font-size:12.5px; font-weight:600; letter-spacing:.04em; flex:1; opacity:0; transition:opacity .1s;}
@@ -81,14 +85,22 @@ body{padding-left:var(--rail);}
 
 .rn-foot{border-top:1px solid var(--border); padding:8px 0;}
 .rn-util{
-  display:flex; align-items:center; gap:13px; height:40px; padding:0 14px;
+  display:flex; align-items:center; gap:13px; height:clamp(34px,calc(var(--rail) - 18px),66px); padding:0 14px;
   color:var(--dim); cursor:pointer; transition:.12s; white-space:nowrap;
 }
 #railnav:not(.open) .rn-util{padding:0; justify-content:center;}
 .rn-util:hover{color:var(--accent2);}
-.rn-util-ico{width:34px; flex:none; display:grid; place-items:center;}
+.rn-util-ico{width:clamp(26px,calc(var(--rail) - 24px),60px); flex:none; display:grid; place-items:center;}
+.rn-util-ico svg{ width:clamp(14px,calc(var(--rail) * .31),30px); height:clamp(14px,calc(var(--rail) * .31),30px); }
 .rn-util-name{font-size:11px; letter-spacing:.04em; opacity:0; transition:opacity .1s;}
 #railnav.open .rn-util-name{opacity:1;}
+
+/* Collapsed: hide labels/chevrons entirely (not just fade) so the icons are the
+   only flex children and center exactly on the rail's axis at any width. */
+#railnav:not(.open) .rn-brand,
+#railnav:not(.open) .rn-dom-name,
+#railnav:not(.open) .rn-dom-chev,
+#railnav:not(.open) .rn-util-name{ display:none; }
 
 /* Auto-hide (hover-drawer) toggle at the very bottom of the foot */
 .rn-mode-sep{height:1px; background:var(--border); margin:6px 10px;}
