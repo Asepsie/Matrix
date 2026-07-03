@@ -97,6 +97,13 @@ export let planFreezeHeader=true;
 /* ── Resource tab state ── */
 export let resActiveTab='plan';
 
+/* ── Nav rail state ── */
+/* Single source of truth for the persistent left rail (railnav.js).
+   `activeView` is an id string (e.g. 'roster','matrix','ninebox'). Declared
+   ONCE here; the router railGo() reads/writes it. Default landing = 'roster'
+   (team-first). Flip to 'matrix' here to restore the old front door. */
+export let activeView='roster';
+
 /* ── Development tab state ── */
 export let devSort='priority';
 

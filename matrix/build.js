@@ -12,6 +12,7 @@ const CSS_FILES = [
   'styles/components.css',
   'styles/table.css',
   'styles/print.css',
+  'styles/nav.css',
 ];
 const css = CSS_FILES
   .map(f => readFileSync(join(SRC, f), 'utf8').trim())
@@ -46,9 +47,11 @@ const JS_FILES = [
   'sections/ninebox.js',
   'sections/disc.js',
   'sections/analytics.js',
+  'sections/portfolio.js',
   'sections/backup.js',
   'sections/ai.js',
   'sections/nav.js',
+  'sections/railnav.js',
   'sections/boot.js',
 ];
 

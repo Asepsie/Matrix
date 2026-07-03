@@ -37,7 +37,7 @@ export function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 export function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics'].forEach(function(t){
+  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -61,6 +61,7 @@ export function showResTab(tab){
   else if(tab==='development') renderDevelopment();
   else if(tab==='heatmap')     renderHeatmap();
   else if(tab==='analytics')   renderAnalyticsTab();
+  else if(tab==='portfolio')   renderPortfolioAnalytics();
   else                         renderResDashboard();
 }
 

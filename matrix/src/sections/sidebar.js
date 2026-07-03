@@ -103,6 +103,9 @@ function populateEditor(){
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
   SV('e-sector',p.sector||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
+  // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
+  var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
+  G('e-impacteur').placeholder=(_rd!=null)?('default '+_rd+' = impact+enabler'):'e.g. 2.5';
   SV('e-current-gate',p.currentGate||'');SV('e-gate',p.gate||'');SV('e-eta',p.eta||'');
   G('e-color-hex').textContent=p.color;
   populateSectionDropdowns();

@@ -907,7 +907,8 @@ function buildBriefHTML(selectedProjs, opts){
       {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
     ];
     if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
-    if(p.impactEur!=null)kpis.push({label:'Revenue Impact',val:p.impactEur,unit:'MEur'});
+    var _rev=projRevenueM(p);
+    if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
     if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
     if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
     if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});

@@ -95,6 +95,7 @@ renderList();
 render();
 checkDailySnap();
 updateSnapBadge();
+railInit();   // render the persistent nav rail + land on the initial view
 
 /* ═══════════════════ DRAGGABLE PROJECT WINDOW ═══════════════════ */
 // Runs after DOM ready

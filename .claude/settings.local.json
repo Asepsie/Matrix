@@ -43,7 +43,8 @@
       "Bash(node -e \"const b=require\\('./demo/matrix_demo_backup.json'\\);console.log\\('type',b._type,'eng',b.state.engineers.length,'nb',Object.keys\\(b.state.nineBoxPlacements\\).length,'disc',Object.keys\\(b.state.discPlacements\\).length\\);\")",
       "Bash(grep -n \"anBoxPlot\\(groups, { ref\" src/sections/analytics.js)",
       "Bash(grep -n \"anBoxPlot\\(groups, { ref: 100\" src/sections/analytics.js)",
-      "Bash(cd /c/Users/pyro3/Documents/Matrix/matrix && node build.js && cp demo/matrix_demo_backup.json dist/matrix_demo_backup.json)"
+      "Bash(cd /c/Users/pyro3/Documents/Matrix/matrix && node build.js && cp demo/matrix_demo_backup.json dist/matrix_demo_backup.json)",
+      "Bash(ls \"reference document/\" && cp \"/c/Users/pyro3/Downloads/matrix-nav-rail-mockup \\(2\\).html\" \"reference document/matrix-nav-rail-mockup.html\" && echo \"copied\")"
     ]
   }
 }

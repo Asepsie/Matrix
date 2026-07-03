@@ -7,57 +7,31 @@
 <!-- {{CSS}} -->
 </head>
 <body>
-<header>
-  <h1 style="letter-spacing:.04em;font-size:13px">PROJECT<br><span style="color:var(--accent)">MATRIX</span></h1>
-
-  <!-- GROUP 1: Create -->
-  <div class="hdr-group">
-    <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
-    <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
-    <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+<!-- PERSISTENT NAV RAIL (railnav.js) — first body child; owns navigation -->
+<nav id="railnav">
+  <div class="rn-top">
+    <button class="rn-pin" id="rail-pin" title="Pin / collapse" onclick="railTogglePin()" aria-label="toggle rail"></button>
+    <div class="rn-brand mono">PROJECT <span class="lime">MATRIX</span></div>
   </div>
+  <div class="rn-scroll" id="rail-scroll"></div>
+  <div class="rn-foot" id="rail-foot"></div>
+</nav>
+<div class="rn-scrim" id="rail-scrim" onclick="railTogglePin()"></div>
+<div id="rail-flyout"></div>
 
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 2: Y-axis view -->
-  <div class="hdr-group">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">Y-AXIS</span>
-    <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
-    <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
-    <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+<!-- TOP BAR — breadcrumb (DOMAIN › View) + relocated status indicators.
+     Navigation, data actions, help all live on the persistent rail now. -->
+<div id="topbar">
+  <div class="tb-crumb mono">
+    <span id="crumb-dom" class="tb-dom"></span>
+    <span id="crumb-sep">›</span>
+    <span id="crumb-view" class="tb-view"></span>
   </div>
-
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 3: Navigate to panels -->
-  <div class="hdr-group">
-    <button onclick="openOrgChart()" title="Org chart · key O">🗂 ORG</button>
-    <button onclick="openRes()"      title="Resource plan · key P">👷 RESOURCES</button>
-    <button onclick="openCompare()"  title="Compare views · key C">⊞ COMPARE</button>
-    <button onclick="openSummary()"  title="Summary dashboard · key S">▤ SUMMARY</button>
-  </div>
-
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 4: Data -->
-  <div class="hdr-group">
-
-    <button onclick="exportFullBackup()" title="Full backup — state + all photos in one file" style="border-color:var(--accent2);color:var(--accent2)">⬡ BACKUP</button>
-    <button onclick="importFullBackup()" title="Restore from full backup file" style="border-color:var(--accent2);color:var(--accent2)">⬡ RESTORE</button>
-    <button onclick="openProjectBriefExport()" title="Export project brief with team allocation" style="border-color:var(--accent2);color:var(--accent2)">📄 BRIEF</button>
-    <button onclick="openSnap()" title="Snapshots (Z)" id="snap-btn">🕐 SNAPS</button>
-    <button id="ai-btn" onclick="aiOpenChat()" title="In-browser AI advisor — chat about your roster & portfolio (model downloads once, runs offline)" style="border-color:var(--accent);color:var(--accent)">🧠 AI</button>
-  </div>
-
-  <!-- Active overlay indicator + status -->
-  <div style="flex:1;display:flex;align-items:center;justify-content:center">
-    <span id="active-overlay-pill" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;
-      color:var(--accent);background:rgba(200,241,53,.08);border:1px solid rgba(200,241,53,.2);
-      border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
-  </div>
-
-  <!-- GROUP 5: System -->
-  <div class="hdr-group" style="gap:6px">
+  <span id="active-overlay-pill" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;
+    color:var(--accent);background:rgba(200,241,53,.08);border:1px solid rgba(200,241,53,.2);
+    border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
+  <div style="flex:1"></div>
+  <div class="tb-status">
     <span id="idb-status" style="font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;cursor:pointer"></span>
     <!-- Storage health indicator -->
     <span id="storage-health" title="localStorage usage" onclick="showStorageDetail()"
@@ -68,10 +42,8 @@
       <span id="storage-pct">—</span>
     </span>
     <span id="save-indicator" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">● auto-save ON</span>
-    <button onclick="openHelp()" title="Help &amp; shortcuts (?)">? HELP</button>
   </div>
-
-</header>
+</div>
 
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
@@ -228,6 +200,19 @@
   </aside>
 
   <div id="matrix-wrap">
+    <!-- Matrix-only controls. Lives inside #matrix-wrap (the base surface), so it
+         is visible only on the Portfolio matrix view — every other view opens a
+         full-screen overlay that covers it. -->
+    <div id="matrix-toolbar">
+      <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
+      <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
+      <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+      <div class="bar-sep"></div>
+      <span class="mtb-label">Y-AXIS</span>
+      <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
+      <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
+      <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+    </div>
     <div id="axis-bar">
       <label>X</label>
       <input type="text" id="ax-x-name" value="Effort" oninput="onAxisChange()">
@@ -352,6 +337,49 @@
     </div>
   </div>
 </div>
+<!-- SETTINGS MODAL (opened from the rail util foot) -->
+<div id="settings-overlay" class="overlay">
+  <div class="modal-box" style="width:min(420px,95vw)">
+    <h2>⚙ SETTINGS</h2>
+    <div class="field">
+      <label>DEFAULT LANDING VIEW</label>
+      <select id="set-landing"></select>
+      <span style="font-size:10px;color:var(--muted)">The view Project Matrix opens on when it loads.</span>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
+      <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">
+      Auto-hide the nav rail — expand on hover, collapse when the pointer leaves
+    </label>
+    <div class="field">
+      <label>COLLAPSED RAIL WIDTH <span id="set-railwidth-val" style="color:var(--accent);font-family:IBM Plex Mono,monospace">58px</span></label>
+      <input type="range" id="set-railwidth" min="48" max="96" step="2" value="58" oninput="railPreviewWidth(this.value)" style="width:100%;accent-color:var(--accent)">
+      <span style="font-size:10px;color:var(--muted)">Width of the always-visible icon strip. Clamped to keep the layout intact.</span>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" onclick="railSaveSettings()">SAVE</button>
+      <button onclick="railCancelSettings()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIRST-RUN LANDING CHOOSER (shown once, until a default is stored) -->
+<div id="landing-firstrun" class="overlay">
+  <div class="modal-box" style="width:min(440px,95vw)">
+    <h2>👋 WELCOME TO PROJECT MATRIX</h2>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0">
+      Where would you like the app to open each time? You can change this anytime in
+      <strong style="color:var(--text)">Settings</strong> on the nav rail.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('roster')">
+        👥 Roster — start with the team <span style="color:var(--muted);font-weight:400;margin-left:6px">(recommended)</span>
+      </button>
+      <button style="justify-content:flex-start" onclick="railChooseLanding('matrix')">
+        ◎ Portfolio matrix — start with the project matrix
+      </button>
+    </div>
+  </div>
+</div>
 <!-- {{JS}} -->
 
 <!-- RESOURCE PLAN OVERLAY -->
@@ -366,18 +394,9 @@
       <input type="month" id="res-end" onchange="saveNow();showResTab(resActiveTab)" title="Global period end — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
     </div>
     <div style="flex:1"></div>
-    <button onclick="showResTab('roster')">Roster</button>
-    <button onclick="showResTab('plan')">Planning</button>
-    <button onclick="showResTab('dashboard')">📊 Dashboard</button>
-    <button onclick="showResTab('skills')">◈ Skills</button>
-    <button onclick="showResTab('skillrisk')">🛡 Skill Risk</button>
-    <button onclick="showResTab('profiles')">👤 Team Profiles</button>
-    <button onclick="showResTab('ninebox')">⊞ Nine-Box</button>
-    <button onclick="showResTab('disc')">◉ DISC</button>
-    <button onclick="showResTab('timeline')">⊟ Timeline</button>
-    <button onclick="showResTab('development')">★ Development</button>
-    <button onclick="showResTab('heatmap')">🌡 Heatmap</button>
-    <button onclick="showResTab('analytics')">📊 Analytics</button>
+    <!-- The 12 showResTab tab buttons moved to the persistent nav rail (railnav.js).
+         The global period (title + FROM/TO month inputs) stays here — it is shared by
+         every Resources tab. #res-body still renders the active tab. -->
     <input type="file" id="roster-file-input" accept=".json" style="display:none" onchange="handleRosterImport(event)">
     <button onclick="closeRes()">✕ CLOSE</button>
   </div>
@@ -718,7 +737,7 @@
 
 
 <!-- ORG CHART OVERLAY -->
-<div id="org-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;">
+<div id="org-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:var(--bg);z-index:400;flex-direction:column;">
   <div id="org-header" style="display:flex;flex-direction:column;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0">
 
     <!-- ROW 1: Title · View controls · Close -->
@@ -812,7 +831,7 @@
 
 
 <!-- PROJECT BRIEF EXPORT MODAL -->
-<div id="brief-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
+<div id="brief-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
       <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">📄 EXPORT PROJECT BRIEF</h2>

@@ -37,6 +37,24 @@ export function _allocCost(v, monthlyCost){
   var n=+v; return isNaN(n)?0:n*(monthlyCost||0);
 }
 
+/* ── Effective project revenue (M€) ─────────────────────────────────
+   User-entered `impactEur` wins. When the user hasn't entered one, fall back
+   to a DERIVED default = impact (y) + enabler (ena), but only when both are
+   present. This is a COMPUTED accessor — nothing is stored, so backup/restore
+   and snapshots stay consistent by construction: `impactEur` remains null until
+   the user types a value, and the default recomputes from the persisted y/ena
+   (sanitise guarantees both are numeric). */
+export function projRevenueIsDefault(p){
+  return !!p && (p.impactEur==null || p.impactEur===''); // no user value → derived
+}
+export function projRevenueM(p){
+  if(!p) return 0;
+  if(!projRevenueIsDefault(p)){ var v=+p.impactEur; return isNaN(v)?0:v; }
+  var y=+p.y, e=+p.ena;                                  // derived default
+  if(p.y!=null && p.y!=='' && p.ena!=null && p.ena!=='' && !isNaN(y) && !isNaN(e)) return y+e;
+  return 0;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    MEMOISATION — cache expensive per-render computations.
    Keyed by `_dataEpoch`; any data mutation bumps the epoch via

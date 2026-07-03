@@ -1,0 +1,154 @@
+/* ══════════════════════════════════════════════════════════════════
+   NAV RAIL — persistent left navigation (railnav.js). Loaded LAST so its
+   overlay-inset overrides win over layout.css. All selectors are scoped to
+   #railnav / .rn-* / #rail-* to avoid clobbering existing component styles.
+   Theme tokens only; the rail-specific tokens are declared here.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --rail:58px; --rail-open:238px;
+  --rail-bg:#131519; --surface2:#1f2329; --dim:#5a5f66;
+}
+
+/* Reserve the rail gutter for the whole app. body is a flex column (base.css)
+   holding the header/topbar + <main> (which includes #sidebar at its left edge);
+   padding-left keeps every one of them clear of the fixed rail. Overlays are
+   viewport-fixed, so they get their own left:var(--rail) below. */
+body{padding-left:var(--rail);}
+
+/* ── RAIL SHELL ─────────────────────────────────────── */
+#railnav{
+  position:fixed; left:0; top:0; bottom:0; width:var(--rail);
+  background:var(--rail-bg); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:1000;
+  transition:width .18s ease; overflow:hidden;
+}
+#railnav.open{width:var(--rail-open);}
+
+.rn-top{
+  height:52px; flex:none; display:flex; align-items:center;
+  border-bottom:1px solid var(--border); overflow:hidden; white-space:nowrap;
+}
+.rn-pin{
+  width:32px; height:32px; flex:none; margin:0 auto; border:1px solid var(--border);
+  background:var(--bg); color:var(--muted); border-radius:7px; cursor:pointer;
+  display:grid; place-items:center; transition:.12s;
+}
+#railnav.open .rn-pin{margin:0 10px 0 13px;}
+.rn-pin:hover{border-color:var(--accent); color:var(--accent);}
+.rn-brand{font-size:11px; letter-spacing:.05em; line-height:1.15; opacity:0; transition:opacity .12s; flex:1;}
+#railnav.open .rn-brand{opacity:1;}
+.rn-brand .lime{color:var(--accent);}
+
+.rn-scroll{flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 0;}
+.rn-scroll::-webkit-scrollbar{width:6px;}
+.rn-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+
+.rn-dom{position:relative;}
+.rn-dom-head{
+  display:flex; align-items:center; gap:13px; height:46px; cursor:pointer;
+  padding:0 14px; color:var(--muted); transition:.12s; white-space:nowrap; position:relative;
+}
+#railnav:not(.open) .rn-dom-head{padding:0; justify-content:center;}
+.rn-dom-head:hover{color:var(--text);}
+.rn-dom.active-dom>.rn-dom-head{color:var(--text);}
+.rn-dom.active-dom>.rn-dom-head::before{
+  content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px;
+  background:var(--accent); border-radius:0 3px 3px 0;
+}
+.rn-dom-ico{
+  width:34px; height:34px; flex:none; border-radius:8px; display:grid; place-items:center;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted); transition:.12s;
+}
+.rn-dom-head:hover .rn-dom-ico{color:var(--text); border-color:#3a3f46;}
+.rn-dom.active-dom .rn-dom-ico{color:var(--accent); border-color:rgba(200,241,53,.4); background:rgba(200,241,53,.08);}
+.rn-dom-name{font-size:12.5px; font-weight:600; letter-spacing:.04em; flex:1; opacity:0; transition:opacity .1s;}
+#railnav.open .rn-dom-name{opacity:1;}
+.rn-dom-chev{flex:none; color:var(--dim); opacity:0; transition:transform .18s, opacity .1s;}
+#railnav.open .rn-dom-chev{opacity:1;}
+.rn-dom.exp .rn-dom-chev{transform:rotate(90deg); color:var(--accent);}
+
+.rn-subs{max-height:0; overflow:hidden; transition:max-height .2s ease;}
+#railnav.open .rn-dom.exp .rn-subs{max-height:320px;}
+#railnav:not(.open) .rn-subs{display:none;}
+.rn-sub{
+  display:flex; align-items:center; padding:8px 14px 8px 60px; font-size:11.5px; color:var(--muted);
+  cursor:pointer; white-space:nowrap; transition:.1s; position:relative;
+}
+.rn-sub:hover{color:var(--text); background:rgba(255,255,255,.03);}
+.rn-sub.active{color:var(--accent);}
+.rn-sub.active::before{content:""; position:absolute; left:42px; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:var(--accent);}
+.rn-bdg{font-size:8px; color:var(--dim); margin-left:7px; letter-spacing:.04em;}
+
+.rn-foot{border-top:1px solid var(--border); padding:8px 0;}
+.rn-util{
+  display:flex; align-items:center; gap:13px; height:40px; padding:0 14px;
+  color:var(--dim); cursor:pointer; transition:.12s; white-space:nowrap;
+}
+#railnav:not(.open) .rn-util{padding:0; justify-content:center;}
+.rn-util:hover{color:var(--accent2);}
+.rn-util-ico{width:34px; flex:none; display:grid; place-items:center;}
+.rn-util-name{font-size:11px; letter-spacing:.04em; opacity:0; transition:opacity .1s;}
+#railnav.open .rn-util-name{opacity:1;}
+
+/* Auto-hide (hover-drawer) toggle at the very bottom of the foot */
+.rn-mode-sep{height:1px; background:var(--border); margin:6px 10px;}
+.rn-mode.on{color:var(--accent2);}
+.rn-mode.on .rn-util-ico{color:var(--accent2);}
+
+/* ── FLYOUT (collapsed rail; tap or hover) ──────────── */
+#rail-flyout{
+  position:fixed; left:var(--rail); min-width:196px; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px; padding:6px; z-index:1010;
+  box-shadow:0 14px 40px rgba(0,0,0,.6); display:none;
+}
+#rail-flyout.show{display:block;}
+.rn-fly-title{font-size:9px; letter-spacing:.12em; color:var(--dim); padding:6px 10px 8px;}
+.rn-fly-item{
+  display:flex; align-items:center; padding:8px 11px; border-radius:7px;
+  font-size:12px; color:var(--text); cursor:pointer; transition:.1s; white-space:nowrap;
+}
+.rn-fly-item:hover{background:rgba(200,241,53,.09); color:var(--accent);}
+.rn-fly-item.active{color:var(--accent);}
+.rn-fly-item .rn-bdg{margin-left:auto;}
+
+/* ── SCRIM (narrow screens: pinned rail overlays content) ── */
+#rail-scrim{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; display:none;}
+#rail-scrim.show{display:block;}
+
+@media (max-width:640px){
+  #railnav.open{box-shadow:0 0 40px rgba(0,0,0,.6);}
+}
+
+/* ── TOP BAR + MATRIX TOOLBAR (replace the old header) ── */
+#topbar{
+  display:flex; align-items:center; gap:12px; padding:8px 18px;
+  border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0;
+}
+.tb-crumb{display:flex; align-items:center; gap:9px; white-space:nowrap;}
+.tb-dom{font-size:10px; letter-spacing:.12em; color:var(--dim);}
+#crumb-sep{color:var(--dim);}
+.tb-view{font-size:13px; font-weight:700; letter-spacing:.03em; color:var(--text);}
+.tb-status{display:flex; align-items:center; gap:8px;}
+
+#matrix-toolbar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:6px 13px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.mtb-label{font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em;}
+
+/* ── OVERLAY INSETS ─────────────────────────────────────
+   Keep the rail visible while any full-screen overlay is open. These overlays
+   are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
+   wins. (#org-overlay and #brief-overlay are styled inline in index.html and are
+   inset there instead.) */
+#help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
+  left:var(--rail);
+}
+
+/* Rail-spawned modals (Settings, first-run landing) must sit ABOVE the full-screen
+   view overlays (z-index:400) — they open as actions without closing the current
+   view, so at z-index:200 they'd render hidden behind an open Resources/Org panel.
+   Above the rail (z-index:1000) too, and inset so the rail stays visible. */
+#settings-overlay, #landing-firstrun{
+  z-index:1100; left:var(--rail);
+}

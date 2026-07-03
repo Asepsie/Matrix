@@ -426,60 +426,188 @@ button.sm.active{border-color:var(--accent2);color:var(--accent2);background:rgb
 /* action row (start+end) */
 .gantt-table input[type=date]{width:100px;}
 /* @media print rules — to be migrated from matrix.html JS-generated styles */
+/* ══════════════════════════════════════════════════════════════════
+   NAV RAIL — persistent left navigation (railnav.js). Loaded LAST so its
+   overlay-inset overrides win over layout.css. All selectors are scoped to
+   #railnav / .rn-* / #rail-* to avoid clobbering existing component styles.
+   Theme tokens only; the rail-specific tokens are declared here.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --rail:58px; --rail-open:238px;
+  --rail-bg:#131519; --surface2:#1f2329; --dim:#5a5f66;
+}
+
+/* Reserve the rail gutter for the whole app. body is a flex column (base.css)
+   holding the header/topbar + <main> (which includes #sidebar at its left edge);
+   padding-left keeps every one of them clear of the fixed rail. Overlays are
+   viewport-fixed, so they get their own left:var(--rail) below. */
+body{padding-left:var(--rail);}
+
+/* ── RAIL SHELL ─────────────────────────────────────── */
+#railnav{
+  position:fixed; left:0; top:0; bottom:0; width:var(--rail);
+  background:var(--rail-bg); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:1000;
+  transition:width .18s ease; overflow:hidden;
+}
+#railnav.open{width:var(--rail-open);}
+
+.rn-top{
+  height:52px; flex:none; display:flex; align-items:center;
+  border-bottom:1px solid var(--border); overflow:hidden; white-space:nowrap;
+}
+.rn-pin{
+  width:32px; height:32px; flex:none; margin:0 auto; border:1px solid var(--border);
+  background:var(--bg); color:var(--muted); border-radius:7px; cursor:pointer;
+  display:grid; place-items:center; transition:.12s;
+}
+#railnav.open .rn-pin{margin:0 10px 0 13px;}
+.rn-pin:hover{border-color:var(--accent); color:var(--accent);}
+.rn-brand{font-size:11px; letter-spacing:.05em; line-height:1.15; opacity:0; transition:opacity .12s; flex:1;}
+#railnav.open .rn-brand{opacity:1;}
+.rn-brand .lime{color:var(--accent);}
+
+.rn-scroll{flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 0;}
+.rn-scroll::-webkit-scrollbar{width:6px;}
+.rn-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+
+.rn-dom{position:relative;}
+.rn-dom-head{
+  display:flex; align-items:center; gap:13px; height:46px; cursor:pointer;
+  padding:0 14px; color:var(--muted); transition:.12s; white-space:nowrap; position:relative;
+}
+#railnav:not(.open) .rn-dom-head{padding:0; justify-content:center;}
+.rn-dom-head:hover{color:var(--text);}
+.rn-dom.active-dom>.rn-dom-head{color:var(--text);}
+.rn-dom.active-dom>.rn-dom-head::before{
+  content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px;
+  background:var(--accent); border-radius:0 3px 3px 0;
+}
+.rn-dom-ico{
+  width:34px; height:34px; flex:none; border-radius:8px; display:grid; place-items:center;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted); transition:.12s;
+}
+.rn-dom-head:hover .rn-dom-ico{color:var(--text); border-color:#3a3f46;}
+.rn-dom.active-dom .rn-dom-ico{color:var(--accent); border-color:rgba(200,241,53,.4); background:rgba(200,241,53,.08);}
+.rn-dom-name{font-size:12.5px; font-weight:600; letter-spacing:.04em; flex:1; opacity:0; transition:opacity .1s;}
+#railnav.open .rn-dom-name{opacity:1;}
+.rn-dom-chev{flex:none; color:var(--dim); opacity:0; transition:transform .18s, opacity .1s;}
+#railnav.open .rn-dom-chev{opacity:1;}
+.rn-dom.exp .rn-dom-chev{transform:rotate(90deg); color:var(--accent);}
+
+.rn-subs{max-height:0; overflow:hidden; transition:max-height .2s ease;}
+#railnav.open .rn-dom.exp .rn-subs{max-height:320px;}
+#railnav:not(.open) .rn-subs{display:none;}
+.rn-sub{
+  display:flex; align-items:center; padding:8px 14px 8px 60px; font-size:11.5px; color:var(--muted);
+  cursor:pointer; white-space:nowrap; transition:.1s; position:relative;
+}
+.rn-sub:hover{color:var(--text); background:rgba(255,255,255,.03);}
+.rn-sub.active{color:var(--accent);}
+.rn-sub.active::before{content:""; position:absolute; left:42px; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:var(--accent);}
+.rn-bdg{font-size:8px; color:var(--dim); margin-left:7px; letter-spacing:.04em;}
+
+.rn-foot{border-top:1px solid var(--border); padding:8px 0;}
+.rn-util{
+  display:flex; align-items:center; gap:13px; height:40px; padding:0 14px;
+  color:var(--dim); cursor:pointer; transition:.12s; white-space:nowrap;
+}
+#railnav:not(.open) .rn-util{padding:0; justify-content:center;}
+.rn-util:hover{color:var(--accent2);}
+.rn-util-ico{width:34px; flex:none; display:grid; place-items:center;}
+.rn-util-name{font-size:11px; letter-spacing:.04em; opacity:0; transition:opacity .1s;}
+#railnav.open .rn-util-name{opacity:1;}
+
+/* Auto-hide (hover-drawer) toggle at the very bottom of the foot */
+.rn-mode-sep{height:1px; background:var(--border); margin:6px 10px;}
+.rn-mode.on{color:var(--accent2);}
+.rn-mode.on .rn-util-ico{color:var(--accent2);}
+
+/* ── FLYOUT (collapsed rail; tap or hover) ──────────── */
+#rail-flyout{
+  position:fixed; left:var(--rail); min-width:196px; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px; padding:6px; z-index:1010;
+  box-shadow:0 14px 40px rgba(0,0,0,.6); display:none;
+}
+#rail-flyout.show{display:block;}
+.rn-fly-title{font-size:9px; letter-spacing:.12em; color:var(--dim); padding:6px 10px 8px;}
+.rn-fly-item{
+  display:flex; align-items:center; padding:8px 11px; border-radius:7px;
+  font-size:12px; color:var(--text); cursor:pointer; transition:.1s; white-space:nowrap;
+}
+.rn-fly-item:hover{background:rgba(200,241,53,.09); color:var(--accent);}
+.rn-fly-item.active{color:var(--accent);}
+.rn-fly-item .rn-bdg{margin-left:auto;}
+
+/* ── SCRIM (narrow screens: pinned rail overlays content) ── */
+#rail-scrim{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; display:none;}
+#rail-scrim.show{display:block;}
+
+@media (max-width:640px){
+  #railnav.open{box-shadow:0 0 40px rgba(0,0,0,.6);}
+}
+
+/* ── TOP BAR + MATRIX TOOLBAR (replace the old header) ── */
+#topbar{
+  display:flex; align-items:center; gap:12px; padding:8px 18px;
+  border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0;
+}
+.tb-crumb{display:flex; align-items:center; gap:9px; white-space:nowrap;}
+.tb-dom{font-size:10px; letter-spacing:.12em; color:var(--dim);}
+#crumb-sep{color:var(--dim);}
+.tb-view{font-size:13px; font-weight:700; letter-spacing:.03em; color:var(--text);}
+.tb-status{display:flex; align-items:center; gap:8px;}
+
+#matrix-toolbar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:6px 13px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.mtb-label{font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em;}
+
+/* ── OVERLAY INSETS ─────────────────────────────────────
+   Keep the rail visible while any full-screen overlay is open. These overlays
+   are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
+   wins. (#org-overlay and #brief-overlay are styled inline in index.html and are
+   inset there instead.) */
+#help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
+  left:var(--rail);
+}
+
+/* Rail-spawned modals (Settings, first-run landing) must sit ABOVE the full-screen
+   view overlays (z-index:400) — they open as actions without closing the current
+   view, so at z-index:200 they'd render hidden behind an open Resources/Org panel.
+   Above the rail (z-index:1000) too, and inset so the rail stays visible. */
+#settings-overlay, #landing-firstrun{
+  z-index:1100; left:var(--rail);
+}
 </style>
 </head>
 <body>
-<header>
-  <h1 style="letter-spacing:.04em;font-size:13px">PROJECT<br><span style="color:var(--accent)">MATRIX</span></h1>
-
-  <!-- GROUP 1: Create -->
-  <div class="hdr-group">
-    <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
-    <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
-    <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+<!-- PERSISTENT NAV RAIL (railnav.js) — first body child; owns navigation -->
+<nav id="railnav">
+  <div class="rn-top">
+    <button class="rn-pin" id="rail-pin" title="Pin / collapse" onclick="railTogglePin()" aria-label="toggle rail"></button>
+    <div class="rn-brand mono">PROJECT <span class="lime">MATRIX</span></div>
   </div>
+  <div class="rn-scroll" id="rail-scroll"></div>
+  <div class="rn-foot" id="rail-foot"></div>
+</nav>
+<div class="rn-scrim" id="rail-scrim" onclick="railTogglePin()"></div>
+<div id="rail-flyout"></div>
 
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 2: Y-axis view -->
-  <div class="hdr-group">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">Y-AXIS</span>
-    <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
-    <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
-    <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+<!-- TOP BAR — breadcrumb (DOMAIN › View) + relocated status indicators.
+     Navigation, data actions, help all live on the persistent rail now. -->
+<div id="topbar">
+  <div class="tb-crumb mono">
+    <span id="crumb-dom" class="tb-dom"></span>
+    <span id="crumb-sep">›</span>
+    <span id="crumb-view" class="tb-view"></span>
   </div>
-
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 3: Navigate to panels -->
-  <div class="hdr-group">
-    <button onclick="openOrgChart()" title="Org chart · key O">🗂 ORG</button>
-    <button onclick="openRes()"      title="Resource plan · key P">👷 RESOURCES</button>
-    <button onclick="openCompare()"  title="Compare views · key C">⊞ COMPARE</button>
-    <button onclick="openSummary()"  title="Summary dashboard · key S">▤ SUMMARY</button>
-  </div>
-
-  <div class="hdr-sep"></div>
-
-  <!-- GROUP 4: Data -->
-  <div class="hdr-group">
-
-    <button onclick="exportFullBackup()" title="Full backup — state + all photos in one file" style="border-color:var(--accent2);color:var(--accent2)">⬡ BACKUP</button>
-    <button onclick="importFullBackup()" title="Restore from full backup file" style="border-color:var(--accent2);color:var(--accent2)">⬡ RESTORE</button>
-    <button onclick="openProjectBriefExport()" title="Export project brief with team allocation" style="border-color:var(--accent2);color:var(--accent2)">📄 BRIEF</button>
-    <button onclick="openSnap()" title="Snapshots (Z)" id="snap-btn">🕐 SNAPS</button>
-    <button id="ai-btn" onclick="aiOpenChat()" title="In-browser AI advisor — chat about your roster & portfolio (model downloads once, runs offline)" style="border-color:var(--accent);color:var(--accent)">🧠 AI</button>
-  </div>
-
-  <!-- Active overlay indicator + status -->
-  <div style="flex:1;display:flex;align-items:center;justify-content:center">
-    <span id="active-overlay-pill" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;
-      color:var(--accent);background:rgba(200,241,53,.08);border:1px solid rgba(200,241,53,.2);
-      border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
-  </div>
-
-  <!-- GROUP 5: System -->
-  <div class="hdr-group" style="gap:6px">
+  <span id="active-overlay-pill" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;
+    color:var(--accent);background:rgba(200,241,53,.08);border:1px solid rgba(200,241,53,.2);
+    border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
+  <div style="flex:1"></div>
+  <div class="tb-status">
     <span id="idb-status" style="font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;cursor:pointer"></span>
     <!-- Storage health indicator -->
     <span id="storage-health" title="localStorage usage" onclick="showStorageDetail()"
@@ -490,10 +618,8 @@ button.sm.active{border-color:var(--accent2);color:var(--accent2);background:rgb
       <span id="storage-pct">—</span>
     </span>
     <span id="save-indicator" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">● auto-save ON</span>
-    <button onclick="openHelp()" title="Help &amp; shortcuts (?)">? HELP</button>
   </div>
-
-</header>
+</div>
 
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
@@ -650,6 +776,19 @@ button.sm.active{border-color:var(--accent2);color:var(--accent2);background:rgb
   </aside>
 
   <div id="matrix-wrap">
+    <!-- Matrix-only controls. Lives inside #matrix-wrap (the base surface), so it
+         is visible only on the Portfolio matrix view — every other view opens a
+         full-screen overlay that covers it. -->
+    <div id="matrix-toolbar">
+      <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
+      <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
+      <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+      <div class="bar-sep"></div>
+      <span class="mtb-label">Y-AXIS</span>
+      <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
+      <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
+      <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+    </div>
     <div id="axis-bar">
       <label>X</label>
       <input type="text" id="ax-x-name" value="Effort" oninput="onAxisChange()">
@@ -771,6 +910,49 @@ button.sm.active{border-color:var(--accent2);color:var(--accent2);background:rgb
     <div class="modal-actions">
       <button class="primary" onclick="confirmAdd()">ADD</button>
       <button onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+<!-- SETTINGS MODAL (opened from the rail util foot) -->
+<div id="settings-overlay" class="overlay">
+  <div class="modal-box" style="width:min(420px,95vw)">
+    <h2>⚙ SETTINGS</h2>
+    <div class="field">
+      <label>DEFAULT LANDING VIEW</label>
+      <select id="set-landing"></select>
+      <span style="font-size:10px;color:var(--muted)">The view Project Matrix opens on when it loads.</span>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
+      <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">
+      Auto-hide the nav rail — expand on hover, collapse when the pointer leaves
+    </label>
+    <div class="field">
+      <label>COLLAPSED RAIL WIDTH <span id="set-railwidth-val" style="color:var(--accent);font-family:IBM Plex Mono,monospace">58px</span></label>
+      <input type="range" id="set-railwidth" min="48" max="96" step="2" value="58" oninput="railPreviewWidth(this.value)" style="width:100%;accent-color:var(--accent)">
+      <span style="font-size:10px;color:var(--muted)">Width of the always-visible icon strip. Clamped to keep the layout intact.</span>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" onclick="railSaveSettings()">SAVE</button>
+      <button onclick="railCancelSettings()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIRST-RUN LANDING CHOOSER (shown once, until a default is stored) -->
+<div id="landing-firstrun" class="overlay">
+  <div class="modal-box" style="width:min(440px,95vw)">
+    <h2>👋 WELCOME TO PROJECT MATRIX</h2>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0">
+      Where would you like the app to open each time? You can change this anytime in
+      <strong style="color:var(--text)">Settings</strong> on the nav rail.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('roster')">
+        👥 Roster — start with the team <span style="color:var(--muted);font-weight:400;margin-left:6px">(recommended)</span>
+      </button>
+      <button style="justify-content:flex-start" onclick="railChooseLanding('matrix')">
+        ◎ Portfolio matrix — start with the project matrix
+      </button>
     </div>
   </div>
 </div>
@@ -1012,6 +1194,13 @@ let planFreezeHeader=true;
 /* ── Resource tab state ── */
 let resActiveTab='plan';
 
+/* ── Nav rail state ── */
+/* Single source of truth for the persistent left rail (railnav.js).
+   `activeView` is an id string (e.g. 'roster','matrix','ninebox'). Declared
+   ONCE here; the router railGo() reads/writes it. Default landing = 'roster'
+   (team-first). Flip to 'matrix' here to restore the old front door. */
+let activeView='roster';
+
 /* ── Development tab state ── */
 let devSort='priority';
 
@@ -1123,6 +1312,24 @@ function _allocCost(v, monthlyCost){
   if(v==='m'||v==='r') return 0;
   if(v==='p')          return monthlyCost||0; // PTO: full cost
   var n=+v; return isNaN(n)?0:n*(monthlyCost||0);
+}
+
+/* ── Effective project revenue (M€) ─────────────────────────────────
+   User-entered `impactEur` wins. When the user hasn't entered one, fall back
+   to a DERIVED default = impact (y) + enabler (ena), but only when both are
+   present. This is a COMPUTED accessor — nothing is stored, so backup/restore
+   and snapshots stay consistent by construction: `impactEur` remains null until
+   the user types a value, and the default recomputes from the persisted y/ena
+   (sanitise guarantees both are numeric). */
+function projRevenueIsDefault(p){
+  return !!p && (p.impactEur==null || p.impactEur===''); // no user value → derived
+}
+function projRevenueM(p){
+  if(!p) return 0;
+  if(!projRevenueIsDefault(p)){ var v=+p.impactEur; return isNaN(v)?0:v; }
+  var y=+p.y, e=+p.ena;                                  // derived default
+  if(p.y!=null && p.y!=='' && p.ena!=null && p.ena!=='' && !isNaN(y) && !isNaN(e)) return y+e;
+  return 0;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -3167,6 +3374,9 @@ function populateEditor(){
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
   SV('e-sector',p.sector||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
+  // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
+  var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
+  G('e-impacteur').placeholder=(_rd!=null)?('default '+_rd+' = impact+enabler'):'e.g. 2.5';
   SV('e-current-gate',p.currentGate||'');SV('e-gate',p.gate||'');SV('e-eta',p.eta||'');
   G('e-color-hex').textContent=p.color;
   populateSectionDropdowns();
@@ -11949,7 +12159,8 @@ function buildBriefHTML(selectedProjs, opts){
       {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
     ];
     if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
-    if(p.impactEur!=null)kpis.push({label:'Revenue Impact',val:p.impactEur,unit:'MEur'});
+    var _rev=projRevenueM(p);
+    if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
     if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
     if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
     if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});
@@ -14599,6 +14810,490 @@ function anExportPNG(){
 }
 /* ◄◄ END: sections/analytics.js ►► */
 
+/* ►► SECTION: PORTFOLIO-ANALYTICS ◄◄ Project-side analytics (INSIGHTS › Portfolio analytics)
+ *
+ * A read-only analytical view over the PROJECT portfolio — distinct from the People
+ * Analytics tab (analytics.js). Renders into #res-body like every Resources tab.
+ * Money-based (€ revenue vs loaded team cost), pipeline, risk, and mix lenses that
+ * the Summary overlay / Cost dashboard don't provide.
+ *
+ * Sections:
+ *   • Scorecard      — portfolio KPIs (revenue €, cost €, ROI, completion, risk)
+ *   • ROI scatter    — revenue impact (€) vs loaded team cost (€), bubble = FTE
+ *   • Gate funnel    — project + revenue distribution across current gates
+ *   • Sector mix     — cost & revenue split by sector (portfolio balance)
+ *   • Risk vs value  — RPN exposure vs revenue (are valuable projects the risky ones?)
+ *
+ * Reuses shared helpers only: getMonthRange, _allocCost, _allocNum, _engByIdMap, escH.
+ * (Trajectory-over-snapshots is a planned follow-up.) All identifiers are pf-prefixed.
+ */
+
+// €-formatter: compact, sign-aware
+function pfEur(v){
+  v=+v||0;
+  if(Math.abs(v)>=1e6) return (v/1e6).toFixed(v>=1e7?0:1)+'M€';
+  if(Math.abs(v)>=1e3) return Math.round(v/1e3)+'k€';
+  return Math.round(v)+'€';
+}
+function pfEmpty(msg){
+  return '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center;font-family:IBM Plex Mono,monospace">'+escH(msg)+'</div>';
+}
+function pfRpn(r){ return (r.sev||1)*(r.occ||1)*(r.det||1); }
+
+// Per-project metrics over the global FROM/TO period.
+function pfBuildDataset(){
+  var months=getMonthRange();
+  var engById=_engByIdMap();
+  var rowsByProj={};
+  allocRows.forEach(function(r){ if(r.projectId==null) return; (rowsByProj[r.projectId]=rowsByProj[r.projectId]||[]).push(r); });
+  return projects.map(function(p){
+    var rows=rowsByProj[p.id]||[];
+    var cost=0, fteSum=0;
+    rows.forEach(function(r){
+      var eng=engById.get(r.engId); var mc=eng?(eng.monthlyCost||0):0;
+      months.forEach(function(m){
+        var v=r.allocs?r.allocs[m]:null;
+        cost+=_allocCost(v,mc);
+        fteSum+=_allocNum(v);
+      });
+    });
+    var rev=projRevenueM(p)*1e6;   // impactEur (M€), or derived impact+enabler default
+    var revDefault=projRevenueIsDefault(p);
+    var risks=p.risks||[];
+    var rpnSum=risks.reduce(function(s,r){return s+pfRpn(r);},0);
+    var rpnMax=risks.reduce(function(s,r){return Math.max(s,pfRpn(r));},0);
+    var todos=p.todos||[], acts=p.actions||[], ms=p.milestones||[];
+    var todoPct=todos.length?todos.filter(function(t){return t.done;}).length/todos.length:null;
+    var actPct=acts.length?acts.filter(function(a){return a.status==='Done';}).length/acts.length:null;
+    var parts=[]; if(todoPct!=null)parts.push(todoPct); if(actPct!=null)parts.push(actPct);
+    var completion=parts.length?parts.reduce(function(s,v){return s+v;},0)/parts.length:null;
+    var msOverdue=ms.filter(function(m){return m.end&&!m.done&&new Date(m.end)<new Date();}).length;
+    return {
+      p:p, name:p.name, color:p.color||'var(--accent)', visible:p.visible,
+      cost:cost, avgFte:months.length?fteSum/months.length:0, rev:rev, revM:rev/1e6,
+      rpnSum:rpnSum, rpnMax:rpnMax, completion:completion, msOverdue:msOverdue,
+      gate:(p.currentGate||p.gate||'').trim(), sector:(p.sector||'').trim()||'—',
+      roi:cost>0?rev/cost:null, revDefault:revDefault
+    };
+  });
+}
+
+// Entry point — assemble the tab into #res-body.
+function renderPortfolioAnalytics(){
+  var body=G('res-body'); if(!body) return;
+  var ds=pfBuildDataset();
+  var months=getMonthRange();
+  var h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
+  h+='<div style="display:flex;align-items:baseline;gap:10px">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">◎ PORTFOLIO ANALYTICS</span>'
+    +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
+    +(months.length?('cost over '+months.length+' month'+(months.length>1?'s':'')+' · FROM/TO period'):'set a FROM/TO period for cost')
+    +'</span></div>';
+  if(!projects.length){ body.innerHTML=h+pfEmpty('No projects yet — add projects on the matrix to see analytics.')+'</div>'; return; }
+  h+=pfScorecard(ds);
+  h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
+  h+=pfSection('VALUE vs COST — ROI',      'Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.', pfRoiChart(ds));
+  h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
+  h+=pfSection('DELIVERY PIPELINE — gates','How the portfolio and its revenue are distributed across current gate stages.', pfGateFunnel(ds));
+  h+=pfSection('PORTFOLIO MIX — sectors',  'Where investment (cost) and expected return (revenue) concentrate by sector.', pfSectorMix(ds));
+  h+=pfSection('RISK vs VALUE',            'Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.', pfRiskValue(ds));
+  h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
+  h+='</div>';
+  body.innerHTML=h;
+}
+
+// Section wrapper (title + hint + body card).
+function pfSection(title,hint,inner){
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden">'
+    +'<div style="padding:11px 14px;border-bottom:1px solid var(--border)">'
+    +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:var(--text);letter-spacing:.05em">'+escH(title)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5">'+escH(hint)+'</div></div>'
+    +'<div style="padding:14px">'+inner+'</div></div>';
+}
+
+function pfKpi(val,label,sub,color){
+  return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:130px;flex:1">'
+    +'<div style="font-size:22px;font-weight:700;color:'+(color||'var(--text)')+';line-height:1.1">'+val+'</div>'
+    +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-top:5px">'+escH(label)+'</div>'
+    +(sub?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escH(sub)+'</div>':'')+'</div>';
+}
+
+function pfScorecard(ds){
+  var totRev=ds.reduce(function(s,d){return s+d.rev;},0);
+  var totCost=ds.reduce(function(s,d){return s+d.cost;},0);
+  var roi=totCost>0?totRev/totCost:null;
+  var hiRisk=ds.filter(function(d){return d.rpnMax>=300;}).length;
+  var comps=ds.map(function(d){return d.completion;}).filter(function(v){return v!=null;});
+  var avgComp=comps.length?Math.round(comps.reduce(function(s,v){return s+v;},0)/comps.length*100):null;
+  var overdue=ds.reduce(function(s,d){return s+d.msOverdue;},0);
+  var roiColor=roi==null?'var(--muted)':(roi>=1?'var(--accent)':'var(--danger)');
+  var h='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+  var entered=ds.filter(function(d){return !d.revDefault;}).length;
+  h+=pfKpi(ds.length, 'PROJECTS', entered+' € entered · '+(ds.length-entered)+' default');
+  h+=pfKpi(pfEur(totRev), 'REVENUE IMPACT', 'expected, all projects', 'var(--accent2)');
+  h+=pfKpi(pfEur(totCost), 'TEAM COST', 'allocated over period');
+  h+=pfKpi(roi==null?'—':(roi>=10?Math.round(roi)+'×':roi.toFixed(1)+'×'), 'PORTFOLIO ROI', roi==null?'assign team cost':'revenue ÷ cost', roiColor);
+  h+=pfKpi(avgComp==null?'—':avgComp+'%', 'AVG COMPLETION', 'todos + actions');
+  h+=pfKpi(hiRisk, 'HIGH-RISK', overdue+' overdue milestones', hiRisk?'var(--danger)':'var(--text)');
+  h+='</div>';
+  return h;
+}
+
+/* ── Generic bubble scatter (linear axes, optional break-even/median guides). ──
+   cfg: { pts:[{vx,vy,r,color,label}], xlab, ylab, xfmt, yfmt,
+          breakeven:bool (y=x line), xguide:num, yguide:num } */
+function pfScatter(cfg){
+  var pts=cfg.pts||[];
+  if(!pts.length) return pfEmpty(cfg.emptyMsg||'No data for this view');
+  var W=680, H=340, PADl=54, PADr=16, PADt=14, PADb=42;
+  var pw=W-PADl-PADr, ph=H-PADt-PADb;
+  var xmax=Math.max.apply(null,pts.map(function(p){return p.vx;}).concat([1]))*1.12;
+  var ymax=Math.max.apply(null,pts.map(function(p){return p.vy;}).concat([1]))*1.12;
+  var X=function(v){return PADl+(xmax?v/xmax:0)*pw;};
+  var Y=function(v){return PADt+ph-(ymax?v/ymax:0)*ph;};
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;max-height:360px;font-family:IBM Plex Mono,monospace">';
+  // grid + ticks
+  for(var i=0;i<=4;i++){
+    var gx=PADl+i/4*pw, gy=PADt+i/4*ph;
+    h+='<line x1="'+gx.toFixed(1)+'" y1="'+PADt+'" x2="'+gx.toFixed(1)+'" y2="'+(PADt+ph)+'" stroke="#2a2a32" stroke-width=".5"/>';
+    h+='<line x1="'+PADl+'" y1="'+gy.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+gy.toFixed(1)+'" stroke="#2a2a32" stroke-width=".5"/>';
+    h+='<text x="'+gx.toFixed(1)+'" y="'+(PADt+ph+14)+'" fill="#6b6b78" font-size="8" text-anchor="middle">'+cfg.xfmt(xmax*i/4)+'</text>';
+    h+='<text x="'+(PADl-6)+'" y="'+(PADt+ph-i/4*ph+3).toFixed(1)+'" fill="#6b6b78" font-size="8" text-anchor="end">'+cfg.yfmt(ymax*i/4)+'</text>';
+  }
+  // break-even diagonal (y=x in value units) — only where both axes share meaning
+  if(cfg.breakeven){
+    var d=Math.min(xmax,ymax);
+    h+='<line x1="'+X(0)+'" y1="'+Y(0)+'" x2="'+X(d)+'" y2="'+Y(d)+'" stroke="#5be5c8" stroke-width="1" stroke-dasharray="5,4" opacity=".55"/>';
+    h+='<text x="'+(X(d)-4)+'" y="'+(Y(d)+12)+'" fill="#5be5c8" font-size="8" text-anchor="end" opacity=".8">break-even ROI</text>';
+  }
+  if(cfg.xguide!=null) h+='<line x1="'+X(cfg.xguide)+'" y1="'+PADt+'" x2="'+X(cfg.xguide)+'" y2="'+(PADt+ph)+'" stroke="#f1a435" stroke-width=".8" stroke-dasharray="3,3" opacity=".5"/>';
+  if(cfg.yguide!=null) h+='<line x1="'+PADl+'" y1="'+Y(cfg.yguide)+'" x2="'+(PADl+pw)+'" y2="'+Y(cfg.yguide)+'" stroke="#f1a435" stroke-width=".8" stroke-dasharray="3,3" opacity=".5"/>';
+  // axis lines
+  h+='<line x1="'+PADl+'" y1="'+PADt+'" x2="'+PADl+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1.2"/>';
+  h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1.2"/>';
+  // bubbles
+  pts.forEach(function(p){
+    var cx=X(p.vx), cy=Y(p.vy), r=Math.max(4,Math.min(20,p.r||6));
+    h+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+p.color+'33" stroke="'+p.color+'" stroke-width="1.3"><title>'+escH(p.label+(p.tip?' — '+p.tip:''))+'</title></circle>';
+  });
+  // labels (top 8 by area to avoid clutter)
+  pts.slice().sort(function(a,b){return (b.vx*b.vy)-(a.vx*a.vy);}).slice(0,8).forEach(function(p){
+    var cx=X(p.vx), cy=Y(p.vy);
+    h+='<text x="'+(cx+ (Math.max(4,Math.min(20,p.r||6))+3)).toFixed(1)+'" y="'+(cy+3).toFixed(1)+'" fill="var(--text)" font-size="8.5" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px">'+escH(p.label.length>18?p.label.slice(0,17)+'…':p.label)+'</text>';
+  });
+  h+='<text x="'+(PADl+pw/2)+'" y="'+(H-4)+'" fill="#8b9096" font-size="9" text-anchor="middle">'+escH(cfg.xlab)+'</text>';
+  h+='<text transform="rotate(-90 12 '+(PADt+ph/2)+')" x="12" y="'+(PADt+ph/2)+'" fill="#8b9096" font-size="9" text-anchor="middle">'+escH(cfg.ylab)+'</text>';
+  h+='</svg>';
+  return h;
+}
+
+function pfRoiChart(ds){
+  var pts=ds.filter(function(d){return d.rev>0||d.cost>0;}).map(function(d){
+    return {vx:d.cost, vy:d.rev, r:4+Math.sqrt(d.avgFte)*6, color:(d.color[0]==='#'?d.color:'#c8f135'),
+            label:d.name, tip:pfEur(d.rev)+' rev'+(d.revDefault?' (est.)':'')+' · '+pfEur(d.cost)+' cost · '+d.avgFte.toFixed(1)+' FTE'};
+  });
+  if(!pts.length) return pfEmpty('Add revenue impact (€) on projects and allocate a team to see ROI.');
+  return pfScatter({pts:pts, xlab:'Loaded team cost (€) →', ylab:'Revenue impact (€) →',
+    xfmt:pfEur, yfmt:pfEur, breakeven:true});
+}
+
+function pfGateFunnel(ds){
+  var byGate={};
+  ds.forEach(function(d){ var g=d.gate||'(no gate set)'; if(!byGate[g])byGate[g]={n:0,rev:0,cost:0}; byGate[g].n++; byGate[g].rev+=d.rev; byGate[g].cost+=d.cost; });
+  var rows=Object.keys(byGate).map(function(g){return {gate:g,d:byGate[g]};}).sort(function(a,b){return b.d.n-a.d.n;});
+  if(!rows.length) return pfEmpty('No gate data');
+  var maxN=Math.max.apply(null,rows.map(function(r){return r.d.n;}));
+  var h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(function(r){
+    var pct=maxN?r.d.n/maxN*100:0;
+    var noGate=r.gate==='(no gate set)';
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:150px;font-size:11px;color:'+(noGate?'var(--muted)':'var(--text)')+';font-family:IBM Plex Mono,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.gate)+'">'+escH(r.gate)+'</div>'
+      +'<div style="flex:1;height:22px;background:var(--bg);border-radius:5px;overflow:hidden;position:relative">'
+      +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+(noGate?'var(--border)':'linear-gradient(90deg,rgba(200,241,53,.35),rgba(91,229,200,.25))')+';border-right:2px solid '+(noGate?'var(--muted)':'var(--accent)')+'"></div>'
+      +'<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--text)">'+r.d.n+' project'+(r.d.n>1?'s':'')+'</span></div>'
+      +'<div style="width:120px;text-align:right;font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+pfEur(r.d.rev)+' · '+pfEur(r.d.cost)+'</div></div>';
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">bar = project count · right = revenue · cost per stage</div>';
+  h+='</div>';
+  return h;
+}
+
+function pfSectorMix(ds){
+  var by={};
+  ds.forEach(function(d){ if(!by[d.sector])by[d.sector]={cost:0,rev:0,n:0}; by[d.sector].cost+=d.cost; by[d.sector].rev+=d.rev; by[d.sector].n++; });
+  var rows=Object.keys(by).map(function(s){return {sector:s,d:by[s]};}).sort(function(a,b){return (b.d.cost+b.d.rev)-(a.d.cost+a.d.rev);});
+  if(!rows.length) return pfEmpty('No sector data — tag projects with a sector/domain.');
+  var maxCost=Math.max.apply(null,rows.map(function(r){return r.d.cost;}).concat([1]));
+  var maxRev=Math.max.apply(null,rows.map(function(r){return r.d.rev;}).concat([1]));
+  var h='<div style="display:flex;flex-direction:column;gap:10px">';
+  rows.forEach(function(r){
+    var cp=r.d.cost/maxCost*100, rp=r.d.rev/maxRev*100;
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:120px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.sector)+'">'+escH(r.sector)+' <span style="color:var(--dim)">·'+r.d.n+'</span></div>'
+      +'<div style="flex:1;display:flex;flex-direction:column;gap:3px">'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+rp.toFixed(1)+'%;background:var(--accent2)" title="revenue '+pfEur(r.d.rev)+'"></div></div>'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+cp.toFixed(1)+'%;background:var(--accent)" title="cost '+pfEur(r.d.cost)+'"></div></div>'
+      +'</div>'
+      +'<div style="width:150px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--accent2)">'+pfEur(r.d.rev)+'</span> / <span style="color:var(--accent)">'+pfEur(r.d.cost)+'</span></div></div>';
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">top bar = revenue (teal) · bottom bar = cost (lime)</div>';
+  h+='</div>';
+  return h;
+}
+
+function pfRiskValue(ds){
+  var withRisk=ds.filter(function(d){return d.rpnSum>0;});
+  if(!withRisk.length) return pfEmpty('No project risks logged yet — add risks to see exposure vs value.');
+  var pts=withRisk.map(function(d){
+    return {vx:d.rpnSum, vy:d.rev, r:5+Math.sqrt(d.avgFte)*5, color:(d.color[0]==='#'?d.color:'#f14335'),
+            label:d.name, tip:'ΣRPN '+d.rpnSum+' · '+pfEur(d.rev)};
+  });
+  // median guides
+  var xs=pts.map(function(p){return p.vx;}).sort(function(a,b){return a-b;});
+  var ys=pts.map(function(p){return p.vy;}).sort(function(a,b){return a-b;});
+  var med=function(a){return a.length?a[Math.floor(a.length/2)]:0;};
+  return pfScatter({pts:pts, xlab:'Risk exposure — Σ RPN →', ylab:'Revenue impact (€) →',
+    xfmt:function(v){return Math.round(v);}, yfmt:pfEur, xguide:med(xs), yguide:med(ys)});
+}
+
+/* ══ INTERACTIVE SECTIONS (treemap · burn · distribution) ══════════════
+   Small module state + a generic re-render router so each section's controls
+   re-render only their own wrapper (no full-tab reflow, no scroll jump). */
+var _pfState={ treemapBy:'cost', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+var PF_SEL='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer';
+
+// Set a control value and re-render just the affected section wrapper.
+function pfSet(key,val){
+  _pfState[key]=(key==='distBins')?(+val):val;
+  var el;
+  if(key==='treemapBy'){ el=G('pf-sec-treemap'); if(el) el.innerHTML=pfTreemapSection(); }
+  else if(key==='burnBy'){ el=G('pf-sec-burn'); if(el) el.innerHTML=pfBurnSection(); }
+  else { el=G('pf-sec-dist'); if(el) el.innerHTML=pfDistSection(); }
+}
+function pfToggle(call,label,active){
+  return '<button onclick="'+call+'" style="background:'+(active?'rgba(200,241,53,.12)':'var(--bg)')
+    +';border:1px solid '+(active?'var(--accent)':'var(--border)')+';color:'+(active?'var(--accent)':'var(--muted)')
+    +';font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 9px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>';
+}
+// Section shell with a controls slot on the header right.
+function pfSectionShell(title,hint,controls,inner){
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden">'
+    +'<div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
+    +'<div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:var(--text);letter-spacing:.05em">'+escH(title)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5;max-width:600px">'+escH(hint)+'</div></div>'
+    +'<div style="flex-shrink:0">'+(controls||'')+'</div></div>'
+    +'<div style="padding:14px">'+inner+'</div></div>';
+}
+function pfPalette(i){ var c=['#c8f135','#5be5c8','#a78bfa','#f1a435','#f14335','#5b9ee5','#e55b9e','#8be55b','#e5c85b','#5be59e']; return c[i%c.length]; }
+function pfRankColor(p){ return p>=.75?'#c8f135':p>=.5?'#a8e820':p>=.25?'#f1a435':'#f14335'; }
+function pfMetricVal(d,metric){
+  if(metric==='revenue')    return d.revM;
+  if(metric==='cost')       return d.cost/1000;
+  if(metric==='roi')        return (d.roi!=null&&isFinite(d.roi))?d.roi:null;
+  if(metric==='risk')       return d.rpnSum;
+  if(metric==='fte')        return d.avgFte;
+  if(metric==='completion') return (d.completion!=null)?d.completion*100:null;
+  return null;
+}
+function pfDistFmt(metric,v){
+  if(metric==='revenue')    return (v>=10?Math.round(v):v.toFixed(1))+'M';
+  if(metric==='cost')       return Math.round(v)+'k';
+  if(metric==='roi')        return (v>=10?Math.round(v):v.toFixed(1))+'×';
+  if(metric==='completion') return Math.round(v)+'%';
+  if(metric==='fte')        return v.toFixed(1);
+  return Math.round(v);
+}
+
+/* ── TREEMAP (squarified) — area = cost|revenue, color = ROI rank ── */
+function pfTreemapSection(ds){
+  ds=ds||pfBuildDataset();
+  var by=_pfState.treemapBy;
+  var items=ds.map(function(d){ return {d:d, value:(by==='revenue'?d.rev:d.cost)}; }).filter(function(x){return x.value>0;});
+  var controls='<span style="display:flex;gap:6px">'
+    +pfToggle("pfSet('treemapBy','cost')",'Size: Cost',by==='cost')
+    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')+'</span>';
+  var inner=items.length?pfTreemapSvg(items):pfEmpty(by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.');
+  return pfSectionShell('SPEND MAP — treemap','Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.', controls, inner);
+}
+function pfTreemapSvg(items){
+  var W=680,H=300;
+  var rois=items.map(function(x){var d=x.d;return d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0);});
+  var sorted=rois.filter(function(v){return isFinite(v);}).slice().sort(function(a,b){return a-b;});
+  var pct=function(v){ if(!isFinite(v))return 1; if(!sorted.length)return .5; var i=0; while(i<sorted.length&&sorted[i]<v)i++; return i/sorted.length; };
+  var rects=pfSquarify(items,0,0,W,H);
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  rects.forEach(function(r){
+    var d=r.d.d, roi=d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0), col=pfRankColor(pct(roi));
+    var roiTxt=d.cost>0?(' · ROI '+(d.rev/d.cost>=10?Math.round(d.rev/d.cost):(d.rev/d.cost).toFixed(1))+'×'):'';
+    h+='<rect x="'+r.x.toFixed(1)+'" y="'+r.y.toFixed(1)+'" width="'+Math.max(0,r.w-1).toFixed(1)+'" height="'+Math.max(0,r.h-1).toFixed(1)+'" fill="'+col+'22" stroke="'+col+'" stroke-width="1" rx="2"><title>'+escH(d.name+' — '+pfEur(d.rev)+' rev · '+pfEur(d.cost)+' cost'+roiTxt)+'</title></rect>';
+    if(r.w>54&&r.h>22){
+      var maxc=Math.floor(r.w/6);
+      h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+14).toFixed(1)+'" fill="var(--text)" font-size="9.5" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px">'+escH(d.name.length>maxc?d.name.slice(0,maxc-1)+'…':d.name)+'</text>';
+      if(r.h>38) h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+26).toFixed(1)+'" fill="var(--muted)" font-size="8">'+escH(pfEur(_pfState.treemapBy==='revenue'?d.rev:d.cost))+'</text>';
+    }
+  });
+  h+='</svg>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>ROI rank:</span>'
+    +'<span style="color:#f14335">■ low</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ high</span></div>';
+  return h;
+}
+// Squarified treemap layout → [{d,x,y,w,h}]. items:[{d,value>0}].
+function pfSquarify(items,x,y,w,h){
+  var data=items.filter(function(it){return it.value>0;});
+  var total=data.reduce(function(s,it){return s+it.value;},0);
+  if(total<=0||w<=0||h<=0) return [];
+  var nodes=data.slice().sort(function(a,b){return b.value-a.value;}).map(function(it){return {d:it,a:it.value*(w*h)/total};});
+  var out=[]; pfSqRec(nodes,{x:x,y:y,w:w,h:h},out); return out;
+}
+function pfSqWorst(row,length){
+  if(!row.length) return Infinity;
+  var s=0,mx=-Infinity,mn=Infinity;
+  for(var i=0;i<row.length;i++){var a=row[i].a; s+=a; if(a>mx)mx=a; if(a<mn)mn=a;}
+  if(s<=0) return Infinity;
+  return Math.max((length*length*mx)/(s*s),(s*s)/(length*length*mn));
+}
+function pfSqRec(nodes,rect,out){
+  if(!nodes.length) return;
+  if(rect.w<1||rect.h<1){ nodes.forEach(function(n){out.push({d:n.d,x:rect.x,y:rect.y,w:Math.max(0,rect.w),h:Math.max(0,rect.h)});}); return; }
+  var length=Math.min(rect.w,rect.h), row=[], idx=0;
+  while(idx<nodes.length){
+    if(row.length===0 || pfSqWorst(row.concat([nodes[idx]]),length)<=pfSqWorst(row,length)){ row.push(nodes[idx]); idx++; }
+    else break;
+  }
+  var rowSum=row.reduce(function(s,n){return s+n.a;},0);
+  if(rect.w>=rect.h){
+    var rw=rowSum/rect.h, yy=rect.y;
+    row.forEach(function(n){ var hh=rect.h*(n.a/rowSum); out.push({d:n.d,x:rect.x,y:yy,w:rw,h:hh}); yy+=hh; });
+    pfSqRec(nodes.slice(idx),{x:rect.x+rw,y:rect.y,w:rect.w-rw,h:rect.h},out);
+  }else{
+    var rh=rowSum/rect.w, xx=rect.x;
+    row.forEach(function(n){ var ww=rect.w*(n.a/rowSum); out.push({d:n.d,x:xx,y:rect.y,w:ww,h:rh}); xx+=ww; });
+    pfSqRec(nodes.slice(idx),{x:rect.x,y:rect.y+rh,w:rect.w,h:rect.h-rh},out);
+  }
+}
+
+/* ── COST OVER TIME — stacked-area burn ── */
+function pfBurnSection(){
+  var by=_pfState.burnBy;
+  var controls='<span style="display:flex;gap:6px">'
+    +pfToggle("pfSet('burnBy','sector')",'By: Sector',by==='sector')
+    +pfToggle("pfSet('burnBy','project')",'By: Project',by==='project')+'</span>';
+  return pfSectionShell('COST OVER TIME — burn','Monthly team cost stacked by '+by+' across the FROM/TO period — the spend ramp and where it concentrates over time.', controls, pfBurnSvg(by));
+}
+function pfBurnSvg(by){
+  var months=getMonthRange();
+  if(months.length<2) return pfEmpty('Set a FROM/TO period of at least 2 months to see the burn curve.');
+  var engById=_engByIdMap(), projById=_projByIdMap(), groups={};
+  allocRows.forEach(function(r){
+    var proj=projById.get(r.projectId); if(!proj) return;
+    var key=(by==='project')?(proj.name||'—'):(((proj.sector||'').trim())||'—');
+    var eng=engById.get(r.engId), mc=eng?(eng.monthlyCost||0):0;
+    if(!groups[key]) groups[key]={key:key,color:(by==='project'&&proj.color&&proj.color[0]==='#')?proj.color:null,arr:months.map(function(){return 0;})};
+    months.forEach(function(m,i){ groups[key].arr[i]+=_allocCost(r.allocs?r.allocs[m]:null, mc); });
+  });
+  var series=Object.keys(groups).map(function(k){return groups[k];})
+    .filter(function(s){return s.arr.some(function(v){return v>0;});})
+    .sort(function(a,b){return b.arr.reduce(function(s,v){return s+v;},0)-a.arr.reduce(function(s,v){return s+v;},0);});
+  if(!series.length) return pfEmpty('No allocation cost in this period.');
+  series.forEach(function(s,i){ if(!s.color) s.color=pfPalette(i); });
+  var totals=months.map(function(_,i){ return series.reduce(function(s,se){return s+se.arr[i];},0); });
+  var ymax=Math.max.apply(null,totals.concat([1]))*1.08;
+  var W=680,H=300,PADl=54,PADr=14,PADt=12,PADb=40,pw=W-PADl-PADr,ph=H-PADt-PADb;
+  var X=function(i){ return PADl+(months.length>1?i/(months.length-1):0)*pw; };
+  var Y=function(v){ return PADt+ph-(ymax?v/ymax:0)*ph; };
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  for(var g=0;g<=4;g++){ var gy=PADt+g/4*ph; h+='<line x1="'+PADl+'" y1="'+gy.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+gy.toFixed(1)+'" stroke="#2a2a32" stroke-width=".5"/>'; h+='<text x="'+(PADl-6)+'" y="'+(gy+3).toFixed(1)+'" fill="#6b6b78" font-size="8" text-anchor="end">'+pfEur(ymax*(1-g/4))+'</text>'; }
+  var base=months.map(function(){return 0;});
+  series.forEach(function(se){
+    var top=base.map(function(b,i){return b+se.arr[i];}), pts=[];
+    for(var i=0;i<months.length;i++) pts.push(X(i).toFixed(1)+','+Y(top[i]).toFixed(1));
+    for(var j=months.length-1;j>=0;j--) pts.push(X(j).toFixed(1)+','+Y(base[j]).toFixed(1));
+    h+='<polygon points="'+pts.join(' ')+'" fill="'+se.color+'55" stroke="'+se.color+'" stroke-width="1"><title>'+escH(se.key)+'</title></polygon>';
+    base=top;
+  });
+  var step=Math.max(1,Math.ceil(months.length/8));
+  for(var i=0;i<months.length;i+=step){ h+='<text x="'+X(i).toFixed(1)+'" y="'+(PADt+ph+13)+'" fill="#6b6b78" font-size="7.5" text-anchor="middle">'+escH(fmtMonth(months[i]))+'</text>'; }
+  h+='<line x1="'+PADl+'" y1="'+PADt+'" x2="'+PADl+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='</svg>';
+  h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+series.slice(0,12).map(function(se){
+    return '<span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace"><span style="width:9px;height:9px;border-radius:2px;background:'+se.color+'"></span>'+escH(se.key)+'</span>';
+  }).join('')+'</div>';
+  return h;
+}
+
+/* ── DISTRIBUTION — histogram (+Gaussian) or Pareto 80/20 ── */
+function pfDistSection(ds){
+  ds=ds||pfBuildDataset();
+  var m=_pfState.distMetric, fit=_pfState.distFit, bins=+_pfState.distBins||8;
+  var mOpts=[['revenue','Revenue'],['cost','Cost'],['roi','ROI'],['risk','Risk'],['fte','FTE'],['completion','Completion']];
+  var fOpts=[['none','Histogram'],['gauss','+ Gaussian'],['pareto','Pareto 80/20']];
+  var sel=function(key,opts,cur){ return '<select onchange="pfSet(\''+key+'\',this.value)" style="'+PF_SEL+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+escH(o[1])+'</option>';}).join('')+'</select>'; };
+  var binsCtl=(fit==='pareto')?'':'<label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;display:flex;align-items:center;gap:5px">bins '+bins+'<input type="range" min="4" max="20" value="'+bins+'" onchange="pfSet(\'distBins\',this.value)" style="width:70px;accent-color:var(--accent)"></label>';
+  var controls='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+sel('distMetric',mOpts,m)+sel('distFit',fOpts,fit)+binsCtl+'</div>';
+  var chart=(fit==='pareto')?pfParetoSvg(ds,m):pfHistSvg(ds,m,fit,bins);
+  return pfSectionShell('DISTRIBUTION — '+m,'Spread of the chosen metric across projects. Gaussian overlays a bell curve (judge normality); Pareto shows 80/20 concentration.', controls, chart);
+}
+function pfHistSvg(ds,metric,fit,bins){
+  var vals=[]; ds.forEach(function(d){ var v=pfMetricVal(d,metric); if(v!=null&&isFinite(v)) vals.push(v); });
+  if(vals.length<2) return pfEmpty('Not enough data for a distribution of this metric.');
+  var min=Math.min.apply(null,vals), max=Math.max.apply(null,vals); if(max<=min) max=min+1;
+  var nb=Math.max(3,Math.min(30,bins|0)), bwv=(max-min)/nb, counts=new Array(nb).fill(0);
+  vals.forEach(function(v){ var bi=Math.min(nb-1,Math.max(0,Math.floor((v-min)/bwv))); counts[bi]++; });
+  var maxCount=Math.max.apply(null,counts.concat([1]));
+  var W=680,H=300,PADl=42,PADr=16,PADt=14,PADb=42,pw=W-PADl-PADr,ph=H-PADt-PADb;
+  var X=function(v){ return PADl+((v-min)/(max-min))*pw; };
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  for(var g=0;g<=4;g++){ var gy=PADt+g/4*ph; h+='<line x1="'+PADl+'" y1="'+gy.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+gy.toFixed(1)+'" stroke="#2a2a32" stroke-width=".5"/>'; h+='<text x="'+(PADl-6)+'" y="'+(gy+3).toFixed(1)+'" fill="#6b6b78" font-size="8" text-anchor="end">'+Math.round(maxCount*(1-g/4))+'</text>'; }
+  for(var i=0;i<nb;i++){ var x0=PADl+i/nb*pw, bwid=pw/nb-1.5, bh=(counts[i]/maxCount)*ph; h+='<rect x="'+(x0+0.75).toFixed(1)+'" y="'+(PADt+ph-bh).toFixed(1)+'" width="'+Math.max(1,bwid).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="rgba(200,241,53,.28)" stroke="var(--accent)" stroke-width=".7"><title>'+counts[i]+' project'+(counts[i]===1?'':'s')+'</title></rect>'; }
+  for(var t=0;t<=4;t++){ var xv=min+t/4*(max-min); h+='<text x="'+(PADl+t/4*pw).toFixed(1)+'" y="'+(PADt+ph+13)+'" fill="#6b6b78" font-size="8" text-anchor="middle">'+pfDistFmt(metric,xv)+'</text>'; }
+  if(fit==='gauss'){
+    var mean=vals.reduce(function(s,v){return s+v;},0)/vals.length;
+    var sd=Math.sqrt(vals.reduce(function(s,v){return s+(v-mean)*(v-mean);},0)/vals.length)||1e-9;
+    var pts=[]; for(var s2=0;s2<=60;s2++){ var xv2=min+s2/60*(max-min); var pdf=Math.exp(-0.5*Math.pow((xv2-mean)/sd,2)); pts.push(X(xv2).toFixed(1)+','+(PADt+ph-pdf*ph*0.92).toFixed(1)); }
+    h+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--accent2)" stroke-width="1.6"/>';
+    h+='<text x="'+(PADl+pw-4)+'" y="'+(PADt+11)+'" fill="var(--accent2)" font-size="8" text-anchor="end">μ='+pfDistFmt(metric,mean)+' · σ='+pfDistFmt(metric,sd)+'</text>';
+  }
+  h+='<line x1="'+PADl+'" y1="'+PADt+'" x2="'+PADl+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='</svg>';
+  return h;
+}
+function pfParetoSvg(ds,metric){
+  var items=ds.map(function(d){ return {name:d.name,color:(d.color&&d.color[0]==='#')?d.color:'#c8f135',v:pfMetricVal(d,metric)}; })
+    .filter(function(it){return it.v!=null&&isFinite(it.v)&&it.v>0;})
+    .sort(function(a,b){return b.v-a.v;});
+  if(items.length<2) return pfEmpty('Not enough positive values for a Pareto of this metric.');
+  var CAP=18;
+  if(items.length>CAP){ var tail=items.slice(CAP), sum=tail.reduce(function(s,it){return s+it.v;},0); items=items.slice(0,CAP); items.push({name:'+'+tail.length+' others',color:'#6b6b78',v:sum}); }
+  var total=items.reduce(function(s,it){return s+it.v;},0)||1;
+  var maxV=Math.max.apply(null,items.map(function(it){return it.v;}));
+  var W=680,H=320,PADl=48,PADr=44,PADt=14,PADb=66,pw=W-PADl-PADr,ph=H-PADt-PADb,bw=pw/items.length;
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  for(var g=0;g<=4;g++){ var gy=PADt+g/4*ph; h+='<line x1="'+PADl+'" y1="'+gy.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+gy.toFixed(1)+'" stroke="#2a2a32" stroke-width=".5"/>'; h+='<text x="'+(PADl-6)+'" y="'+(gy+3).toFixed(1)+'" fill="#6b6b78" font-size="8" text-anchor="end">'+pfDistFmt(metric,maxV*(1-g/4))+'</text>'; h+='<text x="'+(PADl+pw+6)+'" y="'+(gy+3).toFixed(1)+'" fill="#5be5c8" font-size="8">'+Math.round(100*(1-g/4))+'%</text>'; }
+  var cum=0, linePts=[], eighty=null;
+  items.forEach(function(it,i){
+    var x0=PADl+i*bw, bh=(it.v/maxV)*ph;
+    h+='<rect x="'+(x0+1.5).toFixed(1)+'" y="'+(PADt+ph-bh).toFixed(1)+'" width="'+Math.max(1,bw-3).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+it.color+'33" stroke="'+it.color+'" stroke-width=".8"><title>'+escH(it.name+' — '+pfDistFmt(metric,it.v))+'</title></rect>';
+    cum+=it.v; var cf=cum/total, cx=x0+bw/2, cy=PADt+ph-cf*ph;
+    linePts.push(cx.toFixed(1)+','+cy.toFixed(1));
+    if(eighty===null&&cf>=0.8) eighty={i:i};
+  });
+  h+='<polyline points="'+linePts.join(' ')+'" fill="none" stroke="var(--accent2)" stroke-width="1.6"/>';
+  linePts.forEach(function(p){ var xy=p.split(','); h+='<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="2.2" fill="var(--accent2)"/>'; });
+  var y80=PADt+ph-0.8*ph;
+  h+='<line x1="'+PADl+'" y1="'+y80.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+y80.toFixed(1)+'" stroke="#f1a435" stroke-width=".8" stroke-dasharray="4,3" opacity=".7"/>';
+  h+='<text x="'+(PADl+2)+'" y="'+(y80-3).toFixed(1)+'" fill="#f1a435" font-size="8">80% of total</text>';
+  items.forEach(function(it,i){ var cx=PADl+i*bw+bw/2; h+='<text transform="rotate(45 '+cx.toFixed(1)+' '+(PADt+ph+8)+')" x="'+cx.toFixed(1)+'" y="'+(PADt+ph+8)+'" fill="#6b6b78" font-size="7.5">'+escH(it.name.length>14?it.name.slice(0,13)+'…':it.name)+'</text>'; });
+  h+='<line x1="'+PADl+'" y1="'+PADt+'" x2="'+PADl+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
+  h+='</svg>';
+  var insight=eighty?('<div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:IBM Plex Mono,monospace">Top <span style="color:var(--accent)">'+(eighty.i+1)+'</span> of '+items.length+' ('+Math.round((eighty.i+1)/items.length*100)+'%) drive 80% of total '+escH(metric)+'.</div>'):'';
+  return h+insight;
+}
+/* ◄◄ END: sections/portfolio.js ►► */
+
 /* ►► SECTION: BACKUP ◄◄ Full backup export/import with photos; roster CSV export/import
  *
  * Functions defined in this file:
@@ -15739,7 +16434,7 @@ function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics'].forEach(function(t){
+  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -15763,6 +16458,7 @@ function showResTab(tab){
   else if(tab==='development') renderDevelopment();
   else if(tab==='heatmap')     renderHeatmap();
   else if(tab==='analytics')   renderAnalyticsTab();
+  else if(tab==='portfolio')   renderPortfolioAnalytics();
   else                         renderResDashboard();
 }
 
@@ -15899,6 +16595,422 @@ function renderResActiveTab(){
 }
 /* ◄◄ END: sections/nav.js ►► */
 
+/* ►► SECTION: RAILNAV ◄◄ Persistent left navigation rail (domains → views), flyout + pin
+ *
+ * Owns ALL top-level navigation. Replaces the old multi-group <header> and the
+ * 12-button #res-header tab strip with one always-visible rail: five domains,
+ * quick view-switching via tap/hover flyout, and a pin-to-expand accordion.
+ *
+ * Single source of truth: the global `activeView` (globals.js). The router
+ * railGo(viewId) sets it, performs the route, and refreshes the highlight +
+ * breadcrumb. VIEWS change the visible surface; ACTIONS just fire a function.
+ *
+ * NOTE: every identifier here is prefixed `rail`/`RAIL_` to avoid clobbering
+ * existing globals in the flat bundle (build.js fails on duplicate top-level
+ * declarations). No renderer/data/persistence logic lives here — routing only.
+ *
+ * Functions defined in this file:
+ *   railInit        — cache DOM refs, wire listeners, render, land on initial view
+ *   railRender      — (re)builds the rail scroll body + foot from RAIL_DOMAINS/RAIL_UTIL
+ *   railDomainFor   — returns the domain object owning a given viewId
+ *   railGo          — router: set activeView + route + refresh highlight/breadcrumb
+ *   railAction      — fire an action (brief/snap/backup/restore/ai/help); no activeView change
+ *   railDomClick    — collapsed: toggle flyout · pinned: expand accordion + go to first view
+ *   railTogglePin   — pin (open, labelled accordion) / collapse (icon strip)
+ *   railFlyEnter    — show the flyout for a domain (hover or tap, collapsed only)
+ *   railFlyLeave    — delayed hide of the flyout
+ *   railHideFly     — hide the flyout immediately
+ *   railUpdateCrumb — refresh the DOMAIN › View breadcrumb (guarded; #topbar is Phase 3)
+ */
+
+/* ── Inline SVG icons (currentColor; SVG only, no markup that breaks the bundle) ── */
+var RAIL_I = {
+  team:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.6 19c0-3 2.4-5 5.4-5s5.4 2 5.4 5"/><path d="M16 5.6a3 3 0 0 1 0 5.6"/><path d="M17.2 14c2.1.5 3.4 2.2 3.4 4.4"/></svg>',
+  work:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg>',
+  skills:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="1.4"/></svg>',
+  talent:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-8.5"/><path d="M12 12.5C11.4 9.6 8.9 8 5.9 8c.1 3 2.5 4.9 6.1 4.5z"/><path d="M12 11.5c.5-2.6 2.7-4 5.6-4-.1 2.8-2.3 4.3-5.6 4z"/></svg>',
+  insights:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="12" width="3.6" height="7.5" rx="1"/><rect x="10.2" y="6" width="3.6" height="13.5" rx="1"/><rect x="16.4" y="9" width="3.6" height="10.5" rx="1"/></svg>',
+  snap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
+  backup:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v8.6L12 20l-7.5-4.2V7.2z"/><path d="M4.8 7.4L12 11.5l7.2-4.1"/><path d="M12 11.5V20"/></svg>',
+  restore:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v3.4h3.4"/></svg>',
+  ai:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2.6"/><path d="M10 3v2.4M14 3v2.4M10 18.6V21M14 18.6V21M3 10h2.4M3 14h2.4M18.6 10H21M18.6 14H21"/></svg>',
+  help:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.8.3-1.3.9-1.3 1.9"/><circle cx="11.6" cy="16.6" r="0.7" fill="currentColor" stroke="none"/></svg>',
+  auto:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12s3.2-6 9-6 9 6 9 6-3.2 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.6"/></svg>',
+  settings:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  pin:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  pinOpen:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+};
+
+/* ── Domain → view map. Every view id routes through railGo (Phase 2).
+   Targets verified against real source: res-tabs go via openRes()+showResTab();
+   org/summary/compare/matrix have their own openers. `action:true` items fire a
+   function without changing activeView. ID cards & Succession are deliberately
+   NOT rail views (modal / org sub-feature). ── */
+var RAIL_DOMAINS = [
+  { id:'team', name:'TEAM', ico:RAIL_I.team, views:[
+    {id:'roster',      label:'Roster'},
+    {id:'org',         label:'Org chart'},
+  ]},
+  { id:'work', name:'WORK', ico:RAIL_I.work, views:[
+    {id:'matrix',      label:'Portfolio matrix', bdg:'was home'},
+    {id:'plan',        label:'Resource plan'},
+    {id:'timeline',    label:'Timeline'},
+    {id:'brief',       label:'Project brief', action:true},
+  ]},
+  { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
+    {id:'skills',      label:'Skills matrix'},
+    {id:'skillrisk',   label:'Skill risk', bdg:'SPOF'},
+    {id:'heatmap',     label:'Heatmap'},
+  ]},
+  { id:'talent', name:'TALENT', ico:RAIL_I.talent, views:[
+    {id:'ninebox',     label:'Nine-box'},
+    {id:'disc',        label:'DISC'},
+    {id:'profiles',    label:'Team profiles'},
+    {id:'development', label:'Development'},
+  ]},
+  { id:'insights', name:'INSIGHTS', ico:RAIL_I.insights, views:[
+    {id:'portfolio',   label:'Portfolio analytics'},
+    {id:'analytics',   label:'People analytics'},
+    {id:'summary',     label:'Summary'},
+    {id:'dashboard',   label:'Cost dashboard'},
+    {id:'compare',     label:'Compare'},
+  ]},
+];
+
+/* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
+var RAIL_UTIL = [
+  {id:'snap',     name:'Snapshots', ico:RAIL_I.snap},
+  {id:'backup',   name:'Backup',    ico:RAIL_I.backup},
+  {id:'restore',  name:'Restore',   ico:RAIL_I.restore},
+  {id:'ai',       name:'AI advisor',ico:RAIL_I.ai},
+  {id:'settings', name:'Settings',  ico:RAIL_I.settings},
+  {id:'help',     name:'Help',      ico:RAIL_I.help},
+];
+
+/* ── Module state (rail-prefixed; unique across the flat bundle) ── */
+var railPinned=false;        // locked open via the pin button (survives mouse-leave)
+var railHoverMode=true;      // hover-drawer: open on pointer-over, auto-hide on leave (persisted)
+var railHoverOpen=false;     // transient hover expansion (not pinned)
+var railLanding=null;        // stored default landing view id; null = first run (persisted)
+var railRouting=false;       // true while railGo/railRoute is switching surfaces
+var railWidth=58;            // collapsed rail width (px, persisted, clamped)
+var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
+var railFlyDom=null, railFlyTimer=null;
+var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
+var RAIL_PREFS_KEY='eim_rail_prefs';   // tiny UI-only key, separate from app state (SK)
+
+// load persisted rail UI prefs (hover-drawer on/off + default landing + collapsed width)
+function railLoadPrefs(){
+  try{ var p=JSON.parse(localStorage.getItem(RAIL_PREFS_KEY)||'null');
+       if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
+              if(typeof p.landing==='string')  railLanding=p.landing;
+              if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
+}
+// persist rail UI prefs
+function railSavePrefs(){
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth})); }catch(e){}
+}
+// clamp the collapsed width to a range that keeps the icon strip + layout intact
+function railClampWidth(v){ v=+v; if(isNaN(v)) return RAIL_W_DEFAULT; return Math.max(RAIL_W_MIN,Math.min(RAIL_W_MAX,Math.round(v))); }
+// push the collapsed width to the --rail CSS variable; everything (gutter, overlay
+// insets, flyout, rail) keys off it, so this single write reflows the whole shell
+function railApplyWidth(){ document.documentElement.style.setProperty('--rail', railClampWidth(railWidth)+'px'); }
+// live preview while dragging the Settings slider (reverted on Cancel)
+function railPreviewWidth(v){
+  var w=railClampWidth(v);
+  document.documentElement.style.setProperty('--rail', w+'px');
+  var lbl=G('set-railwidth-val'); if(lbl) lbl.textContent=w+'px';
+}
+// is the rail visually open (pinned OR hover-expanded)?
+function railIsOpen(){ return railPinned||railHoverOpen; }
+// reflect open state on the DOM (width via .open class) + pin glyph
+function railApplyOpen(){
+  if(railEl) railEl.classList.toggle('open',railIsOpen());
+  if(railPinBtn) railPinBtn.innerHTML=railPinned?RAIL_I.pinOpen:RAIL_I.pin;
+}
+// toggle the hover-drawer option (open-on-hover + auto-hide-on-leave)
+function railToggleHoverMode(){
+  railHoverMode=!railHoverMode;
+  railSavePrefs();
+  railRender();   // refresh the foot toggle label; open state is left to hover/pin
+}
+
+// cache DOM refs, wire listeners, render, land on the initial view
+function railInit(){
+  railEl       = G('railnav');
+  railScrollEl = G('rail-scroll');
+  railFootEl   = G('rail-foot');
+  railFlyoutEl = G('rail-flyout');
+  railScrimEl  = G('rail-scrim');
+  railPinBtn   = G('rail-pin');
+  if(!railEl) return;                       // rail markup missing → bail quietly
+  railLoadPrefs();
+  railApplyWidth();                         // apply the saved collapsed width up front
+  if(railPinBtn) railPinBtn.innerHTML=RAIL_I.pin;
+  railRender();
+  // Hover-drawer: pointer over the always-visible rail expands it; leaving
+  // auto-collapses it (unless pinned). Toggle via the foot "Auto-hide" control.
+  railEl.addEventListener('mouseenter',function(){
+    if(railHoverMode&&!railPinned&&!railHoverOpen){ railHoverOpen=true; railHideFly(); railApplyOpen(); railRender(); }
+  });
+  railEl.addEventListener('mouseleave',function(){
+    if(railHoverOpen&&!railPinned){ railHoverOpen=false; railApplyOpen(); railRender(); }
+  });
+  // Flyout hover keep-alive + dismiss-on-outside-click
+  if(railFlyoutEl){
+    railFlyoutEl.addEventListener('mouseenter',function(){clearTimeout(railFlyTimer);});
+    railFlyoutEl.addEventListener('mouseleave',railHideFly);
+  }
+  document.addEventListener('click',function(e){
+    if(railEl&&!railEl.contains(e.target)&&railFlyoutEl&&!railFlyoutEl.contains(e.target)) railHideFly();
+  });
+  // Land on the user's chosen default view — or ask once on first run.
+  // DEFER to DOMContentLoaded: the bundled script runs mid-body, so the overlays
+  // that live *after* the {{JS}} placeholder (#res-overlay, #org-overlay,
+  // #snap-overlay, #brief-overlay) are not parsed yet — routing would hit null.
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',railLand);
+  else                                railLand();
+}
+
+// perform the initial landing route (overlays must be in the DOM by now)
+function railLand(){
+  if(railLanding&&railDomainFor(railLanding)) railGo(null,railLanding);
+  else                                        railFirstRunLanding();
+  railUpdateCrumb();
+}
+
+// returns the domain object that owns a given view id (null if none)
+function railDomainFor(viewId){
+  for(var i=0;i<RAIL_DOMAINS.length;i++)
+    for(var j=0;j<RAIL_DOMAINS[i].views.length;j++)
+      if(RAIL_DOMAINS[i].views[j].id===viewId) return RAIL_DOMAINS[i];
+  return null;
+}
+
+// (re)builds the rail scroll body + foot; highlights the active domain/view
+function railRender(){
+  if(!railScrollEl) return;
+  var activeDom=railDomainFor(activeView);
+  var activeDomId=activeDom?activeDom.id:'';
+  railScrollEl.innerHTML=RAIL_DOMAINS.map(function(d){
+    var holds=d.id===activeDomId, exp=railIsOpen()&&holds;
+    var subs=d.views.map(function(v){
+      var on=holds&&v.id===activeView&&!v.action;
+      return '<div class="rn-sub'+(on?' active':'')+'" onclick="railGo(event,\''+v.id+'\')">'
+           + v.label+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>';
+    }).join('');
+    return '<div class="rn-dom'+(holds?' active-dom':'')+(exp?' exp':'')+'" data-dom="'+d.id+'"'
+         + ' onmouseenter="railFlyEnter(\''+d.id+'\',this)" onmouseleave="railFlyLeave()">'
+         + '<div class="rn-dom-head" onclick="railDomClick(event,\''+d.id+'\',this)">'
+         +   '<span class="rn-dom-ico">'+d.ico+'</span>'
+         +   '<span class="rn-dom-name mono">'+d.name+'</span>'
+         +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
+         + '</div><div class="rn-subs">'+subs+'</div></div>';
+  }).join('');
+  railFootEl.innerHTML=RAIL_UTIL.map(function(u){
+    return '<div class="rn-util" onclick="railAction(\''+u.id+'\')" title="'+u.name+'">'
+         + '<span class="rn-util-ico">'+u.ico+'</span>'
+         + '<span class="rn-util-name mono">'+u.name+'</span></div>';
+  }).join('')
+  + '<div class="rn-mode-sep"></div>'
+  + '<div class="rn-util rn-mode'+(railHoverMode?' on':'')+'" onclick="railToggleHoverMode()"'
+  + ' title="Auto-hide: open the rail when the pointer is over it, collapse it when the pointer leaves">'
+  +   '<span class="rn-util-ico">'+RAIL_I.auto+'</span>'
+  +   '<span class="rn-util-name mono">Auto-hide '+(railHoverMode?'ON':'OFF')+'</span></div>';
+}
+
+/* The 12 former Resources tabs — all route through openRes()+showResTab(). */
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1};
+
+// Close every full-screen overlay, revealing the base matrix canvas.
+// Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js);
+// #brief-overlay has no closer fn (inline modal) so it's hidden directly.
+function closeAllOverlays(){
+  if(typeof closeRes==='function')      closeRes();
+  if(typeof closeOrgChart==='function') closeOrgChart();
+  if(typeof closeCompare==='function')  closeCompare();
+  if(typeof closeSummary==='function')  closeSummary();
+  if(typeof closeSnap==='function')     closeSnap();
+  if(typeof closeHelp==='function')     closeHelp();
+  var b=G('brief-overlay'); if(b) b.style.display='none';
+}
+
+// Open the Resources overlay (if not already) and switch to the given tab.
+// Closes the OTHER full-screen overlays first so only Resources is visible.
+function railOpenRes(tab){
+  if(typeof closeOrgChart==='function') closeOrgChart();
+  if(typeof closeCompare==='function')  closeCompare();
+  if(typeof closeSummary==='function')  closeSummary();
+  if(typeof closeSnap==='function')     closeSnap();
+  if(typeof closeHelp==='function')     closeHelp();
+  var b=G('brief-overlay'); if(b) b.style.display='none';
+  if(!G('res-overlay').classList.contains('show')) openRes();
+  showResTab(tab);
+}
+
+// Dispatch a view id to its existing surface. Every target verified against source.
+function railRoute(viewId){
+  if(RAIL_RES_TABS[viewId]){ railOpenRes(viewId); return; }
+  closeAllOverlays();                       // org/summary/compare/matrix = single surface
+  if(viewId==='matrix')       return;       // base canvas now revealed
+  else if(viewId==='org')     openOrgChart();
+  else if(viewId==='summary') openSummary();
+  else if(viewId==='compare') openCompare();
+}
+
+/* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
+function railGo(ev,viewId){
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  var dom=railDomainFor(viewId); if(!dom) return;
+  var view=dom.views.find(function(x){return x.id===viewId;});
+  if(view&&view.action){ railAction(viewId); return; }   // e.g. WORK › Project brief
+  activeView=viewId;
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  railRouting=true;             // suppress the overlay-close→'matrix' sync during nav
+  try{ railRoute(viewId); }
+  finally{ railRouting=false; railRender(); railUpdateCrumb(); }  // never leave the guard stuck
+}
+
+// Fire an action (does NOT change activeView). Targets verified against source.
+function railAction(id){
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  if(id==='brief')         openProjectBriefExport();
+  else if(id==='snap')     openSnap();
+  else if(id==='backup')   exportFullBackup();
+  else if(id==='restore')  importFullBackup();
+  else if(id==='ai')       aiOpenChat();
+  else if(id==='settings') railOpenSettings();
+  else if(id==='help')     openHelp();
+}
+
+// collapsed: tap toggles the flyout · pinned: expand accordion + go to first view
+function railDomClick(ev,domId,el){
+  ev.stopPropagation();
+  var dom=railDomainFor2(domId);
+  if(railIsOpen()){ if(dom&&dom.views[0]) railGo(ev,dom.views[0].id); return; }
+  if(railFlyDom===domId){ railHideFly(); } else { railFlyEnter(domId,el.parentElement,true); }
+}
+// domain lookup by domain id (distinct from railDomainFor which takes a view id)
+function railDomainFor2(domId){ return RAIL_DOMAINS.find(function(d){return d.id===domId;})||null; }
+
+// pin (open, labelled accordion) / collapse (icon strip)
+function railTogglePin(){
+  railPinned=!railPinned;
+  railHoverOpen=false;                       // pin overrides the transient hover state
+  railApplyOpen();
+  if(railScrimEl) railScrimEl.classList.toggle('show',railPinned&&window.innerWidth<=640);
+  railHideFly(); railRender();
+}
+
+// show the flyout listing a domain's views (hover or tap; collapsed rail only)
+function railFlyEnter(domId,el,fromTap){
+  if(railIsOpen()||!railFlyoutEl) return;   // panel already open → no per-domain flyout
+  clearTimeout(railFlyTimer); railFlyDom=domId;
+  var d=railDomainFor2(domId); if(!d) return;
+  var rect=el.getBoundingClientRect();
+  railFlyoutEl.innerHTML='<div class="rn-fly-title mono">'+d.name+'</div>'+d.views.map(function(v){
+    var on=v.id===activeView&&!v.action;
+    return '<div class="rn-fly-item'+(on?' active':'')+'" onclick="railGo(event,\''+v.id+'\')">'
+         + '<span>'+v.label+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>';
+  }).join('');
+  var top=Math.max(8,Math.min(rect.top,window.innerHeight-((d.views.length+1)*38+20)));
+  railFlyoutEl.style.top=top+'px';
+  railFlyoutEl.classList.add('show');
+}
+// delayed hide (lets the pointer travel from icon to flyout)
+function railFlyLeave(){ railFlyTimer=setTimeout(railHideFly,200); }
+// hide the flyout immediately
+function railHideFly(){ if(railFlyoutEl) railFlyoutEl.classList.remove('show'); railFlyDom=null; }
+
+// refresh the DOMAIN › View breadcrumb in #topbar (guarded if not present)
+function railUpdateCrumb(){
+  var cd=G('crumb-dom'), cv=G('crumb-view');
+  if(!cd||!cv) return;
+  var dom=railDomainFor(activeView);
+  var view=dom?dom.views.find(function(x){return x.id===activeView;}):null;
+  cd.textContent=dom?dom.name:'';
+  cv.textContent=view?view.label:'';
+}
+
+/* ══ SETTINGS + FIRST-RUN LANDING ══════════════════════════════════════ */
+
+// Populate + open the Settings modal (default landing + auto-hide rail).
+function railOpenSettings(){
+  var sel=G('set-landing');
+  if(sel){
+    var cur=railLanding||'roster';
+    sel.innerHTML=RAIL_DOMAINS.map(function(d){
+      var opts=d.views.filter(function(v){return !v.action;}).map(function(v){
+        return '<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+v.label+'</option>';
+      }).join('');
+      return '<optgroup label="'+d.name+'">'+opts+'</optgroup>';
+    }).join('');
+  }
+  var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
+  var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
+  var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
+  var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
+}
+
+// Read the Settings modal, persist, apply, and close.
+function railSaveSettings(){
+  var sel=G('set-landing'), ah=G('set-autohide'), rw=G('set-railwidth');
+  if(sel&&sel.value) railLanding=sel.value;
+  if(ah) railHoverMode=ah.checked;
+  if(rw) railWidth=railClampWidth(rw.value);
+  railApplyWidth();
+  railSavePrefs();
+  var ov=G('settings-overlay'); if(ov) ov.classList.remove('show');
+  railRender();   // reflect the auto-hide change on the foot toggle
+}
+// Cancel Settings — revert any live width preview back to the saved value.
+function railCancelSettings(){
+  railApplyWidth();
+  var ov=G('settings-overlay'); if(ov) ov.classList.remove('show');
+}
+
+// First-run: ask which view to open on (once). Falls back to 'roster' surface now.
+function railFirstRunLanding(){
+  var ov=G('landing-firstrun');
+  if(ov){ ov.classList.add('show'); }
+  else  { railGo(null,'roster'); }   // no chooser markup → just land on roster
+}
+
+// User picked a default landing in the first-run chooser: store it + go there.
+function railChooseLanding(viewId){
+  railLanding=viewId;
+  railSavePrefs();
+  var ov=G('landing-firstrun'); if(ov) ov.classList.remove('show');
+  railGo(null,viewId);
+}
+
+/* ══ OVERLAY-CLOSE SYNC ════════════════════════════════════════════════
+   When a VIEW overlay is dismissed by its own ✕ button or Esc (not by rail
+   navigation), reset the rail to the base matrix surface so the highlight +
+   breadcrumb stay truthful. Wraps the existing closers once at load; the
+   railRouting guard prevents this firing during rail-driven navigation.
+   (Action overlays — snap/help/brief — never change activeView, so they are
+   intentionally NOT wrapped.) */
+(function railWrapClosers(){
+  ['closeRes','closeOrgChart','closeCompare','closeSummary'].forEach(function(name){
+    var orig=window[name];
+    if(typeof orig!=='function') return;
+    window[name]=function(){
+      var r=orig.apply(this,arguments);
+      if(!railRouting && activeView!=='matrix'){
+        activeView='matrix';
+        if(typeof railRender==='function')      railRender();
+        if(typeof railUpdateCrumb==='function') railUpdateCrumb();
+      }
+      return r;
+    };
+  });
+})();
+/* ◄◄ END: sections/railnav.js ►► */
+
 /* ►► SECTION: BOOT ◄◄ Global event wiring, keyboard shortcuts, and app init/boot sequence
  *
  * Functions defined in this file: (none — this is the entry point: top-level event
@@ -15996,6 +17108,7 @@ renderList();
 render();
 checkDailySnap();
 updateSnapBadge();
+railInit();   // render the persistent nav rail + land on the initial view
 
 /* ═══════════════════ DRAGGABLE PROJECT WINDOW ═══════════════════ */
 // Runs after DOM ready
@@ -16041,18 +17154,9 @@ updateSnapBadge();
       <input type="month" id="res-end" onchange="saveNow();showResTab(resActiveTab)" title="Global period end — shared by every Resources tab, remembered across reloads" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;outline:none;">
     </div>
     <div style="flex:1"></div>
-    <button onclick="showResTab('roster')">Roster</button>
-    <button onclick="showResTab('plan')">Planning</button>
-    <button onclick="showResTab('dashboard')">📊 Dashboard</button>
-    <button onclick="showResTab('skills')">◈ Skills</button>
-    <button onclick="showResTab('skillrisk')">🛡 Skill Risk</button>
-    <button onclick="showResTab('profiles')">👤 Team Profiles</button>
-    <button onclick="showResTab('ninebox')">⊞ Nine-Box</button>
-    <button onclick="showResTab('disc')">◉ DISC</button>
-    <button onclick="showResTab('timeline')">⊟ Timeline</button>
-    <button onclick="showResTab('development')">★ Development</button>
-    <button onclick="showResTab('heatmap')">🌡 Heatmap</button>
-    <button onclick="showResTab('analytics')">📊 Analytics</button>
+    <!-- The 12 showResTab tab buttons moved to the persistent nav rail (railnav.js).
+         The global period (title + FROM/TO month inputs) stays here — it is shared by
+         every Resources tab. #res-body still renders the active tab. -->
     <input type="file" id="roster-file-input" accept=".json" style="display:none" onchange="handleRosterImport(event)">
     <button onclick="closeRes()">✕ CLOSE</button>
   </div>
@@ -16393,7 +17497,7 @@ updateSnapBadge();
 
 
 <!-- ORG CHART OVERLAY -->
-<div id="org-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;">
+<div id="org-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:var(--bg);z-index:400;flex-direction:column;">
   <div id="org-header" style="display:flex;flex-direction:column;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0">
 
     <!-- ROW 1: Title · View controls · Close -->
@@ -16487,7 +17591,7 @@ updateSnapBadge();
 
 
 <!-- PROJECT BRIEF EXPORT MODAL -->
-<div id="brief-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
+<div id="brief-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
       <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">📄 EXPORT PROJECT BRIEF</h2>
