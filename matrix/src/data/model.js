@@ -88,6 +88,89 @@ export function makeProject(overrides = {}) {
     risks:       [],
     milestones:  [],
     actions:     [],
+    charter:     makeCharter(),   // cross-functional charter (see charter.js)
+    ...overrides,
+  };
+}
+
+// Cross-functional project charter. Goal: align the 5 functions on shared
+// priorities and stop any one pushing an impossible agenda. Approvals are NOT
+// modelled (single-user local tool). All money is EUR (like impactEur / M€).
+//
+// Each function has just an alignment score + a list of demands; every demand is
+// tagged with the trade-off dimension it pushes and whether it's a must-have.
+// The decision `stances` set the project's stance on the 4 trade-off dimensions,
+// so a must-have demand on a SACRIFICED dimension surfaces as a conflict.
+export function makeCharter(overrides = {}) {
+  return {
+    priority:     '',      // High / Medium / Low (overall charter priority)
+    status:       'Draft', // Draft / In Review / Approved / Rejected (self-tracked)
+    businessCase: '',      // one narrative — why this project matters (Overview tab)
+    expectedRevenueM: null,// peak annual revenue in M€ (Overview tab)
+    strategy:          { alignment: null, demands: [] },
+    rnd:               { alignment: null, demands: [] },
+    offer:             { alignment: null, demands: [] },
+    procurement:       { alignment: null, demands: [] },
+    industrialization: { alignment: null, demands: [] },
+    financials: makeCharterFinancials(),
+    decision:   makeDecisionCard(),
+    ...overrides,
+  };
+}
+
+// One stakeholder demand. `dimension` is the trade-off corner it pushes
+// ('' | features | time | productCost | projectCost); `mustHave` marks it
+// non-negotiable (a must-have on a sacrificed dimension = a conflict).
+export function makeDemand(overrides = {}) {
+  return { text: '', dimension: '', mustHave: false, ...overrides };
+}
+
+// Financial-analysis inputs for a charter. Convention: initialInvestment is the
+// outlay at t=0 (positive); cashFlows[i] is the NET cash flow for year i+1;
+// discountRate is a decimal (0.10 = 10%). See calculateFinancials() in
+// src/core/financial.js for the maths.
+export function makeCharterFinancials(overrides = {}) {
+  return {
+    initialInvestment:   0,         // base upfront outlay in EUR (before itemization)
+    unit:                'eur',     // display/entry scale only: eur | keur | meur (values stored in EUR)
+    cashFlows:           [],        // net annual cash flows, years 1..N (EUR)
+    discountRate:        0.10,      // decimal
+    pricePerUnit:        0,         // EUR per unit (unit economics — not scaled by `unit`)
+    variableCostPerUnit: 0,         // EUR per unit (direct COGS)
+    // Margin scenario mode: 'compute' (price & cost → margin), 'targetPrice'
+    // (cost + target margin → required price), 'targetCost' (price + target
+    // margin → max allowable unit cost). targetMarginPct is a percent (40 = 40%).
+    marginMode:          'compute',
+    targetMarginPct:     null,
+    // Optional itemised investment. Each item targets either the financial KPIs
+    // (adds to the upfront investment) or the unit cost (spread over amortUnits).
+    investment:          { items: [], amortUnits: null },
+    ...overrides,
+  };
+}
+
+// One line of the detailed investment breakdown. amount is in EUR (base).
+export function makeInvestmentItem(overrides = {}) {
+  return {
+    label:    '',
+    category: 'labor',   // labor (internal labor) | expense | amortized
+    amount:   0,         // EUR
+    target:   'kpi',     // 'kpi' → upfront investment · 'unit' → per-unit cost
+    ...overrides,
+  };
+}
+
+// The Decision Card — the trade-off SQUARE. Each of the four dimensions gets a
+// stance: 'prioritize' | 'balance' | 'sacrifice'. You can't prioritize
+// everything, so at least one should be sacrificed (the UI warns otherwise).
+// Product cost (unit economics) and Project cost (investment) are split so the
+// classic "cheap to build AND cheap per unit AND full-featured AND fast" wish
+// is visibly impossible.
+export function makeDecisionCard(overrides = {}) {
+  return {
+    stances: { features:'balance', time:'balance', productCost:'balance', projectCost:'balance' },
+    nonNegotiables: [],    // array of strings
+    flexibilities:  [],    // array of strings
     ...overrides,
   };
 }

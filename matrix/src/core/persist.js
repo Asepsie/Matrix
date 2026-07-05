@@ -330,7 +330,43 @@ export function sanitiseProjects(){
       if(!a.priority) a.priority='Medium';
       if(a.isMilestone==null) a.isMilestone=false;
     });
+    // A malformed charter must never block the rest of the project data / list.
+    try{ sanitiseCharter(p); }catch(e){ p.charter=makeCharter(); }
   });
+}
+// Fills in any missing charter/sub-object fields against the factory defaults so
+// projects saved before this feature (or with a partial charter) load cleanly.
+// Shallow-merges each branch: stored values win, factory fills the gaps.
+export function sanitiseCharter(p){
+  const def=makeCharter();
+  if(!p.charter||typeof p.charter!=='object'){p.charter=def;return;}
+  const c=p.charter;
+  if(c.priority==null) c.priority=def.priority;
+  if(c.status==null)   c.status=def.status;
+  if(c.businessCase==null)     c.businessCase=def.businessCase;
+  if(c.expectedRevenueM===undefined) c.expectedRevenueM=def.expectedRevenueM;
+  // Migrate the old 'marketing' function to 'rnd' (renamed); keep its data.
+  if(c.marketing && !c.rnd){ c.rnd=c.marketing; }
+  delete c.marketing;
+  for(const k of ['strategy','rnd','offer','procurement','industrialization','financials','decision']){
+    c[k]=Object.assign({},def[k],c[k]&&typeof c[k]==='object'?c[k]:{});
+  }
+  for(const k of ['strategy','rnd','offer','procurement','industrialization']){
+    if(!c[k]||typeof c[k]!=='object') c[k]={alignment:null,demands:[]};
+    if(!Array.isArray(c[k].demands)) c[k].demands=[];
+  }
+  if(!Array.isArray(c.financials.cashFlows))       c.financials.cashFlows=[];
+  if(!c.financials.unit)                           c.financials.unit='eur';
+  if(!c.financials.investment||typeof c.financials.investment!=='object')
+                                                   c.financials.investment={items:[],amortUnits:null};
+  if(!Array.isArray(c.financials.investment.items))c.financials.investment.items=[];
+  if(c.financials.investment.amortUnits===undefined) c.financials.investment.amortUnits=null;
+  // Decision: ensure the 4 square stances exist (older data used the triangle).
+  if(!c.decision.stances||typeof c.decision.stances!=='object') c.decision.stances={};
+  for(const dim of ['features','time','productCost','projectCost'])
+    if(!c.decision.stances[dim]) c.decision.stances[dim]='balance';
+  if(!Array.isArray(c.decision.nonNegotiables))    c.decision.nonNegotiables=[];
+  if(!Array.isArray(c.decision.flexibilities))     c.decision.flexibilities=[];
 }
 export function flashSaved(){
   const el=G('save-indicator');if(!el)return;

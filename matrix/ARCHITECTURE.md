@@ -206,3 +206,209 @@ full/connected drill-down, streaming chat.
 - [ ] **Larger context budget for big-context models.** The 9000-char cap in
       `aiBuildContext` is conservative for ~4k-token models; raise it if a
       bigger-context model is selected.
+
+---
+
+## Navigation shell — the persistent nav rail
+
+All top-level navigation lives in a persistent left **rail** ([src/sections/railnav.js](src/sections/railnav.js)
++ [src/styles/nav.css](src/styles/nav.css)). It **replaced** the old multi-group `<header>`
+(removed) and the 12-button tab strip that used to sit inside `#res-header`. The matrix
+canvas is no longer the front door — it's one view under WORK.
+
+### Key facts (non-obvious)
+
+- **Single source of truth: the global `activeView`** (id string, e.g. `'roster'`,
+  `'matrix'`, `'ninebox'`) — declared **once** in [globals.js](src/core/globals.js),
+  default `'roster'`. The router **`railGo(viewId)`** sets it, routes, and refreshes the
+  rail highlight + the `DOMAIN › View` breadcrumb in `#topbar`.
+- **Views vs actions.** *Views* set `activeView` and change the visible surface; `railRoute`
+  dispatches them: the 12 Resources tabs via `openRes()`+`showResTab(tab)`, plus
+  `openOrgChart` / `openSummary` / `openCompare`, and `closeAllOverlays()` for the base
+  matrix. *Actions* (brief/snap/backup/restore/AI/settings/help) just fire their existing
+  function via `railAction` and do **not** touch `activeView`.
+- **Everything keys off one CSS var `--rail`** (collapsed width; default 58px, user-set
+  48–96 in Settings). The body gutter (`body{padding-left:var(--rail)}`), every full-screen
+  overlay's `left:` inset, the flyout, and the rail width all reference it — change `--rail`
+  in one place and the whole shell reflows. `--rail-open` (238px) is the pinned/hover width.
+  `railApplyWidth()` writes `--rail` on `documentElement`.
+- **Overlay insets.** The seven full-screen overlays are inset `left:var(--rail)` so the rail
+  stays visible. help/compare/summary/res/snap are inset in **nav.css**; `#org-overlay` and
+  `#brief-overlay` are **inline-styled `position:fixed` in index.html** (inline beats the
+  stylesheet) so they're inset *there*. Any NEW full-screen overlay must be inset from the left.
+- **Z-index ladder.** view overlays `z400` < rail `z1000` < rail-spawned modals
+  (`#settings-overlay`, `#landing-firstrun`) `z1100`. A rail-spawned modal opened while a
+  view overlay is up MUST sit above `z400` or it renders hidden behind it.
+- **Boot-timing trap (bit us).** The bundle runs mid-`<body>` (at the `{{JS}}` placeholder),
+  so overlays defined *after* it — `#res-overlay`, `#org-overlay`, `#snap-overlay`,
+  `#brief-overlay` — are **not in the DOM yet** when boot code runs; touching them throws
+  (`G(...)` is null). Code that routes to them at boot must defer to `DOMContentLoaded`
+  (railnav's `railLand`, and `ensureResPeriod` in boot.js). The rail *render* is safe (its
+  markup is the first `<body>` child, above `{{JS}}`).
+- **Overlay-close sync.** Closing a *view* overlay by its own ✕ or Esc resets
+  `activeView='matrix'` so the highlight stays truthful — railnav wraps
+  `closeRes/closeOrgChart/closeCompare/closeSummary` once at load, guarded by the
+  `railRouting` flag so rail-driven navigation doesn't self-reset.
+- **Hover-drawer + prefs.** Collapsed rail expands on hover and auto-collapses on leave
+  (toggle in Settings); the pin button locks it open; `railIsOpen()`=pinned‖hoverOpen.
+  UI-only prefs — `{hoverMode, landing, railWidth}` — persist in **`localStorage
+  'eim_rail_prefs'`**, deliberately separate from app state (`SK='eim_v4'`) and **not** part
+  of the data model or backups. First run shows `#landing-firstrun` to pick the default view.
+
+### Files
+
+- [src/sections/railnav.js](src/sections/railnav.js) — rail render, `railGo`/`railRoute`
+  router, `railAction`, `closeAllOverlays`, hover-drawer, Settings + first-run, width/prefs.
+- [src/styles/nav.css](src/styles/nav.css) — rail / `#topbar` / `#matrix-toolbar` / flyout,
+  overlay insets, icon sizing (all scaled off `--rail`). Loaded LAST so its insets win.
+- [src/index.html](src/index.html) — `#railnav` markup, `#topbar` (breadcrumb + status),
+  `#matrix-toolbar` (matrix-only controls, inside `#matrix-wrap`), `#settings-overlay`,
+  `#landing-firstrun`.
+
+---
+
+## Resources tabs & analytics
+
+The **Resources overlay** (`#res-overlay`) hosts 12 tabs rendered into `#res-body` by
+`showResTab(tab)` ([src/sections/nav.js](src/sections/nav.js)). The global FROM/TO period
+(`#res-start`/`#res-end`) is **shared by every tab** (`getMonthRange()` in helpers.js).
+**Adding a tab:** new `src/sections/mytab.js` with `renderMyTab()` → add to `JS_FILES`
+(build.js) → add a `showResTab` case + the highlight-loop array → add a rail view in
+`RAIL_DOMAINS` + `RAIL_RES_TABS` (railnav.js). (Old `CLAUDE.md` step "add a button in
+res-header" is obsolete — the rail owns navigation now.)
+
+- **Two analytics tabs.** *People analytics* = [analytics.js](src/sections/analytics.js)
+  (`renderAnalyticsTab`, a story/dimension/template engine). *Portfolio analytics* =
+  [portfolio.js](src/sections/portfolio.js) (`renderPortfolioAnalytics`) — project-side
+  €/ROI/gate/sector/risk plus treemap, cost-over-time burn, and a distribution panel
+  (histogram + Gaussian / Pareto). All `pf`-prefixed; reuses `getMonthRange` / `_allocCost` /
+  `_engByIdMap`. Interactive sub-controls re-render only their own wrapper via `pfSet`.
+- **Derived project revenue.** `projRevenueM(p)` / `projRevenueIsDefault(p)`
+  ([helpers.js](src/core/helpers.js)) = user-entered `impactEur` (in **M€**) when present,
+  else a fallback `impact(y) + enabler(ena)`. It's a **pure computed accessor — it never
+  writes back to `impactEur`** — so backups/snapshots stay consistent (only the real user
+  value is stored; sanitise keeps `impactEur` null-if-unset and y/ena numeric).
+
+---
+
+## Cross-functional project charter
+
+Per-project artifact to **align the 5 functions (Strategy / R&D / Offer Mgmt /
+Procurement / Industrialization) on shared priorities** and stop any one pushing an
+impossible agenda. Lives on `project.charter` (so it flows through save / backup /
+snapshot automatically). Logic + UI in [src/sections/charter.js](src/sections/charter.js)
+(all `cht`-prefixed); pure maths in [src/core/financial.js](src/core/financial.js);
+styles in [src/styles/charter.css](src/styles/charter.css); tests in
+[tests/charter.test.js](tests/charter.test.js). Money is EUR everywhere. **No approvals
+and no CAPEX/OPEX** by design (both were dropped — a single-user local tool can't enforce
+approvals, and investment-type fed no calculation).
+
+### Two entry points, and the modal-vs-view distinction (non-obvious)
+
+- **Right-click a project → 📋 Charter** ([index.html](src/index.html) `#ctx-menu`) →
+  `openCharter(projId)` → opens `#cht-overlay`.
+- **Rail: WORK › Charters** → `openCharterHub()` → `#chthub-overlay`, a card grid of every
+  project (NPV/IRR + conflict badge). Clicking a card opens the editor on top.
+- **The editor / deck / synopsis are focused MODALS, not views** → their CSS is `inset:0`
+  (they COVER the rail) at z-index 1100 (editor) / 1150 (deck, synopsis). Only the hub is a
+  real rail view, so it alone stays `left:var(--rail)`. Getting this wrong leaves the rail
+  exposed + misleadingly highlighted behind the modal (that was a reported "rail bug").
+
+### Data model (`makeCharter` in [model.js](src/data/model.js))
+
+```
+charter = {
+  priority, status, businessCase, expectedRevenueM,     // Overview tab
+  strategy|rnd|offer|procurement|industrialization: { alignment, demands:[] },
+  financials: makeCharterFinancials(),
+  decision:   makeDecisionCard(),
+}
+```
+- **Function object is minimal**: an `alignment` (1–10) + `demands[]`. A demand
+  (`makeDemand`) = `{ text, dimension, mustHave }` where `dimension` ∈ `'' | features |
+  time | productCost | projectCost`. This replaced an earlier heavier per-department model
+  (asks/commitments/dependency-matrix) — kept intentionally light.
+- **Decision = the trade-off SQUARE** (`makeDecisionCard`): `stances` for the 4 dimensions,
+  each `'prioritize' | 'balance' | 'sacrifice'`, plus `nonNegotiables[]` / `flexibilities[]`.
+  NOT the old triangle (priorityPrimary/secondary/constrained — gone).
+- **Financials** (`makeCharterFinancials`): `initialInvestment`, `unit` (display scale
+  `eur|keur|meur`), `cashFlows[]`, `discountRate`, `pricePerUnit`, `variableCostPerUnit`,
+  `marginMode` (`compute|targetPrice|targetCost`), `targetMarginPct`, and
+  `investment:{ items:[makeInvestmentItem], amortUnits }`.
+
+### The 4 tabs
+
+`CHT_TABS` = **Overview** (business case + revenue) · **Demands** (the board, all 5
+functions with alignment + demands) · **Financials** · **Decision** (square + lists).
+`chtShowTab` routes; each tab is a pure `innerHTML` render. Editing writes straight into
+`project.charter` and autosaves via `saveState()`.
+
+### Conflicts — the point of the whole thing
+
+A **must-have demand whose dimension the project has chosen to `sacrifice`** = a conflict
+(`chtConflicts(c)`). Surfaced on the Demands board (red rows + banner), the Decision tab
+(banner), the hub card badge, deck slide 5, and the synopsis. This makes the classic
+failure visible *before* it happens (e.g. R&D/Marketing demand low product cost, but the
+project sacrificed Product cost).
+
+### Financial engine — conventions & gotchas ([financial.js](src/core/financial.js))
+
+- **Convention** (documented at top of file): `initialInvestment` is the t=0 outlay
+  (positive); `cashFlows[i]` is the net flow for year i+1; `discountRate` is a decimal.
+- **IRR = grid-scan + bisection with sign-change bracketing** (NOT naive binary search).
+  Returns `null` when no real root is bracketed; returns valid *negative* IRRs for
+  loss-makers. The task spec's expected NPV/IRR/break-even numbers were all wrong — tests
+  use hand-verified oracles and assert IRR by zeroing NPV.
+- **Display unit scales project-level money only** (investment, cash flows, NPV). Values are
+  ALWAYS stored in EUR; the unit is display/entry only (`finUnitFactor`/`fmtMoneyUnit`), so
+  switching units never mutates data. **Per-unit price/cost and the investment-item amounts
+  stay in plain €** — the latter is deliberate: scaling item amounts by M€ once turned
+  "50000" into €50bn and broke amortization (a real bug). `amortizedPerUnit()` = Σ
+  unit-target item amounts ÷ `amortUnits`.
+- **Margin modes** (`resolveUnitEconomics`): `compute` (price&cost→margin), `targetPrice`
+  (cost + target% → required price, cost-plus), `targetCost` (price + target% → max unit
+  cost, market-price-fixed). **Product margin = price − DIRECT cost** (excludes amortized);
+  **break-even uses `effVarCost` = direct + amortized**. The target-mode derived value
+  live-updates via `#cht-derived-val` in `chtFinRefresh` (avoids a focus-stealing full
+  re-render).
+- `effectiveInvestment` folds `target:'kpi'` items into the outlay; with no breakdown the
+  effective figures equal the plain fields, so old callers/tests are unaffected.
+
+### SVG visualizations (pure SVG, CSS-var themed, colour-blind-safe via text)
+
+`chtSquareSVG` (trade-off square: weighted-centroid marker; weights
+prioritize 1.0 / balance 0.28 / sacrifice 0.04 so a prioritized corner pulls the marker to
+it; `chtStanceWarn` gives the "wish list / nothing sacrificed / all sacrificed" banner),
+`chtRadarSVG` (alignment), `chtNpvCurveSVG` (NPV-vs-rate + IRR marker), `chtCumCashSVG`
+(cumulative cash flow + break-even marker). Deck/synopsis reuse these.
+
+### Deck + synopsis
+
+`chtOpenDeck` → 5 HTML slides in `#cht-deck-overlay`; `chtOpenSynopsis` → 1-page Markdown
+rendered via `chtMdToHtml`. Export = **Copy Markdown** (clipboard + execCommand fallback,
+`chtCopyText`) and **Print/PDF** (`chtPrintDeck` toggles `body.cht-printing` + a
+`@media print` block with `print-color-adjust:exact`). Shareable-link was deliberately not
+built (meaningless for a local single file).
+
+### sanitise & migration — the load-safety net (bit us once)
+
+`sanitiseCharter(p)` ([persist.js](src/core/persist.js), called from `sanitiseProjects`)
+fills gaps against `makeCharter()` and **migrates old data**: renames the old `marketing`
+function to `rnd` (keeping its data), builds `decision.stances` from scratch for
+triangle-era data, ensures every function has a `demands[]`. **A stale key in one sanitise
+list once made `sanitiseCharter` throw, which aborted `sanitiseProjects` → `loadState` and
+made ALL projects vanish.** So: (a) keep every function-key list in sync when renaming, and
+(b) the `sanitiseCharter(p)` call is wrapped in try/catch (bad charter → reset that one to
+default, never block the rest).
+
+### Extending it
+
+Add a function field → `makeCharter` factory + `sanitiseCharter` + `CHT_FUNCS`. Add a
+financial metric → `calculateFinancials` return + `display` map + results panel +
+definitions accordion + a test. All new top-level names must be `cht`-prefixed / unique
+(flat-bundle duplicate-declaration invariant). `charter.js` + `styles/charter.css` are
+registered in `build.js` (`JS_FILES` / `CSS_FILES`).
+
+**Verify note:** `preview_screenshot` was flaky this build — verify SVGs/values via
+`preview_eval` (DOM geometry, computed stroke/fill, NaN scan), which is stronger than
+pixels for numbers anyway.

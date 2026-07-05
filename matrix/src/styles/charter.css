@@ -1,0 +1,237 @@
+/* ►► CHARTER ◄◄ Cross-functional charter overlay. This is a FOCUSED MODAL editor
+ * (launched from a project's context menu or a Charters-hub card), not a nav
+ * destination — so it covers the FULL screen including the rail (inset:0, no
+ * left:var(--rail)). It has its own ✕ Close. The Charters HUB below IS a view and
+ * stays rail-inset. */
+
+#cht-overlay{
+  display:none; position:fixed; inset:0;
+  background:var(--bg); z-index:1100; flex-direction:column;
+}
+#cht-overlay.show{ display:flex; }
+
+#cht-header{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#cht-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+.cht-head-meta{ display:flex; align-items:center; gap:6px; }
+.cht-hl{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; }
+.cht-sel, .cht-in select{
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-size:11px; padding:3px 6px; border-radius:4px; outline:none;
+}
+#cht-header .cht-head-meta + div{ flex:1; }
+#cht-header button{ margin-left:4px; }
+
+/* Tab strip */
+#cht-tabs{ display:flex; gap:2px; padding:0 12px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.cht-tab{
+  font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.05em;
+  color:var(--muted); padding:8px 12px; cursor:pointer; border-bottom:2px solid transparent;
+}
+.cht-tab:hover{ color:var(--text); }
+.cht-tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
+
+/* Body */
+#cht-body{ flex:1; overflow:auto; padding:18px 22px; }
+
+/* Forms */
+.cht-form{ display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; max-width:900px; }
+.cht-f{ display:flex; flex-direction:column; gap:4px; }
+.cht-f-wide{ grid-column:1 / -1; }
+.cht-l{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--muted); letter-spacing:.05em; }
+.cht-in{
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
+}
+.cht-in:focus, .cht-ta:focus{ border-color:var(--accent); }
+.cht-ta{
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
+  min-height:64px; resize:vertical; font-family:inherit;
+}
+.cht-hint{ font-size:10px; color:var(--dim); }
+.cht-muted{ font-size:11px; color:var(--muted); padding:4px 0; }
+.cht-note{ grid-column:1 / -1; font-size:12px; color:var(--muted); background:var(--surface);
+  border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
+.cht-warn{ grid-column:1 / -1; font-size:11px; color:var(--warn); min-height:16px; }
+.cht-warn.ok{ color:var(--accent2); }
+
+/* Financials layout */
+.cht-fin{ display:grid; grid-template-columns:1.2fr 1fr; gap:26px; max-width:1000px; }
+.cht-fin-inputs{ display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; align-content:start; }
+.cht-fin-inputs .cht-cf{ grid-column:1 / -1; }
+.cht-cf-row{ display:flex; align-items:center; gap:8px; margin:4px 0; }
+.cht-cf-yr{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--muted); width:56px; }
+.cht-cf-del{ background:none; border:1px solid var(--border); color:var(--danger);
+  border-radius:4px; cursor:pointer; width:24px; height:24px; line-height:1; }
+.cht-cf-del:hover{ border-color:var(--danger); }
+
+/* Segmented toggle (unit selector) */
+.cht-toggle{ display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.cht-tg{ background:var(--bg); color:var(--muted); border:none; padding:6px 14px; cursor:pointer;
+  font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.05em; }
+.cht-tg.on{ background:var(--accent); color:#111; }
+
+/* Derived (read-only) value in a target-margin mode */
+.cht-derived{ background:var(--bg); border:1px dashed var(--accent2); color:var(--accent2);
+  font-weight:600; font-size:13px; padding:6px 8px; border-radius:5px; }
+
+/* Results metrics */
+.cht-fin-results{ background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; align-self:start; }
+.cht-metrics{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cht-metric{ display:flex; flex-direction:column; gap:2px; padding:8px 10px; background:var(--bg);
+  border:1px solid var(--border); border-radius:6px; }
+.cht-metric.big{ grid-column:1 / -1; }
+.cht-m-l{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; }
+.cht-m-v{ font-size:18px; font-weight:700; color:var(--text); }
+.cht-metric.big .cht-m-v{ font-size:26px; }
+.cht-metric.pos .cht-m-v{ color:var(--accent2); }
+.cht-metric.neg .cht-m-v{ color:var(--danger); }
+.cht-m-h{ font-size:10px; color:var(--dim); }
+
+/* Detailed investment rows: label | category | amount | target | delete */
+.cht-inv{ margin-top:6px; }
+.cht-inv-row{ display:grid; grid-template-columns:1.4fr 1fr 0.9fr 1.3fr 24px; gap:6px; align-items:center; margin:5px 0; }
+.cht-inv-row .cht-in{ font-size:11px; padding:5px 6px; }
+
+/* Effective-figures readout under the KPI cards */
+.cht-eff{ margin-top:10px; padding:8px 10px; background:var(--bg); border:1px dashed var(--border);
+  border-radius:6px; font-size:11px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
+.cht-eff b{ color:var(--text); }
+
+/* Banners (conflicts / over-constraint) */
+.cht-banner{ max-width:900px; margin:0 0 14px; padding:9px 12px; border-radius:6px; font-size:12px; line-height:1.4; }
+.cht-banner.bad{ background:rgba(241,67,53,.12); border:1px solid var(--danger); color:var(--danger); }
+.cht-banner.warn{ background:rgba(241,164,53,.12); border:1px solid var(--warn); color:var(--warn); }
+.cht-banner b{ color:inherit; }
+
+/* Demands board */
+.cht-boards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; max-width:1040px; }
+.cht-board{ background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+.cht-board-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.cht-board-name{ font-size:14px; font-weight:600; color:var(--text); }
+.cht-board-align{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--muted); display:flex; align-items:center; gap:5px; }
+.cht-board-align .cht-in{ width:52px; padding:3px 6px; text-align:center; }
+.cht-dem-row{ display:grid; grid-template-columns:1fr 118px 52px 22px; gap:6px; align-items:center; margin:5px 0; position:relative; }
+.cht-dem-row.conflict .cht-dem-txt{ border-color:var(--danger); }
+.cht-dem-row .cht-in{ font-size:11px; padding:5px 6px; }
+.cht-must{ font-family:IBM Plex Mono,monospace; font-size:9px; letter-spacing:.04em; border:1px solid var(--border);
+  background:var(--bg); color:var(--muted); border-radius:5px; padding:5px 0; cursor:pointer; }
+.cht-must.on{ background:var(--danger); border-color:var(--danger); color:#fff; font-weight:600; }
+.cht-dem-warn{ position:absolute; right:-14px; color:var(--danger); font-size:11px; }
+
+/* Charts (financials) + visual row (decision) */
+.cht-charts{ display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:1000px; margin-top:20px; }
+.cht-chart, .cht-viz{ background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+.cht-chart-t{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--muted); letter-spacing:.06em; margin-bottom:6px; }
+.cht-svg{ width:100%; height:auto; display:block; }
+.cht-chart-empty{ padding:40px 8px; text-align:center; }
+.cht-vizrow{ display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:760px; margin-bottom:18px; }
+
+@media (max-width:900px){
+  .cht-charts, .cht-vizrow{ grid-template-columns:1fr; }
+}
+
+/* KPI definitions accordion */
+.cht-defs{ margin-top:12px; font-size:11px; color:var(--muted); }
+.cht-defs summary{ cursor:pointer; color:var(--accent2); font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.05em; }
+.cht-defs dl{ margin:8px 0 0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; }
+.cht-defs dt{ color:var(--text); font-weight:600; }
+.cht-defs dd{ margin:0; color:var(--muted); }
+
+@media (max-width:900px){
+  .cht-form, .cht-fin, .cht-fin-inputs{ grid-template-columns:1fr; }
+}
+
+/* ── Slide deck + synopsis overlays (stack above the editor, z1100) ── */
+#cht-deck-overlay, #cht-syn-overlay{
+  display:none; position:fixed; inset:0;
+  background:var(--bg); z-index:1150; flex-direction:column;
+}
+#cht-deck-overlay.show, #cht-syn-overlay.show{ display:flex; }
+.cht-modal-bar{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+.cht-modal-title{ font-weight:700; font-size:14px; color:var(--text); letter-spacing:.03em; }
+#cht-deck-body, #cht-syn-body{ flex:1; overflow:auto; padding:24px; }
+
+/* Slides */
+.cht-slide{
+  position:relative; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:26px 34px; margin:0 auto 22px; max-width:940px; min-height:440px;
+  print-color-adjust:exact; -webkit-print-color-adjust:exact;
+}
+.cht-slide-n{ position:absolute; top:14px; right:18px; font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--dim); }
+.cht-slide-h{ margin:0 0 12px; font-size:22px; color:var(--text); }
+h1.cht-slide-h{ font-size:26px; color:var(--accent); }
+.cht-slide-chips{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 14px; }
+.cht-slide-chip{ font-family:IBM Plex Mono,monospace; font-size:11px; color:var(--muted); border:1px solid var(--border); border-radius:12px; padding:3px 10px; }
+.cht-slide-chip b{ color:var(--text); }
+.cht-slide-2col{ display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:center; }
+.cht-slide-2col .cht-svg{ max-width:320px; margin:0 auto; }
+.cht-slide-p{ font-size:13px; color:var(--muted); line-height:1.55; margin:10px 0 0; }
+.cht-slide-kpis{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.cht-slide-kpi{ background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:3px; }
+.cht-slide-kpi span{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; }
+.cht-slide-kpi b{ font-size:20px; color:var(--text); }
+.cht-slide-kpi b.pos{ color:var(--accent2); }
+.cht-slide-kpi b.neg{ color:var(--danger); }
+.cht-slide-tbl{ width:100%; border-collapse:collapse; font-size:12px; }
+.cht-slide-tbl th{ text-align:left; color:var(--muted); font-family:IBM Plex Mono,monospace; font-size:9px; letter-spacing:.05em; border-bottom:1px solid var(--border); padding:5px 8px; }
+.cht-slide-tbl td{ color:var(--text); padding:5px 8px; border-bottom:1px solid var(--border); }
+.cht-slide-lists{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
+.cht-slide-lh{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--accent2); letter-spacing:.05em; margin-bottom:4px; }
+.cht-slide-lists ul, .cht-slide li, .cht-slide ul{ margin:4px 0 0; padding-left:18px; font-size:12px; color:var(--text); }
+
+/* Synopsis page */
+.cht-syn-page{ max-width:720px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:30px 40px; }
+.cht-syn-page h2{ margin:0 0 6px; font-size:22px; color:var(--accent); }
+.cht-syn-page h3{ margin:18px 0 6px; font-size:14px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:4px; }
+.cht-syn-page p{ font-size:13px; color:var(--muted); margin:4px 0; }
+.cht-syn-page ul{ margin:6px 0; padding-left:20px; }
+.cht-syn-page li{ font-size:13px; color:var(--text); margin:2px 0; }
+.cht-syn-page strong{ color:var(--text); }
+
+/* Print only the deck as pages */
+@media print{
+  body.cht-printing > *{ display:none !important; }
+  body.cht-printing #cht-deck-overlay{ display:block !important; position:static; left:0; inset:auto; background:#fff; }
+  body.cht-printing .cht-modal-bar{ display:none !important; }
+  body.cht-printing #cht-deck-body{ overflow:visible; padding:0; }
+  body.cht-printing .cht-slide{ page-break-after:always; margin:0; border:none; border-radius:0; min-height:auto; }
+}
+
+/* ── Charters hub (rail view) ── */
+#chthub-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#chthub-overlay.show{ display:flex; }
+#chthub-header{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#chthub-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#chthub-body{ flex:1; overflow:auto; padding:18px 22px; }
+.chthub-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+.chthub-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:14px; cursor:pointer; transition:border-color .12s, transform .12s;
+}
+.chthub-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
+.chthub-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.chthub-name{ font-size:14px; font-weight:600; color:var(--text); }
+.chthub-status{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+.chthub-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+.chthub-prio, .chthub-metric{
+  font-family:IBM Plex Mono,monospace; font-size:10px; padding:2px 7px; border-radius:10px;
+  border:1px solid var(--border); color:var(--muted);
+}
+.chthub-prio.hi{ color:var(--danger); border-color:var(--danger); }
+.chthub-prio.med{ color:var(--warn); border-color:var(--warn); }
+.chthub-prio.lo{ color:var(--muted); }
+.chthub-metric.ok{ color:var(--accent2); border-color:var(--accent2); }
+.chthub-metric.conflict{ color:var(--danger); border-color:var(--danger); }

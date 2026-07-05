@@ -59,6 +59,7 @@ var RAIL_DOMAINS = [
     {id:'matrix',      label:'Portfolio matrix', bdg:'was home'},
     {id:'plan',        label:'Resource plan'},
     {id:'timeline',    label:'Timeline'},
+    {id:'charters',    label:'Charters'},
     {id:'brief',       label:'Project brief', action:true},
   ]},
   { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
@@ -236,6 +237,7 @@ function closeAllOverlays(){
   if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
+  if(typeof closeCharterHub==='function') closeCharterHub();
   var b=G('brief-overlay'); if(b) b.style.display='none';
 }
 
@@ -247,6 +249,7 @@ function railOpenRes(tab){
   if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
+  if(typeof closeCharterHub==='function') closeCharterHub();
   var b=G('brief-overlay'); if(b) b.style.display='none';
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -260,6 +263,7 @@ function railRoute(viewId){
   else if(viewId==='org')     openOrgChart();
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
+  else if(viewId==='charters')openCharterHub();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -398,7 +402,7 @@ function railChooseLanding(viewId){
    (Action overlays — snap/help/brief — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){

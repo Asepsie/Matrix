@@ -269,6 +269,7 @@
   <div class="ctx-item" onclick="openRiskTab()"><span class="ci">⚠</span>Risk Management</div>
   <div class="ctx-item" onclick="openScheduleTab()"><span class="ci">📅</span>Schedule / Gantt</div>
   <div class="ctx-item" onclick="openActionsTab()"><span class="ci">👥</span>Team Actions</div>
+  <div class="ctx-item" onclick="openCharter(ctxProjId);closeCtx()"><span class="ci">📋</span>Charter</div>
   <div class="ctx-item" onclick="selectProject(ctxProjId);closeCtx()"><span class="ci">✎</span>Edit Project</div>
 </div>
 <div id="tooltip"></div>
@@ -401,6 +402,54 @@
     <button onclick="closeRes()">✕ CLOSE</button>
   </div>
   <div id="res-body"></div>
+</div>
+
+<!-- CROSS-FUNCTIONAL CHARTER OVERLAY (opened from the project context menu) -->
+<div id="cht-overlay">
+  <div id="cht-header">
+    <span id="cht-title">CHARTER</span>
+    <div class="cht-head-meta" id="cht-head-meta"></div>
+    <div style="flex:1"></div>
+    <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
+    <button class="sm" onclick="chtOpenSynopsis()">⧉ Synopsis</button>
+    <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
+    <button onclick="chtClose()">✕ CLOSE</button>
+  </div>
+  <div id="cht-tabs"></div>
+  <div id="cht-body"></div>
+</div>
+
+<!-- CHARTER SLIDE DECK (generated from the open charter) -->
+<div id="cht-deck-overlay">
+  <div class="cht-modal-bar">
+    <span class="cht-modal-title">SLIDE DECK</span>
+    <div style="flex:1"></div>
+    <button class="sm" onclick="chtCopyDeckMd(this)">⧉ Copy Markdown</button>
+    <button class="sm" onclick="chtPrintDeck()">⎙ Print / PDF</button>
+    <button onclick="chtCloseDeck()">✕ CLOSE</button>
+  </div>
+  <div id="cht-deck-body"></div>
+</div>
+
+<!-- CHARTER SYNOPSIS (1-page Markdown, rendered) -->
+<div id="cht-syn-overlay">
+  <div class="cht-modal-bar">
+    <span class="cht-modal-title">SYNOPSIS</span>
+    <div style="flex:1"></div>
+    <button class="sm" onclick="chtCopySyn(this)">⧉ Copy Markdown</button>
+    <button onclick="chtCloseSyn()">✕ CLOSE</button>
+  </div>
+  <div id="cht-syn-body"></div>
+</div>
+
+<!-- CHARTERS HUB (WORK › Charters rail view) — lists every project's charter -->
+<div id="chthub-overlay">
+  <div id="chthub-header">
+    <span id="chthub-title">CHARTERS</span>
+    <div style="flex:1"></div>
+    <button onclick="closeCharterHub()">✕ CLOSE</button>
+  </div>
+  <div id="chthub-body"></div>
 </div>
 
 <!-- ICON PICKER (permanent, outside ptw-body) -->

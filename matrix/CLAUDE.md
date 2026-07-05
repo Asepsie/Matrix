@@ -20,9 +20,12 @@ area.
 | Fix save/load/sanitise | src/core/persist.js (+ ARCHITECTURE.md) |
 | Fix photos / backup / restore | src/core/photo.js, src/sections/backup.js (+ ARCHITECTURE.md) |
 | AI advisor / chatbot (WebLLM) | src/sections/ai.js (+ ARCHITECTURE.md) |
+| Navigation / rail / topbar / overlays | src/sections/railnav.js, src/styles/nav.css (+ ARCHITECTURE.md) |
+| Portfolio (project) analytics | src/sections/portfolio.js |
+| Cross-functional charter (demands / square / financials / deck) | src/sections/charter.js, src/core/financial.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
-| Fix ID card modal | src/sections/idcard.js |
+| Fix ID card modal (engineer) | src/sections/idcard.js |
 | Add a tab | src/sections/nav.js + new src/sections/mytab.js |
 | Change CSS | src/styles/*.css (don't touch dist/) |
 
@@ -48,11 +51,12 @@ node --test tests/*.test.js → run unit tests
 4. Add UI in src/sections/idcard.js (openIdCardModal + saveIdCardModal)
 5. node build.js && open dist/matrix.html
 
-## Adding a tab
+## Adding a tab (navigation is the rail now — see ARCHITECTURE.md)
 1. Create src/sections/mytab.js with renderMyTab()
 2. Add to JS_FILES array in build.js
-3. Add button in src/index.html res-header
-4. Add case in src/sections/nav.js showResTab()
+3. Add a case in src/sections/nav.js showResTab() + its highlight-loop array
+4. Register on the rail: add a view to RAIL_DOMAINS and to RAIL_RES_TABS in
+   src/sections/railnav.js  (the old #res-header tab strip is gone)
 5. node build.js
 
 ## CSS variables

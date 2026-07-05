@@ -13,6 +13,7 @@ const CSS_FILES = [
   'styles/table.css',
   'styles/print.css',
   'styles/nav.css',
+  'styles/charter.css',
 ];
 const css = CSS_FILES
   .map(f => readFileSync(join(SRC, f), 'utf8').trim())
@@ -25,6 +26,7 @@ const JS_FILES = [
   'data/model.js',
   'core/globals.js',
   'core/helpers.js',
+  'core/financial.js',
   'core/persist.js',
   'core/photo.js',
   'sections/matrix.js',
@@ -52,6 +54,7 @@ const JS_FILES = [
   'sections/ai.js',
   'sections/nav.js',
   'sections/railnav.js',
+  'sections/charter.js',
   'sections/boot.js',
 ];
 
