@@ -45,6 +45,18 @@ export function resolveUnitEconomics(fin){
   else if(mode==='targetCost' && Number.isFinite(tm) && tm>=0 && tm<100){ directVar=price*(1-tm/100); derivedCost=directVar; }
   return { mode, price, directVar, derivedPrice, derivedCost };
 }
+// Design-to-cost envelope: the max allowable DIRECT unit cost the design must hit.
+// Prefers the target-margin-derived cost; else price×(1−targetMargin); else the
+// entered direct variable cost; null if none is defined.
+export function dtcTarget(fin){
+  const eco=resolveUnitEconomics(fin);
+  if(eco.derivedCost!=null) return eco.derivedCost;
+  const tm=Number(fin.targetMarginPct), price=Number(fin.pricePerUnit)||0;
+  if(price>0 && tm>0 && tm<100) return price*(1-tm/100);
+  const vc=Number(fin.variableCostPerUnit)||0;
+  return vc>0 ? vc : null;
+}
+
 // The 'unit'-targeted investment items spread over amortUnits (€/unit), else 0.
 export function amortizedPerUnit(fin){
   const inv=(fin&&fin.investment)||{};

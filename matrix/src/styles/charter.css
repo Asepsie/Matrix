@@ -204,6 +204,53 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
   body.cht-printing .cht-slide{ page-break-after:always; margin:0; border:none; border-radius:0; min-height:auto; }
 }
 
+/* ── Design-to-cost (rail view) ── */
+#dtc-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#dtc-overlay.show{ display:flex; }
+#dtc-header{ display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+#dtc-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#dtc-body{ flex:1; overflow:auto; padding:18px 22px; }
+.dtc-sec{ max-width:900px; margin:0 0 26px; }
+.dtc-h{ font-size:15px; color:var(--accent); margin:0 0 6px; }
+.dtc-tbl{ width:100%; border-collapse:collapse; font-size:12px; margin:8px 0; }
+.dtc-tbl th{ text-align:left; color:var(--muted); font-family:IBM Plex Mono,monospace; font-size:9px;
+  letter-spacing:.05em; border-bottom:1px solid var(--border); padding:5px 8px; }
+.dtc-tbl td{ padding:4px 8px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+.dtc-tbl .cht-in{ font-size:11px; padding:4px 6px; }
+.dtc-num{ width:88px; text-align:right; }
+.dtc-gap.good{ color:var(--accent2); }
+.dtc-gap.bad{ color:var(--danger); }
+.dtc-tbl tr.dtc-over td{ background:rgba(241,67,53,.06); }
+.dtc-summary{ font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--border);
+  border-radius:6px; padding:8px 10px; margin:6px 0; }
+.dtc-summary b{ color:var(--text); }
+.dtc-summary .good{ color:var(--accent2); } .dtc-summary.bad, .dtc-summary .bad{ color:var(--danger); }
+.dtc-must{ font-family:IBM Plex Mono,monospace; font-size:8px; color:#fff; background:var(--danger);
+  border-radius:4px; padding:1px 4px; }
+.dtc-guide-row{ display:grid; grid-template-columns:120px 92px 1fr; gap:10px; align-items:baseline;
+  padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.dtc-guide-dim{ color:var(--text); font-weight:600; }
+.dtc-guide-stance{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.05em; }
+.dtc-guide-stance.good{ color:var(--accent); } .dtc-guide-stance.bad{ color:var(--danger); }
+.dtc-guide-txt{ color:var(--muted); }
+/* cascade sub-items + include toggles */
+.dtc-cascade td:first-child, .dtc-cascade th:first-child{ width:20px; padding-right:0; }
+.dtc-caret{ background:none; border:none; color:var(--muted); cursor:pointer; font-size:11px; padding:2px 4px; transition:transform .12s; }
+.dtc-caret.open{ transform:rotate(90deg); color:var(--accent); }
+.dtc-count{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); margin-left:6px; }
+.dtc-derived{ font-size:12px; color:var(--accent2); }
+.dtc-tbl tr.dtc-excl > td{ opacity:.42; }
+.dtc-tbl tr.dtc-excl input[type=checkbox]{ opacity:1; }
+.dtc-items-row > td{ background:var(--bg); padding:6px 8px 10px; }
+.dtc-items{ padding-left:8px; border-left:2px solid var(--border); }
+.dtc-item-row{ display:grid; grid-template-columns:20px 1fr 96px 22px; gap:6px; align-items:center; margin:4px 0; }
+.dtc-item-row.dtc-excl{ opacity:.45; }
+.dtc-item-row .cht-in{ font-size:11px; padding:4px 6px; }
+
 /* ── Charters hub (rail view) ── */
 #chthub-overlay{
   display:none; position:fixed; inset:0; left:var(--rail);

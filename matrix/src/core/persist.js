@@ -354,7 +354,18 @@ export function sanitiseCharter(p){
   for(const k of ['strategy','rnd','offer','procurement','industrialization']){
     if(!c[k]||typeof c[k]!=='object') c[k]={alignment:null,demands:[]};
     if(!Array.isArray(c[k].demands)) c[k].demands=[];
+    c[k].demands.forEach(d=>{ if(d.response==null) d.response=''; if(d.responseNote==null) d.responseNote=''; });
   }
+  // Design-to-cost model (added later; back-fill for older charters).
+  if(!c.costModel||typeof c.costModel!=='object') c.costModel={subsystems:[],levers:[],competitors:[]};
+  if(!Array.isArray(c.costModel.subsystems)) c.costModel.subsystems=[];
+  if(!Array.isArray(c.costModel.levers))     c.costModel.levers=[];
+  if(!Array.isArray(c.costModel.competitors))c.costModel.competitors=[];
+  c.costModel.subsystems.forEach(s=>{
+    if(s.include==null) s.include=true;
+    if(!Array.isArray(s.items)) s.items=[];
+    s.items.forEach(it=>{ if(it.include==null) it.include=true; if(it.cost==null) it.cost=0; });
+  });
   if(!Array.isArray(c.financials.cashFlows))       c.financials.cashFlows=[];
   if(!c.financials.unit)                           c.financials.unit='eur';
   if(!c.financials.investment||typeof c.financials.investment!=='object')

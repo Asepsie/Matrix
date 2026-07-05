@@ -452,6 +452,18 @@
   <div id="chthub-body"></div>
 </div>
 
+<!-- DESIGN-TO-COST (WORK › Design to cost rail view) -->
+<div id="dtc-overlay">
+  <div id="dtc-header">
+    <span id="dtc-title">DESIGN TO COST</span>
+    <label class="cht-hl" style="margin-left:10px">PROJECT</label>
+    <select id="dtc-picker" class="cht-sel" onchange="dtcSelectProject(this.value)"></select>
+    <div style="flex:1"></div>
+    <button onclick="closeDtc()">✕ CLOSE</button>
+  </div>
+  <div id="dtc-body"></div>
+</div>
+
 <!-- ICON PICKER (permanent, outside ptw-body) -->
 <div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
   <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:8px">SELECT MILESTONE ICON</div>

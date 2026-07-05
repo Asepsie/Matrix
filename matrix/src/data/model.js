@@ -114,6 +114,7 @@ export function makeCharter(overrides = {}) {
     industrialization: { alignment: null, demands: [] },
     financials: makeCharterFinancials(),
     decision:   makeDecisionCard(),
+    costModel:  makeCostModel(),
     ...overrides,
   };
 }
@@ -121,8 +122,37 @@ export function makeCharter(overrides = {}) {
 // One stakeholder demand. `dimension` is the trade-off corner it pushes
 // ('' | features | time | productCost | projectCost); `mustHave` marks it
 // non-negotiable (a must-have on a sacrificed dimension = a conflict).
+// `response` is the design team's answer: '' | accept | mitigate | reject.
 export function makeDemand(overrides = {}) {
-  return { text: '', dimension: '', mustHave: false, ...overrides };
+  return { text: '', dimension: '', mustHave: false, response: '', responseNote: '', ...overrides };
+}
+
+// Design-to-cost model (on the charter). The unit-cost envelope comes from the
+// charter financials (price − target margin); subsystems allocate it and track
+// the current design estimate; levers are the cost-down actions toward target;
+// competitors benchmark our cost/price structure.
+export function makeCostModel(overrides = {}) {
+  return { subsystems: [], levers: [], competitors: [], ...overrides };
+}
+// A cost line the unit-cost envelope is allocated to. amounts in €/unit.
+// `include` lets you exclude it from the rollup for scenario analysis; `items`
+// is an optional BOM / feature breakdown (its included items sum to `current`).
+export function makeSubsystem(overrides = {}) {
+  return { name: '', target: null, current: null, owner: '', include: true, items: [], ...overrides };
+}
+// One BOM part / feature under a subsystem. `include` toggles it in/out of analysis.
+export function makeCostItem(overrides = {}) {
+  return { name: '', cost: 0, include: true, ...overrides };
+}
+// A cost-reduction lever. saving in €/unit; status: idea | committed | realized.
+export function makeLever(overrides = {}) {
+  return { name: '', subsystem: '', saving: 0, status: 'idea', owner: '', ...overrides };
+}
+// A competitor for benchmarking. All €/unit. `volumeSaving` = cost advantage from
+// scale; `brandPremium` = the part of the price that's brand, not cost/features.
+// Implied margin is derived: price − (cogs − volumeSaving) − brandPremium.
+export function makeCompetitor(overrides = {}) {
+  return { name: '', sellingPrice: 0, cogs: 0, volumeSaving: 0, brandPremium: 0, ...overrides };
 }
 
 // Financial-analysis inputs for a charter. Convention: initialInvestment is the

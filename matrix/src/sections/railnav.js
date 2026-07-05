@@ -60,6 +60,7 @@ var RAIL_DOMAINS = [
     {id:'plan',        label:'Resource plan'},
     {id:'timeline',    label:'Timeline'},
     {id:'charters',    label:'Charters'},
+    {id:'dtc',         label:'Design to cost'},
     {id:'brief',       label:'Project brief', action:true},
   ]},
   { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
@@ -238,6 +239,7 @@ function closeAllOverlays(){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
 }
 
@@ -250,6 +252,7 @@ function railOpenRes(tab){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -264,6 +267,7 @@ function railRoute(viewId){
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
   else if(viewId==='charters')openCharterHub();
+  else if(viewId==='dtc')     openDtc();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -402,7 +406,7 @@ function railChooseLanding(viewId){
    (Action overlays — snap/help/brief — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){

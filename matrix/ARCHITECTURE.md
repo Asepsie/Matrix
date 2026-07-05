@@ -412,3 +412,41 @@ registered in `build.js` (`JS_FILES` / `CSS_FILES`).
 **Verify note:** `preview_screenshot` was flaky this build — verify SVGs/values via
 `preview_eval` (DOM geometry, computed stroke/fill, NaN scan), which is stronger than
 pixels for numbers anyway.
+
+### Design-to-cost workspace ([src/sections/dtc.js](src/sections/dtc.js), `dtc`-prefixed)
+
+A **second WORK rail view** (`WORK › Design to cost`) — a *view*, not a modal, so its
+`#dtc-overlay` stays `left:var(--rail)` (z400), wired into railnav exactly like the Charters
+hub (`RAIL_DOMAINS` work views, `railRoute`, `closeAllOverlays`, `railOpenRes`,
+`railWrapClosers` all include it). A project **picker** (`#dtc-picker`) at the top chooses
+which project's `charter.costModel` to work on. Four sections, all reading from the charter:
+1. **Target-cost cascade** — subsystems each with target/current €/unit; the **envelope** =
+   `dtcTarget(financials)` (max allowable unit cost from price − target margin). Rollup shows
+   over/under; a **loop-closer button** (`dtcPushCost`) writes the rolled-up current cost into
+   `financials.variableCostPerUnit` (and flips `marginMode` off `targetCost` so it isn't
+   re-derived away).
+2. **Cost-down waterfall** — levers (saving €/unit, status idea|committed|realized); waterfall
+   SVG steps Current → −realized → −committed → Projected vs the target line (ideas shown as
+   remaining upside).
+3. **Design guidelines** — `DTC_GUIDE[dim][stance]` do/don't rules generated from the square's
+   4 stances, plus `chtConflicts` as hard constraints.
+4. **Demand responses** — per charter demand: accept/mitigate/reject + note (writes back to the
+   demand's `response`/`responseNote`).
+
+Data lives on `charter.costModel = { subsystems:[makeSubsystem], levers:[makeLever],
+competitors:[makeCompetitor] }` + each demand's `response` — so it flows through
+save/backup and is back-filled by `sanitiseCharter`. `dtcTarget` is the one pure/testable
+helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `CHT_DIMS4`,
+`CHT_DIM_LABEL`, `chtConflicts`, `resolveUnitEconomics`). Registered in build.js `JS_FILES`.
+
+- **Subsystem BOM/features + include toggles.** Each subsystem has `include` and an
+  optional `items:[makeCostItem {name,cost,include}]` list (collapsible; expand state is a
+  module `Set` `_dtcOpen` keyed by index — UI-only, NOT persisted). `dtcSubCost(s)` = 0 if
+  excluded, else the sum of INCLUDED items when it has any, else the manual `current`. So
+  toggling a feature/part or a whole subsystem off is instant scenario analysis (the rollup
+  drops it). When a subsystem has items its Current cell is derived/read-only.
+- **Competition analysis** (`⑤`, up to 5 + an "Us" row). Per `makeCompetitor`: sellingPrice,
+  cogs, volumeSaving (scale advantage), brandPremium. Derived: adjusted cost = cogs −
+  volumeSaving; implied margin = price − adjusted cost − brandPremium. `dtcCompBarsSVG`
+  stacks cost / margin / brand per row (Us computed from charter price + cascade current) so
+  you see who wins on cost vs who charges a brand premium.

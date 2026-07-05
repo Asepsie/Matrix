@@ -23,6 +23,7 @@ area.
 | Navigation / rail / topbar / overlays | src/sections/railnav.js, src/styles/nav.css (+ ARCHITECTURE.md) |
 | Portfolio (project) analytics | src/sections/portfolio.js |
 | Cross-functional charter (demands / square / financials / deck) | src/sections/charter.js, src/core/financial.js (+ ARCHITECTURE.md) |
+| Design-to-cost (cascade / waterfall / guidelines) | src/sections/dtc.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
 | Fix ID card modal (engineer) | src/sections/idcard.js |

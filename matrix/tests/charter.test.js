@@ -1,10 +1,12 @@
 import { strict as assert } from 'assert';
 import { test } from 'node:test';
-import { makeProject, makeCharter, makeCharterFinancials, makeDecisionCard, makeInvestmentItem, makeDemand } from '../src/data/model.js';
+import { makeProject, makeCharter, makeCharterFinancials, makeDecisionCard, makeInvestmentItem, makeDemand,
+  makeCostModel, makeSubsystem, makeLever, makeCostItem, makeCompetitor } from '../src/data/model.js';
 import {
   calculateFinancials, computeNPV, computeIRR, computeYield,
   computePayback, computeBreakEvenUnits, computeCumulative, fmtEur,
   effectiveInvestment, effectiveVarCost, finUnitFactor, finUnitSym, fmtMoneyUnit,
+  dtcTarget,
 } from '../src/core/financial.js';
 
 /* ── Data model ─────────────────────────────────────────────────────────── */
@@ -37,11 +39,36 @@ test('makeCharter — each function is just alignment + demands; overview at top
   assert.ok('businessCase' in c && 'expectedRevenueM' in c);
 });
 
-test('makeDemand — default shape', () => {
+test('makeDemand — default shape (incl. response fields)', () => {
   const d = makeDemand();
   assert.equal(d.text, '');
   assert.equal(d.dimension, '');
   assert.equal(d.mustHave, false);
+  assert.equal(d.response, '');
+  assert.equal(d.responseNote, '');
+});
+
+test('makeCharter — carries a costModel; sub-factories have expected shape', () => {
+  const c = makeCharter();
+  assert.deepEqual(c.costModel, { subsystems: [], levers: [], competitors: [] });
+  assert.deepEqual(makeSubsystem(), { name:'', target:null, current:null, owner:'', include:true, items:[] });
+  assert.deepEqual(makeCostItem(), { name:'', cost:0, include:true });
+  assert.deepEqual(makeLever(), { name:'', subsystem:'', saving:0, status:'idea', owner:'' });
+  assert.deepEqual(makeCompetitor(), { name:'', sellingPrice:0, cogs:0, volumeSaving:0, brandPremium:0 });
+  const a = makeCharter(), b = makeCharter();
+  assert.notEqual(a.costModel.subsystems, b.costModel.subsystems);   // independent arrays
+  assert.notEqual(makeSubsystem().items, makeSubsystem().items);
+});
+
+test('dtcTarget — envelope from margin mode / target margin / entered cost', () => {
+  // targetCost mode → derived max cost
+  assert.equal(dtcTarget(makeCharterFinancials({ marginMode:'targetCost', pricePerUnit:50, targetMarginPct:40 })), 30);
+  // compute mode but a target margin set → price × (1 − margin)
+  assert.equal(dtcTarget(makeCharterFinancials({ pricePerUnit:100, targetMarginPct:30 })), 70);
+  // no target → falls back to entered variable cost
+  assert.equal(dtcTarget(makeCharterFinancials({ variableCostPerUnit:22 })), 22);
+  // nothing defined → null
+  assert.equal(dtcTarget(makeCharterFinancials()), null);
 });
 
 test('makeCharter — demand arrays are independent per call', () => {

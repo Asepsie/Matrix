@@ -55,6 +55,7 @@ const JS_FILES = [
   'sections/nav.js',
   'sections/railnav.js',
   'sections/charter.js',
+  'sections/dtc.js',
   'sections/boot.js',
 ];
 
