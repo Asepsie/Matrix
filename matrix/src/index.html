@@ -213,14 +213,14 @@
          is visible only on the Portfolio matrix view — every other view opens a
          full-screen overlay that covers it. -->
     <div id="matrix-toolbar">
-      <button onclick="openAddModal()" title="Add new project (N)">+ PROJECT</button>
-      <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" title="Add section">＋ SECTION</button>
-      <button onclick="openQPanel()" title="Configure quadrant labels">◧ QUADRANTS</button>
+      <button onclick="openAddModal()" data-i18n-title="Add new project (N)" title="Add new project (N)" data-i18n="+ PROJECT">+ PROJECT</button>
+      <button onclick="addSection()" style="border-color:var(--accent2);color:var(--accent2)" data-i18n-title="Add section" title="Add section" data-i18n="＋ SECTION">＋ SECTION</button>
+      <button onclick="openQPanel()" data-i18n-title="Configure quadrant labels" title="Configure quadrant labels" data-i18n="◧ QUADRANTS">◧ QUADRANTS</button>
       <div class="bar-sep"></div>
-      <span class="mtb-label">Y-AXIS</span>
-      <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     title="Sort by Impact">IMPACT</button>
-      <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" title="Sort by Visibility">VISIBILITY</button>
-      <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    title="Sort by Enabler">ENABLER</button>
+      <span class="mtb-label" data-i18n="Y-AXIS">Y-AXIS</span>
+      <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     data-i18n-title="Sort by Impact"     title="Sort by Impact"     data-i18n="IMPACT">IMPACT</button>
+      <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" data-i18n-title="Sort by Visibility" title="Sort by Visibility" data-i18n="VISIBILITY">VISIBILITY</button>
+      <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    data-i18n-title="Sort by Enabler"    title="Sort by Enabler"    data-i18n="ENABLER">ENABLER</button>
     </div>
     <div id="axis-bar">
       <label>X</label>
@@ -228,38 +228,38 @@
       <input type="number" id="ax-x-min" value="0" step="1" oninput="onAxisChange()">
       <span style="color:var(--muted);font-size:11px;font-family:monospace">→</span>
       <input type="number" id="ax-x-max" value="10" step="1" oninput="onAxisChange()">
-      <button class="sm active" id="btn-x-lin" onclick="setScale('x','lin')">LIN</button>
-      <button class="sm" id="btn-x-log" onclick="setScale('x','log')">LOG</button>
+      <button class="sm active" id="btn-x-lin" onclick="setScale('x','lin')" data-i18n="LIN">LIN</button>
+      <button class="sm" id="btn-x-log" onclick="setScale('x','log')" data-i18n="LOG">LOG</button>
       <div class="bar-sep"></div>
       <label>Y</label>
       <input type="number" id="ax-y-min" value="0" step="1" oninput="onAxisChange()">
       <span style="color:var(--muted);font-size:11px;font-family:monospace">↑</span>
       <input type="number" id="ax-y-max" value="10" step="1" oninput="onAxisChange()">
-      <button class="sm active" id="btn-y-lin" onclick="setScale('y','lin')">LIN</button>
-      <button class="sm" id="btn-y-log" onclick="setScale('y','log')">LOG</button>
+      <button class="sm active" id="btn-y-lin" onclick="setScale('y','lin')" data-i18n="LIN">LIN</button>
+      <button class="sm" id="btn-y-log" onclick="setScale('y','log')" data-i18n="LOG">LOG</button>
       <div class="bar-sep"></div>
-      <label>SEP-X</label>
+      <label data-i18n="SEP-X">SEP-X</label>
       <input type="number" id="sep-x-val" value="5" step="0.1" oninput="onSepInput('x')" style="width:48px">
-      <label>SEP-Y</label>
+      <label data-i18n="SEP-Y">SEP-Y</label>
       <input type="number" id="sep-y-val" value="5" step="0.1" oninput="onSepInput('y')" style="width:48px">
       <div class="bar-sep"></div>
-      <label>GRID</label>
+      <label data-i18n="GRID">GRID</label>
       <input type="number" id="ax-grid" value="5" min="2" max="20" step="1" oninput="render()" style="width:36px">
       <div class="bar-sep"></div>
-      <button class="sm" onclick="resetZoom()">⊙ ZOOM RESET</button>
+      <button class="sm" onclick="resetZoom()" data-i18n="⊙ ZOOM RESET">⊙ ZOOM RESET</button>
     </div>
 
     <div id="draw-bar">
-      <label>DRAW:</label>
-      <button class="sm" id="dt-none"  onclick="setDrawTool('none')">↖ SELECT</button>
-      <button class="sm" id="dt-line"  onclick="setDrawTool('line')">— LINE</button>
-      <button class="sm" id="dt-dash"  onclick="setDrawTool('dash')">╌ DASHED</button>
-      <button class="sm" id="dt-arrow" onclick="setDrawTool('arrow')">→ ARROW</button>
-      <button class="sm" id="dt-text"  onclick="setDrawTool('text')">T TEXT</button>
+      <label data-i18n="DRAW:">DRAW:</label>
+      <button class="sm" id="dt-none"  onclick="setDrawTool('none')" data-i18n="↖ SELECT">↖ SELECT</button>
+      <button class="sm" id="dt-line"  onclick="setDrawTool('line')" data-i18n="— LINE">— LINE</button>
+      <button class="sm" id="dt-dash"  onclick="setDrawTool('dash')" data-i18n="╌ DASHED">╌ DASHED</button>
+      <button class="sm" id="dt-arrow" onclick="setDrawTool('arrow')" data-i18n="→ ARROW">→ ARROW</button>
+      <button class="sm" id="dt-text"  onclick="setDrawTool('text')" data-i18n="T TEXT">T TEXT</button>
       <input type="color" id="draw-color" value="#c8f135">
-      <input type="text"  id="draw-text-input" placeholder="Type then click…">
+      <input type="text"  id="draw-text-input" data-i18n-ph="Type then click…" placeholder="Type then click…">
       <div class="bar-sep"></div>
-      <button class="sm danger" onclick="clearAnnotations()">✕ CLEAR ALL</button>
+      <button class="sm danger" onclick="clearAnnotations()" data-i18n="✕ CLEAR ALL">✕ CLEAR ALL</button>
     </div>
 
     <div id="canvas-wrap">
@@ -275,27 +275,27 @@
 <!-- RIGHT-CLICK MENU -->
 <div id="ctx-menu">
   <div class="ctx-title" id="ctx-proj-name">PROJECT</div>
-  <div class="ctx-item" onclick="openRiskTab()"><span class="ci">⚠</span>Risk Management</div>
-  <div class="ctx-item" onclick="openScheduleTab()"><span class="ci">📅</span>Schedule / Gantt</div>
-  <div class="ctx-item" onclick="openActionsTab()"><span class="ci">👥</span>Team Actions</div>
-  <div class="ctx-item" onclick="openCharter(ctxProjId);closeCtx()"><span class="ci">📋</span>Charter</div>
-  <div class="ctx-item" onclick="selectProject(ctxProjId);closeCtx()"><span class="ci">✎</span>Edit Project</div>
+  <div class="ctx-item" onclick="openRiskTab()"><span class="ci">⚠</span><span data-i18n="Risk Management">Risk Management</span></div>
+  <div class="ctx-item" onclick="openScheduleTab()"><span class="ci">📅</span><span data-i18n="Schedule / Gantt">Schedule / Gantt</span></div>
+  <div class="ctx-item" onclick="openActionsTab()"><span class="ci">👥</span><span data-i18n="Team Actions">Team Actions</span></div>
+  <div class="ctx-item" onclick="openCharter(ctxProjId);closeCtx()"><span class="ci">📋</span><span data-i18n="Charter">Charter</span></div>
+  <div class="ctx-item" onclick="selectProject(ctxProjId);closeCtx()"><span class="ci">✎</span><span data-i18n="Edit Project">Edit Project</span></div>
 </div>
 <div id="tooltip"></div>
 
 <!-- PROJECT TAB WINDOW -->
 <div id="proj-tab-win" class="proj-tab-win">
-  <div class="ptw-header" title="Drag to move · Resize from bottom-right corner">
+  <div class="ptw-header" data-i18n-title="Drag to move · Resize from bottom-right corner" title="Drag to move · Resize from bottom-right corner">
     <span class="ptw-title" id="ptw-title">PROJECT</span>
     <div style="display:flex;gap:6px">
-      <button class="sm primary" onclick="saveProjTab()">SAVE</button>
+      <button class="sm primary" onclick="saveProjTab()" data-i18n="SAVE">SAVE</button>
       <button class="ptw-close" onclick="closeProjTab()">✕</button>
     </div>
   </div>
   <div class="ptw-tabs">
-    <div class="ptw-tab active" id="tab-risk-btn"  onclick="showProjTab('risk')">⚠ RISK</div>
-    <div class="ptw-tab"        id="tab-sched-btn"   onclick="showProjTab('sched')">📅 SCHEDULE</div>
-    <div class="ptw-tab"        id="tab-actions-btn" onclick="showProjTab('actions')">👥 ACTIONS</div>
+    <div class="ptw-tab active" id="tab-risk-btn"  onclick="showProjTab('risk')" data-i18n="⚠ RISK">⚠ RISK</div>
+    <div class="ptw-tab"        id="tab-sched-btn"   onclick="showProjTab('sched')" data-i18n="📅 SCHEDULE">📅 SCHEDULE</div>
+    <div class="ptw-tab"        id="tab-actions-btn" onclick="showProjTab('actions')" data-i18n="👥 ACTIONS">👥 ACTIONS</div>
   </div>
   <div class="ptw-body" id="ptw-body"></div>
 </div>

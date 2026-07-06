@@ -496,9 +496,16 @@ helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `
 
 Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded right after
 globals in `JS_FILES`, so `t()` is available to every later file). Shipped languages:
-**English (base) + French + Chinese**. Being rolled out **phased, shell-first** — Phase 0 (the seam) + **Phase 1 (all shell
-chrome: nav rail, Settings modal, first-run chooser, Help panel)** are done; per-section
-body prose + SVG labels + full number/date wiring remain.
+**English (base) + French + Chinese**. Being rolled out **phased, shell-first** — done so far: Phase 0 (the seam), **Phase 1 (all
+shell chrome: nav rail, Settings, first-run, Help)**, and **Phase 2 in progress** (matrix
+canvas: toolbar/axis/draw bars, right-click menu, project window; Roster view + engineer
+card). Remaining: the rest of the per-section body prose (plan/org/nine-box/analytics/
+portfolio/charter/dtc/skills…), the Resources-overlay period header, SVG chart labels, and
+full number/date wiring.
+
+**Load order:** `core/i18n.js` is the **first** file in `JS_FILES` (before `data/model.js`
+and `core/globals.js`) so `t()` is defined for every later file — including globals, whose
+`Y_LABELS` are wrapped. Nothing i18n depends on loads before it.
 
 ### Key facts (non-obvious)
 
@@ -544,6 +551,18 @@ body prose + SVG labels + full number/date wiring remain.
   (`pfEur`, `fmtMoneyUnit`, thousands separators) — that's the remaining Phase 3 work.
 - **SECURITY:** `t()` does not escape — it's for developer-authored UI text only. User data
   still flows through the existing `escH()` path; never pass untrusted data as a `t()` key.
+- **The data boundary — do NOT translate user data.** Anything editable + persisted stays as
+  stored: project/engineer names, the axis X name (`ax-x-name`), factory default names
+  (`makeEngineer`'s "New Engineer", roster's "Planning Resource"), and notably the **quadrant
+  labels** (`quadrantsByMode` — editable via the Q-panel, saved in state, carried in backups).
+  These were left un-`t()`'d on purpose: translating a *default* would freeze a language-
+  dependent label into the user's data on the next save. Fixed-chrome derivations of the same
+  concept ARE translated — e.g. `Y_LABELS` (the y-axis mode caption, not persisted) and the
+  toolbar's IMPACT/VISIBILITY/ENABLER buttons.
+- **Wrapping JS-rendered sections:** inside `h+=\`…\`` template literals, insert `${t('…')}`
+  for text and `${t('…')}` in `title=""`/`placeholder=""` slots; use interpolation for counts
+  (`t('{n} engineer(s)',{n})`) rather than string concatenation, so word order stays
+  translatable. `escH(userValue)` interpolations stay exactly as they are (data, not `t()`).
 
 ### Validation / verification
 

@@ -391,50 +391,50 @@ export function engCardHTML(e){
   return `<div class="eng-card" draggable="true"
       ondragstart="dragEngStart(event,${e.id})" ondragend="dragEngEnd(event)"
       id="ec-${e.id}">
-    <span class="eng-drag-handle" title="Drag to regroup">⋮⋮</span>
-    ${e.planningOnly?`<div style="margin:4px 0 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><div style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(91,229,200,.12);color:var(--accent2);border:1px solid rgba(91,229,200,.3)">📋 PLANNING ONLY</div><label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--muted);cursor:pointer"><input type="checkbox" ${e.includeInCost?'checked':''} style="accent-color:var(--accent2);cursor:pointer" onchange="(function(cb){const eng=engineers.find(e=>e.id===${e.id});if(eng){eng.includeInCost=cb.checked;saveState();}})(this)">Include in cost calc</label></div>`:''}
+    <span class="eng-drag-handle" title="${t('Drag to regroup')}">⋮⋮</span>
+    ${e.planningOnly?`<div style="margin:4px 0 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><div style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(91,229,200,.12);color:var(--accent2);border:1px solid rgba(91,229,200,.3)">${t('📋 PLANNING ONLY')}</div><label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--muted);cursor:pointer"><input type="checkbox" ${e.includeInCost?'checked':''} style="accent-color:var(--accent2);cursor:pointer" onchange="(function(cb){const eng=engineers.find(e=>e.id===${e.id});if(eng){eng.includeInCost=cb.checked;saveState();}})(this)">${t('Include in cost calc')}</label></div>`:''}
     ${avatarHTML}
     <div class="eng-card-field">
-      <div class="eng-card-label">NAME</div>
-      <input class="eng-card-inp" id="en-name-${e.id}" value="${escH(e.name)}" placeholder="Name" style="font-weight:600"
+      <div class="eng-card-label">${t('NAME')}</div>
+      <input class="eng-card-inp" id="en-name-${e.id}" value="${escH(e.name)}" placeholder="${t('Name')}" style="font-weight:600"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">ROLE / TITLE</div>
-      <input class="eng-card-inp" id="en-role-${e.id}" value="${escH(e.role||'')}" placeholder="Role…"
+      <div class="eng-card-label">${t('ROLE / TITLE')}</div>
+      <input class="eng-card-inp" id="en-role-${e.id}" value="${escH(e.role||'')}" placeholder="${t('Role…')}"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">LOCATION</div>
-      <input class="eng-card-inp" id="en-loc-${e.id}" value="${escH(e.location||'')}" placeholder="Location…"
+      <div class="eng-card-label">${t('LOCATION')}</div>
+      <input class="eng-card-inp" id="en-loc-${e.id}" value="${escH(e.location||'')}" placeholder="${t('Location…')}"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">€/MONTH</div>
+      <div class="eng-card-label">${t('€/MONTH')}</div>
       <input class="eng-card-inp" id="en-cost-${e.id}" type="number" value="${e.monthlyCost}" min="0" step="100" style="width:80px"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-      ${e.planningOnly ? '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent2)">Planning only</span>' : `
-      <button class="sm" onclick="openSkillsModal(${e.id})" title="Edit skills"
+      ${e.planningOnly ? `<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent2)">${t('Planning only')}</span>` : `
+      <button class="sm" onclick="openSkillsModal(${e.id})" title="${t('Edit skills')}"
         style="font-size:9px;padding:3px 7px;border-color:${skillCount?'var(--accent2)':'var(--border)'}">
-        ◈ SKILLS${skillBadge}
+        ◈ ${t('SKILLS')}${skillBadge}
       </button>
-      <button class="sm" onclick="openIdCardModal(${e.id})" title="Employee profile — set Reports-To for org chart"
+      <button class="sm" onclick="openIdCardModal(${e.id})" title="${t('Employee profile — set Reports-To for org chart')}"
         style="font-size:9px;padding:3px 7px;border-color:${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?'var(--accent)':'var(--danger)'}">
-        👤 ${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?'PROFILE':'PROFILE ⚠'}
+        👤 ${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?t('PROFILE'):t('PROFILE ⚠')}
       </button>`}
     </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:2px 6px 4px">
-      ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">⊘ EXCLUDED</span>` : ''}
-      <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.">
+      ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">${t('⊘ EXCLUDED')}</span>` : ''}
+      <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="${t('Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.')}">
         <input type="checkbox" ${e.excludeFromCalc?'checked':''} style="accent-color:var(--warn);cursor:pointer"
           onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderRoster();}})(this)">
-        Exclude from calc
+        ${t('Exclude from calc')}
       </label>
     </div>
-    <button class="row-del-btn" onclick="deleteEngineer(${e.id})" title="Delete engineer">×</button>
+    <button class="row-del-btn" onclick="deleteEngineer(${e.id})" title="${t('Delete engineer')}">×</button>
   </div>`;
 }
 

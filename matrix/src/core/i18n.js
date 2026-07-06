@@ -108,6 +108,44 @@ export var I18N_DICT = {
     'Reset all data to defaults. A snapshot is taken first.':'Réinitialiser toutes les données. Un instantané est pris au préalable.',
     'Reset all data — cannot be undone':'Réinitialiser toutes les données — irréversible',
     'RESET ALL':'TOUT RÉINITIALISER', 'CLOSE':'FERMER',
+    /* Matrix — Y-axis mode labels (chrome; quadrant labels are user data, not translated) */
+    'IMPACT':'IMPACT', 'VISIBILITY':'VISIBILITÉ', 'ENABLER VALUE':'VALEUR LEVIER', 'ENABLER':'LEVIER',
+    /* Matrix — toolbar + axis bar */
+    'Add new project (N)':'Ajouter un projet (N)', '+ PROJECT':'+ PROJET',
+    'Add section':'Ajouter une section', '＋ SECTION':'＋ SECTION',
+    'Configure quadrant labels':'Configurer les libellés de quadrant', '◧ QUADRANTS':'◧ QUADRANTS',
+    'Y-AXIS':'AXE Y',
+    'Sort by Impact':'Trier par Impact', 'Sort by Visibility':'Trier par Visibilité', 'Sort by Enabler':'Trier par Levier',
+    'LIN':'LIN', 'LOG':'LOG', 'SEP-X':'SÉP-X', 'SEP-Y':'SÉP-Y', 'GRID':'GRILLE', '⊙ ZOOM RESET':'⊙ RÉINIT. ZOOM',
+    /* Matrix — draw bar */
+    'DRAW:':'DESSIN :', '↖ SELECT':'↖ SÉLECT.', '— LINE':'— LIGNE', '╌ DASHED':'╌ POINTILLÉ',
+    '→ ARROW':'→ FLÈCHE', 'T TEXT':'T TEXTE', 'Type then click…':'Saisir puis cliquer…', '✕ CLEAR ALL':'✕ TOUT EFFACER',
+    /* Matrix — right-click menu + project window */
+    'Risk Management':'Gestion des risques', 'Schedule / Gantt':'Planning / Gantt',
+    'Team Actions':'Actions d\'équipe', 'Charter':'Charte', 'Edit Project':'Modifier le projet',
+    'Drag to move · Resize from bottom-right corner':'Glisser pour déplacer · Redimensionner depuis le coin inférieur droit',
+    '⚠ RISK':'⚠ RISQUE', '📅 SCHEDULE':'📅 PLANNING', '👥 ACTIONS':'👥 ACTIONS',
+    /* Roster (TEAM › Roster) — toolbar + groups */
+    'ENGINEER ROSTER':'EFFECTIF INGÉNIEURS',
+    '{n} people · {g} groups':'{n} personnes · {g} groupes',
+    '+ GROUP':'+ GROUPE', '+ ENGINEER':'+ INGÉNIEUR', '+ PLANNING RESOURCE':'+ RESSOURCE PLANIF.',
+    'Adds to selected group (click a group first)':'Ajoute au groupe sélectionné (cliquez d\'abord un groupe)',
+    'Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles':'Ajoute une ressource de planification uniquement — visible dans la planification mais exclue de tous les calculs, tableaux de bord et profils',
+    'click a group to target it':'cliquez un groupe pour le cibler',
+    '↓ SKILLS PDF':'↓ PDF COMPÉTENCES', '↓ ROSTER':'↓ EFFECTIF', '↑ ROSTER':'↑ EFFECTIF',
+    '✓ SAVED':'✓ ENREGISTRÉ', 'SAVE ROSTER':'ENREGISTRER L\'EFFECTIF',
+    'UNGROUPED':'SANS GROUPE', '{n} engineer(s)':'{n} ingénieur(s)', '/mo':'/mois',
+    'Drop engineers here…':'Déposez les ingénieurs ici…',
+    /* Roster — engineer card */
+    'Drag to regroup':'Glisser pour regrouper', '📋 PLANNING ONLY':'📋 PLANIFICATION SEULE',
+    'Include in cost calc':'Inclure dans le calcul des coûts',
+    'NAME':'NOM', 'Name':'Nom', 'ROLE / TITLE':'RÔLE / TITRE', 'Role…':'Rôle…',
+    'LOCATION':'LIEU', 'Location…':'Lieu…', '€/MONTH':'€/MOIS', 'Planning only':'Planification seule',
+    'Edit skills':'Modifier les compétences',
+    'Employee profile — set Reports-To for org chart':'Profil employé — définir le responsable pour l\'organigramme',
+    'PROFILE':'PROFIL', 'PROFILE ⚠':'PROFIL ⚠', '⊘ EXCLUDED':'⊘ EXCLU',
+    'Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.':'Exclure de tous les calculs (tableau de bord, finances, développement, analyse des compétences). Reste visible dans l\'effectif et la planification.',
+    'Exclude from calc':'Exclure du calcul', 'Delete engineer':'Supprimer l\'ingénieur',
   },
   zh: {
     /* Nav rail — domains */
@@ -181,6 +219,44 @@ export var I18N_DICT = {
     'Reset all data to defaults. A snapshot is taken first.':'将所有数据重置为默认值。会先创建快照。',
     'Reset all data — cannot be undone':'重置所有数据 — 无法撤销',
     'RESET ALL':'全部重置', 'CLOSE':'关闭',
+    /* Matrix — Y-axis mode labels (chrome; quadrant labels are user data, not translated) */
+    'IMPACT':'影响', 'VISIBILITY':'可见性', 'ENABLER VALUE':'赋能价值', 'ENABLER':'赋能',
+    /* Matrix — toolbar + axis bar */
+    'Add new project (N)':'新建项目 (N)', '+ PROJECT':'+ 项目',
+    'Add section':'添加分区', '＋ SECTION':'＋ 分区',
+    'Configure quadrant labels':'配置象限标签', '◧ QUADRANTS':'◧ 象限',
+    'Y-AXIS':'Y 轴',
+    'Sort by Impact':'按影响排序', 'Sort by Visibility':'按可见性排序', 'Sort by Enabler':'按赋能排序',
+    'LIN':'线性', 'LOG':'对数', 'SEP-X':'分隔-X', 'SEP-Y':'分隔-Y', 'GRID':'网格', '⊙ ZOOM RESET':'⊙ 重置缩放',
+    /* Matrix — draw bar */
+    'DRAW:':'绘制：', '↖ SELECT':'↖ 选择', '— LINE':'— 直线', '╌ DASHED':'╌ 虚线',
+    '→ ARROW':'→ 箭头', 'T TEXT':'T 文本', 'Type then click…':'输入后点击…', '✕ CLEAR ALL':'✕ 全部清除',
+    /* Matrix — right-click menu + project window */
+    'Risk Management':'风险管理', 'Schedule / Gantt':'计划 / 甘特图',
+    'Team Actions':'团队行动', 'Charter':'章程', 'Edit Project':'编辑项目',
+    'Drag to move · Resize from bottom-right corner':'拖动移动 · 从右下角调整大小',
+    '⚠ RISK':'⚠ 风险', '📅 SCHEDULE':'📅 计划', '👥 ACTIONS':'👥 行动',
+    /* Roster (TEAM › Roster) — toolbar + groups */
+    'ENGINEER ROSTER':'工程师花名册',
+    '{n} people · {g} groups':'{n} 人 · {g} 组',
+    '+ GROUP':'+ 分组', '+ ENGINEER':'+ 工程师', '+ PLANNING RESOURCE':'+ 规划资源',
+    'Adds to selected group (click a group first)':'添加到所选分组（请先点击分组）',
+    'Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles':'添加仅用于规划的资源 — 在规划中可见，但从所有计算、仪表板和档案中排除',
+    'click a group to target it':'点击分组以选定目标',
+    '↓ SKILLS PDF':'↓ 技能 PDF', '↓ ROSTER':'↓ 花名册', '↑ ROSTER':'↑ 花名册',
+    '✓ SAVED':'✓ 已保存', 'SAVE ROSTER':'保存花名册',
+    'UNGROUPED':'未分组', '{n} engineer(s)':'{n} 名工程师', '/mo':'/月',
+    'Drop engineers here…':'将工程师拖放到此处…',
+    /* Roster — engineer card */
+    'Drag to regroup':'拖动以重新分组', '📋 PLANNING ONLY':'📋 仅规划',
+    'Include in cost calc':'纳入成本计算',
+    'NAME':'姓名', 'Name':'姓名', 'ROLE / TITLE':'角色 / 职位', 'Role…':'角色…',
+    'LOCATION':'地点', 'Location…':'地点…', '€/MONTH':'€/月', 'Planning only':'仅规划',
+    'Edit skills':'编辑技能',
+    'Employee profile — set Reports-To for org chart':'员工档案 — 设置组织架构图的汇报对象',
+    'PROFILE':'档案', 'PROFILE ⚠':'档案 ⚠', '⊘ EXCLUDED':'⊘ 已排除',
+    'Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.':'从所有计算中排除（仪表板、财务、发展、技能分析）。仍在花名册和规划中可见。',
+    'Exclude from calc':'从计算中排除', 'Delete engineer':'删除工程师',
   },
 };
 

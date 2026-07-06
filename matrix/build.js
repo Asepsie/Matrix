@@ -23,9 +23,9 @@ const css = CSS_FILES
 // 2. Bundle JS — ordered for dependency resolution
 // (topological order: data → core → sections → nav)
 const JS_FILES = [
+  'core/i18n.js',      // first: defines t() so every later file (incl. globals) can use it
   'data/model.js',
   'core/globals.js',
-  'core/i18n.js',
   'core/helpers.js',
   'core/financial.js',
   'core/persist.js',
