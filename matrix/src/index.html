@@ -347,6 +347,14 @@
       <select id="set-landing"></select>
       <span style="font-size:10px;color:var(--muted)">The view Project Matrix opens on when it loads.</span>
     </div>
+    <div class="field">
+      <label>CHARTER PROJECT PICKER</label>
+      <select id="set-chartpicker">
+        <option value="hub">Card hub — grid of project cards</option>
+        <option value="dropdown">Dropdown — a top selector (like Design-to-cost)</option>
+      </select>
+      <span style="font-size:10px;color:var(--muted)">How you pick a project in Financials analysis &amp; Trade-off decision.</span>
+    </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
       <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">
       Auto-hide the nav rail — expand on hover, collapse when the pointer leaves
@@ -404,10 +412,11 @@
   <div id="res-body"></div>
 </div>
 
-<!-- CROSS-FUNCTIONAL CHARTER OVERLAY (opened from the project context menu) -->
+<!-- FINANCIALS ANALYSIS (WORK › Financials analysis rail view) — panel, rail-inset -->
 <div id="cht-overlay">
   <div id="cht-header">
-    <span id="cht-title">CHARTER</span>
+    <span id="cht-title">FINANCIALS ANALYSIS</span>
+    <span id="cht-pick"></span>
     <div class="cht-head-meta" id="cht-head-meta"></div>
     <div style="flex:1"></div>
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
@@ -417,6 +426,17 @@
   </div>
   <div id="cht-tabs"></div>
   <div id="cht-body"></div>
+</div>
+
+<!-- TRADE-OFF DECISION (WORK › Trade-off decision rail view) — panel, rail-inset -->
+<div id="dec-overlay">
+  <div id="dec-header">
+    <span id="dec-title">TRADE-OFF DECISION</span>
+    <span id="dec-pick"></span>
+    <div style="flex:1"></div>
+    <button onclick="chtCloseDecision()">✕ CLOSE</button>
+  </div>
+  <div id="dec-body"></div>
 </div>
 
 <!-- CHARTER SLIDE DECK (generated from the open charter) -->

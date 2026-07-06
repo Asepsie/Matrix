@@ -55,6 +55,34 @@ function dtcRender(){
     dtcResponsesSection(c);
 }
 
+// Recompute ONLY the derived outputs in place — never the input elements — so
+// typing in a number field keeps focus and scroll position. Called from the
+// numeric setters (structural changes still do a full dtcRender).
+function dtcRefreshDerived(){
+  const c=dtcCharter(); if(!c) return;
+  const set=(id,html)=>{ const el=G(id); if(el) el.innerHTML=html; };
+  set('dtc-cascade-live', dtcCascadeLive(c));
+  set('dtc-push',         dtcPushBtn(c));
+  set('dtc-wf-live',      dtcWaterfallLive(c));
+  set('dtc-comp-live',    dtcCompBarsSVG(c));
+  c.costModel.subsystems.forEach((s,i)=>{
+    const cur=dtcSubCost(s), gap=cur-(Number(s.target)||0), excl=s.include===false, hasItems=dtcHasItems(s);
+    const g=G('dtc-gap-'+i);
+    if(g){ g.textContent = excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap));
+      g.className='dtc-gap '+(excl?'':gap>0?'bad':gap<0?'good':'');
+      const row=g.closest('tr'); if(row) row.className = excl?'dtc-excl':gap>0?'dtc-over':''; }
+    const cu=G('dtc-cur-'+i); if(cu) cu.textContent=dtcEur(cur);
+    const cn=G('dtc-cnt-'+i); if(cn) cn.textContent=hasItems?`${s.items.filter(it=>it.include!==false).length}/${s.items.length}`:'';
+  });
+  c.costModel.competitors.forEach((k,i)=>{
+    const adj=(Number(k.cogs)||0)-(Number(k.volumeSaving)||0);
+    const margin=(Number(k.sellingPrice)||0)-adj-(Number(k.brandPremium)||0);
+    const mPct=k.sellingPrice>0?margin/k.sellingPrice*100:null;
+    const a=G('dtc-cadj-'+i); if(a) a.textContent=dtcEur(adj);
+    const m=G('dtc-cmrg-'+i); if(m) m.innerHTML=`${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}`;
+  });
+}
+
 /* ── Competition analysis (up to 5 competitors + Us) ─────────────────────────── */
 function dtcCompetitionSection(c){
   const comps=c.costModel.competitors;
@@ -68,15 +96,15 @@ function dtcCompetitionSection(c){
       <td><input class="cht-in dtc-num" type="number" value="${k.cogs||''}" oninput="dtcCompSet(${i},'cogs',this.value)"></td>
       <td><input class="cht-in dtc-num" type="number" value="${k.volumeSaving||''}" oninput="dtcCompSet(${i},'volumeSaving',this.value)"></td>
       <td><input class="cht-in dtc-num" type="number" value="${k.brandPremium||''}" oninput="dtcCompSet(${i},'brandPremium',this.value)"></td>
-      <td class="dtc-num">${dtcEur(adj)}</td>
-      <td class="dtc-num">${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}</td>
+      <td class="dtc-num" id="dtc-cadj-${i}">${dtcEur(adj)}</td>
+      <td class="dtc-num" id="dtc-cmrg-${i}">${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}</td>
       <td><button class="cht-cf-del" onclick="dtcCompRemove(${i})">×</button></td>
     </tr>`;
   }).join('');
   return `<section class="dtc-sec">
     <h3 class="dtc-h">⑤ Competition analysis</h3>
     <div class="cht-hint">Benchmark up to 5 competitors + your own structure. <b>Adjusted cost</b> = COGS − volume saving (their scale advantage); <b>implied margin</b> = price − adjusted cost − brand premium. The bar shows how much of each price is cost, margin, and brand.</div>
-    ${dtcCompBarsSVG(c)}
+    <div id="dtc-comp-live">${dtcCompBarsSVG(c)}</div>
     <table class="dtc-tbl"><thead><tr><th>Competitor</th><th>Price €</th><th>COGS €</th><th>Vol. saving €</th><th>Brand €</th><th>Adj. cost</th><th>Implied margin</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="cht-muted">No competitors yet.</td></tr>'}</tbody></table>
     ${comps.length<5?`<button class="sm" onclick="dtcCompAdd()">+ Add competitor</button>`:'<span class="cht-muted" style="font-size:11px">Max 5 competitors.</span>'}
@@ -88,7 +116,7 @@ export function dtcCompSet(i,key,value){
   const k=dtcCharter().costModel.competitors[i]; if(!k) return;
   k[key] = key==='name' ? value : (Number(value)||0);
   dtcSave();
-  if(key!=='name') dtcRender();
+  if(key!=='name') dtcRefreshDerived();   // updates derived cols + bars only
 }
 
 // Horizontal stacked bars: each price = cost + margin + brand, incl. an "Us" row.
@@ -144,15 +172,15 @@ function dtcCascadeSection(c){
     const excl=s.include===false, hasItems=dtcHasItems(s), open=_dtcOpen.has(i);
     const cur=dtcSubCost(s), gap=cur-(Number(s.target)||0);
     const curCell = hasItems
-      ? `<span class="dtc-derived" title="Sum of included items">${dtcEur(cur)}</span>`
+      ? `<span class="dtc-derived" id="dtc-cur-${i}" title="Sum of included items">${dtcEur(cur)}</span>`
       : `<input class="cht-in dtc-num" type="number" value="${s.current==null?'':s.current}" oninput="dtcSubSet(${i},'current',this.value)">`;
     let out=`<tr class="${excl?'dtc-excl':gap>0?'dtc-over':''}">
       <td class="dtc-expand"><button class="dtc-caret${open?' open':''}" title="${hasItems?'Show/hide items':'No items'}" onclick="dtcToggleSub(${i})">${hasItems?'▸':'·'}</button></td>
       <td><input type="checkbox" ${excl?'':'checked'} title="Include in analysis" onchange="dtcSubToggle(${i})"></td>
-      <td><input class="cht-in" value="${escH(s.name)}" placeholder="subsystem…" oninput="dtcSubSet(${i},'name',this.value)">${hasItems?`<span class="dtc-count">${s.items.filter(it=>it.include!==false).length}/${s.items.length}</span>`:''}</td>
+      <td><input class="cht-in" value="${escH(s.name)}" placeholder="subsystem…" oninput="dtcSubSet(${i},'name',this.value)"><span class="dtc-count" id="dtc-cnt-${i}">${hasItems?`${s.items.filter(it=>it.include!==false).length}/${s.items.length}`:''}</span></td>
       <td><input class="cht-in dtc-num" type="number" value="${s.target==null?'':s.target}" oninput="dtcSubSet(${i},'target',this.value)"></td>
       <td>${curCell}</td>
-      <td class="dtc-gap ${excl?'':gap>0?'bad':gap<0?'good':''}">${excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap))}</td>
+      <td class="dtc-gap ${excl?'':gap>0?'bad':gap<0?'good':''}" id="dtc-gap-${i}">${excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap))}</td>
       <td><select class="cht-in" onchange="dtcSubSet(${i},'owner',this.value)">${owners.map(o=>`<option${s.owner===o?' selected':''}>${o}</option>`).join('')}</select></td>
       <td><button class="cht-cf-del" onclick="dtcSubRemove(${i})">×</button></td>
     </tr>`;
@@ -170,24 +198,28 @@ function dtcCascadeSection(c){
     }
     return out;
   }).join('');
-  const over=env!=null ? cur-env : null;
-  const summary = env==null
-    ? `<div class="cht-banner warn">⚠ No unit-cost envelope yet — set a price + target margin (or a variable cost) on the charter Financials tab. Then the cascade shows how much cost you have to spend.</div>`
-    : `<div class="dtc-summary ${over>0?'bad':'good'}">
-         Envelope (max unit cost): <b>${dtcEur(env)}</b> ·
-         Allocated: <b>${dtcEur(alloc)}</b> ·
-         Current design: <b>${dtcEur(cur)}</b> ·
-         ${over>0?`<span class="bad">Over by ${dtcEur(over)}</span>`:`<span class="good">${dtcEur(-over)} under</span>`}
-       </div>${dtcCascadeSVG(subs,env)}`;
   return `<section class="dtc-sec">
     <h3 class="dtc-h">① Target-cost cascade</h3>
     <div class="cht-hint">Break the unit-cost envelope down to subsystems. Each has a <b>target</b> and the <b>current</b> design estimate (€/unit). Red = over its target.</div>
-    ${summary}
+    <div id="dtc-cascade-live">${dtcCascadeLive(c)}</div>
     <table class="dtc-tbl dtc-cascade"><thead><tr><th></th><th title="Include in analysis">✓</th><th>Subsystem</th><th>Target €</th><th>Current €</th><th>Gap</th><th>Owner</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="cht-muted">No subsystems yet.</td></tr>'}</tbody></table>
-    <button class="sm" onclick="dtcSubAdd()">+ Add subsystem</button>
-    ${env!=null?`<button class="sm" style="margin-left:8px" onclick="dtcPushCost()" title="Set the charter's variable cost/unit to the current design total">↧ Use current (${dtcEur(cur)}) as unit cost in Financials</button>`:''}
+    <button class="sm" onclick="dtcSubAdd()">+ Add subsystem</button><span id="dtc-push">${dtcPushBtn(c)}</span>
   </section>`;
+}
+// The live (recomputed) part of the cascade: summary banner + envelope bar.
+function dtcCascadeLive(c){
+  const env=dtcEnvelope(c), cur=dtcCurrentTotal(c), alloc=dtcAllocTotal(c);
+  if(env==null) return `<div class="cht-banner warn">⚠ No unit-cost envelope yet — set a price + target margin (or a variable cost) on the charter Financials tab. Then the cascade shows how much cost you have to spend.</div>`;
+  const over=cur-env;
+  return `<div class="dtc-summary ${over>0?'bad':'good'}">
+      Envelope (max unit cost): <b>${dtcEur(env)}</b> · Allocated: <b>${dtcEur(alloc)}</b> · Current design: <b>${dtcEur(cur)}</b> ·
+      ${over>0?`<span class="bad">Over by ${dtcEur(over)}</span>`:`<span class="good">${dtcEur(-over)} under</span>`}
+    </div>${dtcCascadeSVG(c)}`;
+}
+function dtcPushBtn(c){
+  if(dtcEnvelope(c)==null) return '';
+  return `<button class="sm" style="margin-left:8px" onclick="dtcPushCost()" title="Set the charter's variable cost/unit to the current design total">↧ Use current (${dtcEur(dtcCurrentTotal(c))}) as unit cost in Financials</button>`;
 }
 export function dtcSubAdd(){ dtcCharter().costModel.subsystems.push(makeSubsystem()); dtcSave(); dtcRender(); }
 export function dtcSubRemove(i){ dtcCharter().costModel.subsystems.splice(i,1); dtcSave(); dtcRender(); }
@@ -195,7 +227,7 @@ export function dtcSubSet(i,key,value){
   const s=dtcCharter().costModel.subsystems[i]; if(!s) return;
   s[key] = (key==='target'||key==='current') ? (value===''?null:Number(value)||0) : value;
   dtcSave();
-  if(key==='target'||key==='current') dtcRender();   // gap/summary/SVG change
+  if(key==='target'||key==='current') dtcRefreshDerived();   // update derived cells only — keep focus
 }
 export function dtcToggleSub(i){ if(_dtcOpen.has(i)) _dtcOpen.delete(i); else _dtcOpen.add(i); dtcRender(); }
 export function dtcSubToggle(i){ const s=dtcCharter().costModel.subsystems[i]; if(!s)return; s.include=s.include===false; dtcSave(); dtcRender(); }
@@ -207,7 +239,7 @@ export function dtcItemSet(i,j,key,value){
   const it=dtcCharter().costModel.subsystems[i].items[j]; if(!it)return;
   it[key] = key==='cost' ? (Number(value)||0) : value;
   dtcSave();
-  if(key==='cost') dtcRender();
+  if(key==='cost') dtcRefreshDerived();   // updates the subsystem's derived current + gap + SVG
 }
 // Loop-closer: push the rolled-up design cost into the charter's unit cost.
 export function dtcPushCost(){
@@ -217,15 +249,15 @@ export function dtcPushCost(){
 }
 
 // Horizontal stacked bar: subsystem current costs vs the envelope line.
-function dtcCascadeSVG(subs,env){
-  const cur=subs.reduce((s,x)=>s+(Number(x.current)||0),0);
+function dtcCascadeSVG(c){
+  const subs=c.costModel.subsystems, env=dtcEnvelope(c), cur=dtcCurrentTotal(c);
   if(cur<=0&&!(env>0)) return '';
   const W=680,H=54,padL=4,padR=4,barY=14,barH=22;
   const xmax=Math.max(cur,env||0)*1.12||1;
   const sc=v=>padL+(v/xmax)*(W-padL-padR);
   const pal=['var(--accent)','var(--accent2)','#a78bfa','var(--warn)','#5b9ce5','#e5989b'];
   let x=padL, segs='';
-  subs.forEach((s,i)=>{ const v=Number(s.current)||0; if(v<=0) return; const w=(v/xmax)*(W-padL-padR);
+  subs.forEach((s,i)=>{ const v=dtcSubCost(s); if(v<=0) return; const w=(v/xmax)*(W-padL-padR);
     const over=env!=null && x-padL>sc(env)-padL;
     segs+=`<rect x="${x.toFixed(1)}" y="${barY}" width="${Math.max(0,w).toFixed(1)}" height="${barH}" fill="${over?'var(--danger)':pal[i%pal.length]}" opacity="0.85"><title>${escH(s.name||'subsystem')}: ${dtcEur(v)}</title></rect>`;
     x+=w; });
@@ -255,11 +287,17 @@ function dtcWaterfallSection(c){
   return `<section class="dtc-sec">
     <h3 class="dtc-h">② Cost-down waterfall</h3>
     <div class="cht-hint">The path from today's design cost to the target. Levers count once <b>committed</b> or <b>realized</b>; ideas show the remaining upside.</div>
-    ${cur>0?dtcWaterfallSVG(cur,realized,committed,idea,env):'<div class="cht-muted">Add subsystem current costs above to see the waterfall.</div>'}
+    <div id="dtc-wf-live">${dtcWaterfallLive(c)}</div>
     <table class="dtc-tbl"><thead><tr><th>Lever</th><th>Subsystem</th><th>Saving €/unit</th><th>Status</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="5" class="cht-muted">No levers yet.</td></tr>'}</tbody></table>
     <button class="sm" onclick="dtcLeverAdd()">+ Add lever</button>
   </section>`;
+}
+// Live waterfall (recomputed on lever edits).
+function dtcWaterfallLive(c){
+  const cur=dtcCurrentTotal(c), env=dtcEnvelope(c);
+  if(cur<=0) return '<div class="cht-muted">Add subsystem current costs above to see the waterfall.</div>';
+  return dtcWaterfallSVG(cur, dtcLeverSum(c,'realized'), dtcLeverSum(c,'committed'), dtcLeverSum(c,'idea'), env);
 }
 export function dtcLeverAdd(){ dtcCharter().costModel.levers.push(makeLever()); dtcSave(); dtcRender(); }
 export function dtcLeverRemove(i){ dtcCharter().costModel.levers.splice(i,1); dtcSave(); dtcRender(); }
@@ -267,7 +305,7 @@ export function dtcLeverSet(i,key,value){
   const l=dtcCharter().costModel.levers[i]; if(!l) return;
   l[key] = key==='saving' ? (Number(value)||0) : value;
   dtcSave();
-  if(key==='saving'||key==='status') dtcRender();
+  if(key==='saving'||key==='status') dtcRefreshDerived();   // updates only the waterfall
 }
 
 // Step-down waterfall: Current → −realized → −committed → Projected, with target line.

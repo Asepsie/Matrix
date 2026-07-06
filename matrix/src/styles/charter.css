@@ -1,14 +1,16 @@
-/* ►► CHARTER ◄◄ Cross-functional charter overlay. This is a FOCUSED MODAL editor
- * (launched from a project's context menu or a Charters-hub card), not a nav
- * destination — so it covers the FULL screen including the rail (inset:0, no
- * left:var(--rail)). It has its own ✕ Close. The Charters HUB below IS a view and
- * stays rail-inset. */
+/* ►► CHARTER ◄◄ Now two rail-inset PANELS (like Design-to-cost), not full-cover
+ * modals: #cht-overlay = "Financials analysis" (overview/demands/financials tabs)
+ * and #dec-overlay = "Trade-off decision" (the configurable triangle(s) + lists).
+ * Both stay rail-inset (left:var(--rail)) and sit ABOVE the Charters HUB
+ * (#chthub-overlay, z400) so a hub card opens a panel over the grid; closing the
+ * panel reveals the hub again. The deck/synopsis remain modals on top. */
 
 #cht-overlay{
-  display:none; position:fixed; inset:0;
-  background:var(--bg); z-index:1100; flex-direction:column;
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
 }
 #cht-overlay.show{ display:flex; }
+#cht-pick, #dec-pick{ display:inline-flex; align-items:center; gap:6px; }
 
 #cht-header{
   display:flex; align-items:center; gap:10px;
@@ -46,6 +48,10 @@
   font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
 }
 .cht-in:focus, .cht-ta:focus{ border-color:var(--accent); }
+/* Drop the number spinner arrows — the whole box is for typing. */
+.cht-in[type=number]{ -moz-appearance:textfield; appearance:textfield; }
+.cht-in[type=number]::-webkit-outer-spin-button,
+.cht-in[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .cht-ta{
   background:var(--bg); border:1px solid var(--border); color:var(--text);
   font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
@@ -182,6 +188,9 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .cht-slide-tbl{ width:100%; border-collapse:collapse; font-size:12px; }
 .cht-slide-tbl th{ text-align:left; color:var(--muted); font-family:IBM Plex Mono,monospace; font-size:9px; letter-spacing:.05em; border-bottom:1px solid var(--border); padding:5px 8px; }
 .cht-slide-tbl td{ color:var(--text); padding:5px 8px; border-bottom:1px solid var(--border); }
+.cht-slide-tris{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:6px 0 14px; }
+.cht-slide-tri{ width:220px; text-align:center; }
+.cht-slide-tri .cht-svg{ max-width:220px; }
 .cht-slide-lists{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
 .cht-slide-lh{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--accent2); letter-spacing:.05em; margin-bottom:4px; }
 .cht-slide-lists ul, .cht-slide li, .cht-slide ul{ margin:4px 0 0; padding-left:18px; font-size:12px; color:var(--text); }
@@ -250,6 +259,31 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .dtc-item-row{ display:grid; grid-template-columns:20px 1fr 96px 22px; gap:6px; align-items:center; margin:4px 0; }
 .dtc-item-row.dtc-excl{ opacity:.45; }
 .dtc-item-row .cht-in{ font-size:11px; padding:4px 6px; }
+
+/* ── Trade-off decision (rail view, panel) ── */
+#dec-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
+}
+#dec-overlay.show{ display:flex; }
+#dec-header{ display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+#dec-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#dec-body{ flex:1; overflow:auto; padding:18px 22px; }
+
+/* trade-off triangles: primary + comparison scenarios, side by side */
+.cht-tri-grid{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.cht-scenario{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:12px; width:320px; box-sizing:border-box; }
+.cht-scenario-primary{ border-color:var(--accent); }
+.cht-scenario-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; min-height:26px; }
+.cht-scenario-name{ font-weight:600; color:var(--accent); font-size:13px; }
+.cht-scenario-name-in{ flex:1; font-size:12px; }
+.cht-scenario-ctl{ display:flex; align-items:center; gap:6px; margin:4px 0 8px; }
+.cht-pt-pick{ display:flex; gap:6px; flex:1; }
+.cht-pt-pick select{ flex:1; min-width:0; }
+.cht-stance-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+.cht-stance-grid .cht-f{ margin:0; }
 
 /* ── Charters hub (rail view) ── */
 #chthub-overlay{

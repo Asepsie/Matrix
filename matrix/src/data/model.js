@@ -199,8 +199,24 @@ export function makeInvestmentItem(overrides = {}) {
 export function makeDecisionCard(overrides = {}) {
   return {
     stances: { features:'balance', time:'balance', productCost:'balance', projectCost:'balance' },
+    // The primary trade-off is now shown as a configurable TRIANGLE: `points` is
+    // the 3 (of 4) dimensions plotted. The 4 stances are kept underneath (drive
+    // conflicts + design guidelines); only the 3 chosen points are drawn.
+    points: ['features', 'time', 'productCost'],
+    scenarios: [],         // up to 2 named comparison triangles (see makeScenario)
     nonNegotiables: [],    // array of strings
     flexibilities:  [],    // array of strings
+    ...overrides,
+  };
+}
+
+// One named comparison scenario = an alternative trade-off triangle. Keeps its
+// own 4 stances (so it's a full alternative) but plots only its 3 `points`.
+export function makeScenario(overrides = {}) {
+  return {
+    name: '',
+    points: ['features', 'time', 'productCost'],
+    stances: { features:'balance', time:'balance', productCost:'balance', projectCost:'balance' },
     ...overrides,
   };
 }

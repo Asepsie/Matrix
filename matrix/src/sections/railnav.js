@@ -59,7 +59,8 @@ var RAIL_DOMAINS = [
     {id:'matrix',      label:'Portfolio matrix', bdg:'was home'},
     {id:'plan',        label:'Resource plan'},
     {id:'timeline',    label:'Timeline'},
-    {id:'charters',    label:'Charters'},
+    {id:'charters',    label:'Financials analysis'},
+    {id:'decision',    label:'Trade-off decision'},
     {id:'dtc',         label:'Design to cost'},
     {id:'brief',       label:'Project brief', action:true},
   ]},
@@ -100,6 +101,7 @@ var railHoverOpen=false;     // transient hover expansion (not pinned)
 var railLanding=null;        // stored default landing view id; null = first run (persisted)
 var railRouting=false;       // true while railGo/railRoute is switching surfaces
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
+var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
 var railFlyDom=null, railFlyTimer=null;
 var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
@@ -110,12 +112,15 @@ function railLoadPrefs(){
   try{ var p=JSON.parse(localStorage.getItem(RAIL_PREFS_KEY)||'null');
        if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
               if(typeof p.landing==='string')  railLanding=p.landing;
+              if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode})); }catch(e){}
 }
+// Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
+function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
 // clamp the collapsed width to a range that keeps the icon strip + layout intact
 function railClampWidth(v){ v=+v; if(isNaN(v)) return RAIL_W_DEFAULT; return Math.max(RAIL_W_MIN,Math.min(RAIL_W_MAX,Math.round(v))); }
 // push the collapsed width to the --rail CSS variable; everything (gutter, overlay
@@ -239,6 +244,8 @@ function closeAllOverlays(){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof chtClose==='function')          chtClose();
+  if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
 }
@@ -252,6 +259,8 @@ function railOpenRes(tab){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof chtClose==='function')          chtClose();
+  if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
   if(!G('res-overlay').classList.contains('show')) openRes();
@@ -266,7 +275,8 @@ function railRoute(viewId){
   else if(viewId==='org')     openOrgChart();
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
-  else if(viewId==='charters')openCharterHub();
+  else if(viewId==='charters')chtOpenFinancials();
+  else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
 }
 
@@ -361,6 +371,7 @@ function railOpenSettings(){
     }).join('');
   }
   var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
+  var cp=G('set-chartpicker'); if(cp) cp.value=railChartPicker();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
@@ -368,9 +379,10 @@ function railOpenSettings(){
 
 // Read the Settings modal, persist, apply, and close.
 function railSaveSettings(){
-  var sel=G('set-landing'), ah=G('set-autohide'), rw=G('set-railwidth');
+  var sel=G('set-landing'), ah=G('set-autohide'), rw=G('set-railwidth'), cp=G('set-chartpicker');
   if(sel&&sel.value) railLanding=sel.value;
   if(ah) railHoverMode=ah.checked;
+  if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railSavePrefs();

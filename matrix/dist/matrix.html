@@ -592,17 +592,19 @@ body{padding-left:var(--rail);}
 #settings-overlay, #landing-firstrun{
   z-index:1100; left:var(--rail);
 }
-/* ►► CHARTER ◄◄ Cross-functional charter overlay. This is a FOCUSED MODAL editor
- * (launched from a project's context menu or a Charters-hub card), not a nav
- * destination — so it covers the FULL screen including the rail (inset:0, no
- * left:var(--rail)). It has its own ✕ Close. The Charters HUB below IS a view and
- * stays rail-inset. */
+/* ►► CHARTER ◄◄ Now two rail-inset PANELS (like Design-to-cost), not full-cover
+ * modals: #cht-overlay = "Financials analysis" (overview/demands/financials tabs)
+ * and #dec-overlay = "Trade-off decision" (the configurable triangle(s) + lists).
+ * Both stay rail-inset (left:var(--rail)) and sit ABOVE the Charters HUB
+ * (#chthub-overlay, z400) so a hub card opens a panel over the grid; closing the
+ * panel reveals the hub again. The deck/synopsis remain modals on top. */
 
 #cht-overlay{
-  display:none; position:fixed; inset:0;
-  background:var(--bg); z-index:1100; flex-direction:column;
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
 }
 #cht-overlay.show{ display:flex; }
+#cht-pick, #dec-pick{ display:inline-flex; align-items:center; gap:6px; }
 
 #cht-header{
   display:flex; align-items:center; gap:10px;
@@ -640,6 +642,10 @@ body{padding-left:var(--rail);}
   font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
 }
 .cht-in:focus, .cht-ta:focus{ border-color:var(--accent); }
+/* Drop the number spinner arrows — the whole box is for typing. */
+.cht-in[type=number]{ -moz-appearance:textfield; appearance:textfield; }
+.cht-in[type=number]::-webkit-outer-spin-button,
+.cht-in[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .cht-ta{
   background:var(--bg); border:1px solid var(--border); color:var(--text);
   font-size:12px; padding:6px 8px; border-radius:5px; outline:none; width:100%;
@@ -776,6 +782,9 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .cht-slide-tbl{ width:100%; border-collapse:collapse; font-size:12px; }
 .cht-slide-tbl th{ text-align:left; color:var(--muted); font-family:IBM Plex Mono,monospace; font-size:9px; letter-spacing:.05em; border-bottom:1px solid var(--border); padding:5px 8px; }
 .cht-slide-tbl td{ color:var(--text); padding:5px 8px; border-bottom:1px solid var(--border); }
+.cht-slide-tris{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:6px 0 14px; }
+.cht-slide-tri{ width:220px; text-align:center; }
+.cht-slide-tri .cht-svg{ max-width:220px; }
 .cht-slide-lists{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
 .cht-slide-lh{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--accent2); letter-spacing:.05em; margin-bottom:4px; }
 .cht-slide-lists ul, .cht-slide li, .cht-slide ul{ margin:4px 0 0; padding-left:18px; font-size:12px; color:var(--text); }
@@ -844,6 +853,31 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .dtc-item-row{ display:grid; grid-template-columns:20px 1fr 96px 22px; gap:6px; align-items:center; margin:4px 0; }
 .dtc-item-row.dtc-excl{ opacity:.45; }
 .dtc-item-row .cht-in{ font-size:11px; padding:4px 6px; }
+
+/* ── Trade-off decision (rail view, panel) ── */
+#dec-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
+}
+#dec-overlay.show{ display:flex; }
+#dec-header{ display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+#dec-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#dec-body{ flex:1; overflow:auto; padding:18px 22px; }
+
+/* trade-off triangles: primary + comparison scenarios, side by side */
+.cht-tri-grid{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.cht-scenario{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:12px; width:320px; box-sizing:border-box; }
+.cht-scenario-primary{ border-color:var(--accent); }
+.cht-scenario-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; min-height:26px; }
+.cht-scenario-name{ font-weight:600; color:var(--accent); font-size:13px; }
+.cht-scenario-name-in{ flex:1; font-size:12px; }
+.cht-scenario-ctl{ display:flex; align-items:center; gap:6px; margin:4px 0 8px; }
+.cht-pt-pick{ display:flex; gap:6px; flex:1; }
+.cht-pt-pick select{ flex:1; min-width:0; }
+.cht-stance-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+.cht-stance-grid .cht-f{ margin:0; }
 
 /* ── Charters hub (rail view) ── */
 #chthub-overlay{
@@ -1219,6 +1253,14 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <select id="set-landing"></select>
       <span style="font-size:10px;color:var(--muted)">The view Project Matrix opens on when it loads.</span>
     </div>
+    <div class="field">
+      <label>CHARTER PROJECT PICKER</label>
+      <select id="set-chartpicker">
+        <option value="hub">Card hub — grid of project cards</option>
+        <option value="dropdown">Dropdown — a top selector (like Design-to-cost)</option>
+      </select>
+      <span style="font-size:10px;color:var(--muted)">How you pick a project in Financials analysis &amp; Trade-off decision.</span>
+    </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
       <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">
       Auto-hide the nav rail — expand on hover, collapse when the pointer leaves
@@ -1455,8 +1497,24 @@ function makeInvestmentItem(overrides = {}) {
 function makeDecisionCard(overrides = {}) {
   return {
     stances: { features:'balance', time:'balance', productCost:'balance', projectCost:'balance' },
+    // The primary trade-off is now shown as a configurable TRIANGLE: `points` is
+    // the 3 (of 4) dimensions plotted. The 4 stances are kept underneath (drive
+    // conflicts + design guidelines); only the 3 chosen points are drawn.
+    points: ['features', 'time', 'productCost'],
+    scenarios: [],         // up to 2 named comparison triangles (see makeScenario)
     nonNegotiables: [],    // array of strings
     flexibilities:  [],    // array of strings
+    ...overrides,
+  };
+}
+
+// One named comparison scenario = an alternative trade-off triangle. Keeps its
+// own 4 stances (so it's a full alternative) but plots only its 3 `points`.
+function makeScenario(overrides = {}) {
+  return {
+    name: '',
+    points: ['features', 'time', 'productCost'],
+    stances: { features:'balance', time:'balance', productCost:'balance', projectCost:'balance' },
     ...overrides,
   };
 }
@@ -2477,12 +2535,24 @@ function sanitiseCharter(p){
                                                    c.financials.investment={items:[],amortUnits:null};
   if(!Array.isArray(c.financials.investment.items))c.financials.investment.items=[];
   if(c.financials.investment.amortUnits===undefined) c.financials.investment.amortUnits=null;
-  // Decision: ensure the 4 square stances exist (older data used the triangle).
+  // Decision: ensure the 4 stances exist (the canonical primary trade-off).
   if(!c.decision.stances||typeof c.decision.stances!=='object') c.decision.stances={};
   for(const dim of ['features','time','productCost','projectCost'])
     if(!c.decision.stances[dim]) c.decision.stances[dim]='balance';
   if(!Array.isArray(c.decision.nonNegotiables))    c.decision.nonNegotiables=[];
   if(!Array.isArray(c.decision.flexibilities))     c.decision.flexibilities=[];
+  // Configurable-triangle fields (added later; back-fill for older charters).
+  const DIM4=['features','time','productCost','projectCost'];
+  const okPoints=p=>Array.isArray(p)&&p.length===3&&p.every(k=>DIM4.includes(k))&&new Set(p).size===3;
+  if(!okPoints(c.decision.points)) c.decision.points=['features','time','productCost'];
+  if(!Array.isArray(c.decision.scenarios)) c.decision.scenarios=[];
+  c.decision.scenarios=c.decision.scenarios.filter(s=>s&&typeof s==='object');
+  c.decision.scenarios.forEach(s=>{
+    if(typeof s.name!=='string') s.name='';
+    if(!okPoints(s.points)) s.points=['features','time','productCost'];
+    if(!s.stances||typeof s.stances!=='object') s.stances={};
+    for(const dim of DIM4) if(!s.stances[dim]) s.stances[dim]='balance';
+  });
 }
 function flashSaved(){
   const el=G('save-indicator');if(!el)return;
@@ -17355,7 +17425,8 @@ var RAIL_DOMAINS = [
     {id:'matrix',      label:'Portfolio matrix', bdg:'was home'},
     {id:'plan',        label:'Resource plan'},
     {id:'timeline',    label:'Timeline'},
-    {id:'charters',    label:'Charters'},
+    {id:'charters',    label:'Financials analysis'},
+    {id:'decision',    label:'Trade-off decision'},
     {id:'dtc',         label:'Design to cost'},
     {id:'brief',       label:'Project brief', action:true},
   ]},
@@ -17396,6 +17467,7 @@ var railHoverOpen=false;     // transient hover expansion (not pinned)
 var railLanding=null;        // stored default landing view id; null = first run (persisted)
 var railRouting=false;       // true while railGo/railRoute is switching surfaces
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
+var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
 var railFlyDom=null, railFlyTimer=null;
 var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
@@ -17406,12 +17478,15 @@ function railLoadPrefs(){
   try{ var p=JSON.parse(localStorage.getItem(RAIL_PREFS_KEY)||'null');
        if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
               if(typeof p.landing==='string')  railLanding=p.landing;
+              if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode})); }catch(e){}
 }
+// Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
+function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
 // clamp the collapsed width to a range that keeps the icon strip + layout intact
 function railClampWidth(v){ v=+v; if(isNaN(v)) return RAIL_W_DEFAULT; return Math.max(RAIL_W_MIN,Math.min(RAIL_W_MAX,Math.round(v))); }
 // push the collapsed width to the --rail CSS variable; everything (gutter, overlay
@@ -17535,6 +17610,8 @@ function closeAllOverlays(){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof chtClose==='function')          chtClose();
+  if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
 }
@@ -17548,6 +17625,8 @@ function railOpenRes(tab){
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
+  if(typeof chtClose==='function')          chtClose();
+  if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
   var b=G('brief-overlay'); if(b) b.style.display='none';
   if(!G('res-overlay').classList.contains('show')) openRes();
@@ -17562,7 +17641,8 @@ function railRoute(viewId){
   else if(viewId==='org')     openOrgChart();
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
-  else if(viewId==='charters')openCharterHub();
+  else if(viewId==='charters')chtOpenFinancials();
+  else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
 }
 
@@ -17657,6 +17737,7 @@ function railOpenSettings(){
     }).join('');
   }
   var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
+  var cp=G('set-chartpicker'); if(cp) cp.value=railChartPicker();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
@@ -17664,9 +17745,10 @@ function railOpenSettings(){
 
 // Read the Settings modal, persist, apply, and close.
 function railSaveSettings(){
-  var sel=G('set-landing'), ah=G('set-autohide'), rw=G('set-railwidth');
+  var sel=G('set-landing'), ah=G('set-autohide'), rw=G('set-railwidth'), cp=G('set-chartpicker');
   if(sel&&sel.value) railLanding=sel.value;
   if(ah) railHoverMode=ah.checked;
+  if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railSavePrefs();
@@ -17718,33 +17800,44 @@ function railChooseLanding(viewId){
 })();
 /* ◄◄ END: sections/railnav.js ►► */
 
-/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter overlay.
- *   openCharterHub       — WORK › Charters rail view: lists every project
- *   closeCharterHub      — close the hub (wrapped by railnav to sync activeView)
- *   openCharter(projId)  — open the charter for a project (ctx menu or hub)
- *   chtClose             — close the editor overlay
- *   chtShowTab(tab)      — switch tab and render it
- *   chtSaveNow           — persist + toast
+/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter — now two rail-inset
+ * PANELS (like Design-to-cost), not a full-cover modal:
+ *   • Financials analysis (#cht-overlay) — overview / demands / financials tabs
+ *   • Trade-off decision  (#dec-overlay) — the configurable triangle(s) + lists
+ * Both share one selected project (`_chtProjId`) and a project-picker MODE read
+ * from Settings (`chtPickerMode()`): 'hub' (card grid, as before) or 'dropdown'
+ * (a top <select>, like DTC).
  *
- * 4 tabs: overview (business case + revenue) / demands (the stakeholder demands
- * board) / financials (live NPV·IRR·… via calculateFinancials) / decision (the
- * trade-off SQUARE + non-negotiables). Edits write straight into project.charter
- * and autosave via saveState().
+ *   chtOpenFinancials / chtOpenDecisionView — rail-view entry points (per mode)
+ *   openCharterHub(target)  — the card grid; a card opens the financials OR the
+ *                             decision panel depending on `target`
+ *   openCharter(projId)     — open the Financials panel for a project
+ *   chtOpenDecision(projId) — open the Trade-off decision panel for a project
+ *   chtClose / chtCloseDecision — close a panel
+ *   chtShowTab(tab)         — switch Financials tab and render it
  *
  * All state lives on the project (makeCharter) so it flows through save/backup
  * automatically. Money is EUR. There is no approval workflow by design.
  */
 
-let _chtProjId = null;   // project currently open in the charter overlay
+let _chtProjId = null;   // project currently open in either charter panel
 let _chtTab    = 'overview';
 
-// Tab registry: id → label. Order defines the tab strip.
+// Tab registry for the Financials panel: id → label. (Decision moved to its own
+// rail view.) Order defines the tab strip.
 const CHT_TABS = [
   ['overview',   'OVERVIEW'],
   ['demands',    'DEMANDS'],
   ['financials', 'FINANCIALS'],
-  ['decision',   'DECISION'],
 ];
+
+// Project-picker mode, set in Settings (railnav owns the pref). 'hub' = card grid
+// (default), 'dropdown' = a top <select> like Design-to-cost.
+function chtPickerMode(){
+  return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub';
+}
+// First project id, or null (used when the dropdown mode opens with no selection).
+function chtFirstProj(){ return projects.length ? projects[0].id : null; }
 // The 5 functions: section key → label.
 const CHT_FUNCS = [
   ['strategy',          'Strategy'],
@@ -17771,24 +17864,80 @@ function chtStanceWarn(d){
   return '';
 }
 
-// ── open / close ─────────────────────────────────────────────────────────────
+// ── rail-view entry points (honour the picker mode) ──────────────────────────
+// WORK › Financials analysis.
+function chtOpenFinancials(){
+  if(chtPickerMode()==='dropdown') openCharter(chtFirstProj());
+  else openCharterHub('financials');
+}
+// WORK › Trade-off decision.
+function chtOpenDecisionView(){
+  if(chtPickerMode()==='dropdown') chtOpenDecision(chtFirstProj());
+  else openCharterHub('decision');
+}
+
+// ── Financials panel (open / close) ──────────────────────────────────────────
 function openCharter(projId){
-  const p = projects.find(x=>x.id===projId);
-  if(!p) return;
-  if(!p.charter || typeof p.charter!=='object') p.charter = makeCharter();
-  _chtProjId = projId;
+  const p = projid2proj(projId);
+  _chtProjId = p ? p.id : null;
+  if(p && (!p.charter || typeof p.charter!=='object')) p.charter = makeCharter();
   _chtTab = 'overview';
   G('cht-overlay').classList.add('show');
+  chtRenderPicker('financials');
   chtRenderHeader();
   chtRenderTabStrip();
   chtShowTab('overview');
 }
-function chtClose(){ G('cht-overlay').classList.remove('show'); _chtProjId=null; }
+function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfterClose(); }
+// If closing a panel reveals the BASE matrix (no charter surface left showing) and
+// we're not mid-navigation, sync the rail highlight back to matrix. When the hub
+// is still visible beneath (hub mode) it stays highlighted as the charter view.
+// Reads railnav module state directly (one shared bundle scope).
+function chtSyncRailAfterClose(){
+  const anyShown=['cht-overlay','dec-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
+  if(anyShown) return;
+  if(typeof railRouting!=='undefined' && railRouting) return;
+  if(typeof activeView!=='undefined' && activeView!=='matrix'){
+    activeView='matrix';
+    if(typeof railRender==='function') railRender();
+    if(typeof railUpdateCrumb==='function') railUpdateCrumb();
+  }
+}
+// Resolve a project by id (coerces the numeric string from a <select>), or null.
+function projid2proj(projId){ return projects.find(x=>x.id===+projId)||null; }
+// Dropdown-mode project switch (Financials).
+function chtSelectProject(id){ openCharter(id); }
+// Hub-mode "‹ Projects" back button — hide the panel, reveal the card grid.
+function chtBackToHub(target){
+  if(target==='decision') chtCloseDecision(); else chtClose();
+  openCharterHub(target);
+}
 
-// ── Charters hub (WORK › Charters rail view) ─────────────────────────────────
-// A full-screen list of every project; clicking one opens its charter editor
-// (which stacks on top at a higher z-index). Closing the editor reveals the hub.
-function openCharterHub(){
+// Render the header picker slot (#cht-pick / #dec-pick) for the given panel.
+//   dropdown mode → a <select> of every project
+//   hub mode      → a "‹ Projects" button back to the card grid
+function chtRenderPicker(target){
+  const slot = G(target==='decision'?'dec-pick':'cht-pick'); if(!slot) return;
+  if(chtPickerMode()==='dropdown'){
+    const set = target==='decision' ? 'chtDecSelectProject' : 'chtSelectProject';
+    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
+      <select class="cht-sel" onchange="${set}(this.value)">
+        ${projects.length ? projects.map(p=>`<option value="${p.id}"${p.id===_chtProjId?' selected':''}>${escH(p.name||'Untitled project')}</option>`).join('')
+                          : '<option>— no projects —</option>'}
+      </select>`;
+  } else {
+    slot.innerHTML = `<button class="sm" onclick="chtBackToHub('${target}')">‹ Projects</button>`;
+  }
+}
+
+// ── Charters hub (card grid) — one grid serving both panels via `target` ─────
+// A card opens the Financials panel (target='financials') or the Trade-off
+// decision panel (target='decision'), which stacks on top. Closing it reveals
+// the hub again.
+let _chtHubTarget='financials';
+function openCharterHub(target){
+  _chtHubTarget = target==='decision' ? 'decision' : 'financials';
+  const t=G('chthub-title'); if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION' : 'FINANCIALS ANALYSIS';
   G('chthub-overlay').classList.add('show');
   chtRenderHub();
 }
@@ -17796,8 +17945,9 @@ function closeCharterHub(){ G('chthub-overlay').classList.remove('show'); }
 
 function chtRenderHub(){
   const body=G('chthub-body'); if(!body) return;
+  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision' : 'openCharter';
   if(!projects.length){
-    body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open its charter here.</div>';
+    body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open it here.</div>';
     return;
   }
   body.innerHTML='<div class="chthub-grid">'+projects.map(p=>{
@@ -17807,7 +17957,7 @@ function chtRenderHub(){
     const prioCls = c.priority==='High'?'hi':c.priority==='Medium'?'med':c.priority==='Low'?'lo':'';
     const conflicts = chtConflicts(c).length;
     const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
-    return `<div class="chthub-card" onclick="openCharter(${p.id})" title="Open charter">
+    return `<div class="chthub-card" onclick="${opener}(${p.id})" title="Open">
       <div class="chthub-top">
         <span class="chthub-name">${escH(p.name||'Untitled project')}</span>
         <span class="chthub-status">${escH(c.status||'Draft')}</span>
@@ -17857,7 +18007,8 @@ function chtSetTop(key,value){
 // ── header + tab strip ───────────────────────────────────────────────────────
 function chtRenderHeader(){
   const p = projects.find(x=>x.id===_chtProjId);
-  const c = chtCharter(); if(!p||!c) return;
+  const c = chtCharter();
+  if(!p||!c){ G('cht-title').textContent='FINANCIALS ANALYSIS'; const m=G('cht-head-meta'); if(m) m.innerHTML=''; return; }
   G('cht-title').textContent = p.name || 'PROJECT';
   const prio = ['','High','Medium','Low'];
   const stat = ['Draft','In Review','Approved','Rejected'];
@@ -17881,8 +18032,8 @@ function chtShowTab(tab){
   _chtTab = tab;
   CHT_TABS.forEach(([id])=>{ const el=G('cht-tab-'+id); if(el) el.classList.toggle('active',id===tab); });
   const body = G('cht-body');
+  if(!chtCharter()){ body.innerHTML='<div class="cht-muted" style="padding:20px">No project selected — add a project on the Portfolio matrix.</div>'; return; }
   if(tab==='financials')     body.innerHTML = chtFinTab();
-  else if(tab==='decision')  body.innerHTML = chtDecisionTab();
   else if(tab==='demands')   body.innerHTML = chtDemandsTab();
   else                       body.innerHTML = chtOverviewTab();
 }
@@ -18206,37 +18357,44 @@ function chtInvAmort(value){
 // All are colour-blind-safe: role/value is also carried by text labels & shape,
 // never colour alone.
 
-// Trade-off SQUARE for the Decision Card. Corners = Features (TL) / Time (TR) /
-// Product cost (BL) / Project cost (BR). A single marker sits at the weighted
-// centroid of the four stances, so you SEE where the project actually leans —
-// and that you can't pull it to every corner at once.
-function chtSquareSVG(d){
-  const W=300,H=250;
-  const corner ={ features:[70,66], time:[230,66], productCost:[70,196], projectCost:[230,196] };
-  const labelAt={ features:[70,44], time:[230,44], productCost:[70,222], projectCost:[230,222] };
-  const stanceColor={ prioritize:'var(--accent)', balance:'var(--muted)', sacrifice:'var(--danger)' };
-  const stances=(d&&d.stances)||{};
+// Trade-off TRIANGLE. `points` = the 3 (of 4) dimensions to plot; `stances` = the
+// full stance map. A single marker sits at the weighted centroid of the 3 plotted
+// corners, so you SEE where this option leans — and that you can't pull it to
+// every corner at once. Used for the primary trade-off AND each comparison
+// scenario. Colour-blind-safe: stance is also carried by node fill + a text label.
+const CHT_STANCE_COL = { prioritize:'var(--accent)', balance:'var(--muted)', sacrifice:'var(--danger)' };
+function chtTriangleSVG(points, stances, opts){
+  opts=opts||{};
+  const W=300, H=opts.small?210:250;
+  const pts=(Array.isArray(points)&&points.length===3)?points:['features','time','productCost'];
+  // corner geometry: apex top-centre, then base-left / base-right
+  const apexY=opts.small?54:60, baseY=opts.small?168:196;
+  const corner =[[150,apexY],[66,baseY],[234,baseY]];
+  const labelAt=[[150,apexY-16],[66,baseY+18],[234,baseY+18]];
+  const sMap=stances||{};
+  // weighted centroid of the 3 plotted corners
   let sx=0, sy=0, sw=0;
-  for(const [k] of CHT_DIMS4){ const w=CHT_STANCE_W[stances[k]]??0.28; sw+=w; sx+=w*corner[k][0]; sy+=w*corner[k][1]; }
-  const px=sw?sx/sw:150, py=sw?sy/sw:131;
-  const warn=chtStanceWarn(d);
-
+  pts.forEach((k,i)=>{ const w=CHT_STANCE_W[sMap[k]]??0.28; sw+=w; sx+=w*corner[i][0]; sy+=w*corner[i][1]; });
+  const cxm=(corner[0][0]+corner[1][0]+corner[2][0])/3, cym=(corner[0][1]+corner[1][1]+corner[2][1])/3;
+  const px=sw?sx/sw:cxm, py=sw?sy/sw:cym;
+  const warn=chtStanceWarn({stances:{a:sMap[pts[0]],b:sMap[pts[1]],c:sMap[pts[2]]}});
+  const tri=corner.map(c=>c[0]+','+c[1]).join(' ');
+  const mr=opts.small?13:16;
   let nodes='';
-  for(const [k,label] of CHT_DIMS4){
-    const [cx,cy]=corner[k], st=stances[k]||'balance', col=stanceColor[st];
-    nodes+=`<circle cx="${cx}" cy="${cy}" r="6" fill="${st==='prioritize'?col:'var(--bg)'}" stroke="${col}" stroke-width="2"/>`;
-    const [lx,ly]=labelAt[k];
-    nodes+=`<text x="${lx}" y="${ly}" fill="var(--text)" font-size="11.5" font-weight="600" text-anchor="middle">${label}</text>`;
-    nodes+=`<text x="${lx}" y="${ly+12}" fill="${col}" font-size="8" font-family="IBM Plex Mono,monospace" text-anchor="middle">${st.toUpperCase()}</text>`;
-  }
-  return `<svg viewBox="0 0 ${W} ${H}" class="cht-svg" role="img" aria-label="Trade-off square: features, time, product cost, project cost">
-    <rect x="70" y="66" width="160" height="130" fill="none" stroke="var(--border)" stroke-width="1.5"/>
-    <line x1="150" y1="66" x2="150" y2="196" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
-    <line x1="70" y1="131" x2="230" y2="131" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
-    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="16" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="2.5"/>
+  pts.forEach((k,i)=>{
+    const [cx,cy]=corner[i], stc=sMap[k]||'balance', col=CHT_STANCE_COL[stc];
+    const [lx,ly]=labelAt[i];
+    nodes+=`<circle cx="${cx}" cy="${cy}" r="6" fill="${stc==='prioritize'?col:'var(--bg)'}" stroke="${col}" stroke-width="2"/>`;
+    nodes+=`<text x="${lx}" y="${ly}" fill="var(--text)" font-size="11" font-weight="600" text-anchor="middle">${CHT_DIM_LABEL[k]||k}</text>`;
+    nodes+=`<text x="${lx}" y="${ly+12}" fill="${col}" font-size="8" font-family="IBM Plex Mono,monospace" text-anchor="middle">${stc.toUpperCase()}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="cht-svg" role="img" aria-label="Trade-off triangle: ${pts.map(k=>CHT_DIM_LABEL[k]||k).join(', ')}">
+    <polygon points="${tri}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+    <line x1="${corner[0][0]}" y1="${corner[0][1]}" x2="${cxm.toFixed(1)}" y2="${cym.toFixed(1)}" stroke="var(--border)" stroke-width="0.4" stroke-dasharray="3 3"/>
+    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${mr}" fill="var(--accent)" fill-opacity="0.16" stroke="var(--accent)" stroke-width="2.5"/>
     <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="var(--accent)"/>
     ${nodes}
-    ${warn?'<text x="150" y="242" fill="var(--warn)" font-size="8.5" text-anchor="middle">⚠ not a trade-off — see note below</text>':''}
+    ${warn?`<text x="150" y="${H-8}" fill="var(--warn)" font-size="8.5" text-anchor="middle">⚠ not a trade-off</text>`:''}
   </svg>`;
 }
 
@@ -18352,38 +18510,101 @@ function chtCumCashSVG(f){
   </svg>`;
 }
 
-// ── Decision tab (the trade-off square) ──────────────────────────────────────
-function chtDecisionTab(){
-  const c=chtCharter(); const d=c.decision;
-  const conflicts=chtConflicts(c);
-  const stanceSel=([k,label])=>
+// ── Trade-off decision panel (WORK › Trade-off decision rail view) ───────────
+// A configurable TRIANGLE: the primary trade-off plus up to 2 named comparison
+// scenarios. Each triangle plots 3 of the 4 dimensions; the full 4-stance set is
+// kept underneath (so conflicts + design guidelines still work off the primary).
+function chtOpenDecision(projId){
+  const p=projid2proj(projId);
+  _chtProjId = p ? p.id : null;
+  if(p && (!p.charter || typeof p.charter!=='object')) p.charter=makeCharter();
+  G('dec-overlay').classList.add('show');
+  chtRenderPicker('decision');
+  chtRenderDecision();
+}
+function chtCloseDecision(){ G('dec-overlay').classList.remove('show'); chtSyncRailAfterClose(); }
+function chtDecSelectProject(id){ chtOpenDecision(id); }
+
+function chtRenderDecision(){
+  const p=projects.find(x=>x.id===_chtProjId);
+  const t=G('dec-title'); if(t) t.textContent = p ? (p.name||'PROJECT') : 'TRADE-OFF DECISION';
+  const body=G('dec-body'); if(!body) return;
+  const c=chtCharter();
+  if(!c){ body.innerHTML='<div class="cht-muted" style="padding:20px">No project selected — add a project on the Portfolio matrix.</div>'; return; }
+  body.innerHTML = chtDecisionBody(c);
+}
+
+// The 3-of-4 point selector (which dimensions this triangle plots). `setter` is
+// the mutator name; `si` (scenario index) is prefixed to the args when present.
+function chtPointPick(points, setter, si){
+  const arg = si==null?'':`${si},`;
+  return `<div class="cht-pt-pick">${[0,1,2].map(idx=>
+    `<select class="cht-in" onchange="${setter}(${arg}${idx},this.value)">
+       ${CHT_DIMS4.map(([k,l])=>`<option value="${k}"${points[idx]===k?' selected':''}>${l}</option>`).join('')}
+     </select>`).join('')}</div>`;
+}
+// The 4 stance selects (all dimensions — the plotted 3 + the omitted one that
+// still drives conflicts). `setter` + optional scenario index as above.
+function chtStanceGrid(stances, setter, si){
+  const arg = si==null?'':`${si},`;
+  return `<div class="cht-stance-grid">${CHT_DIMS4.map(([k,label])=>
     `<label class="cht-f"><span class="cht-l">${label}</span>
-      <select class="cht-in" onchange="chtStanceSet('${k}',this.value)">
-        ${CHT_STANCES.map(([v,l])=>`<option value="${v}"${d.stances[k]===v?' selected':''}>${l}</option>`).join('')}
-      </select></label>`;
-  const warn=chtStanceWarn(d);
+       <select class="cht-in" onchange="${setter}(${arg}'${k}',this.value)">
+         ${CHT_STANCES.map(([v,l])=>`<option value="${v}"${stances[k]===v?' selected':''}>${l}</option>`).join('')}
+       </select></label>`).join('')}</div>`;
+}
+
+function chtDecisionBody(c){
+  const d=c.decision;
+  const conflicts=chtConflicts(c);
+  const warn=chtStanceWarn({stances:{a:d.stances[d.points[0]],b:d.stances[d.points[1]],c:d.stances[d.points[2]]}});
   const warnHTML = warn ? `<div class="cht-banner warn">⚠ ${warn}</div>` : '';
   const conflictHTML = conflicts.length
     ? `<div class="cht-banner bad">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''}: ${
         conflicts.map(x=>`${x.func} must-have on <b>${CHT_DIM_LABEL[x.dimension]}</b> (sacrificed)`).join('; ')}. Re-negotiate the stance or soften the demand.</div>`
     : '';
-  return `<div class="cht-vizrow">
-      <div class="cht-viz"><div class="cht-chart-t">Trade-off square</div>${chtSquareSVG(d)}</div>
+  const primary=`<div class="cht-scenario cht-scenario-primary">
+      <div class="cht-scenario-head"><span class="cht-scenario-name">Primary trade-off</span></div>
+      ${chtTriangleSVG(d.points,d.stances)}
+      <div class="cht-scenario-ctl"><span class="cht-hl">PLOT</span>${chtPointPick(d.points,'chtPointSet')}</div>
+      ${chtStanceGrid(d.stances,'chtStanceSet')}
+    </div>`;
+  const scen=d.scenarios.map((s,si)=>`<div class="cht-scenario">
+      <div class="cht-scenario-head">
+        <input class="cht-in cht-scenario-name-in" value="${escH(s.name)}" placeholder="scenario name…" oninput="chtScenName(${si},this.value)">
+        <button class="cht-cf-del" title="Remove scenario" onclick="chtScenRemove(${si})">×</button>
+      </div>
+      ${chtTriangleSVG(s.points,s.stances,{small:true})}
+      <div class="cht-scenario-ctl"><span class="cht-hl">PLOT</span>${chtPointPick(s.points,'chtScenPointSet',si)}</div>
+      ${chtStanceGrid(s.stances,'chtScenStance',si)}
+    </div>`).join('');
+  const addBtn = d.scenarios.length<2
+    ? `<button class="sm" onclick="chtScenAdd()">+ Add comparison scenario</button>`
+    : '<span class="cht-muted" style="font-size:11px">Max 3 triangles (primary + 2 scenarios).</span>';
+  return `<div class="cht-note">The trade-off triangle — pick the 3 priorities that matter and set each stance. You can't prioritize everything: sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop. Add up to 2 named scenarios to compare options side by side.</div>
+    <div class="cht-tri-grid">${primary}${scen}</div>
+    <div style="margin:10px 0 16px">${addBtn}</div>
+    ${warnHTML}${conflictHTML}
+    <div class="cht-vizrow">
       <div class="cht-viz"><div class="cht-chart-t">Cross-functional alignment</div>${chtRadarSVG(c)}</div>
     </div>
     <div class="cht-form">
-    <div class="cht-note">Set each dimension's stance. You can't prioritize everything — sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop.</div>
-    ${CHT_DIMS4.map(stanceSel).join('')}
-    ${warnHTML}
-    ${conflictHTML}
-    ${chtListEditor('nonNegotiables','Non-negotiables','e.g. Must launch by Q3 2026')}
-    ${chtListEditor('flexibilities','Flexibilities','e.g. Scope can shrink by 20%')}
-  </div>`;
+      ${chtListEditor('nonNegotiables','Non-negotiables','e.g. Must launch by Q3 2026')}
+      ${chtListEditor('flexibilities','Flexibilities','e.g. Scope can shrink by 20%')}
+    </div>`;
 }
-function chtStanceSet(dim,value){
-  chtCharter().decision.stances[dim]=value; chtSave();
-  chtShowTab('decision');   // re-render so the square + conflicts update
-}
+
+// Set a point in a triangle's 3-slot list; if the value duplicates another slot,
+// swap them so the triangle always plots 3 distinct dimensions.
+function chtPtSet(arr,idx,val){ const j=arr.indexOf(val); if(j>=0&&j!==idx) arr[j]=arr[idx]; arr[idx]=val; }
+
+function chtStanceSet(dim,value){ chtCharter().decision.stances[dim]=value; chtSave(); chtRenderDecision(); }
+function chtPointSet(idx,val){ chtPtSet(chtCharter().decision.points,+idx,val); chtSave(); chtRenderDecision(); }
+function chtScenAdd(){ const d=chtCharter().decision; if(d.scenarios.length>=2) return; d.scenarios.push(makeScenario()); chtSave(); chtRenderDecision(); }
+function chtScenRemove(si){ chtCharter().decision.scenarios.splice(si,1); chtSave(); chtRenderDecision(); }
+function chtScenName(si,val){ const s=chtCharter().decision.scenarios[si]; if(s){ s.name=val; chtSave(); } }  // no re-render → keep input focus
+function chtScenStance(si,dim,value){ const s=chtCharter().decision.scenarios[si]; if(!s) return; s.stances[dim]=value; chtSave(); chtRenderDecision(); }
+function chtScenPointSet(si,idx,val){ const s=chtCharter().decision.scenarios[si]; if(!s) return; chtPtSet(s.points,+idx,val); chtSave(); chtRenderDecision(); }
 
 // Editable string list (non-negotiables / flexibilities) under charter.decision.
 function chtListEditor(key,label,ph){
@@ -18398,8 +18619,8 @@ function chtListEditor(key,label,ph){
     <button class="sm" onclick="chtListAdd('${key}')">+ Add</button></div>`;
 }
 function chtListSet(key,i,value){ chtCharter().decision[key][i]=value; chtSave(); }
-function chtListAdd(key){ chtCharter().decision[key].push(''); chtSave(); chtShowTab('decision'); }
-function chtListRemove(key,i){ chtCharter().decision[key].splice(i,1); chtSave(); chtShowTab('decision'); }
+function chtListAdd(key){ chtCharter().decision[key].push(''); chtSave(); chtRenderDecision(); }
+function chtListRemove(key,i){ chtCharter().decision[key].splice(i,1); chtSave(); chtRenderDecision(); }
 
 // ── Slide deck + synopsis generators ─────────────────────────────────────────
 // [label, section, short-label]
@@ -18478,7 +18699,7 @@ function chtDeckSlidesHTML(){
     <h1 class="cht-slide-h">${escH(p.name||'Untitled project')}</h1>
     <div class="cht-slide-chips">${chip('Priority',c.priority)}${chip('Status',c.status)}</div>
     <div class="cht-slide-2col">
-      <div>${chtSquareSVG(c.decision)}</div>
+      <div>${chtTriangleSVG(c.decision.points,c.decision.stances)}</div>
       <div class="cht-slide-kpis">
         <div class="cht-slide-kpi"><span>NPV</span><b class="${r.npv>=0?'pos':'neg'}">${money(r.npv)}</b></div>
         <div class="cht-slide-kpi"><span>IRR</span><b>${r.display.irr}</b></div>
@@ -18505,13 +18726,23 @@ function chtDeckSlidesHTML(){
     </div>
   </section>`);
   const ss=chtStanceSummary(c.decision);
+  const scens=c.decision.scenarios||[];
+  const triCompare=`<div class="cht-slide-tris">
+      <div class="cht-slide-tri"><div class="cht-slide-lh">Primary</div>${chtTriangleSVG(c.decision.points,c.decision.stances,{small:true})}</div>
+      ${scens.map(s=>`<div class="cht-slide-tri"><div class="cht-slide-lh">${escH(s.name||'Scenario')}</div>${chtTriangleSVG(s.points,s.stances,{small:true})}</div>`).join('')}
+    </div>`;
+  const scenLines=scens.map(s=>{ const sq=chtStanceSummary({stances:s.stances});
+    return `<b>${escH(s.name||'Scenario')}:</b> prioritize ${sq.prioritize.join(', ')||'—'} · sacrifice ${sq.sacrifice.join(', ')||'—'}`; }).join('<br>');
   S.push(`<section class="cht-slide"><div class="cht-slide-n">4 / 5</div>
     <h2 class="cht-slide-h">Trade-off &amp; constraints</h2>
+    ${triCompare}
     <div class="cht-slide-2col">
-      <div>${chtSquareSVG(c.decision)}</div>
       <div>
         <p class="cht-slide-p"><b>Prioritize:</b> ${ss.prioritize.join(', ')||'—'}<br>
           <b>Sacrifice:</b> ${ss.sacrifice.join(', ')||'—'}</p>
+        ${scenLines?`<p class="cht-slide-p">${scenLines}</p>`:''}
+      </div>
+      <div>
         <div class="cht-slide-lists">
           <div><div class="cht-slide-lh">Non-negotiables</div>${nn.length?`<ul>${nn.map(x=>`<li>${escH(x)}</li>`).join('')}</ul>`:'<div class="cht-muted">—</div>'}</div>
           <div><div class="cht-slide-lh">Flexibilities</div>${fx.length?`<ul>${fx.map(x=>`<li>${escH(x)}</li>`).join('')}</ul>`:'<div class="cht-muted">—</div>'}</div>
@@ -18551,8 +18782,11 @@ function chtDeckMarkdown(){
   });
   const ss=chtStanceSummary(c.decision);
   L.push('','## 4. Trade-off & constraints');
+  L.push(`- **Primary — plotted:** ${c.decision.points.map(k=>CHT_DIM_LABEL[k]).join(' / ')}`);
   L.push(`- **Prioritize:** ${ss.prioritize.join(', ')||'—'}`);
   L.push(`- **Sacrifice:** ${ss.sacrifice.join(', ')||'—'}`);
+  (c.decision.scenarios||[]).forEach(s=>{ const sq=chtStanceSummary({stances:s.stances});
+    L.push(`- **Scenario “${s.name||'—'}”:** prioritize ${sq.prioritize.join(', ')||'—'} · sacrifice ${sq.sacrifice.join(', ')||'—'}`); });
   if(nn.length) L.push(`- **Non-negotiables:** ${nn.join('; ')}`);
   if(fx.length) L.push(`- **Flexibilities:** ${fx.join('; ')}`);
   const conflicts=chtConflicts(c);
@@ -18595,8 +18829,11 @@ function chtSynopsisMarkdown(){
   });
   const ss=chtStanceSummary(c.decision), conflicts=chtConflicts(c);
   L.push('','## Trade-off');
+  L.push(`- **Plotted:** ${c.decision.points.map(k=>CHT_DIM_LABEL[k]).join(' / ')}`);
   L.push(`- **Prioritize:** ${ss.prioritize.join(', ')||'—'}`);
   L.push(`- **Sacrifice:** ${ss.sacrifice.join(', ')||'—'}`);
+  (c.decision.scenarios||[]).forEach(s=>{ const sq=chtStanceSummary({stances:s.stances});
+    L.push(`- **Scenario “${s.name||'—'}”:** prioritize ${sq.prioritize.join(', ')||'—'} · sacrifice ${sq.sacrifice.join(', ')||'—'}`); });
   if(conflicts.length) L.push(`- **⚠ Conflicts:** ${conflicts.map(x=>`${x.func} must-have on ${dimL(x.dimension)}`).join('; ')}`);
   if(nn.length) L.push(`- **Non-negotiables:** ${nn.join('; ')}`);
   if(fx.length) L.push(`- **Flexibilities:** ${fx.join('; ')}`);
@@ -18678,6 +18915,34 @@ function dtcRender(){
     dtcResponsesSection(c);
 }
 
+// Recompute ONLY the derived outputs in place — never the input elements — so
+// typing in a number field keeps focus and scroll position. Called from the
+// numeric setters (structural changes still do a full dtcRender).
+function dtcRefreshDerived(){
+  const c=dtcCharter(); if(!c) return;
+  const set=(id,html)=>{ const el=G(id); if(el) el.innerHTML=html; };
+  set('dtc-cascade-live', dtcCascadeLive(c));
+  set('dtc-push',         dtcPushBtn(c));
+  set('dtc-wf-live',      dtcWaterfallLive(c));
+  set('dtc-comp-live',    dtcCompBarsSVG(c));
+  c.costModel.subsystems.forEach((s,i)=>{
+    const cur=dtcSubCost(s), gap=cur-(Number(s.target)||0), excl=s.include===false, hasItems=dtcHasItems(s);
+    const g=G('dtc-gap-'+i);
+    if(g){ g.textContent = excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap));
+      g.className='dtc-gap '+(excl?'':gap>0?'bad':gap<0?'good':'');
+      const row=g.closest('tr'); if(row) row.className = excl?'dtc-excl':gap>0?'dtc-over':''; }
+    const cu=G('dtc-cur-'+i); if(cu) cu.textContent=dtcEur(cur);
+    const cn=G('dtc-cnt-'+i); if(cn) cn.textContent=hasItems?`${s.items.filter(it=>it.include!==false).length}/${s.items.length}`:'';
+  });
+  c.costModel.competitors.forEach((k,i)=>{
+    const adj=(Number(k.cogs)||0)-(Number(k.volumeSaving)||0);
+    const margin=(Number(k.sellingPrice)||0)-adj-(Number(k.brandPremium)||0);
+    const mPct=k.sellingPrice>0?margin/k.sellingPrice*100:null;
+    const a=G('dtc-cadj-'+i); if(a) a.textContent=dtcEur(adj);
+    const m=G('dtc-cmrg-'+i); if(m) m.innerHTML=`${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}`;
+  });
+}
+
 /* ── Competition analysis (up to 5 competitors + Us) ─────────────────────────── */
 function dtcCompetitionSection(c){
   const comps=c.costModel.competitors;
@@ -18691,15 +18956,15 @@ function dtcCompetitionSection(c){
       <td><input class="cht-in dtc-num" type="number" value="${k.cogs||''}" oninput="dtcCompSet(${i},'cogs',this.value)"></td>
       <td><input class="cht-in dtc-num" type="number" value="${k.volumeSaving||''}" oninput="dtcCompSet(${i},'volumeSaving',this.value)"></td>
       <td><input class="cht-in dtc-num" type="number" value="${k.brandPremium||''}" oninput="dtcCompSet(${i},'brandPremium',this.value)"></td>
-      <td class="dtc-num">${dtcEur(adj)}</td>
-      <td class="dtc-num">${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}</td>
+      <td class="dtc-num" id="dtc-cadj-${i}">${dtcEur(adj)}</td>
+      <td class="dtc-num" id="dtc-cmrg-${i}">${dtcEur(margin)} ${mPct!=null?`<span class="cht-muted">(${mPct.toFixed(0)}%)</span>`:''}</td>
       <td><button class="cht-cf-del" onclick="dtcCompRemove(${i})">×</button></td>
     </tr>`;
   }).join('');
   return `<section class="dtc-sec">
     <h3 class="dtc-h">⑤ Competition analysis</h3>
     <div class="cht-hint">Benchmark up to 5 competitors + your own structure. <b>Adjusted cost</b> = COGS − volume saving (their scale advantage); <b>implied margin</b> = price − adjusted cost − brand premium. The bar shows how much of each price is cost, margin, and brand.</div>
-    ${dtcCompBarsSVG(c)}
+    <div id="dtc-comp-live">${dtcCompBarsSVG(c)}</div>
     <table class="dtc-tbl"><thead><tr><th>Competitor</th><th>Price €</th><th>COGS €</th><th>Vol. saving €</th><th>Brand €</th><th>Adj. cost</th><th>Implied margin</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="cht-muted">No competitors yet.</td></tr>'}</tbody></table>
     ${comps.length<5?`<button class="sm" onclick="dtcCompAdd()">+ Add competitor</button>`:'<span class="cht-muted" style="font-size:11px">Max 5 competitors.</span>'}
@@ -18711,7 +18976,7 @@ function dtcCompSet(i,key,value){
   const k=dtcCharter().costModel.competitors[i]; if(!k) return;
   k[key] = key==='name' ? value : (Number(value)||0);
   dtcSave();
-  if(key!=='name') dtcRender();
+  if(key!=='name') dtcRefreshDerived();   // updates derived cols + bars only
 }
 
 // Horizontal stacked bars: each price = cost + margin + brand, incl. an "Us" row.
@@ -18767,15 +19032,15 @@ function dtcCascadeSection(c){
     const excl=s.include===false, hasItems=dtcHasItems(s), open=_dtcOpen.has(i);
     const cur=dtcSubCost(s), gap=cur-(Number(s.target)||0);
     const curCell = hasItems
-      ? `<span class="dtc-derived" title="Sum of included items">${dtcEur(cur)}</span>`
+      ? `<span class="dtc-derived" id="dtc-cur-${i}" title="Sum of included items">${dtcEur(cur)}</span>`
       : `<input class="cht-in dtc-num" type="number" value="${s.current==null?'':s.current}" oninput="dtcSubSet(${i},'current',this.value)">`;
     let out=`<tr class="${excl?'dtc-excl':gap>0?'dtc-over':''}">
       <td class="dtc-expand"><button class="dtc-caret${open?' open':''}" title="${hasItems?'Show/hide items':'No items'}" onclick="dtcToggleSub(${i})">${hasItems?'▸':'·'}</button></td>
       <td><input type="checkbox" ${excl?'':'checked'} title="Include in analysis" onchange="dtcSubToggle(${i})"></td>
-      <td><input class="cht-in" value="${escH(s.name)}" placeholder="subsystem…" oninput="dtcSubSet(${i},'name',this.value)">${hasItems?`<span class="dtc-count">${s.items.filter(it=>it.include!==false).length}/${s.items.length}</span>`:''}</td>
+      <td><input class="cht-in" value="${escH(s.name)}" placeholder="subsystem…" oninput="dtcSubSet(${i},'name',this.value)"><span class="dtc-count" id="dtc-cnt-${i}">${hasItems?`${s.items.filter(it=>it.include!==false).length}/${s.items.length}`:''}</span></td>
       <td><input class="cht-in dtc-num" type="number" value="${s.target==null?'':s.target}" oninput="dtcSubSet(${i},'target',this.value)"></td>
       <td>${curCell}</td>
-      <td class="dtc-gap ${excl?'':gap>0?'bad':gap<0?'good':''}">${excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap))}</td>
+      <td class="dtc-gap ${excl?'':gap>0?'bad':gap<0?'good':''}" id="dtc-gap-${i}">${excl?'excl.':(s.target==null&&cur===0&&!hasItems?'—':(gap>0?'+':'')+dtcEur(gap))}</td>
       <td><select class="cht-in" onchange="dtcSubSet(${i},'owner',this.value)">${owners.map(o=>`<option${s.owner===o?' selected':''}>${o}</option>`).join('')}</select></td>
       <td><button class="cht-cf-del" onclick="dtcSubRemove(${i})">×</button></td>
     </tr>`;
@@ -18793,24 +19058,28 @@ function dtcCascadeSection(c){
     }
     return out;
   }).join('');
-  const over=env!=null ? cur-env : null;
-  const summary = env==null
-    ? `<div class="cht-banner warn">⚠ No unit-cost envelope yet — set a price + target margin (or a variable cost) on the charter Financials tab. Then the cascade shows how much cost you have to spend.</div>`
-    : `<div class="dtc-summary ${over>0?'bad':'good'}">
-         Envelope (max unit cost): <b>${dtcEur(env)}</b> ·
-         Allocated: <b>${dtcEur(alloc)}</b> ·
-         Current design: <b>${dtcEur(cur)}</b> ·
-         ${over>0?`<span class="bad">Over by ${dtcEur(over)}</span>`:`<span class="good">${dtcEur(-over)} under</span>`}
-       </div>${dtcCascadeSVG(subs,env)}`;
   return `<section class="dtc-sec">
     <h3 class="dtc-h">① Target-cost cascade</h3>
     <div class="cht-hint">Break the unit-cost envelope down to subsystems. Each has a <b>target</b> and the <b>current</b> design estimate (€/unit). Red = over its target.</div>
-    ${summary}
+    <div id="dtc-cascade-live">${dtcCascadeLive(c)}</div>
     <table class="dtc-tbl dtc-cascade"><thead><tr><th></th><th title="Include in analysis">✓</th><th>Subsystem</th><th>Target €</th><th>Current €</th><th>Gap</th><th>Owner</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="cht-muted">No subsystems yet.</td></tr>'}</tbody></table>
-    <button class="sm" onclick="dtcSubAdd()">+ Add subsystem</button>
-    ${env!=null?`<button class="sm" style="margin-left:8px" onclick="dtcPushCost()" title="Set the charter's variable cost/unit to the current design total">↧ Use current (${dtcEur(cur)}) as unit cost in Financials</button>`:''}
+    <button class="sm" onclick="dtcSubAdd()">+ Add subsystem</button><span id="dtc-push">${dtcPushBtn(c)}</span>
   </section>`;
+}
+// The live (recomputed) part of the cascade: summary banner + envelope bar.
+function dtcCascadeLive(c){
+  const env=dtcEnvelope(c), cur=dtcCurrentTotal(c), alloc=dtcAllocTotal(c);
+  if(env==null) return `<div class="cht-banner warn">⚠ No unit-cost envelope yet — set a price + target margin (or a variable cost) on the charter Financials tab. Then the cascade shows how much cost you have to spend.</div>`;
+  const over=cur-env;
+  return `<div class="dtc-summary ${over>0?'bad':'good'}">
+      Envelope (max unit cost): <b>${dtcEur(env)}</b> · Allocated: <b>${dtcEur(alloc)}</b> · Current design: <b>${dtcEur(cur)}</b> ·
+      ${over>0?`<span class="bad">Over by ${dtcEur(over)}</span>`:`<span class="good">${dtcEur(-over)} under</span>`}
+    </div>${dtcCascadeSVG(c)}`;
+}
+function dtcPushBtn(c){
+  if(dtcEnvelope(c)==null) return '';
+  return `<button class="sm" style="margin-left:8px" onclick="dtcPushCost()" title="Set the charter's variable cost/unit to the current design total">↧ Use current (${dtcEur(dtcCurrentTotal(c))}) as unit cost in Financials</button>`;
 }
 function dtcSubAdd(){ dtcCharter().costModel.subsystems.push(makeSubsystem()); dtcSave(); dtcRender(); }
 function dtcSubRemove(i){ dtcCharter().costModel.subsystems.splice(i,1); dtcSave(); dtcRender(); }
@@ -18818,7 +19087,7 @@ function dtcSubSet(i,key,value){
   const s=dtcCharter().costModel.subsystems[i]; if(!s) return;
   s[key] = (key==='target'||key==='current') ? (value===''?null:Number(value)||0) : value;
   dtcSave();
-  if(key==='target'||key==='current') dtcRender();   // gap/summary/SVG change
+  if(key==='target'||key==='current') dtcRefreshDerived();   // update derived cells only — keep focus
 }
 function dtcToggleSub(i){ if(_dtcOpen.has(i)) _dtcOpen.delete(i); else _dtcOpen.add(i); dtcRender(); }
 function dtcSubToggle(i){ const s=dtcCharter().costModel.subsystems[i]; if(!s)return; s.include=s.include===false; dtcSave(); dtcRender(); }
@@ -18830,7 +19099,7 @@ function dtcItemSet(i,j,key,value){
   const it=dtcCharter().costModel.subsystems[i].items[j]; if(!it)return;
   it[key] = key==='cost' ? (Number(value)||0) : value;
   dtcSave();
-  if(key==='cost') dtcRender();
+  if(key==='cost') dtcRefreshDerived();   // updates the subsystem's derived current + gap + SVG
 }
 // Loop-closer: push the rolled-up design cost into the charter's unit cost.
 function dtcPushCost(){
@@ -18840,15 +19109,15 @@ function dtcPushCost(){
 }
 
 // Horizontal stacked bar: subsystem current costs vs the envelope line.
-function dtcCascadeSVG(subs,env){
-  const cur=subs.reduce((s,x)=>s+(Number(x.current)||0),0);
+function dtcCascadeSVG(c){
+  const subs=c.costModel.subsystems, env=dtcEnvelope(c), cur=dtcCurrentTotal(c);
   if(cur<=0&&!(env>0)) return '';
   const W=680,H=54,padL=4,padR=4,barY=14,barH=22;
   const xmax=Math.max(cur,env||0)*1.12||1;
   const sc=v=>padL+(v/xmax)*(W-padL-padR);
   const pal=['var(--accent)','var(--accent2)','#a78bfa','var(--warn)','#5b9ce5','#e5989b'];
   let x=padL, segs='';
-  subs.forEach((s,i)=>{ const v=Number(s.current)||0; if(v<=0) return; const w=(v/xmax)*(W-padL-padR);
+  subs.forEach((s,i)=>{ const v=dtcSubCost(s); if(v<=0) return; const w=(v/xmax)*(W-padL-padR);
     const over=env!=null && x-padL>sc(env)-padL;
     segs+=`<rect x="${x.toFixed(1)}" y="${barY}" width="${Math.max(0,w).toFixed(1)}" height="${barH}" fill="${over?'var(--danger)':pal[i%pal.length]}" opacity="0.85"><title>${escH(s.name||'subsystem')}: ${dtcEur(v)}</title></rect>`;
     x+=w; });
@@ -18878,11 +19147,17 @@ function dtcWaterfallSection(c){
   return `<section class="dtc-sec">
     <h3 class="dtc-h">② Cost-down waterfall</h3>
     <div class="cht-hint">The path from today's design cost to the target. Levers count once <b>committed</b> or <b>realized</b>; ideas show the remaining upside.</div>
-    ${cur>0?dtcWaterfallSVG(cur,realized,committed,idea,env):'<div class="cht-muted">Add subsystem current costs above to see the waterfall.</div>'}
+    <div id="dtc-wf-live">${dtcWaterfallLive(c)}</div>
     <table class="dtc-tbl"><thead><tr><th>Lever</th><th>Subsystem</th><th>Saving €/unit</th><th>Status</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="5" class="cht-muted">No levers yet.</td></tr>'}</tbody></table>
     <button class="sm" onclick="dtcLeverAdd()">+ Add lever</button>
   </section>`;
+}
+// Live waterfall (recomputed on lever edits).
+function dtcWaterfallLive(c){
+  const cur=dtcCurrentTotal(c), env=dtcEnvelope(c);
+  if(cur<=0) return '<div class="cht-muted">Add subsystem current costs above to see the waterfall.</div>';
+  return dtcWaterfallSVG(cur, dtcLeverSum(c,'realized'), dtcLeverSum(c,'committed'), dtcLeverSum(c,'idea'), env);
 }
 function dtcLeverAdd(){ dtcCharter().costModel.levers.push(makeLever()); dtcSave(); dtcRender(); }
 function dtcLeverRemove(i){ dtcCharter().costModel.levers.splice(i,1); dtcSave(); dtcRender(); }
@@ -18890,7 +19165,7 @@ function dtcLeverSet(i,key,value){
   const l=dtcCharter().costModel.levers[i]; if(!l) return;
   l[key] = key==='saving' ? (Number(value)||0) : value;
   dtcSave();
-  if(key==='saving'||key==='status') dtcRender();
+  if(key==='saving'||key==='status') dtcRefreshDerived();   // updates only the waterfall
 }
 
 // Step-down waterfall: Current → −realized → −committed → Projected, with target line.
@@ -19132,10 +19407,11 @@ railInit();   // render the persistent nav rail + land on the initial view
   <div id="res-body"></div>
 </div>
 
-<!-- CROSS-FUNCTIONAL CHARTER OVERLAY (opened from the project context menu) -->
+<!-- FINANCIALS ANALYSIS (WORK › Financials analysis rail view) — panel, rail-inset -->
 <div id="cht-overlay">
   <div id="cht-header">
-    <span id="cht-title">CHARTER</span>
+    <span id="cht-title">FINANCIALS ANALYSIS</span>
+    <span id="cht-pick"></span>
     <div class="cht-head-meta" id="cht-head-meta"></div>
     <div style="flex:1"></div>
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
@@ -19145,6 +19421,17 @@ railInit();   // render the persistent nav rail + land on the initial view
   </div>
   <div id="cht-tabs"></div>
   <div id="cht-body"></div>
+</div>
+
+<!-- TRADE-OFF DECISION (WORK › Trade-off decision rail view) — panel, rail-inset -->
+<div id="dec-overlay">
+  <div id="dec-header">
+    <span id="dec-title">TRADE-OFF DECISION</span>
+    <span id="dec-pick"></span>
+    <div style="flex:1"></div>
+    <button onclick="chtCloseDecision()">✕ CLOSE</button>
+  </div>
+  <div id="dec-body"></div>
 </div>
 
 <!-- CHARTER SLIDE DECK (generated from the open charter) -->

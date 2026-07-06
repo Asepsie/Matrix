@@ -1,7 +1,7 @@
 import { strict as assert } from 'assert';
 import { test } from 'node:test';
 import { makeProject, makeCharter, makeCharterFinancials, makeDecisionCard, makeInvestmentItem, makeDemand,
-  makeCostModel, makeSubsystem, makeLever, makeCostItem, makeCompetitor } from '../src/data/model.js';
+  makeCostModel, makeSubsystem, makeLever, makeCostItem, makeCompetitor, makeScenario } from '../src/data/model.js';
 import {
   calculateFinancials, computeNPV, computeIRR, computeYield,
   computePayback, computeBreakEvenUnits, computeCumulative, fmtEur,
@@ -85,13 +85,32 @@ test('makeCharter — nested objects/arrays are not shared between calls', () =>
   assert.notEqual(a.decision.stances, b.decision.stances);
 });
 
-test('makeDecisionCard — 4-dimension square stances, all balanced by default', () => {
+test('makeDecisionCard — 4-dimension stances, all balanced by default', () => {
   const d = makeDecisionCard();
   assert.deepEqual(Object.keys(d.stances).sort(), ['features','productCost','projectCost','time']);
   for (const k of Object.keys(d.stances)) assert.equal(d.stances[k], 'balance');
   assert.ok(!('priorityPrimary' in d), 'old triangle fields should be gone');
   assert.deepEqual(d.nonNegotiables, []);
   assert.deepEqual(d.flexibilities, []);
+});
+
+test('makeDecisionCard — configurable-triangle fields (points + scenarios)', () => {
+  const d = makeDecisionCard();
+  assert.equal(d.points.length, 3, 'primary triangle plots 3 points');
+  assert.equal(new Set(d.points).size, 3, 'the 3 plotted points are distinct');
+  for (const k of d.points) assert.ok(['features','time','productCost','projectCost'].includes(k));
+  assert.deepEqual(d.scenarios, [], 'no comparison scenarios by default');
+});
+
+test('makeScenario — named comparison triangle keeps 3 points + 4 stances', () => {
+  const s = makeScenario();
+  assert.equal(s.name, '');
+  assert.equal(s.points.length, 3);
+  assert.deepEqual(Object.keys(s.stances).sort(), ['features','productCost','projectCost','time']);
+  // nested structures are fresh per call (no shared references)
+  const s2 = makeScenario();
+  assert.notEqual(s.points, s2.points);
+  assert.notEqual(s.stances, s2.stances);
 });
 
 /* ── NPV ────────────────────────────────────────────────────────────────────

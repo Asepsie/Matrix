@@ -303,16 +303,29 @@ styles in [src/styles/charter.css](src/styles/charter.css); tests in
 and no CAPEX/OPEX** by design (both were dropped — a single-user local tool can't enforce
 approvals, and investment-type fed no calculation).
 
-### Two entry points, and the modal-vs-view distinction (non-obvious)
+### Two PANELS (not a modal), a shared project + picker mode (non-obvious)
 
-- **Right-click a project → 📋 Charter** ([index.html](src/index.html) `#ctx-menu`) →
-  `openCharter(projId)` → opens `#cht-overlay`.
-- **Rail: WORK › Charters** → `openCharterHub()` → `#chthub-overlay`, a card grid of every
-  project (NPV/IRR + conflict badge). Clicking a card opens the editor on top.
-- **The editor / deck / synopsis are focused MODALS, not views** → their CSS is `inset:0`
-  (they COVER the rail) at z-index 1100 (editor) / 1150 (deck, synopsis). Only the hub is a
-  real rail view, so it alone stays `left:var(--rail)`. Getting this wrong leaves the rail
-  exposed + misleadingly highlighted behind the modal (that was a reported "rail bug").
+The charter is now **two rail-inset panels**, split out of the old 4-tab modal:
+- **WORK › Financials analysis** (`#cht-overlay`) — Overview / Demands / Financials tabs
+  (`chtOpenFinancials` → per mode). `openCharter(projId)` renders it.
+- **WORK › Trade-off decision** (`#dec-overlay`) — the configurable triangle(s) +
+  non-negotiables/flexibilities (`chtOpenDecisionView` → per mode; `chtOpenDecision(projId)`).
+- Both share one selected project (`_chtProjId`) and a **picker MODE** from Settings
+  (`railChartPicker()` → `'hub' | 'dropdown'`, persisted in `eim_rail_prefs.chartPicker`):
+  - `hub` — `openCharterHub(target)` shows `#chthub-overlay` (the card grid). A card opens the
+    matching panel (`target` = 'financials' | 'decision') stacked **above** the hub. One hub
+    overlay serves both panels via `_chtHubTarget`.
+  - `dropdown` — the panel opens directly with a `<select>` in its header (`#cht-pick`/`#dec-pick`,
+    rendered by `chtRenderPicker`), like Design-to-cost's `#dtc-picker`.
+- **Both panels are VIEWS now** (rail-inset `left:var(--rail)`), NOT modals: `#cht-overlay`
+  and `#dec-overlay` are `z-index:410` so they sit **above** the hub (`z400`) — closing a panel
+  reveals the hub again. Only the deck/synopsis stay full-cover modals (z1150).
+- **Rail-highlight sync on close** is done inside `chtClose`/`chtCloseDecision` via
+  `chtSyncRailAfterClose()` (NOT the railnav `railWrapClosers` wrap): it resets `activeView`
+  to `'matrix'` only when NO charter surface (panel or hub) is left showing and we're not
+  mid-navigation (`railRouting`). Wrapping `chtClose` in railnav instead would wrongly reset the
+  highlight when the hub is still visible beneath a just-closed panel. `railChartPicker`,
+  `railRouting`, `activeView` are read cross-file (one shared bundle scope).
 
 ### Data model (`makeCharter` in [model.js](src/data/model.js))
 
@@ -328,19 +341,25 @@ charter = {
   (`makeDemand`) = `{ text, dimension, mustHave }` where `dimension` ∈ `'' | features |
   time | productCost | projectCost`. This replaced an earlier heavier per-department model
   (asks/commitments/dependency-matrix) — kept intentionally light.
-- **Decision = the trade-off SQUARE** (`makeDecisionCard`): `stances` for the 4 dimensions,
-  each `'prioritize' | 'balance' | 'sacrifice'`, plus `nonNegotiables[]` / `flexibilities[]`.
-  NOT the old triangle (priorityPrimary/secondary/constrained — gone).
+- **Decision = configurable TRADE-OFF TRIANGLE(s)** (`makeDecisionCard`): `stances` for all
+  **4** dimensions (kept as the canonical set — drives conflicts + DTC guidelines) each
+  `'prioritize' | 'balance' | 'sacrifice'`; `points` = the **3** dimensions the primary triangle
+  plots; `scenarios[]` = up to 2 named comparison triangles (`makeScenario` = `{ name, points[3],
+  stances{4} }` — a full alternative, plots only its 3 `points`); plus `nonNegotiables[]` /
+  `flexibilities[]`. `chtPtSet` swaps duplicates so a triangle always plots 3 distinct points.
 - **Financials** (`makeCharterFinancials`): `initialInvestment`, `unit` (display scale
   `eur|keur|meur`), `cashFlows[]`, `discountRate`, `pricePerUnit`, `variableCostPerUnit`,
   `marginMode` (`compute|targetPrice|targetCost`), `targetMarginPct`, and
   `investment:{ items:[makeInvestmentItem], amortUnits }`.
 
-### The 4 tabs
+### Financials-panel tabs + the decision panel
 
-`CHT_TABS` = **Overview** (business case + revenue) · **Demands** (the board, all 5
-functions with alignment + demands) · **Financials** · **Decision** (square + lists).
-`chtShowTab` routes; each tab is a pure `innerHTML` render. Editing writes straight into
+`CHT_TABS` = **Overview** (business case + revenue) · **Demands** (the board, all 5 functions
+with alignment + demands) · **Financials**. `chtShowTab` routes; each tab is a pure `innerHTML`
+render. **Decision moved to its own panel** (`chtRenderDecision` → `chtDecisionBody`): the
+primary triangle (`chtTriangleSVG` + a 3-of-4 `chtPointPick` + the 4-stance `chtStanceGrid`),
+up to 2 comparison-scenario cards (each with its own name/points/stances), the alignment radar,
+conflicts, and the non-negotiables/flexibilities lists. Editing writes straight into
 `project.charter` and autosaves via `saveState()`.
 
 ### Conflicts — the point of the whole thing
@@ -376,11 +395,13 @@ project sacrificed Product cost).
 
 ### SVG visualizations (pure SVG, CSS-var themed, colour-blind-safe via text)
 
-`chtSquareSVG` (trade-off square: weighted-centroid marker; weights
-prioritize 1.0 / balance 0.28 / sacrifice 0.04 so a prioritized corner pulls the marker to
-it; `chtStanceWarn` gives the "wish list / nothing sacrificed / all sacrificed" banner),
+`chtTriangleSVG(points, stances, opts)` (trade-off triangle: 3 chosen corners, weighted-centroid
+marker; weights prioritize 1.0 / balance 0.28 / sacrifice 0.04 so a prioritized corner pulls the
+marker to it; `opts.small` for scenario/slide thumbnails; `chtStanceWarn` gives the "wish list /
+nothing sacrificed / all sacrificed" banner — evaluated over the 3 plotted stances),
 `chtRadarSVG` (alignment), `chtNpvCurveSVG` (NPV-vs-rate + IRR marker), `chtCumCashSVG`
-(cumulative cash flow + break-even marker). Deck/synopsis reuse these.
+(cumulative cash flow + break-even marker). Deck/synopsis reuse these — deck slides 1 & 4 render
+the primary triangle, and slide 4 renders the scenario triangles side-by-side for comparison.
 
 ### Deck + synopsis
 
@@ -394,8 +415,10 @@ built (meaningless for a local single file).
 
 `sanitiseCharter(p)` ([persist.js](src/core/persist.js), called from `sanitiseProjects`)
 fills gaps against `makeCharter()` and **migrates old data**: renames the old `marketing`
-function to `rnd` (keeping its data), builds `decision.stances` from scratch for
-triangle-era data, ensures every function has a `demands[]`. **A stale key in one sanitise
+function to `rnd` (keeping its data), builds `decision.stances` from scratch for legacy data,
+**back-fills `decision.points` (default 3 distinct dims) + `decision.scenarios[]` (each name/
+points[3]/stances{4}) for pre-triangle charters**, ensures every function has a `demands[]`.
+**A stale key in one sanitise
 list once made `sanitiseCharter` throw, which aborted `sanitiseProjects` → `loadState` and
 made ALL projects vanish.** So: (a) keep every function-key list in sync when renaming, and
 (b) the `sanitiseCharter(p)` call is wrapped in try/catch (bad charter → reset that one to
@@ -450,3 +473,12 @@ helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `
   volumeSaving; implied margin = price − adjusted cost − brandPremium. `dtcCompBarsSVG`
   stacks cost / margin / brand per row (Us computed from charter price + cascade current) so
   you see who wins on cost vs who charges a brand premium.
+- **Never full-`dtcRender()` on a keystroke.** These sections are tables of inputs, so
+  re-rendering `#dtc-body` on `oninput` destroys the focused field (→ one digit then focus +
+  scroll lost; re-rendering on `onchange` breaks tabbing too). Numeric setters instead call
+  **`dtcRefreshDerived()`**, which updates ONLY the computed outputs in place by id
+  (`#dtc-cascade-live`, `#dtc-wf-live`, `#dtc-comp-live`, `#dtc-push`, and per-row
+  `#dtc-gap-i`/`#dtc-cur-i`/`#dtc-cnt-i`/`#dtc-cadj-i`/`#dtc-cmrg-i`) — never the input
+  elements. Structural changes (add/remove/toggle/expand) still do a full `dtcRender`. Same
+  pattern as the charter's `chtFinRefresh`. Also: number spinners are hidden globally via
+  `.cht-in[type=number]{ appearance:textfield }` + `::-webkit-*-spin-button{ none }`.

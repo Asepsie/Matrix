@@ -372,12 +372,24 @@ export function sanitiseCharter(p){
                                                    c.financials.investment={items:[],amortUnits:null};
   if(!Array.isArray(c.financials.investment.items))c.financials.investment.items=[];
   if(c.financials.investment.amortUnits===undefined) c.financials.investment.amortUnits=null;
-  // Decision: ensure the 4 square stances exist (older data used the triangle).
+  // Decision: ensure the 4 stances exist (the canonical primary trade-off).
   if(!c.decision.stances||typeof c.decision.stances!=='object') c.decision.stances={};
   for(const dim of ['features','time','productCost','projectCost'])
     if(!c.decision.stances[dim]) c.decision.stances[dim]='balance';
   if(!Array.isArray(c.decision.nonNegotiables))    c.decision.nonNegotiables=[];
   if(!Array.isArray(c.decision.flexibilities))     c.decision.flexibilities=[];
+  // Configurable-triangle fields (added later; back-fill for older charters).
+  const DIM4=['features','time','productCost','projectCost'];
+  const okPoints=p=>Array.isArray(p)&&p.length===3&&p.every(k=>DIM4.includes(k))&&new Set(p).size===3;
+  if(!okPoints(c.decision.points)) c.decision.points=['features','time','productCost'];
+  if(!Array.isArray(c.decision.scenarios)) c.decision.scenarios=[];
+  c.decision.scenarios=c.decision.scenarios.filter(s=>s&&typeof s==='object');
+  c.decision.scenarios.forEach(s=>{
+    if(typeof s.name!=='string') s.name='';
+    if(!okPoints(s.points)) s.points=['features','time','productCost'];
+    if(!s.stances||typeof s.stances!=='object') s.stances={};
+    for(const dim of DIM4) if(!s.stances[dim]) s.stances[dim]='balance';
+  });
 }
 export function flashSaved(){
   const el=G('save-indicator');if(!el)return;
