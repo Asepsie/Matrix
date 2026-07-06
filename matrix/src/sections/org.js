@@ -1620,14 +1620,14 @@ function orgRenderKPI(){
     byLoc[l]=(byLoc[l]||0)+1;
   });
 
-  var h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">📊 HEADCOUNT'
+  var h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+t('📊 HEADCOUNT')
     +'<button onclick="orgToggleKPI()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>';
 
   h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">'
     +'<div style="font-size:22px;font-weight:700;color:var(--accent)">'+active.length+'</div>'
-    +'<div style="font-size:10px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">TOTAL HEADCOUNT</div>'
-    +(vacants.length?'<div style="font-size:10px;color:#f1a435;margin-top:4px">◻ '+vacants.length+' open position'+(vacants.length>1?'s':'')+'</div>':'')
-    +(planningCount?'<div style="font-size:10px;color:var(--muted);margin-top:4px">⊘ excl. '+planningCount+' planning resource'+(planningCount>1?'s':'')+'</div>':'')
+    +'<div style="font-size:10px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">'+t('TOTAL HEADCOUNT')+'</div>'
+    +(vacants.length?'<div style="font-size:10px;color:#f1a435;margin-top:4px">◻ '+t('{n} open position(s)',{n:vacants.length})+'</div>':'')
+    +(planningCount?'<div style="font-size:10px;color:var(--muted);margin-top:4px">'+t('⊘ excl. {n} planning resource(s)',{n:planningCount})+'</div>':'')
     +'</div>';
 
   if(permActive.length){
@@ -1639,19 +1639,19 @@ function orgRenderKPI(){
     else if(!permM)ratioStr=permF+' : 0';
     else ratioStr='1 : '+(Math.round(permM/permF*100)/100);
     h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">'
-      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">⚥ F / M RATIO · PERMANENT</div>'
+      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">'+t('⚥ F / M RATIO · PERMANENT')+'</div>'
       +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">'
-      +'<span style="color:#f472b6">♀ Female</span>'
+      +'<span style="color:#f472b6">'+t('♀ Female')+'</span>'
       +'<span style="color:var(--text);font-weight:700">'+permF+' <span style="color:var(--muted);font-weight:400">('+femPct+'%)</span></span></div>'
       +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:5px">'
-      +'<span style="color:#60a5fa">♂ Male</span>'
+      +'<span style="color:#60a5fa">'+t('♂ Male')+'</span>'
       +'<span style="color:var(--text);font-weight:700">'+permM+' <span style="color:var(--muted);font-weight:400">('+malePct+'%)</span></span></div>'
       +'<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border)">'
       +(femPct?'<div style="width:'+femPct+'%;background:#f472b6"></div>':'')
       +(malePct?'<div style="width:'+malePct+'%;background:#60a5fa"></div>':'')
       +'</div>'
-      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--accent);margin-top:6px;text-align:center">F : M = '+ratioStr+'</div>'
-      +'<div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">'+permActive.length+' permanent'+(permKnown<permActive.length?' · '+(permActive.length-permKnown)+' undisclosed':'')+'</div>'
+      +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--accent);margin-top:6px;text-align:center">'+t('F : M =')+' '+ratioStr+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">'+t('{n} permanent',{n:permActive.length})+(permKnown<permActive.length?' · '+t('{n} undisclosed',{n:permActive.length-permKnown}):'')+'</div>'
       +'</div>';
   }
 
@@ -1666,7 +1666,7 @@ function orgRenderKPI(){
     return a.localeCompare(b);
   });
   if(senKeys.length){
-    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px">BY SENIORITY</div>';
+    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px">'+t('BY SENIORITY')+'</div>';
     senKeys.forEach(function(sn){
       var sv=bySeniority[sn];
       var pct=active.length?Math.round(sv.count/active.length*100):0;
@@ -1676,20 +1676,20 @@ function orgRenderKPI(){
       if(sn==='Not set')snCol='var(--muted)';
       h+='<div style="margin-bottom:4px">'
         +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
-        +'<span style="color:'+snCol+'">'+escH(sn)+'</span>'
+        +'<span style="color:'+snCol+'">'+escH(sn==='Not set'?t('Not set'):sn)+'</span>'
         +'<span style="font-weight:700;color:var(--text)">'+sv.count+(sv.vacancies?' <span style="color:#f1a435">+'+sv.vacancies+'◻</span>':'')+'</span></div>'
         +'<div style="background:var(--border);border-radius:2px;height:4px">'
         +'<div style="background:'+snCol+';width:'+pct+'%;height:4px;border-radius:2px"></div></div></div>';
     });
   }
 
-  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:10px 0 5px">BY GROUP</div>';
+  h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:10px 0 5px">'+t('BY GROUP')+'</div>';
   Object.entries(byGroup).sort(function(a,b){return b[1].count-a[1].count;}).forEach(function(entry){
     var k=entry[0],v=entry[1];
     var pct2=active.length?Math.round(v.count/active.length*100):0;
     h+='<div style="margin-bottom:4px">'
       +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
-      +'<span style="color:'+v.color+'">'+escH(k)+'</span>'
+      +'<span style="color:'+v.color+'">'+escH(k==='Ungrouped'?t('Ungrouped'):k)+'</span>'
       +'<span style="color:var(--text)">'+v.count+(v.vacancies?' <span style="color:#f1a435">+'+v.vacancies+'◻</span>':'')+'</span></div>'
       +'<div style="background:var(--border);border-radius:2px;height:4px">'
       +'<div style="background:'+v.color+';width:'+pct2+'%;height:4px;border-radius:2px"></div></div></div>';
@@ -1697,13 +1697,13 @@ function orgRenderKPI(){
 
   var locEntries=Object.entries(byLoc).sort(function(a,b){return b[1]-a[1];});
   if(locEntries.length){
-    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:10px 0 5px">BY LOCATION</div>';
+    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:10px 0 5px">'+t('BY LOCATION')+'</div>';
     locEntries.forEach(function(entry){
       var l=entry[0],n=entry[1];
       var pct3=active.length?Math.round(n/active.length*100):0;
       h+='<div style="margin-bottom:4px">'
         +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
-        +'<span style="color:var(--text)">'+escH(l)+'</span>'
+        +'<span style="color:var(--text)">'+escH(l==='Unknown'?t('Unknown'):l)+'</span>'
         +'<span style="color:var(--text)">'+n+' <span style="color:var(--muted)">('+pct3+'%)</span></span></div>'
         +'<div style="background:var(--border);border-radius:2px;height:4px">'
         +'<div style="background:var(--accent2);width:'+pct3+'%;height:4px;border-radius:2px"></div></div></div>';
@@ -1711,12 +1711,12 @@ function orgRenderKPI(){
   }
 
   if(vacants.length){
-    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#f1a435;letter-spacing:.06em;margin:10px 0 5px">◻ OPEN POSITIONS</div>';
+    h+='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#f1a435;letter-spacing:.06em;margin:10px 0 5px">'+t('◻ OPEN POSITIONS')+'</div>';
     vacants.forEach(function(v){
       var mgr=v.idcard&&v.idcard.reportsTo?engineers.find(function(e){return String(e.id)===String(v.idcard.reportsTo);}):null;
       h+='<div style="background:rgba(241,164,53,0.06);border:1px solid rgba(241,164,53,0.2);border-radius:4px;padding:6px 8px;margin-bottom:4px">'
         +'<div style="font-size:11px;font-weight:600;color:#f1a435">'+escH(v.name)+'</div>'
-        +(mgr?'<div style="font-size:10px;color:var(--muted)">Reports to: '+escH(mgr.name)+'</div>':'')
+        +(mgr?'<div style="font-size:10px;color:var(--muted)">'+t('Reports to:')+' '+escH(mgr.name)+'</div>':'')
         +'</div>';
     });
   }

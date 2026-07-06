@@ -502,11 +502,13 @@ Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded **firs
 > [I18N.md](I18N.md) — read that to continue the work.** This section is the durable design
 > rationale only.
 
-Done so far (263 keys, all translated): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
+Done so far (396 keys, all translated): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
 first-run, Help) · Phase 2 partial (matrix canvas, Roster + engineer card, Resources period
-header, Resource plan, org-chart header/tools/dialogs). Remaining: org KPI/node/context-menus,
-dashboard, nine-box, DISC, analytics, portfolio, charter, dtc, skills, timeline, development;
-then Phase 3 (SVG labels + `i18nNum`/`i18nDate` wiring). See I18N.md.
+header, Resource plan, org-chart header/tools/dialogs, org headcount-KPI panel, cost dashboard
+`renderResDashboard`). Remaining: dashboard.js leftovers (replacement finder, add-resource
+modal, PDF-export print doc), org node/context-menus, nine-box, DISC, analytics, portfolio,
+charter, dtc, skills, timeline, development; then Phase 3 (SVG labels + `i18nNum`/`i18nDate`
+wiring). See I18N.md.
 
 **Load order:** `core/i18n.js` is the **first** file in `JS_FILES` (before `data/model.js`
 and `core/globals.js`) so `t()` is defined for every later file — including globals, whose
