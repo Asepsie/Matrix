@@ -55,7 +55,11 @@
       "Bash(grep -vE \"^\\(DEFAULT LANDING VIEW|CHARTER PROJECT PICKER|SAVE|CANCEL|CLOSE|RESET ALL|Card hub|Dropdown|Auto-hide|COLLAPSED|Width of|Interface|The view|How you pick|⚙ SETTINGS|👋|Where would|Roster —|\\\\\\(recommended\\\\\\)|Portfolio matrix —|⌨|WHAT IS|NAVIGATION|Open this|Close any|Open Summary|Open Compare|Open Resource|Open Org|Y-AXIS MODE|Switch to|PROJECTS|New project|Delete selected|Edit selected|Toggle selected|DRAWING TOOLS|Select / move|Line tool|Dashed line|Arrow tool|Text annotation|^VIEW$|Zoom in|Reset zoom|Open Snapshots|Export JSON|⚠ DANGER|Reset all\\)\")",
       "Bash(rm -f \"/c/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1191fd18-f328-436f-97cc-acbaaf86dad3/scratchpad/list-missing.mjs\")",
       "Bash(node \"/c/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1191fd18-f328-436f-97cc-acbaaf86dad3/scratchpad/list-missing.mjs\")",
-      "Bash(grep -nE \"'[A-Z][a-z].{3,}'|>[A-Z][a-z].{3,}<\" src/sections/roster.js)"
+      "Bash(grep -nE \"'[A-Z][a-z].{3,}'|>[A-Z][a-z].{3,}<\" src/sections/roster.js)",
+      "Bash(awk '/id=\"org-overlay\"/,/id=\"org-svg\"/' src/index.html)",
+      "Bash(grep -nE \"innerHTML|textContent|'[A-Z][a-z]{3,}|>[A-Z][a-z]{3,}\" src/sections/org.js)",
+      "Bash(grep -oE \"'[^']{4,}'|\\\\\"[^\\\\\"]{4,}\\\\\"\")",
+      "Bash(grep -E \"SNAP: ON|ARROWS: OFF|WHITE: ON|DETAILS: ON|▭ BG|▭ FG$\")"
     ]
   }
 }

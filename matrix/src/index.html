@@ -837,31 +837,31 @@
 
     <!-- ROW 1: Title · View controls · Close -->
     <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;flex-wrap:nowrap;overflow-x:auto">
-      <h2 style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.08em;white-space:nowrap;margin-right:4px">🗂 ORG CHART</h2>
+      <h2 style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.08em;white-space:nowrap;margin-right:4px" data-i18n="🗂 ORG CHART">🗂 ORG CHART</h2>
       <select id="org-filter-grp" onchange="renderOrgChart()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none;max-width:130px">
-        <option value="">All Groups</option>
+        <option value="" data-i18n="All Groups">All Groups</option>
       </select>
-      <button class="sm primary" onclick="orgAddRoot()" title="Add a new root-level person">+ PERSON</button>
-      <button class="sm" onclick="orgAddVacancyRoot()" title="Add open position" style="border-color:#f1a435;color:#f1a435">◻ VACANCY</button>
+      <button class="sm primary" onclick="orgAddRoot()" data-i18n-title="Add a new root-level person" title="Add a new root-level person" data-i18n="+ PERSON">+ PERSON</button>
+      <button class="sm" onclick="orgAddVacancyRoot()" data-i18n-title="Add open position" title="Add open position" style="border-color:#f1a435;color:#f1a435" data-i18n="◻ VACANCY">◻ VACANCY</button>
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
-      <button class="sm" onclick="orgZoom(1.2)" title="Zoom in">＋</button>
-      <button class="sm" onclick="orgZoom(0.8)" title="Zoom out">－</button>
-      <button class="sm" onclick="orgResetView()" title="Fit to screen">⊡ FIT</button>
-      <button class="sm" onclick="_orgPositions={};renderOrgChart()" title="Reset manual positions to auto-layout">⟳ AUTO</button>
-      <button class="sm" onclick="orgToggleKPI()" id="org-kpi-btn" title="Headcount KPIs">📊 KPI</button>
-      <button class="sm" id="org-snap-btn" onclick="orgToggleSnap()" title="Toggle 40px grid snap">⊞ SNAP: OFF</button>
+      <button class="sm" onclick="orgZoom(1.2)" data-i18n-title="Zoom in" title="Zoom in">＋</button>
+      <button class="sm" onclick="orgZoom(0.8)" data-i18n-title="Zoom out" title="Zoom out">－</button>
+      <button class="sm" onclick="orgResetView()" data-i18n-title="Fit to screen" title="Fit to screen" data-i18n="⊡ FIT">⊡ FIT</button>
+      <button class="sm" onclick="_orgPositions={};renderOrgChart()" data-i18n-title="Reset manual positions to auto-layout" title="Reset manual positions to auto-layout" data-i18n="⟳ AUTO">⟳ AUTO</button>
+      <button class="sm" onclick="orgToggleKPI()" id="org-kpi-btn" data-i18n-title="Headcount KPIs" title="Headcount KPIs" data-i18n="📊 KPI">📊 KPI</button>
+      <button class="sm" id="org-snap-btn" onclick="orgToggleSnap()" data-i18n-title="Toggle 40px grid snap" title="Toggle 40px grid snap" data-i18n="⊞ SNAP: OFF">⊞ SNAP: OFF</button>
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
-      <button class="sm" id="org-arrows-btn" onclick="orgToggleArrows()" title="Show/hide hierarchy arrows">↗ ARROWS: ON</button>
-      <button class="sm" id="org-light-btn" onclick="orgToggleLight()" title="White presentation theme + straight arrows">☀ WHITE: OFF</button>
-      <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" title="Show nine-box rating &amp; recommended next move on each card">◔ DETAILS: OFF</button>
+      <button class="sm" id="org-arrows-btn" onclick="orgToggleArrows()" data-i18n-title="Show/hide hierarchy arrows" title="Show/hide hierarchy arrows" data-i18n="↗ ARROWS: ON">↗ ARROWS: ON</button>
+      <button class="sm" id="org-light-btn" onclick="orgToggleLight()" data-i18n-title="White presentation theme + straight arrows" title="White presentation theme + straight arrows" data-i18n="☀ WHITE: OFF">☀ WHITE: OFF</button>
+      <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" data-i18n-title="Show nine-box rating & recommended next move on each card" title="Show nine-box rating &amp; recommended next move on each card" data-i18n="◔ DETAILS: OFF">◔ DETAILS: OFF</button>
 
       <div style="flex:1"></div>
-      <button class="sm" onclick="orgExportSVG()" title="Download SVG">↓ SVG</button>
-      <button class="sm" onclick="orgExportPNG()" title="Download PNG">↓ PNG</button>
+      <button class="sm" onclick="orgExportSVG()" data-i18n-title="Download SVG" title="Download SVG">↓ SVG</button>
+      <button class="sm" onclick="orgExportPNG()" data-i18n-title="Download PNG" title="Download PNG">↓ PNG</button>
 
 
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
-      <button onclick="closeOrgChart()" style="font-weight:600;padding:4px 12px">✕ CLOSE</button>
+      <button onclick="closeOrgChart()" style="font-weight:600;padding:4px 12px" data-i18n="✕ CLOSE">✕ CLOSE</button>
     </div>
 
     <!-- ROW 2: Drawing tools · Selection · Annotations -->
@@ -869,25 +869,25 @@
 
       <!-- Selection tool (standalone — different from draw modes) -->
       <button class="sm" id="otool-select" onclick="orgSetTool('select')"
-        title="Select &amp; move nodes" style="border-color:var(--accent)">↖ SELECT</button>
+        data-i18n-title="Select & move nodes" title="Select &amp; move nodes" style="border-color:var(--accent)" data-i18n="↖ SELECT">↖ SELECT</button>
       <div style="width:1px;background:var(--border);height:14px;flex-shrink:0;margin:0 2px"></div>
 
       <!-- Draw mode group — visually bracketed -->
-      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DRAW:</span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" data-i18n="DRAW:">DRAW:</span>
       <div style="display:flex;gap:3px;border:1px solid var(--border);border-radius:5px;padding:2px 4px;background:rgba(0,0,0,.2)">
-        <button class="sm" id="otool-text"    onclick="orgSetTool('text')"    title="Click to place a text label">T</button>
-        <button class="sm" id="otool-rect"    onclick="orgSetTool('rect')"    title="Drag to draw a rectangle">▭</button>
-        <button class="sm" id="otool-ellipse" onclick="orgSetTool('ellipse')" title="Drag to draw an ellipse">○</button>
-        <button class="sm" id="otool-arrow"   onclick="orgSetTool('arrow')"   title="Drag to draw a free arrow">→</button>
+        <button class="sm" id="otool-text"    onclick="orgSetTool('text')"    data-i18n-title="Click to place a text label" title="Click to place a text label">T</button>
+        <button class="sm" id="otool-rect"    onclick="orgSetTool('rect')"    data-i18n-title="Drag to draw a rectangle" title="Drag to draw a rectangle">▭</button>
+        <button class="sm" id="otool-ellipse" onclick="orgSetTool('ellipse')" data-i18n-title="Drag to draw an ellipse" title="Drag to draw an ellipse">○</button>
+        <button class="sm" id="otool-arrow"   onclick="orgSetTool('arrow')"   data-i18n-title="Drag to draw a free arrow" title="Drag to draw a free arrow">→</button>
       </div>
-      <button class="sm" onclick="orgDeleteSelectedAnnot()" title="Delete selected shape (Del)">✕ DEL</button>
-      <button class="sm" onclick="orgAddLegend()" title="Add an editable, resizable legend card">▤ LEGEND</button>
+      <button class="sm" onclick="orgDeleteSelectedAnnot()" data-i18n-title="Delete selected shape (Del)" title="Delete selected shape (Del)" data-i18n="✕ DEL">✕ DEL</button>
+      <button class="sm" onclick="orgAddLegend()" data-i18n-title="Add an editable, resizable legend card" title="Add an editable, resizable legend card" data-i18n="▤ LEGEND">▤ LEGEND</button>
       <button class="sm" id="org-annot-bg-btn" onclick="orgToggleAnnotBg()"
-        title="FG = shapes on top (interactive) · BG = shapes behind nodes">▭ FG/BG</button>
+        data-i18n-title="FG = shapes on top (interactive) · BG = shapes behind nodes" title="FG = shapes on top (interactive) · BG = shapes behind nodes" data-i18n="▭ FG/BG">▭ FG/BG</button>
 
       <div style="flex:1"></div>
 
-      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);white-space:nowrap" id="org-sel-hint">
+      <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);white-space:nowrap" id="org-sel-hint" data-i18n="Click=select · Shift+click=add/remove · Drag=pan · Drag node=move or reassign">
         Click=select · Shift+click=add/remove · Drag=pan · Drag node=move or reassign
       </span>
     </div>

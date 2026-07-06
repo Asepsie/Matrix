@@ -75,7 +75,7 @@ function openOrgChart(){
   setActivePill('ORG CHART');
   var ov=G('org-overlay'); ov.style.display='flex';
   var sel=G('org-filter-grp');
-  sel.innerHTML='<option value="">All Groups</option>';
+  sel.innerHTML='<option value="">'+t('All Groups')+'</option>';
   engGroups.forEach(function(g){
     var o=document.createElement('option');
     o.value=g.id; o.textContent=g.name; sel.appendChild(o);
@@ -577,7 +577,7 @@ function orgBindGlobalEvents(){
       var ed=+editLvl.dataset.editLevel;
       var _DEFS=['Executive','Director','Manager','Senior','Individual'];
       var cur=_orgLevelNames[ed]||_DEFS[ed]||'Level '+ed;
-      var newName=prompt('Rename level '+ed+' (currently "'+cur+'"):',cur);
+      var newName=prompt(t('Rename level {d} (currently "{cur}"):',{d:ed,cur:cur}),cur);
       if(newName!==null&&newName.trim()){_orgLevelNames[ed]=newName.trim();saveState();renderOrgChart();}
       e.stopPropagation();return;
     }
@@ -860,7 +860,7 @@ function orgBindGlobalEvents(){
     if(hit){
       _orgCtxId=+hit.dataset.hitid;
       var eng3=engineers.find(function(x){return x.id===_orgCtxId;});
-      G('org-ctx-label').textContent=eng3?eng3.name:'Person';
+      G('org-ctx-label').textContent=eng3?eng3.name:t('Person');
       G('org-arrow-ctx').style.display='none';
       var m=G('org-ctx-menu');
       m.style.left=Math.min(e.clientX,window.innerWidth-180)+'px';
@@ -913,7 +913,7 @@ function orgSetTool(tool){
 function orgToggleAnnotBg(){
   _orgAnnotsBg=!_orgAnnotsBg;
   var b=G('org-annot-bg-btn');
-  if(b){b.textContent='▭ '+(_orgAnnotsBg?'BG':'FG');
+  if(b){b.textContent=_orgAnnotsBg?t('▭ BG'):t('▭ FG');
     b.style.borderColor=_orgAnnotsBg?'var(--accent2)':'';
     b.style.color=_orgAnnotsBg?'var(--accent2)':'';
   }
@@ -923,7 +923,7 @@ function orgToggleAnnotBg(){
 function orgToggleArrows(){
   _orgShowArrows=!_orgShowArrows;
   var b=G('org-arrows-btn');
-  if(b){b.textContent='↗ ARROWS: '+(_orgShowArrows?'ON':'OFF');
+  if(b){b.textContent=_orgShowArrows?t('↗ ARROWS: ON'):t('↗ ARROWS: OFF');
     b.style.borderColor=_orgShowArrows?'':'var(--border)';
     b.style.color=_orgShowArrows?'':'var(--muted)';
   }
@@ -933,7 +933,7 @@ function orgToggleArrows(){
 function orgToggleDetail(){
   _orgDetailMode=!_orgDetailMode;
   var b=G('org-detail-btn');
-  if(b){b.textContent='◔ DETAILS: '+(_orgDetailMode?'ON':'OFF');
+  if(b){b.textContent=_orgDetailMode?t('◔ DETAILS: ON'):t('◔ DETAILS: OFF');
     b.style.borderColor=_orgDetailMode?'var(--accent2)':'';
     b.style.color=_orgDetailMode?'var(--accent2)':'';
   }
@@ -943,7 +943,7 @@ function orgToggleDetail(){
 function orgToggleLight(){
   _orgLightMode=!_orgLightMode;
   var b=G('org-light-btn');
-  if(b){b.textContent='☀ WHITE: '+(_orgLightMode?'ON':'OFF');
+  if(b){b.textContent=_orgLightMode?t('☀ WHITE: ON'):t('☀ WHITE: OFF');
     b.style.borderColor=_orgLightMode?'var(--accent)':'';
     b.style.color=_orgLightMode?'var(--accent)':'';
   }
@@ -1034,7 +1034,7 @@ function orgClearSelection(){ _orgSelected.clear(); renderOrgChart(); }
 function orgToggleSnap(){
   _orgSnapGrid=!_orgSnapGrid;
   var btn=G('org-snap-btn');
-  if(btn){btn.textContent='⊞ SNAP: '+(_orgSnapGrid?'ON':'OFF');
+  if(btn){btn.textContent=_orgSnapGrid?t('⊞ SNAP: ON'):t('⊞ SNAP: OFF');
     btn.style.borderColor=_orgSnapGrid?'var(--accent)':'';
     btn.style.color=_orgSnapGrid?'var(--accent)':'';
   }
@@ -1050,8 +1050,8 @@ function orgUpdateSelHint(){
   var hint=G('org-sel-hint');
   if(!hint)return;
   hint.textContent=n>0
-    ?n+' selected — drag any selected node to move group · Esc to deselect'
-    :'Click=select · Shift+click=add · Drag empty=rubber band · Drag node=move group';
+    ?t('{n} selected — drag any selected node to move group · Esc to deselect',{n:n})
+    :t('Click=select · Shift+click=add · Drag empty=rubber band · Drag node=move group');
 }
 // draws the snap grid overlay
 function orgDrawGrid(svg,minX,maxX,minY,maxY){
@@ -1170,7 +1170,7 @@ function orgToggleCollapse(id){
 function orgAddDirectReport(managerId){
   orgHideHover();
   var mgr=engineers.find(function(e){return e.id===managerId;});
-  var name=prompt('New direct report name'+(mgr?' (reporting to '+mgr.name+')':'')+':\n(Leave blank to cancel)');
+  var name=prompt(t('New direct report name')+(mgr?' ('+t('reporting to')+' '+mgr.name+')':'')+':\n'+t('(Leave blank to cancel)'));
   if(!name||!name.trim())return;
   var newEng={
     id:nextEngId++, name:name.trim(), monthlyCost:8000,
@@ -1187,7 +1187,7 @@ function orgAddDirectReport(managerId){
 }
 // prompts for and adds a new root-level person
 function orgAddRoot(){
-  var name=prompt('New person name:\n(Leave blank to cancel)');
+  var name=prompt(t('New person name:')+'\n'+t('(Leave blank to cancel)'));
   if(!name||!name.trim())return;
   var newEng={
     id:nextEngId++, name:name.trim(), monthlyCost:8000,
@@ -1234,7 +1234,7 @@ function orgCtxMakeRoot(){
 
 // adds a new vacant (open position) root node
 function orgAddVacancyRoot(){
-  var role=prompt('Open position title (e.g. "Senior Engineer"):','Open Position');
+  var role=prompt(t('Open position title (e.g. "Senior Engineer"):'),'Open Position');
   if(!role||!role.trim())return;
   var newEng={id:nextEngId++,name:role.trim(),monthlyCost:0,
     groupId:null,role:'Open Position',location:'',
@@ -1247,7 +1247,7 @@ function orgAddVacancyRoot(){
 // adds a vacant position under the context node
 function orgCtxAddVacancy(){
   orgCtxClose();
-  var role=prompt('Open position title:','Open Position');
+  var role=prompt(t('Open position title:'),'Open Position');
   if(!role||!role.trim())return;
   var newEng={id:nextEngId++,name:role.trim(),monthlyCost:0,
     groupId:null,role:'Open Position',location:'',
@@ -1263,7 +1263,7 @@ function orgCtxDelete(){
   orgCtxClose();
   if(!_orgCtxId)return;
   var eng=engineers.find(function(e){return e.id===_orgCtxId;});
-  if(!confirm('Remove '+(eng?eng.name:'this person')+'?\nDirect reports will become root nodes.'))return;
+  if(!confirm(t('Remove {who}?',{who:eng?eng.name:t('this person')})+'\n'+t('Direct reports will become root nodes.')))return;
   engineers.forEach(function(e){
     if(String((e.idcard||{}).reportsTo)===String(_orgCtxId))e.idcard.reportsTo='';
   });
