@@ -111,7 +111,7 @@ export function multiSelectHTML(id,items,sel,onChangeFn,placeholder){
     +'background:var(--surface);border:1px solid var(--border);border-radius:6px;'
     +'box-shadow:0 8px 24px rgba(0,0,0,.6);min-width:200px;max-height:280px;overflow-y:auto;padding:4px 0;margin-top:3px">'
     +'<label style="display:flex;align-items:center;gap:7px;padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:3px;white-space:nowrap;font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--muted)">'
-    +'<input type="checkbox" id="ms-all-'+id+'" onchange="multiSelectAll(\''+id+'\',\''+onChangeFn+'\')" style="accent-color:var(--accent);width:13px;height:13px"> ALL / NONE'
+    +'<input type="checkbox" id="ms-all-'+id+'" onchange="multiSelectAll(\''+id+'\',\''+onChangeFn+'\')" style="accent-color:var(--accent);width:13px;height:13px"> '+t('ALL / NONE')
     +'</label>'
     +opts
     +'</div></div>';
