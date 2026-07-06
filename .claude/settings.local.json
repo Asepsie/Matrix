@@ -44,7 +44,10 @@
       "Bash(grep -n \"anBoxPlot\\(groups, { ref\" src/sections/analytics.js)",
       "Bash(grep -n \"anBoxPlot\\(groups, { ref: 100\" src/sections/analytics.js)",
       "Bash(cd /c/Users/pyro3/Documents/Matrix/matrix && node build.js && cp demo/matrix_demo_backup.json dist/matrix_demo_backup.json)",
-      "Bash(ls \"reference document/\" && cp \"/c/Users/pyro3/Downloads/matrix-nav-rail-mockup \\(2\\).html\" \"reference document/matrix-nav-rail-mockup.html\" && echo \"copied\")"
+      "Bash(ls \"reference document/\" && cp \"/c/Users/pyro3/Downloads/matrix-nav-rail-mockup \\(2\\).html\" \"reference document/matrix-nav-rail-mockup.html\" && echo \"copied\")",
+      "Bash(ls -la dist/)",
+      "Bash(ls -la matrix/dist/)",
+      "Bash(sort -t: -k2 -rn)"
     ]
   }
 }

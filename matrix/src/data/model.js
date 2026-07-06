@@ -79,6 +79,7 @@ export function makeProject(overrides = {}) {
     eta:         '',
     status:      '',
     sector:      '',
+    tacticalIntent: '',   // strategic posture: '' | Defend | Grow | Adapt | Diversify
     impactEur:   null,
     costSource:  'plan',
     planCost:    0,

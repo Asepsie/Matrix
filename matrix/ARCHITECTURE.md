@@ -233,9 +233,10 @@ canvas is no longer the front door — it's one view under WORK.
   in one place and the whole shell reflows. `--rail-open` (238px) is the pinned/hover width.
   `railApplyWidth()` writes `--rail` on `documentElement`.
 - **Overlay insets.** The seven full-screen overlays are inset `left:var(--rail)` so the rail
-  stays visible. help/compare/summary/res/snap are inset in **nav.css**; `#org-overlay` and
-  `#brief-overlay` are **inline-styled `position:fixed` in index.html** (inline beats the
-  stylesheet) so they're inset *there*. Any NEW full-screen overlay must be inset from the left.
+  stays visible. help/compare/summary/res/snap **and `#brief-overlay`** are inset in **nav.css**
+  (`#brief-overlay` is a rail view now — see below); `#org-overlay` is **inline-styled
+  `position:fixed` in index.html** (inline beats the stylesheet) so it's inset *there*. Any NEW
+  full-screen overlay must be inset from the left.
 - **Z-index ladder.** view overlays `z400` < rail `z1000` < rail-spawned modals
   (`#settings-overlay`, `#landing-firstrun`) `z1100`. A rail-spawned modal opened while a
   view overlay is up MUST sit above `z400` or it renders hidden behind it.
@@ -283,6 +284,12 @@ res-header" is obsolete — the rail owns navigation now.)
   €/ROI/gate/sector/risk plus treemap, cost-over-time burn, and a distribution panel
   (histogram + Gaussian / Pareto). All `pf`-prefixed; reuses `getMonthRange` / `_allocCost` /
   `_engByIdMap`. Interactive sub-controls re-render only their own wrapper via `pfSet`.
+- **Spend-map treemap has two axes of control** (`_pfState.treemapBy` = `cost|revenue`,
+  `_pfState.treemapGroup` = `none|intent`). `intent` mode = a **nested** treemap:
+  outer cells are `project.tacticalIntent` groups (`pfTreemapGroupedSvg`, squarified twice —
+  groups then members), inner cells stay ROI-rank-coloured. `PROJECT_INTENTS` /
+  `PROJECT_INTENT_COLORS` (globals.js) are the shared source for the 4 postures
+  (Defend / Grow / Adapt / Diversify); unassigned projects fall into an "Unassigned" group.
 - **Derived project revenue.** `projRevenueM(p)` / `projRevenueIsDefault(p)`
   ([helpers.js](src/core/helpers.js)) = user-entered `impactEur` (in **M€**) when present,
   else a fallback `impact(y) + enabler(ena)`. It's a **pure computed accessor — it never

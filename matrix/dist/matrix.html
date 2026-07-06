@@ -579,10 +579,47 @@ body{padding-left:var(--rail);}
 /* ── OVERLAY INSETS ─────────────────────────────────────
    Keep the rail visible while any full-screen overlay is open. These overlays
    are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
-   wins. (#org-overlay and #brief-overlay are styled inline in index.html and are
-   inset there instead.) */
+   wins. (#org-overlay is styled inline in index.html and is inset there instead.) */
 #help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
   left:var(--rail);
+}
+
+/* ── PROJECT BRIEF (WORK › Project brief rail view) ──────
+   A rail-inset panel (like Design-to-cost / Trade-off decision), NOT a modal.
+   z-index:400 = view level, so rail-spawned modals (Settings) still sit above. */
+#brief-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#brief-overlay.show{ display:flex; }
+#brief-header{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#brief-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#brief-header button{ margin-left:4px; }
+#brief-body{ flex:1; overflow:auto; padding:18px 22px; }
+.brief-wrap{ max-width:1000px; }
+.brief-intro{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+.brief-sec{
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; margin-bottom:16px;
+}
+.brief-sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.brief-sec-title{
+  font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted);
+  letter-spacing:.06em; display:block; margin-bottom:10px;
+}
+.brief-sec-head .brief-sec-title{ margin-bottom:0; flex:1; }
+.brief-sec-tools{ display:flex; gap:6px; }
+.brief-proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px; }
+.brief-2col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+@media (max-width:720px){ .brief-2col{ grid-template-columns:1fr; } }
+.brief-opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
+.brief-opt{ display:flex; align-items:center; gap:7px; font-size:11px; cursor:pointer; }
+.brief-month{
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-family:IBM Plex Mono,monospace; font-size:11px; padding:3px 7px; border-radius:4px;
 }
 
 /* Rail-spawned modals (Settings, first-run landing) must sit ABOVE the full-screen
@@ -705,7 +742,13 @@ body{padding-left:var(--rail);}
 .cht-banner{ max-width:900px; margin:0 0 14px; padding:9px 12px; border-radius:6px; font-size:12px; line-height:1.4; }
 .cht-banner.bad{ background:rgba(241,67,53,.12); border:1px solid var(--danger); color:var(--danger); }
 .cht-banner.warn{ background:rgba(241,164,53,.12); border:1px solid var(--warn); color:var(--warn); }
+.cht-banner.ok{ background:rgba(91,229,200,.10); border:1px solid var(--accent2); color:var(--accent2); }
 .cht-banner b{ color:inherit; }
+
+/* Section headers + sub-copy (Trade-off decision layout structure) */
+.cht-sec-h{ font-family:IBM Plex Mono,monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--accent); margin:26px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); max-width:1000px; }
+.cht-sub{ font-size:11px; color:var(--muted); line-height:1.5; margin:-4px 0 12px; max-width:900px; }
 
 /* Demands board */
 .cht-boards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; max-width:1040px; }
@@ -868,7 +911,7 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 /* trade-off triangles: primary + comparison scenarios, side by side */
 .cht-tri-grid{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
 .cht-scenario{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:12px; width:320px; box-sizing:border-box; }
+  padding:12px; width:384px; box-sizing:border-box; }
 .cht-scenario-primary{ border-color:var(--accent); }
 .cht-scenario-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; min-height:26px; }
 .cht-scenario-name{ font-weight:600; color:var(--accent); font-size:13px; }
@@ -1078,6 +1121,15 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
         <select id="e-section"><option value="">— No section —</option></select>
       </div>
       <div class="field"><label>SECTOR / DOMAIN</label><input type="text" id="e-sector" placeholder="e.g. HVAC, Power, Digital"></div>
+      <div class="field"><label>TACTICAL INTENT</label>
+        <select id="e-intent" title="Strategic posture — Defend an existing position, Grow a winner, Adapt to change, or Diversify into new ground">
+          <option value="">— Unassigned —</option>
+          <option value="Defend">Defend</option>
+          <option value="Grow">Grow</option>
+          <option value="Adapt">Adapt</option>
+          <option value="Diversify">Diversify</option>
+        </select>
+      </div>
       <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
       <div class="field"><label>NOTE</label><input type="text" id="e-note" placeholder="Optional"></div>
       <div class="field"><label>COLOR</label>
@@ -1377,6 +1429,7 @@ function makeProject(overrides = {}) {
     eta:         '',
     status:      '',
     sector:      '',
+    tacticalIntent: '',   // strategic posture: '' | Defend | Grow | Adapt | Diversify
     impactEur:   null,
     costSource:  'plan',
     planCost:    0,
@@ -1574,6 +1627,12 @@ const SNAP_IDB='EIM_Snapshots', SNAP_IDB_STORE='snaps';
 /* ── Canvas layout constants ── */
 const PAD={l:38,r:14,t:14,b:26};
 const Y_LABELS={impact:'IMPACT',visibility:'VISIBILITY',enabler:'ENABLER VALUE'};
+
+/* ── Project tactical intent (strategic posture) ──
+   Defend = protect an existing position; Grow = scale a winner; Adapt = adjust to
+   change; Diversify = expand into new ground. Empty = unassigned. */
+const PROJECT_INTENTS=['Defend','Grow','Adapt','Diversify'];
+const PROJECT_INTENT_COLORS={Defend:'#5be5c8',Grow:'#c8f135',Adapt:'#f1a435',Diversify:'#a78bfa',Unassigned:'#6b6b78'};
 
 /* ── Org chart constants ── */
 const ORG_NW=206, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=96;
@@ -2464,6 +2523,7 @@ function sanitiseProjects(){
     if(p.visible==null)      p.visible=true;
     if(p.sectionId===undefined) p.sectionId=null;
     if(!p.sector)            p.sector='';
+    if(p.tacticalIntent==null) p.tacticalIntent='';
     if(p.impactEur===undefined) p.impactEur=null;
     if(p.planCost===undefined)  p.planCost=0;
     if(!p.costSource)        p.costSource='plan';
@@ -4142,7 +4202,7 @@ function populateEditor(){
   SV('e-name',p.name);SV('e-x',p.x);SV('e-y',p.y);
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
-  SV('e-sector',p.sector||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
+  SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
   // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
   var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
   G('e-impacteur').placeholder=(_rd!=null)?('default '+_rd+' = impact+enabler'):'e.g. 2.5';
@@ -4165,6 +4225,7 @@ function saveEdit(){
   p.note=V('e-note');p.color=V('e-color');
   p.currentGate=V('e-current-gate');p.gate=V('e-gate');p.eta=V('e-eta');
   p.sector=V('e-sector');
+  p.tacticalIntent=V('e-intent');
   p.impactEur=V('e-impacteur')!==''?+V('e-impacteur'):null;
   const sid=V('e-section');p.sectionId=sid?+sid:null;
   renderList();render();saveState();
@@ -12810,23 +12871,25 @@ function exportProfilesDashboardSVG(){
 }
 
 /* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
-// opens the project-brief export modal with the project checklist
+// opens the project-brief rail view (WORK › Project brief) with the project checklist
 function openProjectBriefExport(){
   var list=G('brief-proj-list');
+  if(!list)return;                                  // markup lives after {{JS}} — guard at boot
   list.innerHTML='';
-  var visible=projects.filter(function(p){return p.visible!==false;});
   projects.forEach(function(p){
     var isVis=p.visible!==false;
-    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;'
+    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:6px 9px;'
       +'border-radius:5px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid var(--border)">'
       +'<input type="checkbox" data-pid="'+p.id+'"'+(isVis?' checked':'')+'>'
       +'<span style="width:10px;height:10px;border-radius:50%;background:'+p.color+';flex-shrink:0"></span>'
-      +'<span style="font-size:11px;flex:1">'+escH(p.name)+'</span>'
-      +(p.sector?'<span style="font-size:10px;color:var(--muted)">'+escH(p.sector)+'</span>':'')
+      +'<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name)+'</span>'
+      +(p.sector?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+escH(p.sector)+'</span>':'')
       +'</label>';
   });
-  G('brief-overlay').style.display='flex';
+  var ov=G('brief-overlay'); if(ov) ov.classList.add('show');
 }
+// close the project-brief view (rail-highlight sync is added by railWrapClosers)
+function closeBrief(){ var o=G('brief-overlay'); if(o) o.classList.remove('show'); }
 
 // checks/unchecks all projects in the brief modal
 function briefSelectAll(val){
@@ -13200,7 +13263,6 @@ function exportProjectBrief(){
   if(!win){alert('Pop-up blocked — please allow pop-ups for this page.');return;}
   win.document.write(html);
   win.document.close();
-  G('brief-overlay').style.display='none';
 }
 
 // downloads the project brief as an HTML file
@@ -13220,7 +13282,6 @@ function exportProjectBriefHTML(){
   a.click();
   document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  G('brief-overlay').style.display='none';
 }
 /* ◄◄ END: sections/profiles.js ►► */
 
@@ -15642,6 +15703,7 @@ function pfBuildDataset(){
       cost:cost, avgFte:months.length?fteSum/months.length:0, rev:rev, revM:rev/1e6,
       rpnSum:rpnSum, rpnMax:rpnMax, completion:completion, msOverdue:msOverdue,
       gate:(p.currentGate||p.gate||'').trim(), sector:(p.sector||'').trim()||'—',
+      intent:(p.tacticalIntent||'').trim(),
       roi:cost>0?rev/cost:null, revDefault:revDefault
     };
   });
@@ -15829,14 +15891,14 @@ function pfRiskValue(ds){
 /* ══ INTERACTIVE SECTIONS (treemap · burn · distribution) ══════════════
    Small module state + a generic re-render router so each section's controls
    re-render only their own wrapper (no full-tab reflow, no scroll jump). */
-var _pfState={ treemapBy:'cost', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+var _pfState={ treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
 var PF_SEL='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer';
 
 // Set a control value and re-render just the affected section wrapper.
 function pfSet(key,val){
   _pfState[key]=(key==='distBins')?(+val):val;
   var el;
-  if(key==='treemapBy'){ el=G('pf-sec-treemap'); if(el) el.innerHTML=pfTreemapSection(); }
+  if(key==='treemapBy'||key==='treemapGroup'){ el=G('pf-sec-treemap'); if(el) el.innerHTML=pfTreemapSection(); }
   else if(key==='burnBy'){ el=G('pf-sec-burn'); if(el) el.innerHTML=pfBurnSection(); }
   else { el=G('pf-sec-dist'); if(el) el.innerHTML=pfDistSection(); }
 }
@@ -15877,13 +15939,64 @@ function pfDistFmt(metric,v){
 /* ── TREEMAP (squarified) — area = cost|revenue, color = ROI rank ── */
 function pfTreemapSection(ds){
   ds=ds||pfBuildDataset();
-  var by=_pfState.treemapBy;
+  var by=_pfState.treemapBy, grouped=_pfState.treemapGroup==='intent';
   var items=ds.map(function(d){ return {d:d, value:(by==='revenue'?d.rev:d.cost)}; }).filter(function(x){return x.value>0;});
-  var controls='<span style="display:flex;gap:6px">'
+  var controls='<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
     +pfToggle("pfSet('treemapBy','cost')",'Size: Cost',by==='cost')
-    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')+'</span>';
-  var inner=items.length?pfTreemapSvg(items):pfEmpty(by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.');
-  return pfSectionShell('SPEND MAP — treemap','Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.', controls, inner);
+    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')
+    +'<span style="width:1px;height:16px;background:var(--border);margin:0 3px"></span>'
+    +pfToggle("pfSet('treemapGroup','none')",'Flat',!grouped)
+    +pfToggle("pfSet('treemapGroup','intent')",'By tactical intent',grouped)+'</span>';
+  var empty=by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.';
+  var inner=!items.length?pfEmpty(empty):(grouped?pfTreemapGroupedSvg(items,by):pfTreemapSvg(items));
+  var hint=grouped
+    ? 'Grouped by tactical intent (Defend / Grow / Adapt / Diversify). Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank. Shows how '+(by==='revenue'?'value':'spend')+' splits across strategic postures.'
+    : 'Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.';
+  return pfSectionShell('SPEND MAP — treemap', hint, controls, inner);
+}
+// ROI-rank percentile fn shared by flat + grouped treemaps (green = best return).
+function pfRoiPctFn(items){
+  var rois=items.map(function(x){var d=x.d;return d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0);});
+  var sorted=rois.filter(function(v){return isFinite(v);}).slice().sort(function(a,b){return a-b;});
+  return function(v){ if(!isFinite(v))return 1; if(!sorted.length)return .5; var i=0; while(i<sorted.length&&sorted[i]<v)i++; return i/sorted.length; };
+}
+// Nested treemap: outer cells = tactical-intent groups (area = Σ member value),
+// inner cells = projects colored by ROI rank. Keeps the ROI legend meaningful
+// while showing how spend/value splits across strategic postures.
+function pfTreemapGroupedSvg(items,by){
+  var W=680,H=340,pct=pfRoiPctFn(items);
+  var order=PROJECT_INTENTS.concat(['Unassigned']);
+  var buckets={};
+  items.forEach(function(x){ var k=(x.d.intent||'').trim()||'Unassigned'; (buckets[k]=buckets[k]||[]).push(x); });
+  var groups=order.filter(function(k){return buckets[k]&&buckets[k].length;}).map(function(k){
+    var mem=buckets[k], val=mem.reduce(function(s,m){return s+m.value;},0);
+    return {intent:k, members:mem, value:val};
+  });
+  var groupRects=pfSquarify(groups.map(function(g){return {d:g,value:g.value};}),0,0,W,H);
+  var HEAD=17, GAP=3;
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  groupRects.forEach(function(gr){
+    var g=gr.d.d, gcol=PROJECT_INTENT_COLORS[g.intent]||'#6b6b78';
+    h+='<rect x="'+gr.x.toFixed(1)+'" y="'+gr.y.toFixed(1)+'" width="'+Math.max(0,gr.w-1).toFixed(1)+'" height="'+Math.max(0,gr.h-1).toFixed(1)+'" fill="'+gcol+'0d" stroke="'+gcol+'" stroke-width="1.2" rx="3"/>';
+    if(gr.w>60) h+='<text x="'+(gr.x+6).toFixed(1)+'" y="'+(gr.y+12).toFixed(1)+'" fill="'+gcol+'" font-size="9.5" font-weight="600">'+escH(g.intent.toUpperCase())+' · '+escH(pfEur(g.value))+'</text>';
+    var ix=gr.x+GAP, iy=gr.y+HEAD, iw=gr.w-2*GAP, ih=gr.h-HEAD-GAP;
+    if(iw>6&&ih>6){
+      pfSquarify(g.members,ix,iy,iw,ih).forEach(function(r){
+        var d=r.d.d, roi=d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0), col=pfRankColor(pct(roi));
+        var roiTxt=d.cost>0?(' · ROI '+(d.rev/d.cost>=10?Math.round(d.rev/d.cost):(d.rev/d.cost).toFixed(1))+'×'):'';
+        h+='<rect x="'+r.x.toFixed(1)+'" y="'+r.y.toFixed(1)+'" width="'+Math.max(0,r.w-1).toFixed(1)+'" height="'+Math.max(0,r.h-1).toFixed(1)+'" fill="'+col+'33" stroke="'+col+'" stroke-width="1" rx="2"><title>'+escH(d.name+' — '+g.intent+' — '+pfEur(d.rev)+' rev · '+pfEur(d.cost)+' cost'+roiTxt)+'</title></rect>';
+        if(r.w>54&&r.h>20){
+          var maxc=Math.floor(r.w/6);
+          h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+13).toFixed(1)+'" fill="var(--text)" font-size="9" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px">'+escH(d.name.length>maxc?d.name.slice(0,maxc-1)+'…':d.name)+'</text>';
+          if(r.h>34) h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+24).toFixed(1)+'" fill="var(--muted)" font-size="8">'+escH(pfEur(by==='revenue'?d.rev:d.cost))+'</text>';
+        }
+      });
+    }
+  });
+  h+='</svg>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>ROI rank:</span>'
+    +'<span style="color:#f14335">■ low</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ high</span></div>';
+  return h;
 }
 function pfTreemapSvg(items){
   var W=680,H=300;
@@ -17383,7 +17496,7 @@ function renderResActiveTab(){
  *   railRender      — (re)builds the rail scroll body + foot from RAIL_DOMAINS/RAIL_UTIL
  *   railDomainFor   — returns the domain object owning a given viewId
  *   railGo          — router: set activeView + route + refresh highlight/breadcrumb
- *   railAction      — fire an action (brief/snap/backup/restore/ai/help); no activeView change
+ *   railAction      — fire an action (snap/backup/restore/ai/help); no activeView change
  *   railDomClick    — collapsed: toggle flyout · pinned: expand accordion + go to first view
  *   railTogglePin   — pin (open, labelled accordion) / collapse (icon strip)
  *   railFlyEnter    — show the flyout for a domain (hover or tap, collapsed only)
@@ -17428,7 +17541,7 @@ var RAIL_DOMAINS = [
     {id:'charters',    label:'Financials analysis'},
     {id:'decision',    label:'Trade-off decision'},
     {id:'dtc',         label:'Design to cost'},
-    {id:'brief',       label:'Project brief', action:true},
+    {id:'brief',       label:'Project brief'},
   ]},
   { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
     {id:'skills',      label:'Skills matrix'},
@@ -17600,8 +17713,7 @@ function railRender(){
 var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
-// Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js);
-// #brief-overlay has no closer fn (inline modal) so it's hidden directly.
+// Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
 function closeAllOverlays(){
   if(typeof closeRes==='function')      closeRes();
   if(typeof closeOrgChart==='function') closeOrgChart();
@@ -17613,7 +17725,7 @@ function closeAllOverlays(){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
-  var b=G('brief-overlay'); if(b) b.style.display='none';
+  if(typeof closeBrief==='function')      closeBrief();
 }
 
 // Open the Resources overlay (if not already) and switch to the given tab.
@@ -17628,7 +17740,7 @@ function railOpenRes(tab){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
-  var b=G('brief-overlay'); if(b) b.style.display='none';
+  if(typeof closeBrief==='function')      closeBrief();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
 }
@@ -17644,6 +17756,7 @@ function railRoute(viewId){
   else if(viewId==='charters')chtOpenFinancials();
   else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
+  else if(viewId==='brief')   openProjectBriefExport();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -17651,7 +17764,7 @@ function railGo(ev,viewId){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
   var dom=railDomainFor(viewId); if(!dom) return;
   var view=dom.views.find(function(x){return x.id===viewId;});
-  if(view&&view.action){ railAction(viewId); return; }   // e.g. WORK › Project brief
+  if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
   activeView=viewId;
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
@@ -17664,8 +17777,7 @@ function railGo(ev,viewId){
 function railAction(id){
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
-  if(id==='brief')         openProjectBriefExport();
-  else if(id==='snap')     openSnap();
+  if(id==='snap')          openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();
   else if(id==='ai')       aiOpenChat();
@@ -17781,10 +17893,10 @@ function railChooseLanding(viewId){
    navigation), reset the rail to the base matrix surface so the highlight +
    breadcrumb stay truthful. Wraps the existing closers once at load; the
    railRouting guard prevents this firing during rail-driven navigation.
-   (Action overlays — snap/help/brief — never change activeView, so they are
+   (Action overlays — snap/help — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc','closeBrief'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){
@@ -18563,8 +18675,11 @@ function chtDecisionBody(c){
     ? `<div class="cht-banner bad">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''}: ${
         conflicts.map(x=>`${x.func} must-have on <b>${CHT_DIM_LABEL[x.dimension]}</b> (sacrificed)`).join('; ')}. Re-negotiate the stance or soften the demand.</div>`
     : '';
+  const okHTML = (!conflicts.length && !warn)
+    ? `<div class="cht-banner ok">✓ Consistent — the trade-off stance sacrifices nothing that a must-have demand depends on.</div>`
+    : '';
   const primary=`<div class="cht-scenario cht-scenario-primary">
-      <div class="cht-scenario-head"><span class="cht-scenario-name">Primary trade-off</span></div>
+      <div class="cht-scenario-head"><span class="cht-scenario-name">★ Primary trade-off</span></div>
       ${chtTriangleSVG(d.points,d.stances)}
       <div class="cht-scenario-ctl"><span class="cht-hl">PLOT</span>${chtPointPick(d.points,'chtPointSet')}</div>
       ${chtStanceGrid(d.stances,'chtStanceSet')}
@@ -18581,13 +18696,17 @@ function chtDecisionBody(c){
   const addBtn = d.scenarios.length<2
     ? `<button class="sm" onclick="chtScenAdd()">+ Add comparison scenario</button>`
     : '<span class="cht-muted" style="font-size:11px">Max 3 triangles (primary + 2 scenarios).</span>';
-  return `<div class="cht-note">The trade-off triangle — pick the 3 priorities that matter and set each stance. You can't prioritize everything: sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop. Add up to 2 named scenarios to compare options side by side.</div>
+  return `<div class="cht-note">Pick the 3 priorities that matter and set each stance — you can't prioritize everything, so sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop. Add up to 2 named scenarios to compare options side by side.</div>
+    ${conflictHTML}${warnHTML}${okHTML}
+    <div class="cht-sec-h">Trade-off triangles</div>
     <div class="cht-tri-grid">${primary}${scen}</div>
-    <div style="margin:10px 0 16px">${addBtn}</div>
-    ${warnHTML}${conflictHTML}
+    <div style="margin:12px 0 4px">${addBtn}</div>
+    <div class="cht-sec-h">Cross-functional alignment</div>
     <div class="cht-vizrow">
-      <div class="cht-viz"><div class="cht-chart-t">Cross-functional alignment</div>${chtRadarSVG(c)}</div>
+      <div class="cht-viz"><div class="cht-chart-t">Alignment radar — how aligned each function is (1–10)</div>${chtRadarSVG(c)}</div>
     </div>
+    <div class="cht-sec-h">Guardrails</div>
+    <div class="cht-sub">The hard lines and the give — what this project will not compromise, and where it can flex.</div>
     <div class="cht-form">
       ${chtListEditor('nonNegotiables','Non-negotiables','e.g. Must launch by Q3 2026')}
       ${chtListEditor('flexibilities','Flexibilities','e.g. Scope can shrink by 20%')}
@@ -19906,57 +20025,55 @@ railInit();   // render the persistent nav rail + land on the initial view
 </div>
 
 
-<!-- PROJECT BRIEF EXPORT MODAL -->
-<div id="brief-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-      <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">📄 EXPORT PROJECT BRIEF</h2>
-      <button onclick="G('brief-overlay').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
-    </div>
-    <div style="padding:16px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px">
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">SELECT PROJECTS</label>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
-          <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
-          <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
+<!-- PROJECT BRIEF (WORK › Project brief rail view) — panel, rail-inset -->
+<div id="brief-overlay">
+  <div id="brief-header">
+    <span id="brief-title">📄 PROJECT BRIEF</span>
+    <div style="flex:1"></div>
+    <button class="sm primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
+    <button class="sm" onclick="exportProjectBriefHTML()">↓ HTML</button>
+    <button onclick="closeBrief()">✕ CLOSE</button>
+  </div>
+  <div id="brief-body">
+    <div class="brief-wrap">
+      <div class="brief-intro">Pick the projects and the sections to include, then export a print-ready brief as PDF or a standalone HTML file.</div>
+
+      <section class="brief-sec">
+        <div class="brief-sec-head">
+          <span class="brief-sec-title">SELECT PROJECTS</span>
+          <div class="brief-sec-tools">
+            <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
+            <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
+            <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
+          </div>
         </div>
-        <div id="brief-proj-list" style="display:flex;flex-direction:column;gap:4px;max-height:250px;overflow-y:auto"></div>
+        <div id="brief-proj-list" class="brief-proj-grid"></div>
+      </section>
+
+      <div class="brief-2col">
+        <section class="brief-sec">
+          <div class="brief-sec-title">SECTIONS TO INCLUDE</div>
+          <div class="brief-opts">
+            <label class="brief-opt"><input type="checkbox" id="brief-include-team" checked> Team allocation</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-risks"> Project risks</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-todos" checked> Open todos</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-milestones" checked> Milestones</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-actions" checked> Actions / Gantt</label>
+          </div>
+        </section>
+
+        <section class="brief-sec">
+          <div class="brief-sec-title">ALLOCATION PERIOD</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="month" id="brief-from" class="brief-month">
+            <span style="font-size:11px;color:var(--muted)">→</span>
+            <input type="month" id="brief-to" class="brief-month">
+            <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
+            <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
+          </div>
+          <div style="font-size:9px;color:var(--dim);margin-top:8px">Leave blank to include all allocation data.</div>
+        </section>
       </div>
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">OPTIONS</label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-team" checked> Include team allocation
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-risks"> Include project risks
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
-          <input type="checkbox" id="brief-include-todos" checked> Include open todos
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-milestones" checked> Include milestones
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
-          <input type="checkbox" id="brief-include-actions" checked> Include actions / Gantt
-        </label>
-      </div>
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">ALLOCATION PERIOD</label>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input type="month" id="brief-from" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
-          <span style="font-size:11px;color:var(--muted)">→</span>
-          <input type="month" id="brief-to" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
-          <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
-          <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
-        </div>
-        <div style="font-size:9px;color:var(--dim);margin-top:4px">Leave blank to include all allocation data.</div>
-      </div>
-    </div>
-    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <button class="primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
-      <button onclick="exportProjectBriefHTML()">↓ HTML</button>
-      <button onclick="G('brief-overlay').style.display='none'" style="margin-left:auto">CANCEL</button>
     </div>
   </div>
 </div>

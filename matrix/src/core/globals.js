@@ -10,6 +10,12 @@ export const SNAP_IDB='EIM_Snapshots', SNAP_IDB_STORE='snaps';
 export const PAD={l:38,r:14,t:14,b:26};
 export const Y_LABELS={impact:'IMPACT',visibility:'VISIBILITY',enabler:'ENABLER VALUE'};
 
+/* ── Project tactical intent (strategic posture) ──
+   Defend = protect an existing position; Grow = scale a winner; Adapt = adjust to
+   change; Diversify = expand into new ground. Empty = unassigned. */
+export const PROJECT_INTENTS=['Defend','Grow','Adapt','Diversify'];
+export const PROJECT_INTENT_COLORS={Defend:'#5be5c8',Grow:'#c8f135',Adapt:'#f1a435',Diversify:'#a78bfa',Unassigned:'#6b6b78'};
+
 /* ── Org chart constants ── */
 export const ORG_NW=206, ORG_NH=76, ORG_HGAP=30, ORG_VGAP=96;
 export const ORG_GRID=40;

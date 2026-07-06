@@ -17,7 +17,7 @@
  *   railRender      — (re)builds the rail scroll body + foot from RAIL_DOMAINS/RAIL_UTIL
  *   railDomainFor   — returns the domain object owning a given viewId
  *   railGo          — router: set activeView + route + refresh highlight/breadcrumb
- *   railAction      — fire an action (brief/snap/backup/restore/ai/help); no activeView change
+ *   railAction      — fire an action (snap/backup/restore/ai/help); no activeView change
  *   railDomClick    — collapsed: toggle flyout · pinned: expand accordion + go to first view
  *   railTogglePin   — pin (open, labelled accordion) / collapse (icon strip)
  *   railFlyEnter    — show the flyout for a domain (hover or tap, collapsed only)
@@ -62,7 +62,7 @@ var RAIL_DOMAINS = [
     {id:'charters',    label:'Financials analysis'},
     {id:'decision',    label:'Trade-off decision'},
     {id:'dtc',         label:'Design to cost'},
-    {id:'brief',       label:'Project brief', action:true},
+    {id:'brief',       label:'Project brief'},
   ]},
   { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
     {id:'skills',      label:'Skills matrix'},
@@ -234,8 +234,7 @@ function railRender(){
 var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
-// Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js);
-// #brief-overlay has no closer fn (inline modal) so it's hidden directly.
+// Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
 function closeAllOverlays(){
   if(typeof closeRes==='function')      closeRes();
   if(typeof closeOrgChart==='function') closeOrgChart();
@@ -247,7 +246,7 @@ function closeAllOverlays(){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
-  var b=G('brief-overlay'); if(b) b.style.display='none';
+  if(typeof closeBrief==='function')      closeBrief();
 }
 
 // Open the Resources overlay (if not already) and switch to the given tab.
@@ -262,7 +261,7 @@ function railOpenRes(tab){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
-  var b=G('brief-overlay'); if(b) b.style.display='none';
+  if(typeof closeBrief==='function')      closeBrief();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
 }
@@ -278,6 +277,7 @@ function railRoute(viewId){
   else if(viewId==='charters')chtOpenFinancials();
   else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
+  else if(viewId==='brief')   openProjectBriefExport();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -285,7 +285,7 @@ function railGo(ev,viewId){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
   var dom=railDomainFor(viewId); if(!dom) return;
   var view=dom.views.find(function(x){return x.id===viewId;});
-  if(view&&view.action){ railAction(viewId); return; }   // e.g. WORK › Project brief
+  if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
   activeView=viewId;
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
@@ -298,8 +298,7 @@ function railGo(ev,viewId){
 function railAction(id){
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
-  if(id==='brief')         openProjectBriefExport();
-  else if(id==='snap')     openSnap();
+  if(id==='snap')          openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();
   else if(id==='ai')       aiOpenChat();
@@ -415,10 +414,10 @@ function railChooseLanding(viewId){
    navigation), reset the rail to the base matrix surface so the highlight +
    breadcrumb stay truthful. Wraps the existing closers once at load; the
    railRouting guard prevents this firing during rail-driven navigation.
-   (Action overlays — snap/help/brief — never change activeView, so they are
+   (Action overlays — snap/help — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc','closeBrief'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){

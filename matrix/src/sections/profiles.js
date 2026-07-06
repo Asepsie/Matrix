@@ -789,23 +789,25 @@ function exportProfilesDashboardSVG(){
 }
 
 /* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
-// opens the project-brief export modal with the project checklist
+// opens the project-brief rail view (WORK › Project brief) with the project checklist
 function openProjectBriefExport(){
   var list=G('brief-proj-list');
+  if(!list)return;                                  // markup lives after {{JS}} — guard at boot
   list.innerHTML='';
-  var visible=projects.filter(function(p){return p.visible!==false;});
   projects.forEach(function(p){
     var isVis=p.visible!==false;
-    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;'
+    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:6px 9px;'
       +'border-radius:5px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid var(--border)">'
       +'<input type="checkbox" data-pid="'+p.id+'"'+(isVis?' checked':'')+'>'
       +'<span style="width:10px;height:10px;border-radius:50%;background:'+p.color+';flex-shrink:0"></span>'
-      +'<span style="font-size:11px;flex:1">'+escH(p.name)+'</span>'
-      +(p.sector?'<span style="font-size:10px;color:var(--muted)">'+escH(p.sector)+'</span>':'')
+      +'<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name)+'</span>'
+      +(p.sector?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+escH(p.sector)+'</span>':'')
       +'</label>';
   });
-  G('brief-overlay').style.display='flex';
+  var ov=G('brief-overlay'); if(ov) ov.classList.add('show');
 }
+// close the project-brief view (rail-highlight sync is added by railWrapClosers)
+function closeBrief(){ var o=G('brief-overlay'); if(o) o.classList.remove('show'); }
 
 // checks/unchecks all projects in the brief modal
 function briefSelectAll(val){
@@ -1179,7 +1181,6 @@ function exportProjectBrief(){
   if(!win){alert('Pop-up blocked — please allow pop-ups for this page.');return;}
   win.document.write(html);
   win.document.close();
-  G('brief-overlay').style.display='none';
 }
 
 // downloads the project brief as an HTML file
@@ -1199,5 +1200,4 @@ function exportProjectBriefHTML(){
   a.click();
   document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  G('brief-overlay').style.display='none';
 }

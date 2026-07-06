@@ -61,6 +61,7 @@ function pfBuildDataset(){
       cost:cost, avgFte:months.length?fteSum/months.length:0, rev:rev, revM:rev/1e6,
       rpnSum:rpnSum, rpnMax:rpnMax, completion:completion, msOverdue:msOverdue,
       gate:(p.currentGate||p.gate||'').trim(), sector:(p.sector||'').trim()||'—',
+      intent:(p.tacticalIntent||'').trim(),
       roi:cost>0?rev/cost:null, revDefault:revDefault
     };
   });
@@ -248,14 +249,14 @@ function pfRiskValue(ds){
 /* ══ INTERACTIVE SECTIONS (treemap · burn · distribution) ══════════════
    Small module state + a generic re-render router so each section's controls
    re-render only their own wrapper (no full-tab reflow, no scroll jump). */
-var _pfState={ treemapBy:'cost', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+var _pfState={ treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
 var PF_SEL='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer';
 
 // Set a control value and re-render just the affected section wrapper.
 function pfSet(key,val){
   _pfState[key]=(key==='distBins')?(+val):val;
   var el;
-  if(key==='treemapBy'){ el=G('pf-sec-treemap'); if(el) el.innerHTML=pfTreemapSection(); }
+  if(key==='treemapBy'||key==='treemapGroup'){ el=G('pf-sec-treemap'); if(el) el.innerHTML=pfTreemapSection(); }
   else if(key==='burnBy'){ el=G('pf-sec-burn'); if(el) el.innerHTML=pfBurnSection(); }
   else { el=G('pf-sec-dist'); if(el) el.innerHTML=pfDistSection(); }
 }
@@ -296,13 +297,64 @@ function pfDistFmt(metric,v){
 /* ── TREEMAP (squarified) — area = cost|revenue, color = ROI rank ── */
 function pfTreemapSection(ds){
   ds=ds||pfBuildDataset();
-  var by=_pfState.treemapBy;
+  var by=_pfState.treemapBy, grouped=_pfState.treemapGroup==='intent';
   var items=ds.map(function(d){ return {d:d, value:(by==='revenue'?d.rev:d.cost)}; }).filter(function(x){return x.value>0;});
-  var controls='<span style="display:flex;gap:6px">'
+  var controls='<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
     +pfToggle("pfSet('treemapBy','cost')",'Size: Cost',by==='cost')
-    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')+'</span>';
-  var inner=items.length?pfTreemapSvg(items):pfEmpty(by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.');
-  return pfSectionShell('SPEND MAP — treemap','Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.', controls, inner);
+    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')
+    +'<span style="width:1px;height:16px;background:var(--border);margin:0 3px"></span>'
+    +pfToggle("pfSet('treemapGroup','none')",'Flat',!grouped)
+    +pfToggle("pfSet('treemapGroup','intent')",'By tactical intent',grouped)+'</span>';
+  var empty=by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.';
+  var inner=!items.length?pfEmpty(empty):(grouped?pfTreemapGroupedSvg(items,by):pfTreemapSvg(items));
+  var hint=grouped
+    ? 'Grouped by tactical intent (Defend / Grow / Adapt / Diversify). Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank. Shows how '+(by==='revenue'?'value':'spend')+' splits across strategic postures.'
+    : 'Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.';
+  return pfSectionShell('SPEND MAP — treemap', hint, controls, inner);
+}
+// ROI-rank percentile fn shared by flat + grouped treemaps (green = best return).
+function pfRoiPctFn(items){
+  var rois=items.map(function(x){var d=x.d;return d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0);});
+  var sorted=rois.filter(function(v){return isFinite(v);}).slice().sort(function(a,b){return a-b;});
+  return function(v){ if(!isFinite(v))return 1; if(!sorted.length)return .5; var i=0; while(i<sorted.length&&sorted[i]<v)i++; return i/sorted.length; };
+}
+// Nested treemap: outer cells = tactical-intent groups (area = Σ member value),
+// inner cells = projects colored by ROI rank. Keeps the ROI legend meaningful
+// while showing how spend/value splits across strategic postures.
+function pfTreemapGroupedSvg(items,by){
+  var W=680,H=340,pct=pfRoiPctFn(items);
+  var order=PROJECT_INTENTS.concat(['Unassigned']);
+  var buckets={};
+  items.forEach(function(x){ var k=(x.d.intent||'').trim()||'Unassigned'; (buckets[k]=buckets[k]||[]).push(x); });
+  var groups=order.filter(function(k){return buckets[k]&&buckets[k].length;}).map(function(k){
+    var mem=buckets[k], val=mem.reduce(function(s,m){return s+m.value;},0);
+    return {intent:k, members:mem, value:val};
+  });
+  var groupRects=pfSquarify(groups.map(function(g){return {d:g,value:g.value};}),0,0,W,H);
+  var HEAD=17, GAP=3;
+  var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
+  groupRects.forEach(function(gr){
+    var g=gr.d.d, gcol=PROJECT_INTENT_COLORS[g.intent]||'#6b6b78';
+    h+='<rect x="'+gr.x.toFixed(1)+'" y="'+gr.y.toFixed(1)+'" width="'+Math.max(0,gr.w-1).toFixed(1)+'" height="'+Math.max(0,gr.h-1).toFixed(1)+'" fill="'+gcol+'0d" stroke="'+gcol+'" stroke-width="1.2" rx="3"/>';
+    if(gr.w>60) h+='<text x="'+(gr.x+6).toFixed(1)+'" y="'+(gr.y+12).toFixed(1)+'" fill="'+gcol+'" font-size="9.5" font-weight="600">'+escH(g.intent.toUpperCase())+' · '+escH(pfEur(g.value))+'</text>';
+    var ix=gr.x+GAP, iy=gr.y+HEAD, iw=gr.w-2*GAP, ih=gr.h-HEAD-GAP;
+    if(iw>6&&ih>6){
+      pfSquarify(g.members,ix,iy,iw,ih).forEach(function(r){
+        var d=r.d.d, roi=d.cost>0?d.rev/d.cost:(d.rev>0?Infinity:0), col=pfRankColor(pct(roi));
+        var roiTxt=d.cost>0?(' · ROI '+(d.rev/d.cost>=10?Math.round(d.rev/d.cost):(d.rev/d.cost).toFixed(1))+'×'):'';
+        h+='<rect x="'+r.x.toFixed(1)+'" y="'+r.y.toFixed(1)+'" width="'+Math.max(0,r.w-1).toFixed(1)+'" height="'+Math.max(0,r.h-1).toFixed(1)+'" fill="'+col+'33" stroke="'+col+'" stroke-width="1" rx="2"><title>'+escH(d.name+' — '+g.intent+' — '+pfEur(d.rev)+' rev · '+pfEur(d.cost)+' cost'+roiTxt)+'</title></rect>';
+        if(r.w>54&&r.h>20){
+          var maxc=Math.floor(r.w/6);
+          h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+13).toFixed(1)+'" fill="var(--text)" font-size="9" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px">'+escH(d.name.length>maxc?d.name.slice(0,maxc-1)+'…':d.name)+'</text>';
+          if(r.h>34) h+='<text x="'+(r.x+5).toFixed(1)+'" y="'+(r.y+24).toFixed(1)+'" fill="var(--muted)" font-size="8">'+escH(pfEur(by==='revenue'?d.rev:d.cost))+'</text>';
+        }
+      });
+    }
+  });
+  h+='</svg>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>ROI rank:</span>'
+    +'<span style="color:#f14335">■ low</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ high</span></div>';
+  return h;
 }
 function pfTreemapSvg(items){
   var W=680,H=300;

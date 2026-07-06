@@ -301,6 +301,7 @@ export function sanitiseProjects(){
     if(p.visible==null)      p.visible=true;
     if(p.sectionId===undefined) p.sectionId=null;
     if(!p.sector)            p.sector='';
+    if(p.tacticalIntent==null) p.tacticalIntent='';
     if(p.impactEur===undefined) p.impactEur=null;
     if(p.planCost===undefined)  p.planCost=0;
     if(!p.costSource)        p.costSource='plan';

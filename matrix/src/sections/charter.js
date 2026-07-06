@@ -761,8 +761,11 @@ function chtDecisionBody(c){
     ? `<div class="cht-banner bad">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''}: ${
         conflicts.map(x=>`${x.func} must-have on <b>${CHT_DIM_LABEL[x.dimension]}</b> (sacrificed)`).join('; ')}. Re-negotiate the stance or soften the demand.</div>`
     : '';
+  const okHTML = (!conflicts.length && !warn)
+    ? `<div class="cht-banner ok">✓ Consistent — the trade-off stance sacrifices nothing that a must-have demand depends on.</div>`
+    : '';
   const primary=`<div class="cht-scenario cht-scenario-primary">
-      <div class="cht-scenario-head"><span class="cht-scenario-name">Primary trade-off</span></div>
+      <div class="cht-scenario-head"><span class="cht-scenario-name">★ Primary trade-off</span></div>
       ${chtTriangleSVG(d.points,d.stances)}
       <div class="cht-scenario-ctl"><span class="cht-hl">PLOT</span>${chtPointPick(d.points,'chtPointSet')}</div>
       ${chtStanceGrid(d.stances,'chtStanceSet')}
@@ -779,13 +782,17 @@ function chtDecisionBody(c){
   const addBtn = d.scenarios.length<2
     ? `<button class="sm" onclick="chtScenAdd()">+ Add comparison scenario</button>`
     : '<span class="cht-muted" style="font-size:11px">Max 3 triangles (primary + 2 scenarios).</span>';
-  return `<div class="cht-note">The trade-off triangle — pick the 3 priorities that matter and set each stance. You can't prioritize everything: sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop. Add up to 2 named scenarios to compare options side by side.</div>
+  return `<div class="cht-note">Pick the 3 priorities that matter and set each stance — you can't prioritize everything, so sacrifice at least one. <b>Product cost</b> = what each unit costs; <b>Project cost</b> = what it costs to develop. Add up to 2 named scenarios to compare options side by side.</div>
+    ${conflictHTML}${warnHTML}${okHTML}
+    <div class="cht-sec-h">Trade-off triangles</div>
     <div class="cht-tri-grid">${primary}${scen}</div>
-    <div style="margin:10px 0 16px">${addBtn}</div>
-    ${warnHTML}${conflictHTML}
+    <div style="margin:12px 0 4px">${addBtn}</div>
+    <div class="cht-sec-h">Cross-functional alignment</div>
     <div class="cht-vizrow">
-      <div class="cht-viz"><div class="cht-chart-t">Cross-functional alignment</div>${chtRadarSVG(c)}</div>
+      <div class="cht-viz"><div class="cht-chart-t">Alignment radar — how aligned each function is (1–10)</div>${chtRadarSVG(c)}</div>
     </div>
+    <div class="cht-sec-h">Guardrails</div>
+    <div class="cht-sub">The hard lines and the give — what this project will not compromise, and where it can flex.</div>
     <div class="cht-form">
       ${chtListEditor('nonNegotiables','Non-negotiables','e.g. Must launch by Q3 2026')}
       ${chtListEditor('flexibilities','Flexibilities','e.g. Scope can shrink by 20%')}

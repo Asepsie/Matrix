@@ -172,6 +172,15 @@
         <select id="e-section"><option value="">— No section —</option></select>
       </div>
       <div class="field"><label>SECTOR / DOMAIN</label><input type="text" id="e-sector" placeholder="e.g. HVAC, Power, Digital"></div>
+      <div class="field"><label>TACTICAL INTENT</label>
+        <select id="e-intent" title="Strategic posture — Defend an existing position, Grow a winner, Adapt to change, or Diversify into new ground">
+          <option value="">— Unassigned —</option>
+          <option value="Defend">Defend</option>
+          <option value="Grow">Grow</option>
+          <option value="Adapt">Adapt</option>
+          <option value="Diversify">Diversify</option>
+        </select>
+      </div>
       <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
       <div class="field"><label>NOTE</label><input type="text" id="e-note" placeholder="Optional"></div>
       <div class="field"><label>COLOR</label>
@@ -911,57 +920,55 @@
 </div>
 
 
-<!-- PROJECT BRIEF EXPORT MODAL -->
-<div id="brief-overlay" style="display:none;position:fixed;top:0;right:0;bottom:0;left:var(--rail);background:rgba(0,0,0,.75);z-index:800;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(560px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-      <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">📄 EXPORT PROJECT BRIEF</h2>
-      <button onclick="G('brief-overlay').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
-    </div>
-    <div style="padding:16px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px">
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">SELECT PROJECTS</label>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
-          <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
-          <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
+<!-- PROJECT BRIEF (WORK › Project brief rail view) — panel, rail-inset -->
+<div id="brief-overlay">
+  <div id="brief-header">
+    <span id="brief-title">📄 PROJECT BRIEF</span>
+    <div style="flex:1"></div>
+    <button class="sm primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
+    <button class="sm" onclick="exportProjectBriefHTML()">↓ HTML</button>
+    <button onclick="closeBrief()">✕ CLOSE</button>
+  </div>
+  <div id="brief-body">
+    <div class="brief-wrap">
+      <div class="brief-intro">Pick the projects and the sections to include, then export a print-ready brief as PDF or a standalone HTML file.</div>
+
+      <section class="brief-sec">
+        <div class="brief-sec-head">
+          <span class="brief-sec-title">SELECT PROJECTS</span>
+          <div class="brief-sec-tools">
+            <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
+            <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
+            <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
+          </div>
         </div>
-        <div id="brief-proj-list" style="display:flex;flex-direction:column;gap:4px;max-height:250px;overflow-y:auto"></div>
+        <div id="brief-proj-list" class="brief-proj-grid"></div>
+      </section>
+
+      <div class="brief-2col">
+        <section class="brief-sec">
+          <div class="brief-sec-title">SECTIONS TO INCLUDE</div>
+          <div class="brief-opts">
+            <label class="brief-opt"><input type="checkbox" id="brief-include-team" checked> Team allocation</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-risks"> Project risks</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-todos" checked> Open todos</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-milestones" checked> Milestones</label>
+            <label class="brief-opt"><input type="checkbox" id="brief-include-actions" checked> Actions / Gantt</label>
+          </div>
+        </section>
+
+        <section class="brief-sec">
+          <div class="brief-sec-title">ALLOCATION PERIOD</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="month" id="brief-from" class="brief-month">
+            <span style="font-size:11px;color:var(--muted)">→</span>
+            <input type="month" id="brief-to" class="brief-month">
+            <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
+            <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
+          </div>
+          <div style="font-size:9px;color:var(--dim);margin-top:8px">Leave blank to include all allocation data.</div>
+        </section>
       </div>
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">OPTIONS</label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-team" checked> Include team allocation
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-risks"> Include project risks
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
-          <input type="checkbox" id="brief-include-todos" checked> Include open todos
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="brief-include-milestones" checked> Include milestones
-        </label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
-          <input type="checkbox" id="brief-include-actions" checked> Include actions / Gantt
-        </label>
-      </div>
-      <div>
-        <label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:6px">ALLOCATION PERIOD</label>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input type="month" id="brief-from" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
-          <span style="font-size:11px;color:var(--muted)">→</span>
-          <input type="month" id="brief-to" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 7px;border-radius:4px">
-          <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
-          <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
-        </div>
-        <div style="font-size:9px;color:var(--dim);margin-top:4px">Leave blank to include all allocation data.</div>
-      </div>
-    </div>
-    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <button class="primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
-      <button onclick="exportProjectBriefHTML()">↓ HTML</button>
-      <button onclick="G('brief-overlay').style.display='none'" style="margin-left:auto">CANCEL</button>
     </div>
   </div>
 </div>

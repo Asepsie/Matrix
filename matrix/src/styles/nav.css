@@ -151,10 +151,47 @@ body{padding-left:var(--rail);}
 /* ── OVERLAY INSETS ─────────────────────────────────────
    Keep the rail visible while any full-screen overlay is open. These overlays
    are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
-   wins. (#org-overlay and #brief-overlay are styled inline in index.html and are
-   inset there instead.) */
+   wins. (#org-overlay is styled inline in index.html and is inset there instead.) */
 #help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
   left:var(--rail);
+}
+
+/* ── PROJECT BRIEF (WORK › Project brief rail view) ──────
+   A rail-inset panel (like Design-to-cost / Trade-off decision), NOT a modal.
+   z-index:400 = view level, so rail-spawned modals (Settings) still sit above. */
+#brief-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#brief-overlay.show{ display:flex; }
+#brief-header{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#brief-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#brief-header button{ margin-left:4px; }
+#brief-body{ flex:1; overflow:auto; padding:18px 22px; }
+.brief-wrap{ max-width:1000px; }
+.brief-intro{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+.brief-sec{
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; margin-bottom:16px;
+}
+.brief-sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.brief-sec-title{
+  font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted);
+  letter-spacing:.06em; display:block; margin-bottom:10px;
+}
+.brief-sec-head .brief-sec-title{ margin-bottom:0; flex:1; }
+.brief-sec-tools{ display:flex; gap:6px; }
+.brief-proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px; }
+.brief-2col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+@media (max-width:720px){ .brief-2col{ grid-template-columns:1fr; } }
+.brief-opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
+.brief-opt{ display:flex; align-items:center; gap:7px; font-size:11px; cursor:pointer; }
+.brief-month{
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-family:IBM Plex Mono,monospace; font-size:11px; padding:3px 7px; border-radius:4px;
 }
 
 /* Rail-spawned modals (Settings, first-run landing) must sit ABOVE the full-screen

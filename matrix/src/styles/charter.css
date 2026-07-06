@@ -111,7 +111,13 @@
 .cht-banner{ max-width:900px; margin:0 0 14px; padding:9px 12px; border-radius:6px; font-size:12px; line-height:1.4; }
 .cht-banner.bad{ background:rgba(241,67,53,.12); border:1px solid var(--danger); color:var(--danger); }
 .cht-banner.warn{ background:rgba(241,164,53,.12); border:1px solid var(--warn); color:var(--warn); }
+.cht-banner.ok{ background:rgba(91,229,200,.10); border:1px solid var(--accent2); color:var(--accent2); }
 .cht-banner b{ color:inherit; }
+
+/* Section headers + sub-copy (Trade-off decision layout structure) */
+.cht-sec-h{ font-family:IBM Plex Mono,monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--accent); margin:26px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); max-width:1000px; }
+.cht-sub{ font-size:11px; color:var(--muted); line-height:1.5; margin:-4px 0 12px; max-width:900px; }
 
 /* Demands board */
 .cht-boards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; max-width:1040px; }
@@ -274,7 +280,7 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 /* trade-off triangles: primary + comparison scenarios, side by side */
 .cht-tri-grid{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
 .cht-scenario{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:12px; width:320px; box-sizing:border-box; }
+  padding:12px; width:384px; box-sizing:border-box; }
 .cht-scenario-primary{ border-color:var(--accent); }
 .cht-scenario-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; min-height:26px; }
 .cht-scenario-name{ font-weight:600; color:var(--accent); font-size:13px; }
