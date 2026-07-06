@@ -489,3 +489,82 @@ helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `
   elements. Structural changes (add/remove/toggle/expand) still do a full `dtcRender`. Same
   pattern as the charter's `chtFinRefresh`. Also: number spinners are hidden globally via
   `.cht-in[type=number]{ appearance:textfield }` + `::-webkit-*-spin-button{ none }`.
+
+---
+
+## Localization (i18n)
+
+Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded right after
+globals in `JS_FILES`, so `t()` is available to every later file). Shipped languages:
+**English (base) + French + Chinese**. Being rolled out **phased, shell-first** — Phase 0 (the seam) + **Phase 1 (all shell
+chrome: nav rail, Settings modal, first-run chooser, Help panel)** are done; per-section
+body prose + SVG labels + full number/date wiring remain.
+
+### Key facts (non-obvious)
+
+- **KEY = the English source string.** `t('Roster')` looks up `I18N_DICT[lang]['Roster']`,
+  falling back to English (the key itself) when absent. So a **partly-translated build still
+  renders correctly** — wrapping more strings is purely additive, never breaks the UI. This
+  was chosen deliberately over abstract keys: the app has ~10k inline literals in `h+=`
+  chains, and `t(...)` is a bare expression that drops into those chains without introducing
+  a semicolon (respects invariant #4) and needs no parallel `en.json`.
+- **Language is a device/UI pref, NOT app data.** Stored in its own tiny localStorage key
+  **`eim_lang`** (isolated from `SK='eim_v4'` AND from the rail prefs `eim_rail_prefs`), so a
+  French user's backup/snapshot opens unchanged for anyone. Resolved **once at load** into
+  module var `_i18nLang` (before any render); `t()` is a pure sync map lookup, safe in render.
+- **Switching language reloads the page** (`i18nSetLang` → persist + `location.reload()`).
+  This is intentional: a reload re-renders every surface from source, so there's zero risk of
+  stale cached strings, half-translated open modals, or SVG left in the old language.
+  `i18nApplyLang(code)` sets `_i18nLang` WITHOUT reloading — used only by tests (and available
+  as a hook if live-switching is ever wanted).
+- **The setting lives in Settings** (`#set-lang` in [index.html](src/index.html)), populated
+  from `I18N_LANGS` in `railOpenSettings` and applied last in `railSaveSettings` (so the
+  reload loses no other pref).
+- **Static `index.html` markup can't call `t()`** (it's HTML, not JS). It's translated by a
+  boot-time attribute sweep, **`i18nApplyDom(document)`**, run on `DOMContentLoaded` (so every
+  static overlay — including those after the mid-body bundle — is present). Tag conventions,
+  all using the **English text as the key** so English is a correct no-op:
+  `data-i18n` → textContent · `data-i18n-html="…"` → innerHTML (key holds the English inline
+  markup, entity-escaped in the attribute; use for the few strings with `<strong>` etc.) ·
+  `data-i18n-title` / `data-i18n-ph` → title / placeholder. Keyboard-key glyphs and the
+  trilingual `LANGUAGE · 语言 · Langue` label are deliberately left untagged. Use **explicit**
+  key values on static tags (not bare) so the build audit can see them (below).
+- **Rail labels go through `t()` at the array literal** (`RAIL_DOMAINS`/`RAIL_UTIL` in
+  railnav.js), which is safe because language is fixed per page load and i18n.js loads first.
+  Every consumer (rail render, breadcrumb, Settings landing dropdown) reads those, so it's a
+  single translation point. `DISC`/`SPOF` are left untranslated (proper acronyms).
+- **CJK has no bundled webfont** (would bloat the single-file tool). Chinese resolves to a
+  system font: the body/prose stack names `PingFang SC / Microsoft YaHei / Noto Sans SC`
+  ([base.css](src/styles/base.css)); `IBM Plex Mono` contexts get per-glyph browser fallback
+  automatically. So Chinese *renders* everywhere; the named fonts only improve prose quality.
+- **Numbers/dates via `Intl`** (`i18nNum`/`i18nDate`, locale from `i18nLocale()` = `fr-FR` /
+  `zh-CN` / `en-US`). Runtime is a modern browser (WebGPU AI), so `Intl` is guaranteed — no
+  hand-maintained tables. **EUR currency stays fixed**; only grouping/decimal/date order
+  localize. These are defined but not yet wired into the existing hand-rolled formatters
+  (`pfEur`, `fmtMoneyUnit`, thousands separators) — that's the remaining Phase 3 work.
+- **SECURITY:** `t()` does not escape — it's for developer-authored UI text only. User data
+  still flows through the existing `escH()` path; never pass untrusted data as a `t()` key.
+
+### Validation / verification
+
+- **Build audit (non-fatal), `auditI18n()` in build.js** — collects every `t('…')` call across
+  the bundle **plus every `data-i18n*="…"` attribute value in index.html** (HTML entities
+  decoded to match the JS dict keys) and reports, per language, `translated/total` + `missing`
+  + `orphaned` keys. Non-fatal by design so partial-coverage builds still ship; visible in
+  build output. (This is why static tags need explicit key values, not bare `data-i18n`.)
+- **Pseudo-locale `xx`** (`i18nPseudo`) — accents ASCII, pads ~40%, keeps `<tags>`/`{ph}`
+  intact. Set `localStorage.eim_lang='xx'` to instantly spot truncation AND any on-screen
+  string that never went through `t()` (it stays plain ASCII). Layout/longer-string check.
+- **Unit tests** [tests/i18n.test.js](tests/i18n.test.js) — fallback chain, interpolation,
+  pseudo, `Intl` formatting, and placeholder-parity between each key and its translation.
+- **Longer strings:** FR ~+20% (truncation risk), ZH usually shorter. Rail labels only show
+  in the hover-drawer (collapsed rail is icons-only) so `nowrap`+ellipsis+`title` covers them.
+  The real hazard is **SVG chart/triangle/treemap/radar text** (no wrap/ellipsis) — kept for
+  last and handled deliberately.
+
+### Extending it (add a translated string)
+
+Wrap the literal: `t('My label')`. Add its value under `fr` and `zh` in `I18N_DICT`
+([i18n.js](src/core/i18n.js)). `node build.js` prints the audit (0 missing = done);
+`node --test tests/i18n.test.js` checks parity. Keys with `{name}` placeholders must keep the
+same placeholders in every translation (the parity test enforces this).

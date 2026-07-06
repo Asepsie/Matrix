@@ -25,6 +25,7 @@ const css = CSS_FILES
 const JS_FILES = [
   'data/model.js',
   'core/globals.js',
+  'core/i18n.js',
   'core/helpers.js',
   'core/financial.js',
   'core/persist.js',
@@ -144,4 +145,47 @@ function validateOutput(outputPath) {
   }
 
   console.log('✓ All invariant checks passed');
+
+  // 7. i18n audit (NON-FATAL — partial coverage must still ship).
+  //    Collect every t('…') / t("…") key across the bundle, then report,
+  //    per shipped language, how many are translated vs still English,
+  //    and flag orphaned dictionary keys that no t() call references.
+  auditI18n();
+}
+
+function auditI18n(){
+  // Pull the dictionary tables straight out of i18n.js source (no eval).
+  const i18nSrc = readFileSync(join(SRC, 'core/i18n.js'), 'utf8');
+  // Shipped languages = I18N_LANGS codes minus the implicit English base.
+  const langs = [...i18nSrc.matchAll(/code\s*:\s*'(\w+)'/g)]
+    .map(m => m[1]).filter(c => c !== 'en');
+
+  // Gather t('key') / t("key") first-arg literals from every JS file.
+  const keys = new Set();
+  for (const f of JS_FILES) {
+    const src = readFileSync(join(SRC, f), 'utf8');
+    for (const m of src.matchAll(/\bt\(\s*(['"])((?:\\.|(?!\1).)*)\1/g))
+      keys.add(m[2].replace(/\\(['"\\])/g, '$1'));
+  }
+  // Plus static-markup keys: data-i18n(-html|-title|-ph)="…" in index.html.
+  // Attribute values are HTML-escaped, so decode entities to match dict keys.
+  const decode = s => s.replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+  const htmlSrc = readFileSync(join(SRC, 'index.html'), 'utf8');
+  for (const m of htmlSrc.matchAll(/\bdata-i18n(?:-html|-title|-ph)?\s*=\s*"([^"]*)"/g))
+    keys.add(decode(m[1]));
+  if (!keys.size) { console.log('ℹ i18n: no t() calls yet (seam only)'); return; }
+
+  // Load each language's translated keys (shallow — just the top-level keys).
+  const lines = [`ℹ i18n audit — ${keys.size} wrapped string(s):`];
+  for (const lang of langs) {
+    const block = (i18nSrc.match(new RegExp(`${lang}\\s*:\\s*\\{([\\s\\S]*?)\\n\\s*\\}`)) || [,''])[1];
+    const have = new Set([...block.matchAll(/(['"])((?:\\.|(?!\1).)*)\1\s*:/g)].map(m => m[2]));
+    const missing = [...keys].filter(k => !have.has(k));
+    const orphan  = [...have].filter(k => !keys.has(k));
+    lines.push(`   ${lang}: ${keys.size - missing.length}/${keys.size} translated`
+      + (missing.length ? `, ${missing.length} missing` : '')
+      + (orphan.length  ? `, ${orphan.length} orphaned` : ''));
+  }
+  console.log(lines.join('\n'));
 }

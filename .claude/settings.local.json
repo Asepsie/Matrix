@@ -47,7 +47,11 @@
       "Bash(ls \"reference document/\" && cp \"/c/Users/pyro3/Downloads/matrix-nav-rail-mockup \\(2\\).html\" \"reference document/matrix-nav-rail-mockup.html\" && echo \"copied\")",
       "Bash(ls -la dist/)",
       "Bash(ls -la matrix/dist/)",
-      "Bash(sort -t: -k2 -rn)"
+      "Bash(sort -t: -k2 -rn)",
+      "Bash(git checkout *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(perl -i -pe 's/^var I18N_LANGS = \\\\[/export var I18N_LANGS = [/; s/^var I18N_DICT = \\\\{/export var I18N_DICT = {/; s/^function t\\\\\\(key, vars\\\\\\)\\\\{/export function t\\(key, vars\\){/; s/^function i18nInterp\\\\\\(s, vars\\\\\\)\\\\{/export function i18nInterp\\(s, vars\\){/; s/^function i18nPseudo\\\\\\(key\\\\\\)\\\\{/export function i18nPseudo\\(key\\){/; s/^function i18nLocale\\\\\\(\\\\\\)\\\\{/export function i18nLocale\\(\\){/; s/^function i18nNum\\\\\\(n, opts\\\\\\)\\\\{/export function i18nNum\\(n, opts\\){/; s/^function i18nDate\\\\\\(d, opts\\\\\\)\\\\{/export function i18nDate\\(d, opts\\){/' src/core/i18n.js)",
+      "Bash(node --test tests/i18n.test.js)"
     ]
   }
 }

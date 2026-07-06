@@ -80,6 +80,10 @@ function ensureResPeriod(){
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ensureResPeriod);
 else ensureResPeriod();
+// Localize static index.html chrome (data-i18n sweep). Deferred to DOMContentLoaded
+// so every static overlay — including those defined after this mid-body script — is present.
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ i18nApplyDom(document); });
+else i18nApplyDom(document);
 // Boot photo IDB (async, non-blocking)
 idbBoot().then(function(){
   if(G('org-overlay')&&G('org-overlay').style.display!=='none')renderOrgChart();

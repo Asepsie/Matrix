@@ -1,0 +1,162 @@
+/* ══════════════════════════════════════════════════════════════════
+   i18n — lightweight runtime translation layer  (Phase 0: the seam)
+   ══════════════════════════════════════════════════════════════════
+
+   Design (see ARCHITECTURE.md › Localization):
+   - KEY = the English source string. Missing translations fall back to
+     English automatically, so wrapping t(…) around existing inline
+     literals is safe and incremental — a partly-translated build still
+     renders correctly, just in English where a value is absent.
+   - `t()` is a PURE synchronous map lookup — safe to call during render.
+   - Active language is a device/UI preference in localStorage 'eim_lang',
+     resolved ONCE at load (before any render). It is deliberately NOT part
+     of app state, snapshots, or backups — a French user's backup opens
+     unchanged for an English user (same philosophy as the rail prefs).
+   - Changing language reloads the page: every surface re-renders from
+     source, so there is no risk of stale cached strings, half-translated
+     open modals, or SVG left in the old language.
+
+   SECURITY: `t()` is for developer-authored UI text only. Never pass
+   untrusted/user data as the key, and escape any user values BEFORE they
+   reach an interpolation slot (t() does not escape — the existing escH()
+   path still owns that).
+
+   Flat-bundle rules: every identifier here is `i18n`/`I18N_`-prefixed
+   (plus the single-letter `t`), declared once. build.js fails on dups. */
+
+/* ── Shipped languages (order = Settings dropdown order) ── */
+var I18N_LANGS = [
+  { code:'en', label:'English'  },
+  { code:'fr', label:'Français' },
+  { code:'zh', label:'中文'      },
+];
+var I18N_LANG_KEY = 'eim_lang';   // tiny UI-only key, isolated from app state (SK) and rail prefs
+var I18N_PSEUDO   = 'xx';         // dev pseudo-locale — see i18nPseudo()
+
+/* ── Translation tables. `en` is implicit (key === English source).
+   Populated per phase; unknown keys fall back to English. ── */
+var I18N_DICT = {
+  fr: {
+    /* Nav rail — domains */
+    'TEAM':'ÉQUIPE', 'WORK':'TRAVAIL', 'SKILLS':'COMPÉTENCES',
+    'TALENT':'TALENTS', 'INSIGHTS':'ANALYSES',
+    /* Nav rail — views */
+    'Roster':'Effectif', 'Org chart':'Organigramme',
+    'Portfolio matrix':'Matrice de portefeuille', 'was home':'ancien accueil',
+    'Resource plan':'Plan de ressources', 'Timeline':'Chronologie',
+    'Financials analysis':'Analyse financière', 'Trade-off decision':'Décision d\'arbitrage',
+    'Design to cost':'Conception à coût objectif', 'Project brief':'Brief projet',
+    'Skills matrix':'Matrice de compétences', 'Skill risk':'Risque de compétence',
+    'Heatmap':'Carte de chaleur', 'Nine-box':'Nine-box',
+    'Team profiles':'Profils d\'équipe', 'Development':'Développement',
+    'Portfolio analytics':'Analyse de portefeuille', 'People analytics':'Analyse RH',
+    'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Compare':'Comparer',
+    /* Nav rail — utility actions */
+    'Snapshots':'Instantanés', 'Backup':'Sauvegarde', 'Restore':'Restaurer',
+    'AI advisor':'Conseiller IA', 'Settings':'Paramètres', 'Help':'Aide',
+  },
+  zh: {
+    /* Nav rail — domains */
+    'TEAM':'团队', 'WORK':'工作', 'SKILLS':'技能',
+    'TALENT':'人才', 'INSIGHTS':'洞察',
+    /* Nav rail — views */
+    'Roster':'花名册', 'Org chart':'组织架构图',
+    'Portfolio matrix':'组合矩阵', 'was home':'原主页',
+    'Resource plan':'资源计划', 'Timeline':'时间线',
+    'Financials analysis':'财务分析', 'Trade-off decision':'权衡决策',
+    'Design to cost':'成本设计', 'Project brief':'项目简介',
+    'Skills matrix':'技能矩阵', 'Skill risk':'技能风险',
+    'Heatmap':'热力图', 'Nine-box':'九宫格',
+    'Team profiles':'团队画像', 'Development':'发展',
+    'Portfolio analytics':'组合分析', 'People analytics':'人员分析',
+    'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Compare':'对比',
+    /* Nav rail — utility actions */
+    'Snapshots':'快照', 'Backup':'备份', 'Restore':'恢复',
+    'AI advisor':'AI 顾问', 'Settings':'设置', 'Help':'帮助',
+  },
+};
+
+/* ── Active language, resolved once at load (function decls hoist, so
+   calling before the definition below is fine). ── */
+var _i18nLang = i18nResolveLang();
+
+function i18nResolveLang(){
+  try{
+    var v = localStorage.getItem(I18N_LANG_KEY);
+    if(v==='en'||v==='fr'||v==='zh'||v===I18N_PSEUDO) return v;
+  }catch(e){}
+  return 'en';
+}
+
+export function i18nGetLang(){ return _i18nLang; }
+
+/* Switch the active language WITHOUT persisting or reloading. The running
+   app never calls this (it reloads via i18nSetLang); it exists so tests can
+   exercise t() across languages, and as the hook for any future live switch. */
+export function i18nApplyLang(code){ _i18nLang = code; }
+
+/* Persist + activate a language, then reload so the whole UI re-renders
+   in one clean pass. No-op if unchanged. */
+export function i18nSetLang(code){
+  if(code===_i18nLang) return;
+  try{ localStorage.setItem(I18N_LANG_KEY, code); }catch(e){}
+  location.reload();
+}
+
+/* ── The core lookup. `key` is the English source string; `vars` is an
+   optional { name:value } map for {name} placeholders. ── */
+function t(key, vars){
+  var s;
+  if(_i18nLang===I18N_PSEUDO)
+    s = i18nPseudo(key);
+  else if(_i18nLang!=='en' && I18N_DICT[_i18nLang] && I18N_DICT[_i18nLang][key]!=null)
+    s = I18N_DICT[_i18nLang][key];
+  else
+    s = key;
+  return vars ? i18nInterp(s, vars) : s;
+}
+
+/* {name} placeholder substitution. Values inserted verbatim (see SECURITY
+   note above — escape user data before it gets here). */
+function i18nInterp(s, vars){
+  return String(s).replace(/\{(\w+)\}/g, function(m, k){
+    return (vars[k]!=null) ? String(vars[k]) : m;
+  });
+}
+
+/* ── Pseudo-localisation (dev). Accents ASCII letters and pads ~40% so
+   truncation is obvious; leaves <tags> and {placeholders} intact. Any
+   on-screen text that stays plain ASCII never went through t(). ── */
+var I18N_PSEUDO_MAP = {a:'á',e:'é',i:'í',o:'ó',u:'ú',c:'ç',n:'ñ',s:'š',y:'ý',
+  A:'Á',E:'É',I:'Í',O:'Ó',U:'Ú',C:'Ç',N:'Ñ',S:'Š'};
+function i18nPseudo(key){
+  var out='', inTag=false, inPh=false;
+  for(var i=0;i<key.length;i++){
+    var ch=key[i];
+    if(ch==='<') inTag=true; else if(ch==='{') inPh=true;
+    out += (!inTag && !inPh && I18N_PSEUDO_MAP[ch]) ? I18N_PSEUDO_MAP[ch] : ch;
+    if(ch==='>') inTag=false; else if(ch==='}') inPh=false;
+  }
+  var visible = key.replace(/<[^>]*>/g,'').replace(/\{[^}]*\}/g,'').length;
+  var pad = Math.max(1, Math.ceil(visible*0.4));
+  return '⟦'+out+' '+new Array(pad+1).join('·')+'⟧';
+}
+
+/* ── Locale-aware number / date formatting (Phase 3 wiring; defined here
+   so the whole layer lives in one file). Runtime is a modern browser, so
+   Intl is guaranteed. EUR currency stays fixed — only grouping / decimal
+   separators / date order localize. ── */
+function i18nLocale(){
+  return _i18nLang==='fr' ? 'fr-FR' : _i18nLang==='zh' ? 'zh-CN' : 'en-US';
+}
+function i18nNum(n, opts){
+  if(n==null || (typeof n==='number' && isNaN(n))) return '';
+  try{ return new Intl.NumberFormat(i18nLocale(), opts).format(n); }
+  catch(e){ return String(n); }
+}
+function i18nDate(d, opts){
+  var dt = (d instanceof Date) ? d : new Date(d);
+  if(isNaN(dt.getTime())) return '';
+  try{ return new Intl.DateTimeFormat(i18nLocale(), opts||{year:'numeric',month:'short',day:'numeric'}).format(dt); }
+  catch(e){ return String(d); }
+}
