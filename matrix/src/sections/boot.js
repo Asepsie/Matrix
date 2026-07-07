@@ -97,6 +97,7 @@ setDrawTool('none');
 onAxisChange();
 renderList();
 render();
+renderFocusBar();   // focus-star toggle + importance-formula panel in the matrix toolbar
 checkDailySnap();
 updateSnapBadge();
 railInit();   // render the persistent nav rail + land on the initial view

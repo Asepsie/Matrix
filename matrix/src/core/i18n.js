@@ -117,6 +117,14 @@ export var I18N_DICT = {
     'Y-AXIS':'AXE Y',
     'Sort by Impact':'Trier par Impact', 'Sort by Visibility':'Trier par Visibilité', 'Sort by Enabler':'Trier par Levier',
     'LIN':'LIN', 'LOG':'LOG', 'SEP-X':'SÉP-X', 'SEP-Y':'SÉP-Y', 'GRID':'GRILLE', '⊙ ZOOM RESET':'⊙ RÉINIT. ZOOM',
+    /* Matrix — focus star + importance formula */
+    'FOCUS STAR':'ÉTOILE FOCUS', 'IMPORTANCE FORMULA':'FORMULE D\'IMPORTANCE',
+    'Show importance-weighted centroid of the top-N projects':'Afficher le centroïde pondéré par l\'importance des N premiers projets',
+    'Edit the importance formula and focus count':'Modifier la formule d\'importance et le nombre de projets ciblés',
+    'each 1–10':'chacun 1–10', 'APPLY':'APPLIQUER', 'Reset to default':'Réinitialiser', 'Presets':'Préréglages',
+    'FOCUS STAR — top':'ÉTOILE FOCUS — top', 'projects by importance':'projets par importance',
+    'Centroid = importance-weighted average of the top N project positions':'Centroïde = moyenne pondérée par l\'importance des N premiers projets',
+    'Formula error: ':'Erreur de formule : ',
     /* Matrix — draw bar */
     'DRAW:':'DESSIN :', '↖ SELECT':'↖ SÉLECT.', '— LINE':'— LIGNE', '╌ DASHED':'╌ POINTILLÉ',
     '→ ARROW':'→ FLÈCHE', 'T TEXT':'T TEXTE', 'Type then click…':'Saisir puis cliquer…', '✕ CLEAR ALL':'✕ TOUT EFFACER',
@@ -580,6 +588,14 @@ export var I18N_DICT = {
     'Y-AXIS':'Y 轴',
     'Sort by Impact':'按影响排序', 'Sort by Visibility':'按可见性排序', 'Sort by Enabler':'按赋能排序',
     'LIN':'线性', 'LOG':'对数', 'SEP-X':'分隔-X', 'SEP-Y':'分隔-Y', 'GRID':'网格', '⊙ ZOOM RESET':'⊙ 重置缩放',
+    /* Matrix — focus star + importance formula */
+    'FOCUS STAR':'焦点星', 'IMPORTANCE FORMULA':'重要性公式',
+    'Show importance-weighted centroid of the top-N projects':'显示前 N 个项目的重要性加权质心',
+    'Edit the importance formula and focus count':'编辑重要性公式和焦点数量',
+    'each 1–10':'各 1–10', 'APPLY':'应用', 'Reset to default':'重置为默认', 'Presets':'预设',
+    'FOCUS STAR — top':'焦点星 — 前', 'projects by importance':'个项目（按重要性）',
+    'Centroid = importance-weighted average of the top N project positions':'质心 = 前 N 个项目位置的重要性加权平均',
+    'Formula error: ':'公式错误：',
     /* Matrix — draw bar */
     'DRAW:':'绘制：', '↖ SELECT':'↖ 选择', '— LINE':'— 直线', '╌ DASHED':'╌ 虚线',
     '→ ARROW':'→ 箭头', 'T TEXT':'T 文本', 'Type then click…':'输入后点击…', '✕ CLEAR ALL':'✕ 全部清除',

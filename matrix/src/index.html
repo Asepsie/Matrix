@@ -221,7 +221,10 @@
       <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     data-i18n-title="Sort by Impact"     title="Sort by Impact"     data-i18n="IMPACT">IMPACT</button>
       <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" data-i18n-title="Sort by Visibility" title="Sort by Visibility" data-i18n="VISIBILITY">VISIBILITY</button>
       <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    data-i18n-title="Sort by Enabler"    title="Sort by Enabler"    data-i18n="ENABLER">ENABLER</button>
+      <div class="bar-sep"></div>
+      <span id="focus-bar" style="display:flex;align-items:center;gap:6px"></span>
     </div>
+    <div id="focus-panel"></div>
     <div id="axis-bar">
       <label>X</label>
       <input type="text" id="ax-x-name" value="Effort" oninput="onAxisChange()">
