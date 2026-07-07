@@ -31,7 +31,7 @@ function renderList(){
     h+=`<div class="section-block">
       <div class="section-header" style="opacity:.5">
         <span class="section-color-dot" style="background:var(--muted)"></span>
-        <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;flex:1">UNSECTIONED</span>
+        <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;flex:1">${t('UNSECTIONED')}</span>
       </div>
       <div class="section-items">${unsectioned.map(projItemHTML).join('')}</div>
     </div>`;
@@ -42,7 +42,7 @@ function renderList(){
     const items=projects.filter(p=>p.sectionId===s.id);
     h+=`<div class="section-block">
       <div class="section-header" onclick="toggleSection(${s.id})">
-        <input type="checkbox" ${s.hidden?'':'checked'} title="Show section on matrix"
+        <input type="checkbox" ${s.hidden?'':'checked'} title="${t('Show section on matrix')}"
           style="accent-color:var(--accent2);width:11px;height:11px;cursor:pointer;flex-shrink:0"
           onclick="event.stopPropagation();toggleSectionVisibility(${s.id})">
         <div class="section-color-wrap">
@@ -50,15 +50,15 @@ function renderList(){
           <input type="color" value="${s.color}" class="section-color-btn"
             style="position:absolute;top:0;left:0;width:14px;height:14px;opacity:0;cursor:pointer"
             onchange="setSectionColor(${s.id},this.value)"
-            onclick="event.stopPropagation()" title="Change section color">
+            onclick="event.stopPropagation()" title="${t('Change section color')}">
         </div>
         <input class="section-name-input" value="${escH(s.name)}"
           onchange="renameSectionInput(${s.id},this.value);saveState()"
           onclick="event.stopPropagation()"
           onblur="saveState()"
-          title="Click to rename">
+          title="${t('Click to rename')}">
         <span class="section-toggle${s.collapsed?' collapsed':''}">▾</span>
-        <button class="section-del-btn" onclick="event.stopPropagation();deleteSection(${s.id})" title="Delete section">×</button>
+        <button class="section-del-btn" onclick="event.stopPropagation();deleteSection(${s.id})" title="${t('Delete section')}">×</button>
       </div>
       ${s.collapsed?'':`<div class="section-items" ondragover="event.preventDefault()" ondrop="onSectionDrop(event,${s.id})">${items.map(projItemHTML).join('')}</div>`}
     </div>`;
@@ -75,7 +75,7 @@ function projItemHTML(p){
   return `<div class="proj-item${p.id===selId?' sel':''}" draggable="true"
     ondragstart="onProjDragStart(event,${p.id})" ondragend="onProjDragEnd(event)">
     <input type="checkbox" class="proj-vis-cb" ${p.visible?'checked':''}
-      onclick="event.stopPropagation();toggleProjVisibility(${p.id})" title="Show on matrix">
+      onclick="event.stopPropagation();toggleProjVisibility(${p.id})" title="${t('Show on matrix')}">
     <div class="proj-dot" style="background:${p.color}"></div>
     <div class="proj-name" onclick="selectProject(${p.id})">${escH(p.name)}</div>
     <div class="proj-meta">${meta}</div>
@@ -98,14 +98,14 @@ function closeEditor(){selId=null;G('editor').style.display='none';G('selected-h
 function populateEditor(){
   const p=projects.find(p=>p.id===selId);if(!p)return;
   G('editor').style.display='flex';
-  G('selected-hint').textContent='1 selected';
+  G('selected-hint').textContent=t('1 selected');
   SV('e-name',p.name);SV('e-x',p.x);SV('e-y',p.y);
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
   SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
   // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
   var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
-  G('e-impacteur').placeholder=(_rd!=null)?('default '+_rd+' = impact+enabler'):'e.g. 2.5';
+  G('e-impacteur').placeholder=(_rd!=null)?t('default {n} = impact+enabler',{n:_rd}):t('e.g. 2.5');
   SV('e-current-gate',p.currentGate||'');SV('e-gate',p.gate||'');SV('e-eta',p.eta||'');
   G('e-color-hex').textContent=p.color;
   populateSectionDropdowns();
@@ -132,7 +132,7 @@ function saveEdit(){
 }
 // deletes the selected project
 function deleteSelected(){
-  if(!selId||!confirm('Delete this project?'))return;
+  if(!selId||!confirm(t('Delete this project?')))return;
   projects=projects.filter(p=>p.id!==selId);selId=null;
   G('editor').style.display='none';renderList();render();saveState();
 }

@@ -39,31 +39,31 @@ function renderProfilesTab(){
   let h='<div style="display:flex;flex-direction:column;height:100%">';
 
   h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0">';
-  h+='<input id="prf-search" class="eng-card-inp" placeholder="🔍 Search name…" value="'+escH(search)+'"'
+  h+='<input id="prf-search" class="eng-card-inp" placeholder="'+t('🔍 Search name…')+'" value="'+escH(search)+'"'
     +' oninput="renderProfilesTab()" style="width:150px;font-size:11px">';
   h+='<select id="prf-grp" onchange="renderProfilesTab()"'
     +' style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:4px 8px;border-radius:4px;outline:none">'
-    +'<option value="">All groups</option>'
+    +'<option value="">'+t('All groups')+'</option>'
     +engGroups.map(function(g){return '<option value="'+g.id+'"'+(grpFilter===String(g.id)?' selected':'')+'>'+escH(g.name)+'</option>';}).join('')
     +'</select>';
   h+='<div style="width:1px;background:var(--border);height:18px"></div>';
-  h+='<button class="sm primary" onclick="exportProfilesDashboardPDF()" title="Export profile cards as PDF">↓ PDF</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardHTML()" title="Download as interactive HTML" style="border-color:var(--accent);color:var(--accent)">↓ HTML</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardPNG()" title="Download as PNG image">↓ PNG</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardSVG()" title="Download as SVG">↓ SVG</button>';
-  h+='<button class="sm" onclick="profilesExportAllPDF()" title="Export one full profile page per person">↓ PDF (full profiles)</button>';
-  h+='<button class="sm" onclick="profilesExportCSV()" title="Export all profiles as CSV">↓ CSV (all)</button>';
+  h+='<button class="sm primary" onclick="exportProfilesDashboardPDF()" title="'+t('Export profile cards as PDF')+'">↓ PDF</button>';
+  h+='<button class="sm" onclick="exportProfilesDashboardHTML()" title="'+t('Download as interactive HTML')+'" style="border-color:var(--accent);color:var(--accent)">↓ HTML</button>';
+  h+='<button class="sm" onclick="exportProfilesDashboardPNG()" title="'+t('Download as PNG image')+'">↓ PNG</button>';
+  h+='<button class="sm" onclick="exportProfilesDashboardSVG()" title="'+t('Download as SVG')+'">↓ SVG</button>';
+  h+='<button class="sm" onclick="profilesExportAllPDF()" title="'+t('Export one full profile page per person')+'">'+t('↓ PDF (full profiles)')+'</button>';
+  h+='<button class="sm" onclick="profilesExportCSV()" title="'+t('Export all profiles as CSV')+'">'+t('↓ CSV (all)')+'</button>';
   h+='<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;white-space:nowrap">'
     +'<input type="checkbox" id="prf-fullmode"'+(G('prf-fullmode')&&G('prf-fullmode').checked?' checked':'')
     +' onchange="renderProfilesTab()">'
-    +'Full detail view</label>';
+    +t('Full detail view')+'</label>';
   var showIndChecked=!G('prf-show-ind')||G('prf-show-ind').checked;
   h+='<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;white-space:nowrap"'
-    +' title="Show / hide SPOF, gaps, aspirations and notes on the cards">'
+    +' title="'+t('Show / hide SPOF, gaps, aspirations and notes on the cards')+'">'
     +'<input type="checkbox" id="prf-show-ind"'+(showIndChecked?' checked':'')
     +' onchange="renderProfilesTab()">'
-    +'SPOF / gaps / notes</label>';
-  h+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-left:auto">'+engs.length+' profiles</span>';
+    +t('SPOF / gaps / notes')+'</label>';
+  h+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-left:auto">'+t('{n} profiles',{n:engs.length})+'</span>';
   h+='</div>';
 
   h+='<div style="overflow:auto;flex:1"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">';
@@ -103,10 +103,10 @@ function renderProfilesTab(){
     h+='</div>';
 
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
-      +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="Edit this profile" style="font-size:9px;padding:2px 8px;font-weight:700">✏ EDIT</button>'
-      +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="Export this profile as PDF" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
-      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="Export this profile as SVG" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
-      +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="Export this profile as CSV" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
+      +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="'+t('Edit this profile')+'" style="font-size:9px;padding:2px 8px;font-weight:700">'+t('✏ EDIT')+'</button>'
+      +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="'+t('Export this profile as PDF')+'" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
+      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="'+t('Export this profile as SVG')+'" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
+      +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="'+t('Export this profile as CSV')+'" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
       +'</div>';
 
     h+='</div>';
@@ -117,15 +117,15 @@ function renderProfilesTab(){
     const _nm=c.nextMove||{};
     const nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     const details=[
-      ['📍 Location',e.location||c.location||'—'],
-      ['📊 Seniority',c.seniority||'—'],
-      ['📋 Contract',c.contract||'—'],
-      ['📅 Start date',c.startdate||'—'],
-      ['🚀 Potential (GTP)',c.potential||'—'],
-      ['🧭 Mobility',c.mobility||'—'],
-      ['🎯 Next move',nmStr],
-      ['👤 Reports to',mgrName],
-      ['🌐 Languages',c.languages||'—'],
+      [t('📍 Location'),e.location||c.location||'—'],
+      [t('📊 Seniority'),c.seniority||'—'],
+      [t('📋 Contract'),c.contract||'—'],
+      [t('📅 Start date'),c.startdate||'—'],
+      [t('🚀 Potential (GTP)'),c.potential||'—'],
+      [t('🧭 Mobility'),c.mobility||'—'],
+      [t('🎯 Next move'),nmStr],
+      [t('👤 Reports to'),mgrName],
+      [t('🌐 Languages'),c.languages||'—'],
     ];
     details.forEach(function(d){
       h+='<div style="display:flex;gap:6px;font-size:10px">'
@@ -134,13 +134,13 @@ function renderProfilesTab(){
     });
     var inTalent=e.includeTalent!==false;
     h+='<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
-      +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">&#9670; Matrices</span>'
+      +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
       +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
       +(inTalent
-        ?'background:rgba(200,241,53,.1);color:var(--accent);border:1px solid rgba(200,241,53,.3)">&#10003; Nine-Box &amp; DISC'
-        :'background:rgba(120,120,140,.1);color:var(--muted);border:1px solid var(--border)">&#8212; Excluded (contractor/intern)')
+        ?'background:rgba(200,241,53,.1);color:var(--accent);border:1px solid rgba(200,241,53,.3)">&#10003; '+t('Nine-Box &amp; DISC')
+        :'background:rgba(120,120,140,.1);color:var(--muted);border:1px solid var(--border)">&#8212; '+t('Excluded (contractor/intern)'))
       +'</span>'
-      +'<button onclick="openIdCardModal('+e.id+')" title="Change in profile" style="background:none;border:none;color:var(--muted);font-size:9px;cursor:pointer;padding:0;line-height:1">&#9998;</button>'
+      +'<button onclick="openIdCardModal('+e.id+')" title="'+t('Change in profile')+'" style="background:none;border:none;color:var(--muted);font-size:9px;cursor:pointer;padding:0;line-height:1">&#9998;</button>'
       +'</div>';
 
     var fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
@@ -150,11 +150,11 @@ function renderProfilesTab(){
       var compaCol=!hasCompa?'var(--muted)':(c.comparatio<90?'#f1a435':(c.comparatio>110?'var(--accent2)':'var(--accent)'));
       h+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">'
         +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">Compa-ratio</span>'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
         +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
         +'</div>'
         +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">Grade</span>'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
         +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?'var(--text)':'var(--muted)')+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
         +'</div>'
         +'</div>';
@@ -171,7 +171,7 @@ function renderProfilesTab(){
             const cc=CAT_COL[s.cat]||'#888';
             const hasGap=showInd&&s.gaps&&s.gaps.trim();
             h+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc
-              +'" title="'+(hasGap?'⚠ Gap: '+s.gaps:'')+'">'
+              +'" title="'+(hasGap?'⚠ '+t('Gap:')+' '+s.gaps:'')+'">'
               +escH(s.name)
               +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
               +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
@@ -187,21 +187,21 @@ function renderProfilesTab(){
           h+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc
             +'" title="L'+(s.level||3)+' '+(LEVEL_LABEL[s.level||3]||'')+'">'+escH(s.name)+'</span>';
         });
-        if(skills.length>16)h+='<span style="font-size:9px;color:var(--muted)">+'+(skills.length-16)+' more</span>';
+        if(skills.length>16)h+='<span style="font-size:9px;color:var(--muted)">+'+(skills.length-16)+' '+t('more')+'</span>';
         h+='</div>';
       }
     }
 
     if(spofSkills.length&&showInd){
-      h+='<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ SPOF: '+spofSkills.map(function(s){return s.name;}).join(', ')+'</div>';
+      h+='<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ '+t('SPOF:')+' '+spofSkills.map(function(s){return s.name;}).join(', ')+'</div>';
     }
 
     if(fullMode){
       var extraFields=[
-        ['💡 Aspirations',c.aspirations,true],
-        ['💪 Strengths',c.strengths,false],
-        ['📈 Development areas',c.devarea,false],
-        ['📝 Notes',c.notes,true]
+        [t('💡 Aspirations'),c.aspirations,true],
+        [t('💪 Strengths'),c.strengths,false],
+        [t('📈 Development areas'),c.devarea,false],
+        [t('📝 Notes'),c.notes,true]
       ];
       extraFields.forEach(function(f){
         if(f[2]&&!showInd)return;
@@ -217,7 +217,7 @@ function renderProfilesTab(){
   });
 
   if(!engs.length){
-    h+='<div style="padding:40px;text-align:center;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">No profiles to show. Add engineers in the roster.</div>';
+    h+='<div style="padding:40px;text-align:center;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">'+t('No profiles to show. Add engineers in the roster.')+'</div>';
   }
   h+='</div></div></div>';
   body.innerHTML=h;
@@ -287,7 +287,7 @@ function profileExportPDF(engId){
   const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
   const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
   const win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
+  if(!win){alert(t('Pop-up blocked — please allow pop-ups.'));return;}
   win.document.write(buildSingleProfilePageHTML(e,fullMode));
   win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>');
   win.document.close();
@@ -348,7 +348,7 @@ function profilesExportAllPDF(){
   let engs=engineers.filter(function(e){return !e.vacant;});
   if(grpFilter)engs=engs.filter(function(e){return String(e.groupId)===grpFilter;});
   if(search)engs=engs.filter(function(e){return e.name.toLowerCase().includes(search);});
-  if(!engs.length){alert('No profiles to export.');return;}
+  if(!engs.length){alert(t('No profiles to export.'));return;}
 
   const CAT_COL=getSkillCatCol();
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
@@ -405,7 +405,7 @@ function profilesExportAllPDF(){
   }
 
   const win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked.');return;}
+  if(!win){alert(t('Pop-up blocked.'));return;}
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Profiles</title>'
     +'<style>*{margin:0;padding:0;box-sizing:border-box;}'
     +'body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:0;}'
@@ -467,15 +467,15 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     var _nm=c.nextMove||{};
     var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
     var details=[
-      ['📍 Location',e.location||c.location||'—'],
-      ['📊 Seniority',c.seniority||'—'],
-      ['📋 Contract',c.contract||'—'],
-      ['📅 Start date',c.startdate||'—'],
-      ['🚀 Potential (GTP)',c.potential||'—'],
-      ['🧭 Mobility',c.mobility||'—'],
-      ['🎯 Next move',nmStr],
-      ['👤 Reports to',mgrName],
-      ['🌐 Languages',c.languages||'—'],
+      [t('📍 Location'),e.location||c.location||'—'],
+      [t('📊 Seniority'),c.seniority||'—'],
+      [t('📋 Contract'),c.contract||'—'],
+      [t('📅 Start date'),c.startdate||'—'],
+      [t('🚀 Potential (GTP)'),c.potential||'—'],
+      [t('🧭 Mobility'),c.mobility||'—'],
+      [t('🎯 Next move'),nmStr],
+      [t('👤 Reports to'),mgrName],
+      [t('🌐 Languages'),c.languages||'—'],
     ];
     var inTalent=e.includeTalent!==false;
 
@@ -496,11 +496,11 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
           +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
       }).join('')
       +'<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
-      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; Matrices</span>'
+      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
       +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
       +(inTalent
-        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; Nine-Box &amp; DISC'
-        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; Excluded (contractor/intern)')
+        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; '+t('Nine-Box &amp; DISC')
+        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; '+t('Excluded (contractor/intern)'))
       +'</span></div>';
 
     if(fullMode){
@@ -509,11 +509,11 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       var compaCol=!hasCompa?V.muted:(c.comparatio<90?'#f1a435':(c.comparatio>110?V.accent2:V.accent));
       html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid '+V.border+'">'
         +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Compa-ratio</span>'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
         +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
         +'</div>'
         +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">Grade</span>'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
         +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?V.text:V.muted)+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
         +'</div>'
         +'</div>';
@@ -546,21 +546,21 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
           var cc=CAT_COL[s.cat]||'#888';
           html+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
         });
-        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' more</span>';
+        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' '+t('more')+'</span>';
         html+='</div>';
       }
     }
 
     if(spof.length&&showInd){
-      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ SPOF: '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
+      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ '+t('SPOF:')+' '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
     }
 
     if(fullMode){
       var extras=[
-        ['💡 Aspirations',c.aspirations,true],
-        ['💪 Strengths',c.strengths,false],
-        ['📈 Development areas',c.devarea,false],
-        ['📝 Notes',c.notes,true]
+        [t('💡 Aspirations'),c.aspirations,true],
+        [t('💪 Strengths'),c.strengths,false],
+        [t('📈 Development areas'),c.devarea,false],
+        [t('📝 Notes'),c.notes,true]
       ];
       extras.forEach(function(f){
         if(f[2]&&!showInd)return;
@@ -657,10 +657,10 @@ function buildProfilesPageHTML(engs, fullMode, cols){
 // opens the profiles dashboard in a print popup
 function exportProfilesDashboardPDF(){
   var r=getProfileExportEngs();
-  if(!r.engs.length){alert('No profiles to export.');return;}
+  if(!r.engs.length){alert(t('No profiles to export.'));return;}
   var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
   var win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked.');return;}
+  if(!win){alert(t('Pop-up blocked.'));return;}
   win.document.write(html);
   win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,500);});<\/script>');
   win.document.close();
@@ -671,7 +671,7 @@ function _doExportProfilesDashboardPDF(){exportProfilesDashboardPDF();}
 // downloads the profiles dashboard as an HTML file
 function exportProfilesDashboardHTML(){
   var r=getProfileExportEngs();
-  if(!r.engs.length){alert('No profiles to export.');return;}
+  if(!r.engs.length){alert(t('No profiles to export.'));return;}
   var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
   var blob=new Blob([html],{type:'text/html;charset=utf-8'});
   var a=document.createElement('a');
@@ -686,7 +686,7 @@ function exportProfilesDashboardHTML(){
 // renders the profiles dashboard to a PNG via SVG foreignObject
 function exportProfilesDashboardPNG(){
   var r=getProfileExportEngs();
-  if(!r.engs.length){alert('No profiles to export.');return;}
+  if(!r.engs.length){alert(t('No profiles to export.'));return;}
 
   var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
 
@@ -732,7 +732,7 @@ function exportProfilesDashboardPNG(){
       };
       img.onerror=function(){
         document.body.removeChild(iframe);
-        alert('PNG export is limited by browser security. Opening as HTML instead — you can screenshot or print to PDF from there.');
+        alert(t('PNG export is limited by browser security. Opening as HTML instead — you can screenshot or print to PDF from there.'));
         exportProfilesDashboardHTML();
       };
       img.src=b64;
@@ -743,7 +743,7 @@ function exportProfilesDashboardPNG(){
 // renders the profiles dashboard to a standalone SVG
 function exportProfilesDashboardSVG(){
   var r=getProfileExportEngs();
-  if(!r.engs.length){alert('No profiles to export.');return;}
+  if(!r.engs.length){alert(t('No profiles to export.'));return;}
 
   var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
 
@@ -965,7 +965,7 @@ function buildBriefHTML(selectedProjs, opts){
           topSkills.forEach(function(s){
             html+='<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f1433520;border:1px solid #f1433544;color:#f14335">'+escH(s.name)+'</span>';
           });
-          if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:'+V.muted+'">'+(e.skills.length-4)+' more</span>';
+          if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:'+V.muted+'">'+(e.skills.length-4)+' '+t('more')+'</span>';
           html+='</div>';
         }
         html+='</div>';
@@ -1173,12 +1173,12 @@ function _getBriefOpts(){
 // opens the project brief in a print popup
 function exportProjectBrief(){
   var sel=getSelectedBriefProjects();
-  if(!sel.length){alert('Select at least one project.');return;}
+  if(!sel.length){alert(t('Select at least one project.'));return;}
   var opts=_getBriefOpts();
   var html=buildBriefHTML(sel,opts);
-  if(!html){alert('Export failed — could not build brief content.');return;}
+  if(!html){alert(t('Export failed — could not build brief content.'));return;}
   var win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked — please allow pop-ups for this page.');return;}
+  if(!win){alert(t('Pop-up blocked — please allow pop-ups for this page.'));return;}
   win.document.write(html);
   win.document.close();
 }
@@ -1186,10 +1186,10 @@ function exportProjectBrief(){
 // downloads the project brief as an HTML file
 function exportProjectBriefHTML(){
   var sel=getSelectedBriefProjects();
-  if(!sel.length){alert('Select at least one project.');return;}
+  if(!sel.length){alert(t('Select at least one project.'));return;}
   var opts=_getBriefOpts();
   var html=buildBriefHTML(sel,opts);
-  if(!html){alert('Export failed.');return;}
+  if(!html){alert(t('Export failed.'));return;}
   var blob=new Blob([html],{type:'text/html;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);

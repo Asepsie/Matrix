@@ -997,8 +997,8 @@ export function transferPlanCosts(){
 export function showDashReplacements(engId, btn) {
   // Toggle: if already open, close it
   var existing = document.getElementById('dash-repl-panel-' + engId);
-  if (existing) { existing.remove(); btn.textContent = '🔍 FIND REPLACEMENTS'; return; }
-  btn.textContent = '▲ CLOSE';
+  if (existing) { existing.remove(); btn.textContent = '🔍 '+t('FIND REPLACEMENTS'); return; }
+  btn.textContent = t('▲ CLOSE');
 
   var eng = engineers.find(function(e){ return e.id === engId; });
   if (!eng) return;
@@ -1073,7 +1073,7 @@ export function showDashReplacements(engId, btn) {
     var matchBadge = selectedSkills.length
       ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(200,241,53,.12);'
         + 'color:var(--accent);border:1px solid rgba(200,241,53,.3);margin-left:4px">'
-        + c.matched + '/' + selectedSkills.length + ' skills</span>'
+        + c.matched + '/' + selectedSkills.length + ' '+t('skills')+'</span>'
       : '';
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;'
       + 'border-radius:5px;background:'+(highlight?'rgba(200,241,53,.05)':'var(--bg)')
@@ -1090,7 +1090,7 @@ export function showDashReplacements(engId, btn) {
       + '<div style="text-align:right;flex-shrink:0">'
       + '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:'+availCol+'">'
       + c.pct + '%</div>'
-      + '<div style="font-size:8px;color:var(--muted)">' + Math.round(c.headroom*100) + '% free</div>'
+      + '<div style="font-size:8px;color:var(--muted)">' + Math.round(c.headroom*100) + '% '+t('free')+'</div>'
       + '</div>'
       + '</div>';
   }
@@ -1099,7 +1099,7 @@ export function showDashReplacements(engId, btn) {
   var skillPills = engSkills.length
     ? '<div style="margin-bottom:8px">'
       + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);'
-      + 'letter-spacing:.06em;margin-bottom:4px">FILTER BY SKILL (click to toggle):</div>'
+      + 'letter-spacing:.06em;margin-bottom:4px">'+t('FILTER BY SKILL (click to toggle):')+'</div>'
       + '<div style="display:flex;flex-wrap:wrap;gap:4px">'
       + engSkills.map(function(s){
           var active = selectedSkills.includes(s);
@@ -1126,28 +1126,28 @@ export function showDashReplacements(engId, btn) {
     + 'border-top:2px solid var(--danger)">'
     + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);letter-spacing:.07em;margin-bottom:8px">REPLACEMENT CANDIDATES FOR ' + escH(eng.name.toUpperCase()) + '</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);letter-spacing:.07em;margin-bottom:8px">'+t('REPLACEMENT CANDIDATES FOR')+' ' + escH(eng.name.toUpperCase()) + '</div>'
     + skillPills;
 
   if (sameCandidates.length) {
     var eg = engGroups.find(function(g){ return g.id===eng.groupId; });
     h += '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);'
-      + 'margin-bottom:4px;letter-spacing:.05em">SAME GROUP'+(eg?' — '+escH(eg.name):'')+' ('+sameCandidates.length+')</div>';
+      + 'margin-bottom:4px;letter-spacing:.05em">'+t('SAME GROUP')+(eg?' — '+escH(eg.name):'')+' ('+sameCandidates.length+')</div>';
     sameCandidates.slice(0, 6).forEach(function(c){ h += candidateRow(c, true); });
   } else {
     h += '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);padding:4px 0">'
-      + 'No available candidates in same group'
-      + (selectedSkills.length ? ' with selected skills.' : '.') + '</div>';
+      + t('No available candidates in same group')
+      + (selectedSkills.length ? ' '+t('with selected skills.') : '.') + '</div>';
   }
 
   if (otherCandidates.length && !selectedSkills.length) {
     h += '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);'
-      + 'margin-top:8px;margin-bottom:4px;letter-spacing:.05em">OTHER GROUPS ('+otherCandidates.length+')</div>';
+      + 'margin-top:8px;margin-bottom:4px;letter-spacing:.05em">'+t('OTHER GROUPS')+' ('+otherCandidates.length+')</div>';
     otherCandidates.forEach(function(c){ h += candidateRow(c, false); });
   }
 
   if (!sameCandidates.length && !otherCandidates.length) {
-    h += '<div style="font-size:9px;color:var(--muted);padding:4px 0">No available replacements found.</div>';
+    h += '<div style="font-size:9px;color:var(--muted);padding:4px 0">'+t('No available replacements found.')+'</div>';
   }
 
   // Add resource button at bottom of panel
@@ -1155,7 +1155,7 @@ export function showDashReplacements(engId, btn) {
     + '<button onclick="openAddResourceModal(' + engId + ')" '
     + 'style="width:100%;font-family:IBM Plex Mono,monospace;font-size:9px;padding:4px 0;'
     + 'background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;'
-    + 'cursor:pointer;letter-spacing:.04em">+ ADD RESOURCE</button>'
+    + 'cursor:pointer;letter-spacing:.04em">'+t('+ ADD RESOURCE')+'</button>'
     + '</div>';
   h += '</div>';
 
@@ -1203,8 +1203,8 @@ export function openAddResourceModal(fromEngId) {
   modal.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);'
     +'border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:12px">'
     +'<div style="display:flex;align-items:center;gap:10px">'
-    +'<h3 style="font-family:IBM Plex Mono,monospace;font-size:12px;letter-spacing:.06em;color:var(--muted);margin:0">ADD RESOURCE</h3>'
-    +(fromEng?'<span style="font-size:10px;color:var(--muted)">— based on '+escH(fromEng.name)+'\'s profile</span>':'')
+    +'<h3 style="font-family:IBM Plex Mono,monospace;font-size:12px;letter-spacing:.06em;color:var(--muted);margin:0">'+t('ADD RESOURCE')+'</h3>'
+    +(fromEng?'<span style="font-size:10px;color:var(--muted)">'+t('— based on the profile of {name}',{name:escH(fromEng.name)})+'</span>':'')
     +'<div style="flex:1"></div>'
     +'<button onclick="document.getElementById(\'add-resource-modal\').remove()" '
     +'style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">✕</button>'
@@ -1212,35 +1212,35 @@ export function openAddResourceModal(fromEngId) {
 
     // Name
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">FULL NAME *</label>'
-    +'<input id="nar-name" class="eng-card-inp" placeholder="e.g. Jane Doe" style="width:100%">'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('FULL NAME *')+'</label>'
+    +'<input id="nar-name" class="eng-card-inp" placeholder="'+t('e.g. Jane Doe')+'" style="width:100%">'
     +'</div>'
 
     // Role — prefill from source eng
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">ROLE</label>'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('ROLE')+'</label>'
     +'<input id="nar-role" class="eng-card-inp" value="'+escH(fromEng?fromEng.role||'':'')
-    +'" placeholder="e.g. Senior R&D" style="width:100%">'
+    +'" placeholder="'+t('e.g. Senior R&D')+'" style="width:100%">'
     +'</div>'
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">LOCATION</label>'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('LOCATION')+'</label>'
     +'<input id="nar-location" class="eng-card-inp" value="'+escH(fromEng?fromEng.location||'':'')
-    +'" placeholder="e.g. Montreal" style="width:100%">'
+    +'" placeholder="'+t('e.g. Montreal')+'" style="width:100%">'
     +'</div>'
     +'</div>'
 
     // Group + cost
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">ROSTER GROUP</label>'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('ROSTER GROUP')+'</label>'
     +'<select id="nar-group" style="background:var(--bg);border:1px solid var(--border);color:var(--text);'
     +'font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;width:100%">'
-    +'<option value="">— No group —</option>'+groups
+    +'<option value="">'+t('— No group —')+'</option>'+groups
     +'</select>'
     +'</div>'
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">MONTHLY COST (€)</label>'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('MONTHLY COST (€)')+'</label>'
     +'<input id="nar-cost" class="eng-card-inp" type="number" value="'+(fromEng?fromEng.monthlyCost||8000:8000)
     +'" placeholder="8000" style="width:100%">'
     +'</div>'
@@ -1250,17 +1250,17 @@ export function openAddResourceModal(fromEngId) {
     +(fromEng&&(fromEng.skills||[]).length
       ? '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">'
         +'<input type="checkbox" id="nar-copy-skills" checked style="accent-color:var(--accent)">'
-        +'<span style="color:var(--text)">Copy skills from '+escH(fromEng.name)+'</span>'
-        +'<span style="font-size:9px;color:var(--muted)">('+( fromEng.skills.length)+' skills)</span>'
+        +'<span style="color:var(--text)">'+t('Copy skills from {name}',{name:escH(fromEng.name)})+'</span>'
+        +'<span style="font-size:9px;color:var(--muted)">('+t('{n} skills',{n:fromEng.skills.length})+')</span>'
         +'</label>'
       : '')
 
     // Org placement: reports to
     +'<div class="field">'
-    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">REPORTS TO (org chart)</label>'
+    +'<label style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:4px">'+t('REPORTS TO (org chart)')+'</label>'
     +'<select id="nar-reportsto" style="background:var(--bg);border:1px solid var(--border);color:var(--text);'
     +'font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;width:100%">'
-    +'<option value="">— Not set —</option>'
+    +'<option value="">'+t('— Not set —')+'</option>'
     +(fromEng&&fromEng.idcard&&fromEng.idcard.reportsto
       ? engineers.filter(function(e){ return !e.vacant; }).map(function(e){
           var sel = String(e.id)===String(fromEng.idcard.reportsto)?' selected':'';
@@ -1276,15 +1276,15 @@ export function openAddResourceModal(fromEngId) {
     // Vacancy toggle
     +'<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">'
     +'<input type="checkbox" id="nar-vacant" style="accent-color:var(--accent)">'
-    +'<span style="color:var(--text)">Add as vacancy (open position)</span>'
+    +'<span style="color:var(--text)">'+t('Add as vacancy (open position)')+'</span>'
     +'</label>'
 
     // Actions
     +'<div style="display:flex;gap:8px;margin-top:4px">'
     +'<button class="primary" onclick="confirmAddResource('+fromEngId+')" '
-    +'style="flex:1;font-family:IBM Plex Mono,monospace;letter-spacing:.04em">✓ ADD TO ROSTER</button>'
+    +'style="flex:1;font-family:IBM Plex Mono,monospace;letter-spacing:.04em">'+t('✓ ADD TO ROSTER')+'</button>'
     +'<button onclick="document.getElementById(\'add-resource-modal\').remove()" '
-    +'style="font-family:IBM Plex Mono,monospace">CANCEL</button>'
+    +'style="font-family:IBM Plex Mono,monospace">'+t('CANCEL')+'</button>'
     +'</div>'
     +'</div>';
 
@@ -1295,7 +1295,7 @@ export function openAddResourceModal(fromEngId) {
 // Validates the add-resource modal, creates the engineer, navigates to roster, and shows a toast.
 export function confirmAddResource(fromEngId) {
   var name = (document.getElementById('nar-name').value||'').trim();
-  if (!name) { alert('Name is required.'); return; }
+  if (!name) { alert(t('Name is required.')); return; }
 
   var fromEng   = engineers.find(function(e){ return e.id === fromEngId; });
   var role      = (document.getElementById('nar-role').value||'').trim();
@@ -1343,11 +1343,11 @@ export function confirmAddResource(fromEngId) {
   document.getElementById('add-resource-modal').remove();
 
   // Show success and navigate to roster
-  var msg = '✓ ' + name + ' added to roster'
+  var msg = '✓ ' + t('{name} added to roster',{name:name})
     + (groupId ? ' (' + (engGroups.find(function(g){return g.id===groupId;})||{}).name + ')' : '')
-    + (reportsTo ? '\n  Org chart: reports to '
-        + (engineers.find(function(e){ return String(e.id)===String(reportsTo); })||{}).name : '')
-    + (copySkills && skills.length ? '\n  ' + skills.length + ' skills copied' : '');
+    + (reportsTo ? '\n  '
+        + t('Org chart: reports to {name}',{name:(engineers.find(function(e){ return String(e.id)===String(reportsTo); })||{}).name}) : '')
+    + (copySkills && skills.length ? '\n  ' + t('{n} skills copied',{n:skills.length}) : '');
 
   // Switch to roster to show the new engineer
   showResTab('roster');

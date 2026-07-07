@@ -24,17 +24,17 @@ export function handleRosterImport(e){
   r.onload=ev=>{
     try{
       const d=JSON.parse(ev.target.result);
-      if(d._type!=='roster_v1')throw new Error('Not a roster file. Export a roster first.');
-      if(!d.engineers||!Array.isArray(d.engineers))throw new Error('No engineers array found.');
-      if(!confirm('Replace current roster with imported one? Allocation rows will keep their engineer references by ID.'))return;
+      if(d._type!=='roster_v1')throw new Error(t('Not a roster file. Export a roster first.'));
+      if(!d.engineers||!Array.isArray(d.engineers))throw new Error(t('No engineers array found.'));
+      if(!confirm(t('Replace current roster with imported one? Allocation rows will keep their engineer references by ID.')))return;
       engineers=d.engineers;
       engineers.forEach(e=>{if(e.groupId===undefined)e.groupId=null;if(!e.role)e.role='';if(!e.location)e.location='';});
       if(d.engGroups&&Array.isArray(d.engGroups))engGroups=d.engGroups;
       if(d.nextEngId)nextEngId=d.nextEngId;
       if(d.nextEngGroupId)nextEngGroupId=d.nextEngGroupId;
       saveState();renderResActiveTab();
-      alert('Roster imported: '+engineers.length+' engineers in '+engGroups.length+' groups.');
-    }catch(err){alert('Import failed: '+err.message);}
+      alert(t('Roster imported: {n} engineers in {g} groups.',{n:engineers.length,g:engGroups.length}));
+    }catch(err){alert(t('Import failed:')+' '+err.message);}
   };
   r.readAsText(file);e.target.value='';
 }
@@ -89,14 +89,13 @@ export function exportFullBackup(){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
 
-  alert('Full backup saved: '+name+'\n\n'
-    +'Contents:\n'
-    +'  Projects:   '+backup._projectCount+'\n'
-    +'  Engineers:  '+backup._engineerCount+'\n'
-    +'  Photos:     '+nPhotos+'\n'
-    +'  File size:  '+kb+'KB\n\n'
-    +'This single file contains everything needed to restore\n'
-    +'your complete workspace on another computer.');
+  alert(t('Full backup saved: {name}',{name:name})+'\n\n'
+    +t('Contents:')+'\n'
+    +'  '+t('Projects:')+'   '+backup._projectCount+'\n'
+    +'  '+t('Engineers:')+'  '+backup._engineerCount+'\n'
+    +'  '+t('Photos:')+'     '+nPhotos+'\n'
+    +'  '+t('File size:')+'  '+kb+'KB\n\n'
+    +t('This single file contains everything needed to restore\nyour complete workspace on another computer.'));
 }
 
 // reads and restores a full backup JSON file (state + photos)
@@ -112,7 +111,7 @@ export function importFullBackup(){
 
         if(backup._type!=='full_backup'||!backup.state){
           if(backup.projects){
-            if(confirm('This is an older export format (not a full backup).\n\nImport projects only?')){
+            if(confirm(t('This is an older export format (not a full backup).\n\nImport projects only?'))){
               takeSnap('Auto: before import','full','',true);
               projects=backup.projects;
               if(backup.sections&&Array.isArray(backup.sections))sections=backup.sections;
@@ -120,10 +119,10 @@ export function importFullBackup(){
               ['nextId','nextTodoId','nextRiskId','nextMsId','nextSectionId','nextAnnotId','nextActionId'].forEach(function(k){if(backup[k])eval(k+'=backup[k]');});
               if(backup.sepX!=null)sepX=backup.sepX; if(backup.sepY!=null)sepY=backup.sepY;
               onAxisChange();renderList();render();saveState();updateSnapBadge();
-              alert('Projects imported successfully.');
+              alert(t('Projects imported successfully.'));
             }
           } else {
-            alert('File is not a full backup.\n\nExpected a file exported via "↓ FULL BACKUP".');
+            alert(t('File is not a full backup.\n\nExpected a file exported via "↓ FULL BACKUP".'));
           }
           return;
         }
@@ -133,13 +132,12 @@ export function importFullBackup(){
         const nPhotos=Object.keys(photos).length;
 
         if(!confirm(
-          'Restore full backup from '+new Date(backup._exportedAt).toLocaleString()+'?\n\n'
-          +'Contents:\n'
-          +'  Projects:   '+(backup._projectCount||'?')+'\n'
-          +'  Engineers:  '+(backup._engineerCount||'?')+'\n'
-          +'  Photos:     '+nPhotos+'\n\n'
-          +'This will REPLACE all current data.\n'
-          +'A safety snapshot will be taken first.'
+          t('Restore full backup from {date}?',{date:new Date(backup._exportedAt).toLocaleString()})+'\n\n'
+          +t('Contents:')+'\n'
+          +'  '+t('Projects:')+'   '+(backup._projectCount||'?')+'\n'
+          +'  '+t('Engineers:')+'  '+(backup._engineerCount||'?')+'\n'
+          +'  '+t('Photos:')+'     '+nPhotos+'\n\n'
+          +t('This will REPLACE all current data.\nA safety snapshot will be taken first.')
         ))return;
 
         takeSnap('Auto: before full backup restore','full','',true);
@@ -218,19 +216,19 @@ export function importFullBackup(){
           talentIdbSave();   // make EIM_TalentData match the restored dataset
           onAxisChange();renderList();render();updateSnapBadge();
           selId=null;G('editor').style.display='none';
-          alert('Full backup restored successfully!\n\n'
-            +'Restored:\n'
-            +'  Projects:   '+projects.length+'\n'
-            +'  Engineers:  '+engineers.filter(function(e){return !e.vacant;}).length+'\n'
-            +'  Photos:     '+nPhotos);
+          alert(t('Full backup restored successfully!')+'\n\n'
+            +t('Restored:')+'\n'
+            +'  '+t('Projects:')+'   '+projects.length+'\n'
+            +'  '+t('Engineers:')+'  '+engineers.filter(function(e){return !e.vacant;}).length+'\n'
+            +'  '+t('Photos:')+'     '+nPhotos);
         }).catch(function(err){
           saveState();onAxisChange();renderList();render();
-          alert('Restore completed (photo restore error: '+err.message+')');
+          alert(t('Restore completed (photo restore error: {msg})',{msg:err.message}));
         });
 
       }catch(err){
         console.error('[EIM] Full backup import failed:',err);
-        alert('Import failed: '+err.message);
+        alert(t('Import failed:')+' '+err.message);
       }
     };
     reader.readAsText(file);

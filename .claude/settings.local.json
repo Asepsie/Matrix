@@ -60,7 +60,9 @@
       "Bash(grep -nE \"innerHTML|textContent|'[A-Z][a-z]{3,}|>[A-Z][a-z]{3,}\" src/sections/org.js)",
       "Bash(grep -oE \"'[^']{4,}'|\\\\\"[^\\\\\"]{4,}\\\\\"\")",
       "Bash(grep -E \"SNAP: ON|ARROWS: OFF|WHITE: ON|DETAILS: ON|▭ BG|▭ FG$\")",
-      "Bash(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1f1a078f-ec23-4daf-a24c-36af64c82c65/scratchpad/findmissing.js\")"
+      "Bash(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1f1a078f-ec23-4daf-a24c-36af64c82c65/scratchpad/findmissing.js\")",
+      "Bash(git rev-list *)",
+      "Bash(git -C /c/Users/pyro3/Documents/Matrix status --short)"
     ]
   }
 }

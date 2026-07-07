@@ -502,13 +502,15 @@ Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded **firs
 > [I18N.md](I18N.md) — read that to continue the work.** This section is the durable design
 > rationale only.
 
-Done so far (396 keys, all translated): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
-first-run, Help) · Phase 2 partial (matrix canvas, Roster + engineer card, Resources period
-header, Resource plan, org-chart header/tools/dialogs, org headcount-KPI panel, cost dashboard
-`renderResDashboard`). Remaining: dashboard.js leftovers (replacement finder, add-resource
-modal, PDF-export print doc), org node/context-menus, nine-box, DISC, analytics, portfolio,
-charter, dtc, skills, timeline, development; then Phase 3 (SVG labels + `i18nNum`/`i18nDate`
-wiring). See I18N.md.
+Done so far (966 keys, all translated): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
+first-run, Help) · Phase 2 partial — matrix canvas, Roster + engineer card, Resources period
+header, Resource plan, org-chart header/tools/dialogs + headcount-KPI, cost dashboard (+ replacement
+finder + add-resource modal), Portfolio + People analytics, Team profiles, and section-6 modals &
+misc (idcard, backup, tooltip, sidebar, Summary overlay, AI advisor dialogs, project-window
+risk/schedule/actions modals) — all DOM chrome. Deliberately left English: SVG chart `<text>`,
+the AI LLM prompt/context, stored status/priority option values, print-doc/CSV export builders.
+Remaining: nine-box, DISC, development, skills, heatmap, charter, dtc, timeline, org node/context-
+menus; then Phase 3 (SVG labels, print docs, `i18nNum`/`i18nDate` wiring). See I18N.md.
 
 **Load order:** `core/i18n.js` is the **first** file in `JS_FILES` (before `data/model.js`
 and `core/globals.js`) so `t()` is defined for every later file — including globals, whose

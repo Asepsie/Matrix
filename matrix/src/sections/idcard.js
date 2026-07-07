@@ -19,7 +19,7 @@
 // auto-fills manager name when a roster engineer is selected
 export function syncManagerDisplayName(sel){
   const inp=G('idc-manager');if(!inp)return;
-  if(!sel.value){ inp.placeholder='e.g. external manager name…'; return; }
+  if(!sel.value){ inp.placeholder=t('e.g. external manager name…'); return; }
   const eng=engineers.find(e=>String(e.id)===String(sel.value));
   if(eng&&!inp.value) inp.value=eng.name;
 }
@@ -28,13 +28,13 @@ export function openIdCardModal(engId){
   _idcardEngId=engId;
   const eng=engineers.find(e=>e.id===engId);if(!eng)return;
   const c=eng.idcard||{};
-  G('idcard-modal-title').textContent='PROFILE — '+eng.name;
+  G('idcard-modal-title').textContent=t('PROFILE —')+' '+eng.name;
   G('idc-name').value=eng.name||'';
   G('idc-role').value=eng.role||'';
   G('idc-location').value=eng.location||'';
   G('idc-cost').value=eng.monthlyCost||'';
   const sel=G('idc-reportsto');
-  sel.innerHTML='<option value="">— No manager —</option>';
+  sel.innerHTML='<option value="">'+t('— No manager —')+'</option>';
   engineers.filter(e=>e.id!==engId).forEach(e=>{
     const opt=document.createElement('option');
     opt.value=e.id;
@@ -76,7 +76,7 @@ export function openIdCardModal(engId){
   }
   var info=idbStorageInfo();
   var hint=G('idc-photo-storage-hint');
-  if(hint)hint.textContent=info.photos>0?info.photos+' photo(s) · '+info.kb+'KB':'';
+  if(hint)hint.textContent=info.photos>0?t('{n} photo(s) · {kb}KB',{n:info.photos,kb:info.kb}):'';
   // Communities of Practice & performance reviews — load working copies and render
   _idcCops=(c.cops||[]).map(function(x){return {name:x.name||'',goal:x.goal||'',notes:x.notes||''};});
   _idcReviews=(c.reviews||[]).map(function(x){return {year:x.year||'',rating:x.rating||'',comments:x.comments||''};});
@@ -96,7 +96,7 @@ export function idcPhotoSelected(inp){
     idbUpdateStatus();
     var hint=G('idc-photo-storage-hint');
     var kb=res.kb||Math.round(dataURL.length/1024);
-    if(hint)hint.textContent='Saved · '+kb+'KB ('+res.w+'×'+res.h+'px) · '+idbStorageInfo().photos+' total';
+    if(hint)hint.textContent=t('Saved · {kb}KB ({w}×{h}px) · {n} total',{kb:kb,w:res.w,h:res.h,n:idbStorageInfo().photos});
   }).catch(function(){
     var reader=new FileReader();
     reader.onload=function(e){
@@ -184,17 +184,17 @@ function idcRenderCops(){
   var wrap=G('idc-cop-list');if(!wrap)return;
   var cnt=G('idc-cop-count');if(cnt)cnt.textContent=_idcCops.length?('· '+_idcCops.length):'';
   if(!_idcCops.length){
-    wrap.innerHTML='<div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;padding:2px 0">No communities of practice yet — click “+ ADD CoP”.</div>';
+    wrap.innerHTML='<div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;padding:2px 0">'+t('No communities of practice yet — click “+ ADD CoP”.')+'</div>';
     return;
   }
   wrap.innerHTML=_idcCops.map(function(cop,i){
     return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg)">'
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
-      +'<input class="id-card-inp" style="flex:1" placeholder="CoP name — e.g. Frontend Guild" value="'+escH(cop.name||'')+'" oninput="_idcCops['+i+'].name=this.value">'
-      +'<button class="row-del-btn" title="Remove this CoP" onclick="idcDelCop('+i+')">×</button>'
+      +'<input class="id-card-inp" style="flex:1" placeholder="'+t('CoP name — e.g. Frontend Guild')+'" value="'+escH(cop.name||'')+'" oninput="_idcCops['+i+'].name=this.value">'
+      +'<button class="row-del-btn" title="'+t('Remove this CoP')+'" onclick="idcDelCop('+i+')">×</button>'
       +'</div>'
-      +'<input class="id-card-inp" style="width:100%;margin-bottom:6px" placeholder="Goal / role in this CoP" value="'+escH(cop.goal||'')+'" oninput="_idcCops['+i+'].goal=this.value">'
-      +'<input class="id-card-inp" style="width:100%" placeholder="Notes (optional)" value="'+escH(cop.notes||'')+'" oninput="_idcCops['+i+'].notes=this.value">'
+      +'<input class="id-card-inp" style="width:100%;margin-bottom:6px" placeholder="'+t('Goal / role in this CoP')+'" value="'+escH(cop.goal||'')+'" oninput="_idcCops['+i+'].goal=this.value">'
+      +'<input class="id-card-inp" style="width:100%" placeholder="'+t('Notes (optional)')+'" value="'+escH(cop.notes||'')+'" oninput="_idcCops['+i+'].notes=this.value">'
       +'</div>';
   }).join('');
 }
@@ -214,17 +214,17 @@ function idcRenderReviews(){
   var wrap=G('idc-rev-list');if(!wrap)return;
   var cnt=G('idc-rev-count');if(cnt)cnt.textContent=_idcReviews.length?('· '+_idcReviews.length):'';
   if(!_idcReviews.length){
-    wrap.innerHTML='<div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;padding:2px 0">No performance reviews yet — click “+ ADD REVIEW”.</div>';
+    wrap.innerHTML='<div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;padding:2px 0">'+t('No performance reviews yet — click “+ ADD REVIEW”.')+'</div>';
     return;
   }
   wrap.innerHTML=_idcReviews.map(function(r,i){
     return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg)">'
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
-      +'<input class="id-card-inp" style="width:84px" placeholder="Year" value="'+escH(String(r.year||''))+'" oninput="_idcReviews['+i+'].year=this.value">'
-      +'<input class="id-card-inp" style="flex:1" placeholder="Rating — e.g. Exceeds expectations" value="'+escH(r.rating||'')+'" oninput="_idcReviews['+i+'].rating=this.value">'
-      +'<button class="row-del-btn" title="Remove this review" onclick="idcDelReview('+i+')">×</button>'
+      +'<input class="id-card-inp" style="width:84px" placeholder="'+t('Year')+'" value="'+escH(String(r.year||''))+'" oninput="_idcReviews['+i+'].year=this.value">'
+      +'<input class="id-card-inp" style="flex:1" placeholder="'+t('Rating — e.g. Exceeds expectations')+'" value="'+escH(r.rating||'')+'" oninput="_idcReviews['+i+'].rating=this.value">'
+      +'<button class="row-del-btn" title="'+t('Remove this review')+'" onclick="idcDelReview('+i+')">×</button>'
       +'</div>'
-      +'<textarea class="id-card-textarea" style="min-height:46px" placeholder="Comments" oninput="_idcReviews['+i+'].comments=this.value">'+escH(r.comments||'')+'</textarea>'
+      +'<textarea class="id-card-textarea" style="min-height:46px" placeholder="'+t('Comments')+'" oninput="_idcReviews['+i+'].comments=this.value">'+escH(r.comments||'')+'</textarea>'
       +'</div>';
   }).join('');
 }
