@@ -185,23 +185,23 @@ function renderSummary(){
 
   let h=`
   <div class="sum-grid">
-    <div class="kpi-card"><div class="kpi-val">${projects.length}</div><div class="kpi-label">TOTAL PROJECTS</div><div class="kpi-sub">${vis.length} visible on matrix</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--danger)">${riskHi}</div><div class="kpi-label">HIGH RISKS (RPN≥300)</div><div class="kpi-sub">${riskMd} medium · ${allRisks.length} total</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${actionsDone}<span style="font-size:14px;color:var(--muted)">/${allActions.length}</span></div><div class="kpi-label">ACTIONS COMPLETE</div><div class="kpi-sub">${actionsBlocked} blocked</div></div>
-    <div class="kpi-card"><div class="kpi-val">${todosDone}<span style="font-size:14px;color:var(--muted)">/${allTodos.length}</span></div><div class="kpi-label">TASKS DONE</div><div class="kpi-sub">${allTodos.length?Math.round(todosDone/allTodos.length*100):0}% completion</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:${msOverdue>0?'var(--danger)':'var(--accent)'}">${msOverdue}</div><div class="kpi-label">OVERDUE MILESTONES</div><div class="kpi-sub">${msDone} completed · ${allMs.length} total</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${withGate}</div><div class="kpi-label">PROJECTS WITH GATE</div><div class="kpi-sub">Next gate defined</div></div>
-    <div class="kpi-card"><div class="kpi-val">${avgImpact}</div><div class="kpi-label">AVG IMPACT</div><div class="kpi-sub">Visibility ${avgVis} · Enabler ${avgEna}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${sections.length}</div><div class="kpi-label">SECTIONS</div><div class="kpi-sub">${projects.filter(p=>!p.sectionId).length} unsectioned</div></div>
+    <div class="kpi-card"><div class="kpi-val">${projects.length}</div><div class="kpi-label">${t('TOTAL PROJECTS')}</div><div class="kpi-sub">${t('{n} visible on matrix',{n:vis.length})}</div></div>
+    <div class="kpi-card"><div class="kpi-val" style="color:var(--danger)">${riskHi}</div><div class="kpi-label">${t('HIGH RISKS (RPN≥300)')}</div><div class="kpi-sub">${t('{m} medium · {n} total',{m:riskMd,n:allRisks.length})}</div></div>
+    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${actionsDone}<span style="font-size:14px;color:var(--muted)">/${allActions.length}</span></div><div class="kpi-label">${t('ACTIONS COMPLETE')}</div><div class="kpi-sub">${t('{n} blocked',{n:actionsBlocked})}</div></div>
+    <div class="kpi-card"><div class="kpi-val">${todosDone}<span style="font-size:14px;color:var(--muted)">/${allTodos.length}</span></div><div class="kpi-label">${t('TASKS DONE')}</div><div class="kpi-sub">${allTodos.length?Math.round(todosDone/allTodos.length*100):0}% ${t('completion')}</div></div>
+    <div class="kpi-card"><div class="kpi-val" style="color:${msOverdue>0?'var(--danger)':'var(--accent)'}">${msOverdue}</div><div class="kpi-label">${t('OVERDUE MILESTONES')}</div><div class="kpi-sub">${t('{d} completed · {n} total',{d:msDone,n:allMs.length})}</div></div>
+    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${withGate}</div><div class="kpi-label">${t('PROJECTS WITH GATE')}</div><div class="kpi-sub">${t('Next gate defined')}</div></div>
+    <div class="kpi-card"><div class="kpi-val">${avgImpact}</div><div class="kpi-label">${t('AVG IMPACT')}</div><div class="kpi-sub">${t('Visibility {v} · Enabler {e}',{v:avgVis,e:avgEna})}</div></div>
+    <div class="kpi-card"><div class="kpi-val">${sections.length}</div><div class="kpi-label">${t('SECTIONS')}</div><div class="kpi-sub">${t('{n} unsectioned',{n:projects.filter(p=>!p.sectionId).length})}</div></div>
   </div>`;
 
   // Per-section breakdown
   const allGroups=[
-    {name:'UNSECTIONED',color:'var(--muted)',projs:projects.filter(p=>!p.sectionId)},
+    {name:t('UNSECTIONED'),color:'var(--muted)',projs:projects.filter(p=>!p.sectionId)},
     ...sections.map(s=>({name:s.name,color:s.color,projs:projects.filter(p=>p.sectionId===s.id)}))
   ].filter(g=>g.projs.length);
 
-  h+=`<div class="sum-section-title">PROJECT BREAKDOWN</div>`;
+  h+=`<div class="sum-section-title">${t('PROJECT BREAKDOWN')}</div>`;
   for(const grp of allGroups){
     h+=`<div style="margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
@@ -222,8 +222,8 @@ function renderSummary(){
           I:${p.y} V:${p.vis||5} E:${p.ena||5}
         </div>
         <div class="psr-badges">
-          ${rpnHi?`<span class="badge badge-risk-hi">⚠ ${rpnHi} HI</span>`:''}
-          ${msOvd?`<span class="badge" style="background:rgba(241,67,53,.12);color:#f14335">📅 ${msOvd} late</span>`:''}
+          ${rpnHi?`<span class="badge badge-risk-hi">⚠ ${t('{n} HI',{n:rpnHi})}</span>`:''}
+          ${msOvd?`<span class="badge" style="background:rgba(241,67,53,.12);color:#f14335">📅 ${t('{n} late',{n:msOvd})}</span>`:''}
           ${p.currentGate?`<span class="badge" style="background:rgba(120,120,140,.12);color:var(--muted);font-size:9px;padding:1px 5px;border-radius:3px">🏁 ${escH(p.currentGate.slice(0,12))} →</span>` :''} ${p.gate?`<span class="badge badge-gate">🏁 ${escH(p.gate.slice(0,14))}</span>`:''}
           ${pTodos.length?`<span class="badge badge-todo">☑ ${todoPct}%</span>`:''}
           ${pActs.length?`<span class="badge" style="background:rgba(167,139,250,.1);color:#a78bfa">👥 ${actPct}%</span>`:''}
@@ -231,8 +231,8 @@ function renderSummary(){
       </div>
       ${(todoPct!==null||actPct!==null)?`
       <div style="padding:2px 0 4px 15px">
-        ${todoPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-bottom:2px"><span style="width:36px">Tasks</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${todoPct}%"></div></div><span>${todoPct}%</span></div>`:''}
-        ${actPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)"><span style="width:36px">Actions</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${actPct}%;background:#a78bfa"></div></div><span>${actPct}%</span></div>`:''}
+        ${todoPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-bottom:2px"><span style="width:36px">${t('Tasks')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${todoPct}%"></div></div><span>${todoPct}%</span></div>`:''}
+        ${actPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)"><span style="width:36px">${t('Actions')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${actPct}%;background:#a78bfa"></div></div><span>${actPct}%</span></div>`:''}
       </div>`:''}`;
     }
     h+='</div>';
@@ -241,21 +241,21 @@ function renderSummary(){
   // Team workload
   const memberMap={};
   projects.forEach(p=>(p.actions||[]).forEach(a=>{
-    const m=a.member||'Unassigned';
+    const m=a.member||t('Unassigned');
     if(!memberMap[m])memberMap[m]={total:0,done:0,blocked:0,projects:new Set()};
     memberMap[m].total++;memberMap[m].projects.add(p.name);
     if(a.status==='Done')memberMap[m].done++;
     if(a.status==='Blocked')memberMap[m].blocked++;
   }));
   if(Object.keys(memberMap).length){
-    h+=`<div class="sum-section-title" style="margin-top:8px">TEAM WORKLOAD</div>
+    h+=`<div class="sum-section-title" style="margin-top:8px">${t('TEAM WORKLOAD')}</div>
     <div class="sum-grid">`;
     for(const [name,s] of Object.entries(memberMap)){
       const pct=Math.round(s.done/s.total*100);
       h+=`<div class="kpi-card">
         <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent2);margin-bottom:6px">${escH(name)}</div>
-        <div style="font-size:12px">${s.total} actions &nbsp;·&nbsp; <span style="color:var(--accent)">${pct}%</span> done</div>
-        ${s.blocked?`<div style="font-size:10px;color:var(--danger);margin-top:2px">⚠ ${s.blocked} blocked</div>`:''}
+        <div style="font-size:12px">${t('{n} actions',{n:s.total})} &nbsp;·&nbsp; <span style="color:var(--accent)">${pct}%</span> ${t('done')}</div>
+        ${s.blocked?`<div style="font-size:10px;color:var(--danger);margin-top:2px">⚠ ${t('{n} blocked',{n:s.blocked})}</div>`:''}
         <div class="progress-bar-wrap" style="margin-top:8px"><div class="progress-bar" style="width:${pct}%"></div></div>
         <div style="font-size:10px;color:var(--muted);margin-top:4px">${[...s.projects].slice(0,2).map(p=>p.slice(0,16)).join(', ')}${s.projects.size>2?'…':''}</div>
       </div>`;

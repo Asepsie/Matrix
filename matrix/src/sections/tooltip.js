@@ -19,24 +19,24 @@ function showTip(e,id){
   const sec=sections.find(s=>s.id===p.sectionId);
   let html=`<b style="color:${p.color}">${escH(p.name)}</b>`;
   if(sec)html+=` <span style="color:${sec.color};font-size:9px">[${escH(sec.name)}]</span>`;
-  html+=`<br>${ax.name}: ${p.x} · Impact: ${p.y}`;
-  html+=`<br>Visibility: ${p.vis??5} · Enabler: ${p.ena??5}`;
+  html+=`<br>${ax.name}: ${p.x} · ${t('Impact:')} ${p.y}`;
+  html+=`<br>${t('Visibility:')} ${p.vis??5} · ${t('Enabler:')} ${p.ena??5}`;
   if(p.note)html+=`<br><span style="color:var(--muted)">${escH(p.note)}</span>`;
-  if(p.currentGate)html+=`<br>🏁 <span style="color:var(--muted)">${escH(p.currentGate)}</span> → <span style="color:var(--accent2)">${escH(p.gate||'Next TBD')}</span>`;
+  if(p.currentGate)html+=`<br>🏁 <span style="color:var(--muted)">${escH(p.currentGate)}</span> → <span style="color:var(--accent2)">${escH(p.gate||t('Next TBD'))}</span>`;
   else if(p.gate)html+=`<br>🏁 <span style="color:var(--accent2)">${escH(p.gate)}</span>`;
-  if(p.planCost)html+=`<br>💰 ${Math.round(p.planCost/1000)}k€ <span style="color:var(--muted);font-size:9px">[${p.costSource==='plan'?'from resource plan':'manual'}]</span>`;
+  if(p.planCost)html+=`<br>💰 ${Math.round(p.planCost/1000)}k€ <span style="color:var(--muted);font-size:9px">[${p.costSource==='plan'?t('from resource plan'):t('manual')}]</span>`;
   if(p.eta) html+=`<br>📅 ${p.eta}`;
-  if(tt)    html+=`<br>☑ ${td}/${tt} tasks`;
-  if(p.risks&&p.risks.length){const hi=p.risks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;html+=`<br>⚠ ${p.risks.length} risks${hi?` (${hi} HIGH)`:''}`;}
-  const t=G('tooltip');t.innerHTML=html;t.style.opacity='1';
-  t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-10)+'px';
+  if(tt)    html+=`<br>☑ ${td}/${tt} ${t('tasks')}`;
+  if(p.risks&&p.risks.length){const hi=p.risks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;html+=`<br>${t('⚠ {n} risks',{n:p.risks.length})}${hi?` ${t('({n} HIGH)',{n:hi})}`:''}`;}
+  const tipEl=G('tooltip');tipEl.innerHTML=html;tipEl.style.opacity='1';
+  tipEl.style.left=(e.clientX+14)+'px';tipEl.style.top=(e.clientY-10)+'px';
 }
 // hides the hover tooltip
 function hideTip(){G('tooltip').style.opacity='0';}
 
 // opens the quadrant label/color editor panel
 function openQPanel(){
-  const KEYS=[{key:'tl',pos:'TOP-LEFT'},{key:'tr',pos:'TOP-RIGHT'},{key:'bl',pos:'BOT-LEFT'},{key:'br',pos:'BOT-RIGHT'}];
+  const KEYS=[{key:'tl',pos:t('TOP-LEFT')},{key:'tr',pos:t('TOP-RIGHT')},{key:'bl',pos:t('BOT-LEFT')},{key:'br',pos:t('BOT-RIGHT')}];
   const MODES=['impact','visibility','enabler'];
   let rows='';
   KEYS.forEach(function(kd){
@@ -57,7 +57,7 @@ function openQPanel(){
       nameInputs+
       '<input type="color" id="qc-'+key+'" value="'+hexCol+'"'+
         ' style="width:26px;height:24px;border-radius:4px;border:1px solid var(--border);background:transparent;cursor:pointer;padding:2px"'+
-        ' oninput="G(\'qs-'+key+'\').style.background=this.value" title="Shared background color">'+
+        ' oninput="G(\'qs-'+key+'\').style.background=this.value" title="'+t('Shared background color')+'">'+
     '</div>';
   });
   G('q-rows').innerHTML=rows;

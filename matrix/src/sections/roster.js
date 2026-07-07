@@ -12,19 +12,19 @@ export function renderRosterTab(){
 
   // Toolbar
   h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-    <h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em">ENGINEER ROSTER</h3>
-    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${engineers.length} people · ${engGroups.length} groups</span>
+    <h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em">${t('ENGINEER ROSTER')}</h3>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('{n} people · {g} groups',{n:engineers.length,g:engGroups.length})}</span>
     <div style="flex:1"></div>
-    <button class="add-row-btn" onclick="addEngGroup()">+ GROUP</button>
-    <button class="add-row-btn" onclick="addEngineer()" title="Adds to selected group (click a group first)">+ ENGINEER</button>
-    <button class="add-row-btn" onclick="addPlanningResource()" title="Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles" style="border-color:var(--accent2);color:var(--accent2)">+ PLANNING RESOURCE</button>
-    <span id="eng-add-hint" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">click a group to target it</span>
+    <button class="add-row-btn" onclick="addEngGroup()">${t('+ GROUP')}</button>
+    <button class="add-row-btn" onclick="addEngineer()" title="${t('Adds to selected group (click a group first)')}">${t('+ ENGINEER')}</button>
+    <button class="add-row-btn" onclick="addPlanningResource()" title="${t('Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles')}" style="border-color:var(--accent2);color:var(--accent2)">${t('+ PLANNING RESOURCE')}</button>
+    <span id="eng-add-hint" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('click a group to target it')}</span>
     <div style="width:1px;background:var(--border);height:16px"></div>
-    <button class="add-row-btn" onclick="exportSkillsPDF()" style="border-color:var(--accent);color:var(--accent)">↓ SKILLS PDF</button>
-    <button class="add-row-btn" onclick="exportRoster()">↓ ROSTER</button>
-    <button class="add-row-btn" onclick="importRoster()">↑ ROSTER</button>
-    <span class="roster-saved" id="roster-save-ind">✓ SAVED</span>
-    <button class="primary" onclick="saveRoster()" style="font-size:10px;padding:3px 10px">SAVE ROSTER</button>
+    <button class="add-row-btn" onclick="exportSkillsPDF()" style="border-color:var(--accent);color:var(--accent)">${t('↓ SKILLS PDF')}</button>
+    <button class="add-row-btn" onclick="exportRoster()">${t('↓ ROSTER')}</button>
+    <button class="add-row-btn" onclick="importRoster()">${t('↑ ROSTER')}</button>
+    <span class="roster-saved" id="roster-save-ind">${t('✓ SAVED')}</span>
+    <button class="primary" onclick="saveRoster()" style="font-size:10px;padding:3px 10px">${t('SAVE ROSTER')}</button>
   </div>`;
 
   // Ungrouped engineers first
@@ -33,8 +33,8 @@ export function renderRosterTab(){
     h+=`<div class="eng-group-block" style="opacity:.7">
       <div class="eng-group-header" onclick="toggleEngGroup(0)">
         <div class="eng-group-dot" style="background:var(--muted)"></div>
-        <span class="eng-group-name-inp" style="cursor:default">UNGROUPED</span>
-        <span class="eng-group-meta">${ungrouped.length} engineer${ungrouped.length>1?'s':''}</span>
+        <span class="eng-group-name-inp" style="cursor:default">${t('UNGROUPED')}</span>
+        <span class="eng-group-meta">${t('{n} engineer(s)',{n:ungrouped.length})}</span>
         <span class="eng-group-chevron" id="egc-0">▾</span>
       </div>
       <div class="eng-group-body" id="egb-0"
@@ -61,7 +61,7 @@ export function renderRosterTab(){
           onclick="event.stopPropagation()"
           onchange="renameEngGroup(${g.id},this.value)"
           onblur="saveState()">
-        <span class="eng-group-meta">${members.length} · ${totalCost.toLocaleString()}€/mo</span>
+        <span class="eng-group-meta">${members.length} · ${totalCost.toLocaleString()}€${t('/mo')}</span>
         <span class="eng-group-chevron${g.collapsed?' collapsed':''}" id="egc-${g.id}">▾</span>
         <button class="row-del-btn" onclick="event.stopPropagation();deleteEngGroup(${g.id})" title="Delete group">×</button>
       </div>
@@ -69,7 +69,7 @@ export function renderRosterTab(){
       <div class="eng-group-body" id="egb-${g.id}"
            ondragover="event.preventDefault()" ondrop="dropEngOnGroup(event,${g.id})">
         ${members.map(e=>engCardHTML(e)).join('')}
-        ${members.length===0?`<div style="font-size:11px;color:var(--muted);padding:4px 0">Drop engineers here…</div>`:''}
+        ${members.length===0?`<div style="font-size:11px;color:var(--muted);padding:4px 0">${t('Drop engineers here…')}</div>`:''}
       </div>`}
     </div>`;
   });

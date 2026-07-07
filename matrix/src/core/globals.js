@@ -8,7 +8,7 @@ export const SNAP_IDB='EIM_Snapshots', SNAP_IDB_STORE='snaps';
 
 /* ── Canvas layout constants ── */
 export const PAD={l:38,r:14,t:14,b:26};
-export const Y_LABELS={impact:'IMPACT',visibility:'VISIBILITY',enabler:'ENABLER VALUE'};
+export const Y_LABELS={impact:t('IMPACT'),visibility:t('VISIBILITY'),enabler:t('ENABLER VALUE')};
 
 /* ── Project tactical intent (strategic posture) ──
    Defend = protect an existing position; Grow = scale a winner; Adapt = adjust to
@@ -125,6 +125,10 @@ export let _nbCompareYear='';       // optional comparison year for movement/tra
 export let selId=null,ctxProjId=null,tabProjId=null,activeTab='risk';
 export let sepX=5,sepY=5,scaleX='lin',scaleY='lin';
 export let yMode='impact';
+/* Quadrant labels are USER DATA — editable via the Q-panel, persisted in state,
+   and carried in backups. They are deliberately NOT run through t(): translating
+   a default would freeze a language-dependent label into the user's saved data on
+   first save. The user renames them in whatever language they want. */
 export let quadrantsByMode={
   impact:[
     {key:'tl',label:'STRATEGIC',   color:'rgba(91,229,200,0.10)'},

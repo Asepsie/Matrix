@@ -1,7 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
 :root{--bg:#0f0f11;--surface:#18181c;--border:#2a2a32;--accent:#c8f135;--accent2:#5be5c8;--text:#e8e8ea;--muted:#6b6b78;--danger:#f14335;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+/* CJK fallbacks: no webfont is bundled (keeps the file tiny/offline), so
+   Chinese resolves to a system font. Named here for the body/prose stack;
+   IBM Plex Mono contexts get per-glyph browser fallback automatically. */
+body{font-family:'IBM Plex Sans','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans SC','Noto Sans CJK SC',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}

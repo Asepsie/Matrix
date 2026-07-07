@@ -22,11 +22,11 @@ const AI_MODEL_KEY='eim_ai_model';   // localStorage: last chosen model id
 // prebuiltAppConfig.model_list. dlGB/vramGB are approximate (q4f16_1 quant);
 // vramGB is overwritten with the registry's exact figure when verified.
 const AI_MODELS=[
-  {id:'Llama-3.2-1B-Instruct-q4f16_1-MLC', name:'Llama 3.2 1B', params:'1.2B', dlGB:0.9, vramGB:1.1, note:'Fastest. Best for short summaries on modest hardware.'},
-  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', name:'Qwen2.5 1.5B', params:'1.5B', dlGB:1.0, vramGB:1.6, note:'Strong small all-rounder.'},
-  {id:'Llama-3.2-3B-Instruct-q4f16_1-MLC', name:'Llama 3.2 3B', params:'3.2B', dlGB:1.9, vramGB:2.3, note:'Noticeably better reasoning, still light.'},
-  {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC', name:'Qwen2.5 3B', params:'3.1B', dlGB:1.9, vramGB:2.5, note:'Great quality-to-size balance (recommended).'},
-  {id:'Phi-3.5-mini-instruct-q4f16_1-MLC', name:'Phi-3.5 mini', params:'3.8B', dlGB:2.2, vramGB:3.7, note:'Best writing quality; needs more memory.'},
+  {id:'Llama-3.2-1B-Instruct-q4f16_1-MLC', name:'Llama 3.2 1B', params:'1.2B', dlGB:0.9, vramGB:1.1, note:t('Fastest. Best for short summaries on modest hardware.')},
+  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', name:'Qwen2.5 1.5B', params:'1.5B', dlGB:1.0, vramGB:1.6, note:t('Strong small all-rounder.')},
+  {id:'Llama-3.2-3B-Instruct-q4f16_1-MLC', name:'Llama 3.2 3B', params:'3.2B', dlGB:1.9, vramGB:2.3, note:t('Noticeably better reasoning, still light.')},
+  {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC', name:'Qwen2.5 3B', params:'3.1B', dlGB:1.9, vramGB:2.5, note:t('Great quality-to-size balance (recommended).')},
+  {id:'Phi-3.5-mini-instruct-q4f16_1-MLC', name:'Phi-3.5 mini', params:'3.8B', dlGB:2.2, vramGB:3.7, note:t('Best writing quality; needs more memory.')},
 ];
 
 // Static role + glossary prepended to every system prompt. The model knows HR
@@ -94,11 +94,11 @@ function aiUpdateButton(){
 
 /* ── Model picker ────────────────────────────────────────────────── */
 function aiModelStatHTML(m){
-  var base='⬇ ~'+m.dlGB.toFixed(1)+' GB download · 🖥 ~'+m.vramGB.toFixed(1)+' GB VRAM';
+  var base='⬇ ~'+m.dlGB.toFixed(1)+t(' GB download · 🖥 ~')+m.vramGB.toFixed(1)+t(' GB VRAM');
   if(!_aiRegistryIds)return base;
   return base+(_aiRegistryIds.has(m.id)
-    ?' · <span style="color:var(--accent)">✓ available</span>'
-    :' · <span style="color:var(--danger)">unavailable</span>');
+    ?' · <span style="color:var(--accent)">'+t('✓ available')+'</span>'
+    :' · <span style="color:var(--danger)">'+t('unavailable')+'</span>');
 }
 
 function aiShowModelPicker(){
@@ -113,12 +113,12 @@ function aiShowModelPicker(){
   var saved=aiSavedModel();
   var rows=AI_MODELS.map(function(m){
     var isLoaded=(_aiEngineModel===m.id);
-    var btnLabel=isLoaded?'Loaded ✓':(saved===m.id?'Use (cached)':'Select');
+    var btnLabel=isLoaded?t('Loaded ✓'):(saved===m.id?t('Use (cached)'):t('Select'));
     return ''
     +'<div class="ai-model-row" data-id="'+m.id+'" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
       +'<div style="flex:1">'
         +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(m.name)
-          +' <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2)">'+escH(m.params)+' params</span></div>'
+          +' <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2)">'+escH(m.params)+' '+t('params')+'</span></div>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+escH(m.note)+'</div>'
         +'<div class="ai-model-stat" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-top:3px">'+aiModelStatHTML(m)+'</div>'
       +'</div>'
@@ -130,10 +130,10 @@ function aiShowModelPicker(){
 
   var warn=gpuOk?'':
     '<div style="background:rgba(241,67,53,.1);border:1px solid var(--danger);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--danger)">'
-    +'⚠ This browser has no WebGPU support, so in-browser AI can\'t run here. Try a recent Chrome or Edge.</div>';
+    +t('⚠ This browser has no WebGPU support, so in-browser AI can’t run here. Try a recent Chrome or Edge.')+'</div>';
 
   var chatBtn=_aiEngine
-    ?'<button class="primary" style="flex:1" onclick="aiOpenChat()">💬 Open chat</button>'
+    ?'<button class="primary" style="flex:1" onclick="aiOpenChat()">'+t('💬 Open chat')+'</button>'
     :'';
 
   var dlg=document.createElement('div');
@@ -141,16 +141,15 @@ function aiShowModelPicker(){
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:920;display:flex;align-items:center;justify-content:center';
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;width:min(540px,95vw);max-height:85vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 16px 48px rgba(0,0,0,.8)">'
     +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">🧠 AI MODEL</h2>'
+      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">🧠 '+t('AI MODEL')+'</h2>'
       +'<button onclick="aiCloseModelPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>'
     +'</div>'
     +'<div style="font-size:11px;color:var(--muted);line-height:1.6">'
-      +'Runs entirely in your browser — no login, no API key, no data leaves this machine. '
-      +'The model downloads once (needs internet), then works offline.'
+      +t('Runs entirely in your browser — no login, no API key, no data leaves this machine. The model downloads once (needs internet), then works offline.')
     +'</div>'
     +warn
     +'<div id="ai-model-list" style="overflow-y:auto">'+rows+'</div>'
-    +'<div id="ai-model-foot" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim)">Checking model availability…</div>'
+    +'<div id="ai-model-foot" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim)">'+t('Checking model availability…')+'</div>'
     +(chatBtn?('<div style="display:flex;gap:8px">'+chatBtn+'</div>'):'')
     +'</div>';
   document.body.appendChild(dlg);
@@ -165,7 +164,7 @@ function aiCloseModelPicker(){
 // Cross-check curated ids against the live WebLLM registry (non-blocking).
 function aiVerifyAvailability(){
   function setFoot(msg){ var f=document.getElementById('ai-model-foot'); if(f)f.textContent=msg; }
-  if(_aiRegistryIds){ aiAnnotateAvailability(); setFoot('✓ verified ('+_aiRegistryIds.size+' models in registry)'); return; }
+  if(_aiRegistryIds){ aiAnnotateAvailability(); setFoot(t('✓ verified ({n} models in registry)',{n:_aiRegistryIds.size})); return; }
   aiLoadLib().then(function(webllm){
     var list=(webllm.prebuiltAppConfig&&webllm.prebuiltAppConfig.model_list)||[];
     _aiRegistryIds=new Set(list.map(function(x){return x.model_id;}));
@@ -174,9 +173,9 @@ function aiVerifyAvailability(){
       if(m&&x.vram_required_MB)m.vramGB=x.vram_required_MB/1024;
     });
     aiAnnotateAvailability();
-    setFoot('✓ verified against WebLLM registry ('+_aiRegistryIds.size+' models)');
+    setFoot(t('✓ verified against WebLLM registry ({n} models)',{n:_aiRegistryIds.size}));
   }).catch(function(){
-    setFoot('Offline — showing approximate sizes (availability unverified)');
+    setFoot(t('Offline — showing approximate sizes (availability unverified)'));
   });
 }
 
@@ -193,7 +192,7 @@ function aiAnnotateAvailability(){
 /* ── Engine load (download + init) ───────────────────────────────── */
 function aiSelectModel(id){
   if(_aiLoading)return;
-  if(!aiHasWebGPU()){alert('WebGPU is not available in this browser, so the model can\'t run here.');return;}
+  if(!aiHasWebGPU()){alert(t('WebGPU is not available in this browser, so the model can’t run here.'));return;}
   if(_aiEngineModel===id&&_aiEngine){aiOpenChat();return;}  // already loaded
   _aiSelectedModel=id;
   var m=AI_MODELS.find(function(x){return x.id===id;});
@@ -206,19 +205,19 @@ function aiSelectModel(id){
 // model against a modest storage-buffer limit. Catches the common failure modes
 // (no/disabled GPU, software fallback) BEFORE a multi-GB download + crash.
 function aiPreflight(model){
-  if(!navigator.gpu)return Promise.resolve({level:'block',reasons:['This browser has no WebGPU support.']});
+  if(!navigator.gpu)return Promise.resolve({level:'block',reasons:[t('This browser has no WebGPU support.')]});
   return navigator.gpu.requestAdapter({powerPreference:'high-performance'}).then(function(adapter){
-    if(!adapter)return {level:'block',reasons:['No WebGPU adapter — your GPU/driver may be disabled or blocklisted. Check that hardware acceleration is on.']};
+    if(!adapter)return {level:'block',reasons:[t('No WebGPU adapter — your GPU/driver may be disabled or blocklisted. Check that hardware acceleration is on.')]};
     var infoP=adapter.info?Promise.resolve(adapter.info):(adapter.requestAdapterInfo?adapter.requestAdapterInfo():Promise.resolve({}));
     return Promise.resolve(infoP).then(function(info){
       info=info||{};
       var lim=adapter.limits||{};
       var bindGB=(lim.maxStorageBufferBindingSize||0)/1073741824;
       var bufGB=(lim.maxBufferSize||0)/1073741824;
-      var gpuName=[info.vendor,info.architecture,info.device,info.description].filter(Boolean).join(' ').trim()||'GPU detected (name hidden by browser)';
+      var gpuName=[info.vendor,info.architecture,info.device,info.description].filter(Boolean).join(' ').trim()||t('GPU detected (name hidden by browser)');
       var base={gpu:gpuName,bufGB:bufGB,bindGB:bindGB};
       if(adapter.isFallbackAdapter)
-        return Object.assign(base,{level:'block',reasons:['Only a software (CPU) WebGPU adapter is available — the model would be unusably slow or crash. Update your GPU driver / enable hardware acceleration.']});
+        return Object.assign(base,{level:'block',reasons:[t('Only a software (CPU) WebGPU adapter is available — the model would be unusably slow or crash. Update your GPU driver / enable hardware acceleration.')]});
       // The REAL test: actually create a device + command queue. requestAdapter
       // alone does NOT catch DXGI_ERROR_DEVICE_REMOVED — requestDevice does. We
       // create a throwaway device, confirm it isn't immediately lost, destroy it.
@@ -231,57 +230,57 @@ function aiPreflight(model){
           try{device.destroy();}catch(x){}
           if(r.lost)
             return Object.assign(base,{level:'block',reasons:[
-              'The GPU created a device then immediately lost it: '+((r.info&&r.info.message)||'device lost')+'.',
-              'Almost always an out-of-date/unstable graphics driver. Update your GPU driver, then fully quit and reopen the browser.']});
+              t('The GPU created a device then immediately lost it: {msg}.',{msg:((r.info&&r.info.message)||t('device lost'))}),
+              t('Almost always an out-of-date/unstable graphics driver. Update your GPU driver, then fully quit and reopen the browser.')]});
           var reasons=[],level='ok';
-          if(model&&model.vramGB&&model.vramGB>4.5&&bindGB&&bindGB<1.0){level='warn';reasons.push('Large model with a modest max storage-buffer ('+bindGB.toFixed(2)+' GB) — may fail to load. A smaller model is safer.');}
+          if(model&&model.vramGB&&model.vramGB>4.5&&bindGB&&bindGB<1.0){level='warn';reasons.push(t('Large model with a modest max storage-buffer ({gb} GB) — may fail to load. A smaller model is safer.',{gb:bindGB.toFixed(2)}));}
           return Object.assign(base,{level:level,reasons:reasons});
         });
       }).catch(function(err){
         return Object.assign(base,{level:'block',reasons:[
-          'Your GPU could not create a working device: '+((err&&err.message)||err),
-          'This is a graphics-driver / D3D12 failure (DXGI_ERROR_DEVICE_REMOVED), not a Matrix issue.',
-          'Fix: update your GPU driver, fully quit and reopen the browser, then open chrome://gpu — WebGPU should read "Hardware accelerated".']});
+          t('Your GPU could not create a working device: {msg}',{msg:((err&&err.message)||err)}),
+          t('This is a graphics-driver / D3D12 failure (DXGI_ERROR_DEVICE_REMOVED), not a Matrix issue.'),
+          t('Fix: update your GPU driver, fully quit and reopen the browser, then open chrome://gpu — WebGPU should read "Hardware accelerated".')]});
       });
     });
   }).catch(function(err){
-    return {level:'warn',reasons:['Could not fully query the GPU ('+((err&&err.message)||err)+'). You can still try.']};
+    return {level:'warn',reasons:[t('Could not fully query the GPU ({msg}). You can still try.',{msg:((err&&err.message)||err)})]};
   });
 }
 
 function aiShowPreflight(id,m,pf){
   var existing=document.getElementById('ai-preflight-dlg'); if(existing)existing.remove();
   var color=pf.level==='block'?'var(--danger)':(pf.level==='warn'?'var(--warn)':'var(--accent)');
-  var verdict=pf.level==='block'?'✕ This model can\'t run here':(pf.level==='warn'?'⚠ Might be risky':'✓ Looks good to go');
+  var verdict=pf.level==='block'?t('✕ This model can’t run here'):(pf.level==='warn'?t('⚠ Might be risky'):t('✓ Looks good to go'));
   var reasons=(pf.reasons&&pf.reasons.length)
     ?'<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:var(--muted);line-height:1.6">'+pf.reasons.map(function(r){return '<li>'+escH(r)+'</li>';}).join('')+'</ul>':'';
-  var limits=(pf.bindGB!=null)?('max buffer '+pf.bufGB.toFixed(2)+' GB · max storage-buffer '+pf.bindGB.toFixed(2)+' GB'):'limits unavailable';
+  var limits=(pf.bindGB!=null)?t('max buffer {a} GB · max storage-buffer {b} GB',{a:pf.bufGB.toFixed(2),b:pf.bindGB.toFixed(2)}):t('limits unavailable');
   var btns;
   if(pf.level==='block')
-    btns='<button class="sm" onclick="aiClosePreflight();aiShowModelPicker()">Pick another model</button>'
-        +'<button onclick="aiClosePreflight()">Close</button>';
+    btns='<button class="sm" onclick="aiClosePreflight();aiShowModelPicker()">'+t('Pick another model')+'</button>'
+        +'<button onclick="aiClosePreflight()">'+t('Close')+'</button>';
   else if(pf.level==='warn')
-    btns='<button class="primary" onclick="aiProceedLoad(\''+id+'\')">Load anyway</button>'
-        +'<button class="sm" onclick="aiClosePreflight();aiShowModelPicker()">Pick smaller</button>'
-        +'<button onclick="aiClosePreflight()">Cancel</button>';
+    btns='<button class="primary" onclick="aiProceedLoad(\''+id+'\')">'+t('Load anyway')+'</button>'
+        +'<button class="sm" onclick="aiClosePreflight();aiShowModelPicker()">'+t('Pick smaller')+'</button>'
+        +'<button onclick="aiClosePreflight()">'+t('Cancel')+'</button>';
   else
-    btns='<button class="primary" onclick="aiProceedLoad(\''+id+'\')">Download & load ▶</button>'
-        +'<button onclick="aiClosePreflight()">Cancel</button>';
+    btns='<button class="primary" onclick="aiProceedLoad(\''+id+'\')">'+t('Download & load ▶')+'</button>'
+        +'<button onclick="aiClosePreflight()">'+t('Cancel')+'</button>';
 
   var dlg=document.createElement('div');
   dlg.id='ai-preflight-dlg';
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:935;display:flex;align-items:center;justify-content:center';
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 48px rgba(0,0,0,.8)">'
-    +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent)">🔎 GPU PRE-FLIGHT</h2>'
+    +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent)">🔎 '+t('GPU PRE-FLIGHT')+'</h2>'
     +'<div style="font-size:11px;color:var(--muted);line-height:1.7">'
-      +'<div><b style="color:var(--text)">GPU:</b> '+escH(pf.gpu||'unknown')+'</div>'
-      +'<div><b style="color:var(--text)">GPU buffer limits (not free VRAM):</b> '+escH(limits)+'</div>'
-      +'<div><b style="color:var(--text)">Model:</b> '+escH(m?m.name:id)+' — ~'+(m?m.vramGB.toFixed(1):'?')+' GB VRAM, ~'+(m?m.dlGB.toFixed(1):'?')+' GB download</div>'
+      +'<div><b style="color:var(--text)">'+t('GPU:')+'</b> '+escH(pf.gpu||t('unknown'))+'</div>'
+      +'<div><b style="color:var(--text)">'+t('GPU buffer limits (not free VRAM):')+'</b> '+escH(limits)+'</div>'
+      +'<div><b style="color:var(--text)">'+t('Model:')+'</b> '+escH(m?m.name:id)+' — ~'+(m?m.vramGB.toFixed(1):'?')+t(' GB VRAM, ~')+(m?m.dlGB.toFixed(1):'?')+t(' GB download')+'</div>'
     +'</div>'
     +'<div style="border:1px solid '+color+';border-radius:6px;padding:8px 10px">'
       +'<div style="font-size:12px;font-weight:700;color:'+color+'">'+verdict+'</div>'+reasons
     +'</div>'
-    +'<div style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace">Browsers don\'t expose total VRAM — this is a best-effort check.</div>'
+    +'<div style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace">'+t('Browsers don’t expose total VRAM — this is a best-effort check.')+'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end">'+btns+'</div>'
     +'</div>';
   document.body.appendChild(dlg);
@@ -307,8 +306,8 @@ function aiRenderProgress(p,msg){
   }
   var btn=document.querySelector('.ai-model-row[data-id="'+_aiSelectedModel+'"] button');
   if(btn){ if(p>=0&&p<1){btn.textContent=Math.round(p*100)+'%';btn.disabled=true;}
-           else if(p>=1)btn.textContent='Loaded ✓';
-           else {btn.textContent='Retry';btn.disabled=false;} }
+           else if(p>=1)btn.textContent=t('Loaded ✓');
+           else {btn.textContent=t('Retry');btn.disabled=false;} }
 }
 
 // ── Stall watchdog ────────────────────────────────────────────────
@@ -326,9 +325,8 @@ function aiStartStallWatch(){
 function aiStopStallWatch(){ if(_aiStallTimer){ clearInterval(_aiStallTimer); _aiStallTimer=null; } }
 function aiShowStall(secs){
   var foot=document.getElementById('ai-model-foot'); if(!foot)return;
-  foot.innerHTML='<span style="color:var(--warn)">⚠ No progress for '+secs+'s — the download may be stalled. '
-    +'Reloading resumes from cached shards.</span> '
-    +'<button class="sm" style="margin-left:6px" onclick="location.reload()">↻ Reload page</button>';
+  foot.innerHTML='<span style="color:var(--warn)">'+t('⚠ No progress for {secs}s — the download may be stalled. Reloading resumes from cached shards.',{secs:secs})+'</span> '
+    +'<button class="sm" style="margin-left:6px" onclick="location.reload()">'+t('↻ Reload page')+'</button>';
 }
 
 // ONE persistent engine for the whole session. Switching models = reload() into
@@ -339,7 +337,7 @@ function aiGetEngine(){
   if(_aiEngine)return Promise.resolve(_aiEngine);
   return aiLoadLib().then(function(webllm){
     _aiEngine=new webllm.MLCEngine({
-      initProgressCallback:function(r){ aiRenderProgress(r.progress||0, r.text||'Loading…'); }
+      initProgressCallback:function(r){ aiRenderProgress(r.progress||0, r.text||t('Loading…')); }
     });
     return _aiEngine;
   });
@@ -361,19 +359,19 @@ function aiLoadModel(id){
   _aiLoading=true;
   _aiLoadStartAt=Date.now(); _aiLastSig=''; _aiLastProgressAt=Date.now();
   aiStartStallWatch();
-  aiRenderProgress(0,'Preparing download…');
+  aiRenderProgress(0,t('Preparing download…'));
   aiGetEngine().then(function(engine){
     return aiReloadModel(engine,id);   // load (or switch) the model into the singleton
   }).then(function(){
     aiStopStallWatch();
     _aiEngineModel=id; _aiLoading=false;
-    aiRenderProgress(1,'Ready');
+    aiRenderProgress(1,t('Ready'));
     aiRestoreChat(id);   // bring back a conversation that survived a forced reload
     aiOpenChat();
   }).catch(function(err){
     aiStopStallWatch();
     _aiEngineModel=''; _aiLoading=false;
-    aiRenderProgress(-1,'Failed: '+((err&&err.message)||err));
+    aiRenderProgress(-1,t('Failed:')+' '+((err&&err.message)||err));
   });
 }
 
@@ -565,11 +563,11 @@ function aiScopeRow(kind,id,label,checked){
 }
 
 function aiScopeListHTML(){
-  var h='<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);margin:6px 0 2px">PEOPLE</div>';
+  var h='<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);margin:6px 0 2px">'+t('PEOPLE')+'</div>';
   engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
     h+=aiScopeRow('eng',e.id,(e.name||'?')+(e.role?(' · '+e.role):''),_aiScope.engIds.indexOf(String(e.id))>=0);
   });
-  h+='<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);margin:10px 0 2px">PROJECTS</div>';
+  h+='<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);margin:10px 0 2px">'+t('PROJECTS')+'</div>';
   projects.forEach(function(p){
     h+=aiScopeRow('proj',p.id,(p.name||'?')+(p.status?(' · '+p.status):''),_aiScope.projIds.indexOf(String(p.id))>=0);
   });
@@ -585,18 +583,17 @@ function aiOpenScope(){
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:925;display:flex;align-items:center;justify-content:center';
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(560px,96vw);max-height:86vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 48px rgba(0,0,0,.8)">'
     +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">🎯 CHAT CONTEXT</h2>'
-      +'<button class="sm" onclick="aiShowModelPicker()" title="Change the AI model">⚙ Model</button>'
+      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">🎯 '+t('CHAT CONTEXT')+'</h2>'
+      +'<button class="sm" onclick="aiShowModelPicker()" title="'+t('Change the AI model')+'">'+t('⚙ Model')+'</button>'
       +'<button onclick="aiCloseScope()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>'
     +'</div>'
-    +'<div style="font-size:11px;color:var(--muted);line-height:1.6">Tick people or projects to load their <b>full</b> detail (and their connections — a person\'s projects, a project\'s team). '
-      +'Leave all unticked for a whole-org overview. Fewer selections = sharper, faster answers.</div>'
-    +'<input id="ai-scope-filter" placeholder="Filter…" oninput="aiScopeFilter(this.value)" '
+    +'<div style="font-size:11px;color:var(--muted);line-height:1.6">'+t('Tick people or projects to load their <b>full</b> detail (and their connections — a person’s projects, a project’s team). Leave all unticked for a whole-org overview. Fewer selections = sharper, faster answers.')+'</div>'
+    +'<input id="ai-scope-filter" placeholder="'+t('Filter…')+'" oninput="aiScopeFilter(this.value)" '
       +'style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px">'
-    +'<div><button class="sm" onclick="aiScopeClear()">Clear selection</button></div>'
+    +'<div><button class="sm" onclick="aiScopeClear()">'+t('Clear selection')+'</button></div>'
     +'<div id="ai-scope-list" style="overflow-y:auto;flex:1">'+aiScopeListHTML()+'</div>'
     +'<div id="ai-scope-foot" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)"></div>'
-    +'<button class="primary" onclick="aiStartChat()">Start chat ▶</button>'
+    +'<button class="primary" onclick="aiStartChat()">'+t('Start chat ▶')+'</button>'
     +'</div>';
   document.body.appendChild(dlg);
   aiScopeUpdateFoot();
@@ -631,8 +628,8 @@ function aiScopeUpdateFoot(){
   var foot=document.getElementById('ai-scope-foot'); if(!foot)return;
   var chars=aiBuildContext(_aiScope).length;
   var n=_aiScope.engIds.length, m=_aiScope.projIds.length;
-  var mode=(n||m)?('Focused: '+n+' people, '+m+' projects'):'Whole-org overview';
-  foot.textContent=mode+'  ·  context ~'+chars+' chars (~'+Math.round(chars/4)+' tokens)';
+  var mode=(n||m)?t('Focused: {n} people, {m} projects',{n:n,m:m}):t('Whole-org overview');
+  foot.textContent=mode+'  ·  '+t('context ~{c} chars (~{tk} tokens)',{c:chars,tk:Math.round(chars/4)});
 }
 
 /* ── Chat advisor ────────────────────────────────────────────────── */
@@ -641,7 +638,7 @@ function aiOpenChat(){
   if(!_aiEngine){
     var saved=aiSavedModel();
     if(saved&&!_aiLoading){
-      if(confirm('Load AI model?\n\n'+saved+'\n\n(Uses the cached download if you already got it — otherwise downloads now.)'))
+      if(confirm(t('Load AI model?')+'\n\n'+saved+'\n\n'+t('(Uses the cached download if you already got it — otherwise downloads now.)')))
         aiSelectModel(saved);
       return;
     }
@@ -657,12 +654,12 @@ function aiStartChat(){
   var existing=document.getElementById('ai-chat-dlg'); if(existing)existing.remove();
 
   var n=_aiScope.engIds.length, m=_aiScope.projIds.length;
-  var scopeLabel=(n||m)?('🎯 '+n+'p/'+m+'pr'):'🎯 overview';
+  var scopeLabel=(n||m)?t('🎯 {n}p/{m}pr',{n:n,m:m}):t('🎯 overview');
   var chips=[
-    'Summarise key talent risks',
-    'Who are single points of failure (bus factor)?',
-    'Draft development plans for high-potentials',
-    'Which projects look under-resourced?'
+    t('Summarise key talent risks'),
+    t('Who are single points of failure (bus factor)?'),
+    t('Draft development plans for high-potentials'),
+    t('Which projects look under-resourced?')
   ].map(function(t){
     return '<button class="sm" style="font-size:10px" onclick="aiAsk('+JSON.stringify(t).replace(/"/g,'&quot;')+')">'+escH(t)+'</button>';
   }).join('');
@@ -672,21 +669,21 @@ function aiStartChat(){
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:930;display:flex;align-items:center;justify-content:center';
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;width:min(640px,96vw);height:min(82vh,760px);display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 48px rgba(0,0,0,.8)">'
     +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">💬 AI ADVISOR</h2>'
-      +'<button class="sm" onclick="aiOpenScope()" title="Change context (people/projects in scope)">'+scopeLabel+'</button>'
-      +'<button class="sm" onclick="aiShowModelPicker()" title="Change the AI model">⚙ Model</button>'
+      +'<h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);flex:1">💬 '+t('AI ADVISOR')+'</h2>'
+      +'<button class="sm" onclick="aiOpenScope()" title="'+t('Change context (people/projects in scope)')+'">'+scopeLabel+'</button>'
+      +'<button class="sm" onclick="aiShowModelPicker()" title="'+t('Change the AI model')+'">'+t('⚙ Model')+'</button>'
       +'<button onclick="aiCloseChat()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>'
     +'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+chips+'</div>'
     +'<div id="ai-chat-msgs" style="flex:1;overflow-y:auto;padding:6px 2px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"></div>'
     +'<div id="ai-chat-error" style="display:none;background:rgba(241,163,53,.08);border:1px solid var(--warn);border-radius:6px;padding:6px 8px;font-size:11px;font-family:IBM Plex Mono,monospace"></div>'
     +'<div style="display:flex;gap:8px;align-items:flex-end">'
-      +'<textarea id="ai-chat-input" rows="2" placeholder="Ask about your roster, talent, succession, projects…" '
+      +'<textarea id="ai-chat-input" rows="2" placeholder="'+t('Ask about your roster, talent, succession, projects…')+'" '
         +'style="flex:1;resize:none;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;font-family:inherit" '
         +'onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();aiChatSend();}"></textarea>'
-      +'<button class="primary" id="ai-chat-send" style="padding:8px 14px" onclick="aiChatSend()">Send</button>'
+      +'<button class="primary" id="ai-chat-send" style="padding:8px 14px" onclick="aiChatSend()">'+t('Send')+'</button>'
     +'</div>'
-    +'<div style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace">Local model · answers may be imperfect · nothing leaves your browser</div>'
+    +'<div style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace">'+t('Local model · answers may be imperfect · nothing leaves your browser')+'</div>'
     +'</div>';
   document.body.appendChild(dlg);
   aiRenderChat();
@@ -699,10 +696,10 @@ function aiRenderChat(){
   var box=document.getElementById('ai-chat-msgs'); if(!box)return;
   if(!_aiMessages.length){
     box.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:24px;line-height:1.6">'
-      +'Ask a question, or tap a suggestion above.<br>Context in scope: '
+      +t('Ask a question, or tap a suggestion above.')+'<br>'+t('Context in scope:')+' '
       +((_aiScope.engIds.length||_aiScope.projIds.length)
-        ?('focused on '+_aiScope.engIds.length+' people, '+_aiScope.projIds.length+' projects')
-        :'whole-org overview')
+        ?t('focused on {n} people, {m} projects',{n:_aiScope.engIds.length,m:_aiScope.projIds.length})
+        :t('whole-org overview'))
       +'.</div>';
     return;
   }
@@ -754,11 +751,7 @@ function aiHardReset(){
 function aiErrorHint(err){
   var s=String((err&&err.message)||err||'');
   if(aiIsDeviceLost(err))
-    return '⚠ The GPU device was removed — almost always too little VRAM for this model, '
-      +'or a graphics-driver reset.\nWhat helps:\n'
-      +'• Pick a smaller model (Llama 3.2 1B) via the ⚙ button.\n'
-      +'• Close other GPU-heavy apps/browser tabs.\n'
-      +'• Reload the page to get a fresh GPU context.';
+    return t('⚠ The GPU device was removed — almost always too little VRAM for this model, or a graphics-driver reset.\nWhat helps:\n• Pick a smaller model (Llama 3.2 1B) via the ⚙ button.\n• Close other GPU-heavy apps/browser tabs.\n• Reload the page to get a fresh GPU context.');
   return '[error: '+s+']';
 }
 
@@ -815,7 +808,7 @@ function aiChatSend(){
     // FRESH engine once (the old instance is dead) and retry the same request.
     if(aiIsLifecycleErr(err)&&_aiEngineModel){
       var model=_aiEngineModel;
-      assistant.content='↻ engine was reset — reloading the model…'; aiRenderChatStreaming();
+      assistant.content=t('↻ engine was reset — reloading the model…'); aiRenderChatStreaming();
       return aiHardReset().then(aiGetEngine).then(function(engine){
         return aiReloadModel(engine,model);
       }).then(function(){
@@ -852,7 +845,6 @@ function aiRestoreChat(id){
 function aiShowChatReload(){
   var el=document.getElementById('ai-chat-error'); if(!el)return;
   el.style.display='block';
-  el.innerHTML='<span style="color:var(--warn)">GPU context lost — your browser can\'t recover it in-page (exit_on_context_lost). '
-    +'Reload to continue; your conversation is saved.</span> '
-    +'<button class="sm" style="margin-left:6px" onclick="location.reload()">↻ Reload page</button>';
+  el.innerHTML='<span style="color:var(--warn)">'+t('GPU context lost — your browser can’t recover it in-page (exit_on_context_lost). Reload to continue; your conversation is saved.')+'</span> '
+    +'<button class="sm" style="margin-left:6px" onclick="location.reload()">'+t('↻ Reload page')+'</button>';
 }

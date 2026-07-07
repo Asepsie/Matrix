@@ -68,55 +68,55 @@ export function renderResPlan(){
   const selStyle='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none';
 
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">VIEW:</span>
-    <button class="sm${planViewMode==='flat'?' active':''}" onclick="setPlanView('flat')">FLAT</button>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('VIEW:')}</span>
+    <button class="sm${planViewMode==='flat'?' active':''}" onclick="setPlanView('flat')">${t('FLAT')}</button>
     ${planViewMode==='flat' ? `
-    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">sort:</span>
-    <button class="sm${planFlatSort==='none'?' active':''}" onclick="planFlatSort='none';renderResPlan()" style="font-size:9px;padding:1px 6px">MANUAL</button>
-    <button class="sm${planFlatSort==='engineer'?' active':''}" onclick="planFlatSort='engineer';renderResPlan()" style="font-size:9px;padding:1px 6px">A-Z ENG</button>
-    <button class="sm${planFlatSort==='project'?' active':''}" onclick="planFlatSort='project';renderResPlan()" style="font-size:9px;padding:1px 6px">A-Z PROJ</button>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">${t('sort:')}</span>
+    <button class="sm${planFlatSort==='none'?' active':''}" onclick="planFlatSort='none';renderResPlan()" style="font-size:9px;padding:1px 6px">${t('MANUAL')}</button>
+    <button class="sm${planFlatSort==='engineer'?' active':''}" onclick="planFlatSort='engineer';renderResPlan()" style="font-size:9px;padding:1px 6px">${t('A-Z ENG')}</button>
+    <button class="sm${planFlatSort==='project'?' active':''}" onclick="planFlatSort='project';renderResPlan()" style="font-size:9px;padding:1px 6px">${t('A-Z PROJ')}</button>
     ` : ''}
-    <button class="sm${planViewMode==='byEngineer'?' active':''}" onclick="setPlanView('byEngineer')">↕ BY ENGINEER</button>
-    <button class="sm${planViewMode==='byProject'?' active':''}"  onclick="setPlanView('byProject')">↕ BY PROJECT</button>
+    <button class="sm${planViewMode==='byEngineer'?' active':''}" onclick="setPlanView('byEngineer')">${t('↕ BY ENGINEER')}</button>
+    <button class="sm${planViewMode==='byProject'?' active':''}"  onclick="setPlanView('byProject')">${t('↕ BY PROJECT')}</button>
     <div class="bar-sep"></div>
-    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">FILTER:</span>
-    ${multiSelectHTML('plan-eng',allEngNamesP,planFilterEng,'onPlanFilterEngChange','Engineers')}
-    ${multiSelectHTML('plan-proj',allProjNamesP,planFilterProj,'onPlanFilterProjChange','Projects')}
-    ${planFilterEng.size||planFilterProj.size?`<button class="sm" onclick="planFilterEng=new Set();planFilterProj=new Set();renderResPlan()">✕ CLEAR</button>`:''}
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('FILTER:')}</span>
+    ${multiSelectHTML('plan-eng',allEngNamesP,planFilterEng,'onPlanFilterEngChange',t('Engineers'))}
+    ${multiSelectHTML('plan-proj',allProjNamesP,planFilterProj,'onPlanFilterProjChange',t('Projects'))}
+    ${planFilterEng.size||planFilterProj.size?`<button class="sm" onclick="planFilterEng=new Set();planFilterProj=new Set();renderResPlan()">${t('✕ CLEAR')}</button>`:''}
     <div class="bar-sep"></div>
     <label style="font-size:11px;display:flex;align-items:center;gap:5px;cursor:pointer">
       <input type="checkbox" ${planHideEmpty?'checked':''} onchange="planHideEmpty=this.checked;renderResPlan()" style="accent-color:var(--accent)">
-      <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">HIDE EMPTY ROWS</span>
+      <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('HIDE EMPTY ROWS')}</span>
     </label>
     <div style="flex:1"></div>
     <button class="sm${planFreezeHeader?' active':''}" id="plan-freeze-btn"
       onclick="planFreezeHeader=!planFreezeHeader;var w=document.getElementById('alloc-wrap');if(w)w.classList.toggle('freeze-on',planFreezeHeader);this.classList.toggle('active',planFreezeHeader);this.style.borderColor=planFreezeHeader?'var(--accent2)':'';this.style.color=planFreezeHeader?'var(--accent2)':'';"
-      title="Freeze engineer name, project and month header while scrolling"
+      title="${t('Freeze engineer name, project and month header while scrolling')}"
       style="${planFreezeHeader?'border-color:var(--accent2);color:var(--accent2)':''}"
-      >⊠ FREEZE</button>
-    <button class="add-row-btn" onclick="addAllocRowAfter(-1)">+ ADD ROW</button>
+      >${t('⊠ FREEZE')}</button>
+    <button class="add-row-btn" onclick="addAllocRowAfter(-1)">${t('+ ADD ROW')}</button>
     <select id="plan-export-mode" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 7px;border-radius:4px">
-      <option value="">↓ EXPORT…</option>
-      <option value="full">Full (all projects + engineers)</option>
-      <option value="view">Current view</option>
-      ${projects.filter(p=>p.visible!==false).map(p=>`<option value="proj_${p.id}">Project: ${escH(p.name)}</option>`).join('')}
+      <option value="">${t('↓ EXPORT…')}</option>
+      <option value="full">${t('Full (all projects + engineers)')}</option>
+      <option value="view">${t('Current view')}</option>
+      ${projects.filter(p=>p.visible!==false).map(p=>`<option value="proj_${p.id}">${t('Project:')} ${escH(p.name)}</option>`).join('')}
     </select>
     <label style="display:flex;align-items:center;gap:4px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);cursor:pointer">
-    <input type="checkbox" id="plan-export-excl" checked style="accent-color:var(--accent2)"> Excl. calc-excluded
+    <input type="checkbox" id="plan-export-excl" checked style="accent-color:var(--accent2)"> ${t('Excl. calc-excluded')}
   </label>
-  <button class="sm" onclick="exportPlanSelected()" style="font-size:9px;padding:2px 8px;border-color:var(--accent2);color:var(--accent2)">↓ GO</button>
+  <button class="sm" onclick="exportPlanSelected()" style="font-size:9px;padding:2px 8px;border-color:var(--accent2);color:var(--accent2)">${t('↓ GO')}</button>
   </div>`;
 
   // ── Fill toolbar ──
   h+=`<div class="alloc-fill-bar">
-    <label>QUICK FILL</label>
-    <label>VALUE %</label><input type="number" id="fill-val" value="100" min="0" max="100" step="5">
-    <label>FROM</label><input type="month" id="fill-from" value="${fStartDef}">
-    <label>TO</label><input type="month" id="fill-to" value="${fEndDef}">
-    <button class="sm" onclick="fillSelectedRows()">→ FILL SELECTED ROWS</button>
-    <button class="sm" onclick="fillAllRows()">⇒ FILL ALL ROWS</button>
+    <label>${t('QUICK FILL')}</label>
+    <label>${t('VALUE %')}</label><input type="number" id="fill-val" value="100" min="0" max="100" step="5">
+    <label>${t('FROM')}</label><input type="month" id="fill-from" value="${fStartDef}">
+    <label>${t('TO')}</label><input type="month" id="fill-to" value="${fEndDef}">
+    <button class="sm" onclick="fillSelectedRows()">${t('→ FILL SELECTED ROWS')}</button>
+    <button class="sm" onclick="fillAllRows()">${t('⇒ FILL ALL ROWS')}</button>
     <div class="bar-sep"></div>
-    <span class="fill-hint" id="sel-hint">Click cells · Shift+click range · Right-click options</span>
+    <span class="fill-hint" id="sel-hint">${t('Click cells · Shift+click range · Right-click options')}</span>
   </div>`;
 
   // ── Filter allocRows ──
@@ -144,7 +144,7 @@ export function renderResPlan(){
     }
     if(showEngCol){
       rh+=`<td class="col-name"><select class="alloc-sel" onchange="setRowEng(${row.id},+this.value)">
-        <option value="">— Select —</option>`;
+        <option value="">${t('— Select —')}</option>`;
       engineers.forEach(e=>{const g=engGroups.find(g=>g.id===e.groupId);rh+=`<option value="${e.id}"${e.id===row.engId?' selected':''}>${escH(e.name)}${e.role?' · '+e.role:''}${g?' ['+g.name+']':''}</option>`;});
       rh+=`</select></td>`;
     } else {
@@ -152,20 +152,20 @@ export function renderResPlan(){
     }
     if(showProjCol){
       rh+=`<td class="col-proj"><select class="alloc-sel" onchange="setRowProj(${row.id},+this.value)">
-        <option value="">— Select —</option>`;
+        <option value="">${t('— Select —')}</option>`;
       projects.forEach(p=>{rh+=`<option value="${p.id}"${p.id===row.projectId?' selected':''}>${escH(p.name)}</option>`;});
       rh+=`</select></td>`;
     } else {
       rh+=`<td class="col-proj" style="padding:0"></td>`;
     }
     rh+=`<td class="col-budget" style="padding:0 2px;white-space:nowrap;vertical-align:middle;width:24px">
-      <span title="Toggle budget line" style="cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:${row.budgetLine?'var(--accent2)':'var(--dim)'};user-select:none"
+      <span title="${t('Toggle budget line')}" style="cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:${row.budgetLine?'var(--accent2)':'var(--dim)'};user-select:none"
         onclick="(function(el){var inp=el.nextElementSibling;inp.style.display=inp.style.display==='none'?'inline-block':'none';if(inp.style.display!=='none')inp.focus();})(this)">⊞</span>
-      <input type="text" value="${escH(row.budgetLine||'')}" placeholder="budget…"
+      <input type="text" value="${escH(row.budgetLine||'')}" placeholder="${t('budget…')}"
         style="display:none;width:90px;font-family:IBM Plex Mono,monospace;font-size:9px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:1px 4px;position:absolute;z-index:10"
         oninput="(function(v,id){var r=allocRows.find(r=>r.id===id);if(r){r.budgetLine=v;}})(this.value,${row.id})"
         onblur="saveState()"
-        title="Budget line — shown in CSV export only">
+        title="${t('Budget line — shown in CSV export only')}">
     </td>`;
     rh+=`<td class="col-cost" style="font-size:13px;font-weight:600;color:var(--accent2)">${eng?(eng.monthlyCost||0).toLocaleString()+'€':''}</td>`;
     months.forEach(m=>{
@@ -187,7 +187,7 @@ export function renderResPlan(){
           >${vDisp}</div>`
         : `<input class="alloc-inp ${cls}" type="number" min="0" max="100" step="5"
           value="${vDisp}" placeholder="0" data-row="${row.id}" data-month="${m}"
-          title="${isOver&&v>0?'⚠ Total '+Math.round(engTotalThisMonth*100)+'% this month':''}"
+          title="${isOver&&v>0?t('⚠ Total {pct}% this month',{pct:Math.round(engTotalThisMonth*100)}):''}"
           onchange="setAlloc(${row.id},'${m}',this.value)" oninput="colorCell(this)"
           onmousedown="allocCellMouseDown(event,${row.id},'${m}')"
           oncontextmenu="allocCellCtx(event,${row.id},'${m}')">` }
@@ -210,7 +210,7 @@ export function renderResPlan(){
       const isOver=total>1.005;
       const col=isOver?'var(--danger)':total>0?color:'var(--muted)';
       sh+=`<td class="alloc-cell${m===cur?' month-cur':''}" style="text-align:center">
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:${col}">${total?total.toFixed(1)+' FTE':''}</div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:${col}">${total?total.toFixed(1)+' '+t('FTE'):''}</div>
         <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${cost?Math.round(cost/1000)+'k€':''}</div>
       </td>`;
     });
@@ -221,10 +221,10 @@ export function renderResPlan(){
   // ── Build table ──
   h+=`<div id="alloc-wrap"${planFreezeHeader?' class="freeze-on"':''}><table id="alloc-table"${planViewMode==='flat'&&planFlatSort==='none'?' class="plan-draggable"':''}>
     <thead><tr>
-      ${planViewMode==='flat'&&planFlatSort==='none'?'<th style="width:14px"></th>':''}<th class="col-name">ENGINEER</th>
-      <th class="col-proj">PROJECT</th>
-      <th class="col-budget" title="Budget line (click ⊞ on a row to set)" style="width:24px">⊞</th>
-      <th class="col-cost">€/MO</th>`;
+      ${planViewMode==='flat'&&planFlatSort==='none'?'<th style="width:14px"></th>':''}<th class="col-name">${t('ENGINEER')}</th>
+      <th class="col-proj">${t('PROJECT')}</th>
+      <th class="col-budget" title="${t('Budget line (click ⊞ on a row to set)')}" style="width:24px">⊞</th>
+      <th class="col-cost">${t('€/MO')}</th>`;
   months.forEach(m=>{
     const mTotal=allocRows.filter(r=>r.engId).reduce((s,r)=>{
       const eng=engineers.find(e=>e.id===r.engId);
@@ -234,7 +234,7 @@ export function renderResPlan(){
       const eng=engineers.find(e=>e.id===r.engId);
       return s+(eng&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
     },0);
-    h+=`<th class="alloc-cell${m===cur?' month-cur':''}" data-month="${m}" onclick="selectColumn('${m}')" style="cursor:pointer" title="${mTotal.toFixed(1)} FTE · ${Math.round(mCost/1000)}k€ — click to select column">${fmtMonth(m)}</th>`;
+    h+=`<th class="alloc-cell${m===cur?' month-cur':''}" data-month="${m}" onclick="selectColumn('${m}')" style="cursor:pointer" title="${t('{fte} FTE · {k}k€ — click to select column',{fte:mTotal.toFixed(1),k:Math.round(mCost/1000)})}">${fmtMonth(m)}</th>`;
   });
   h+=`<th></th></tr></thead><tbody>`;
 
@@ -270,7 +270,7 @@ export function renderResPlan(){
       }
     });
     if(unassigned.length){
-      h+=`<tr style="background:rgba(255,255,255,.03)"><td colspan="3" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);padding:5px 10px">UNASSIGNED ROWS</td>`;
+      h+=`<tr style="background:rgba(255,255,255,.03)"><td colspan="3" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);padding:5px 10px">${t('UNASSIGNED ROWS')}</td>`;
       months.forEach(()=>{h+=`<td></td>`;});h+=`<td></td></tr>`;
       unassigned.forEach((row,idx)=>{h+=allocRowHTML(row,idx);});
     }
@@ -296,11 +296,11 @@ export function renderResPlan(){
       h+=`<td><button class="add-row-btn" style="padding:2px 5px;font-size:10px" onclick="event.stopPropagation();addRowForProj(${pid})">+</button></td></tr>`;
       if(!collapsed){
         pRows.forEach((row,idx)=>{h+=allocRowHTML(row,idx,true,false);});
-        h+=subtotalHTML('SUBTOTAL',pRows,proj.color);
+        h+=subtotalHTML(t('SUBTOTAL'),pRows,proj.color);
       }
     });
     if(unassigned.length){
-      h+=`<tr style="background:rgba(255,255,255,.03)"><td colspan="3" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);padding:5px 10px">NO PROJECT</td>`;
+      h+=`<tr style="background:rgba(255,255,255,.03)"><td colspan="3" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);padding:5px 10px">${t('NO PROJECT')}</td>`;
       months.forEach(()=>{h+=`<td></td>`;});h+=`<td></td></tr>`;
       unassigned.forEach((row,idx)=>{h+=allocRowHTML(row,idx);});
     }
@@ -339,7 +339,7 @@ export function renderResPlan(){
 
   // ── Grand totals ──
   h+=`<tr style="border-top:2px solid var(--border)">
-    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">TOTAL FTE</td>
+    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('TOTAL FTE')}</td>
     <td class="col-proj"></td><td class="col-cost"></td>`;
   months.forEach(m=>{
     const total=visibleRows.reduce((s,r)=>s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0),0);
@@ -347,7 +347,7 @@ export function renderResPlan(){
     h+=`<td class="alloc-cell" style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:${col};text-align:center">${total?total.toFixed(1):''}</td>`;
   });
   h+=`<td></td></tr><tr>
-    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">COST (€)</td>
+    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('COST (€)')}</td>
     <td class="col-proj"></td><td class="col-cost"></td>`;
   months.forEach(m=>{
     const cost=visibleRows.reduce((s,r)=>{
@@ -391,50 +391,50 @@ export function engCardHTML(e){
   return `<div class="eng-card" draggable="true"
       ondragstart="dragEngStart(event,${e.id})" ondragend="dragEngEnd(event)"
       id="ec-${e.id}">
-    <span class="eng-drag-handle" title="Drag to regroup">⋮⋮</span>
-    ${e.planningOnly?`<div style="margin:4px 0 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><div style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(91,229,200,.12);color:var(--accent2);border:1px solid rgba(91,229,200,.3)">📋 PLANNING ONLY</div><label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--muted);cursor:pointer"><input type="checkbox" ${e.includeInCost?'checked':''} style="accent-color:var(--accent2);cursor:pointer" onchange="(function(cb){const eng=engineers.find(e=>e.id===${e.id});if(eng){eng.includeInCost=cb.checked;saveState();}})(this)">Include in cost calc</label></div>`:''}
+    <span class="eng-drag-handle" title="${t('Drag to regroup')}">⋮⋮</span>
+    ${e.planningOnly?`<div style="margin:4px 0 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><div style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(91,229,200,.12);color:var(--accent2);border:1px solid rgba(91,229,200,.3)">${t('📋 PLANNING ONLY')}</div><label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--muted);cursor:pointer"><input type="checkbox" ${e.includeInCost?'checked':''} style="accent-color:var(--accent2);cursor:pointer" onchange="(function(cb){const eng=engineers.find(e=>e.id===${e.id});if(eng){eng.includeInCost=cb.checked;saveState();}})(this)">${t('Include in cost calc')}</label></div>`:''}
     ${avatarHTML}
     <div class="eng-card-field">
-      <div class="eng-card-label">NAME</div>
-      <input class="eng-card-inp" id="en-name-${e.id}" value="${escH(e.name)}" placeholder="Name" style="font-weight:600"
+      <div class="eng-card-label">${t('NAME')}</div>
+      <input class="eng-card-inp" id="en-name-${e.id}" value="${escH(e.name)}" placeholder="${t('Name')}" style="font-weight:600"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">ROLE / TITLE</div>
-      <input class="eng-card-inp" id="en-role-${e.id}" value="${escH(e.role||'')}" placeholder="Role…"
+      <div class="eng-card-label">${t('ROLE / TITLE')}</div>
+      <input class="eng-card-inp" id="en-role-${e.id}" value="${escH(e.role||'')}" placeholder="${t('Role…')}"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">LOCATION</div>
-      <input class="eng-card-inp" id="en-loc-${e.id}" value="${escH(e.location||'')}" placeholder="Location…"
+      <div class="eng-card-label">${t('LOCATION')}</div>
+      <input class="eng-card-inp" id="en-loc-${e.id}" value="${escH(e.location||'')}" placeholder="${t('Location…')}"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div class="eng-card-field">
-      <div class="eng-card-label">€/MONTH</div>
+      <div class="eng-card-label">${t('€/MONTH')}</div>
       <input class="eng-card-inp" id="en-cost-${e.id}" type="number" value="${e.monthlyCost}" min="0" step="100" style="width:80px"
         onblur="rosterAutoSave(${e.id})">
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-      ${e.planningOnly ? '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent2)">Planning only</span>' : `
-      <button class="sm" onclick="openSkillsModal(${e.id})" title="Edit skills"
+      ${e.planningOnly ? `<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent2)">${t('Planning only')}</span>` : `
+      <button class="sm" onclick="openSkillsModal(${e.id})" title="${t('Edit skills')}"
         style="font-size:9px;padding:3px 7px;border-color:${skillCount?'var(--accent2)':'var(--border)'}">
-        ◈ SKILLS${skillBadge}
+        ◈ ${t('SKILLS')}${skillBadge}
       </button>
-      <button class="sm" onclick="openIdCardModal(${e.id})" title="Employee profile — set Reports-To for org chart"
+      <button class="sm" onclick="openIdCardModal(${e.id})" title="${t('Employee profile — set Reports-To for org chart')}"
         style="font-size:9px;padding:3px 7px;border-color:${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?'var(--accent)':'var(--danger)'}">
-        👤 ${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?'PROFILE':'PROFILE ⚠'}
+        👤 ${(e.idcard&&(e.idcard.reportsTo||e.idcard.manager))?t('PROFILE'):t('PROFILE ⚠')}
       </button>`}
     </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:2px 6px 4px">
-      ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">⊘ EXCLUDED</span>` : ''}
-      <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.">
+      ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">${t('⊘ EXCLUDED')}</span>` : ''}
+      <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="${t('Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.')}">
         <input type="checkbox" ${e.excludeFromCalc?'checked':''} style="accent-color:var(--warn);cursor:pointer"
           onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderRoster();}})(this)">
-        Exclude from calc
+        ${t('Exclude from calc')}
       </label>
     </div>
-    <button class="row-del-btn" onclick="deleteEngineer(${e.id})" title="Delete engineer">×</button>
+    <button class="row-del-btn" onclick="deleteEngineer(${e.id})" title="${t('Delete engineer')}">×</button>
   </div>`;
 }
 

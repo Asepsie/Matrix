@@ -47,7 +47,22 @@
       "Bash(ls \"reference document/\" && cp \"/c/Users/pyro3/Downloads/matrix-nav-rail-mockup \\(2\\).html\" \"reference document/matrix-nav-rail-mockup.html\" && echo \"copied\")",
       "Bash(ls -la dist/)",
       "Bash(ls -la matrix/dist/)",
-      "Bash(sort -t: -k2 -rn)"
+      "Bash(sort -t: -k2 -rn)",
+      "Bash(git checkout *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(perl -i -pe 's/^var I18N_LANGS = \\\\[/export var I18N_LANGS = [/; s/^var I18N_DICT = \\\\{/export var I18N_DICT = {/; s/^function t\\\\\\(key, vars\\\\\\)\\\\{/export function t\\(key, vars\\){/; s/^function i18nInterp\\\\\\(s, vars\\\\\\)\\\\{/export function i18nInterp\\(s, vars\\){/; s/^function i18nPseudo\\\\\\(key\\\\\\)\\\\{/export function i18nPseudo\\(key\\){/; s/^function i18nLocale\\\\\\(\\\\\\)\\\\{/export function i18nLocale\\(\\){/; s/^function i18nNum\\\\\\(n, opts\\\\\\)\\\\{/export function i18nNum\\(n, opts\\){/; s/^function i18nDate\\\\\\(d, opts\\\\\\)\\\\{/export function i18nDate\\(d, opts\\){/' src/core/i18n.js)",
+      "Bash(node --test tests/i18n.test.js)",
+      "Bash(grep -vE \"^\\(DEFAULT LANDING VIEW|CHARTER PROJECT PICKER|SAVE|CANCEL|CLOSE|RESET ALL|Card hub|Dropdown|Auto-hide|COLLAPSED|Width of|Interface|The view|How you pick|⚙ SETTINGS|👋|Where would|Roster —|\\\\\\(recommended\\\\\\)|Portfolio matrix —|⌨|WHAT IS|NAVIGATION|Open this|Close any|Open Summary|Open Compare|Open Resource|Open Org|Y-AXIS MODE|Switch to|PROJECTS|New project|Delete selected|Edit selected|Toggle selected|DRAWING TOOLS|Select / move|Line tool|Dashed line|Arrow tool|Text annotation|^VIEW$|Zoom in|Reset zoom|Open Snapshots|Export JSON|⚠ DANGER|Reset all\\)\")",
+      "Bash(rm -f \"/c/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1191fd18-f328-436f-97cc-acbaaf86dad3/scratchpad/list-missing.mjs\")",
+      "Bash(node \"/c/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1191fd18-f328-436f-97cc-acbaaf86dad3/scratchpad/list-missing.mjs\")",
+      "Bash(grep -nE \"'[A-Z][a-z].{3,}'|>[A-Z][a-z].{3,}<\" src/sections/roster.js)",
+      "Bash(awk '/id=\"org-overlay\"/,/id=\"org-svg\"/' src/index.html)",
+      "Bash(grep -nE \"innerHTML|textContent|'[A-Z][a-z]{3,}|>[A-Z][a-z]{3,}\" src/sections/org.js)",
+      "Bash(grep -oE \"'[^']{4,}'|\\\\\"[^\\\\\"]{4,}\\\\\"\")",
+      "Bash(grep -E \"SNAP: ON|ARROWS: OFF|WHITE: ON|DETAILS: ON|▭ BG|▭ FG$\")",
+      "Bash(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/1f1a078f-ec23-4daf-a24c-36af64c82c65/scratchpad/findmissing.js\")",
+      "Bash(git rev-list *)",
+      "Bash(git -C /c/Users/pyro3/Documents/Matrix status --short)"
     ]
   }
 }

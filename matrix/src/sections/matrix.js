@@ -428,3 +428,90 @@ function renderWithAnim(W,H,pw,ph,isAnim){
   if(!isAnim){SV('sep-x-val',+cSepX.toFixed(3));SV('sep-y-val',+cSepY.toFixed(3));}
   G('svg-container').style.cursor=drawTool==='none'?'default':'crosshair';
 }
+
+/* ── Focus star + importance formula (matrix toolbar) ─────────────────
+   Moved here from the heatmap. The focus star already renders in the SVG
+   above (reads _hmState.showStar/starN/formula); these controls drive it.
+   State lives in _hmState (defined in heatmap.js) so the shared importance
+   formula stays in sync across the matrix and the heatmap. Rebuilt only on
+   toggle/apply — never inside render() — so typing in the formula field
+   isn't interrupted by pan/zoom re-renders. */
+
+// renders the focus-star toggle + collapsible importance-formula panel
+function renderFocusBar(){
+  var bar=G('focus-bar'); if(!bar) return;
+  var visN=projects.filter(function(p){ return p.visible; }).length;
+  bar.innerHTML=''
+    + '<button class="sm" onclick="mtxToggleStar()" '
+    + 'style="'+(_hmState.showStar?'border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.12)':'')+'" '
+    + 'title="'+t('Show importance-weighted centroid of the top-N projects')+'">'
+    + '⭐ '+t('FOCUS STAR')+': '+(_hmState.showStar?'ON':'OFF')+'</button>'
+    + '<button class="sm" onclick="mtxToggleFocusPanel()" '
+    + 'style="'+(_hmState.showFormula?'border-color:var(--accent);color:var(--accent)':'')+'" '
+    + 'title="'+t('Edit the importance formula and focus count')+'">⚙ '+t('IMPORTANCE FORMULA')+'</button>';
+
+  var panel=G('focus-panel'); if(!panel) return;
+  if(!_hmState.showFormula){ panel.innerHTML=''; return; }
+
+  function preset(f,lbl){
+    return '<a onclick="mtxSetFormula('+JSON.stringify(f).replace(/"/g,'&quot;')+')" '
+      + 'style="color:var(--accent);cursor:pointer;margin-right:10px">'+escH(lbl)+'</a>';
+  }
+  var h='<div style="background:var(--surface);border-bottom:1px solid var(--border);'
+    + 'padding:10px 13px;display:flex;flex-direction:column;gap:8px">';
+  h += '<div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:.06em">'
+    + t('IMPORTANCE FORMULA') + ' — <span style="color:var(--accent)">impact</span> · '
+    + '<span style="color:var(--accent)">visibility</span> · <span style="color:var(--accent)">enabler</span> · '
+    + '<span style="color:var(--accent)">x</span> ('+t('each 1–10')+')</div>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    + '<input id="mtx-formula-input" value="'+escH(_hmState.formula)+'" '
+    + 'style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--accent);'
+    + 'font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:5px;outline:none" '
+    + 'placeholder="impact * visibility * enabler" onkeydown="if(event.key===\'Enter\')mtxApplyFormula()">'
+    + '<button class="sm primary" onclick="mtxApplyFormula()" style="font-size:10px;padding:3px 10px">'+t('APPLY')+'</button>'
+    + '<button class="sm" onclick="mtxResetFormula()" style="font-size:10px;padding:3px 8px" title="'+t('Reset to default')+'">↺</button>'
+    + '</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-top:4px">'
+    + t('Presets') + ': '
+    + preset('impact * visibility * enabler','impact×vis×ena')
+    + preset('impact * visibility','impact×vis')
+    + preset('(impact + visibility + enabler) / 3','avg(i,v,e)')
+    + preset('impact * impact * visibility','impact²×vis')
+    + '</div></div>';
+  h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+    + 'border-top:1px solid var(--border);padding-top:8px">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">⭐ '+t('FOCUS STAR — top')+'</span>'
+    + '<input type="number" id="mtx-star-n" min="1" max="'+Math.max(1,visN)+'" value="'+_hmState.starN+'" '
+    + 'style="width:48px;background:var(--bg);border:1px solid var(--border);color:var(--accent);'
+    + 'font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;text-align:center" '
+    + 'oninput="_hmState.starN=Math.max(1,Math.min(+this.value,projects.filter(function(p){return p.visible;}).length));'
+    + 'if(_hmState.showStar)render();">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('projects by importance')+'</span>'
+    + '<span style="flex:1"></span>'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'
+    + t('Centroid = importance-weighted average of the top N project positions')+'</span>'
+    + '</div>';
+  h += '</div>';
+  panel.innerHTML=h;
+}
+
+// toggles the focus star and redraws the matrix + toolbar
+function mtxToggleStar(){ _hmState.showStar=!_hmState.showStar; renderFocusBar(); render(); }
+// toggles the importance-formula panel
+function mtxToggleFocusPanel(){ _hmState.showFormula=!_hmState.showFormula; renderFocusBar(); }
+// validates and applies the custom importance formula from the matrix panel
+function mtxApplyFormula(){
+  var input=G('mtx-formula-input'); if(!input) return;
+  var formula=input.value.trim(); if(!formula) return;
+  try{
+    var fn=new Function('impact','visibility','enabler','x','return ('+formula+');');
+    var r=fn(7,6,8,5);
+    if(typeof r!=='number'||!isFinite(r)) throw new Error('not a number');
+    _hmState.formula=formula; renderFocusBar(); render();
+  }catch(e){ alert(t('Formula error: ')+e.message+'\n\nimpact * visibility * enabler'); }
+}
+// sets a preset importance formula and re-renders
+function mtxSetFormula(f){ _hmState.formula=f; renderFocusBar(); render(); }
+// resets the importance formula to default and re-renders
+function mtxResetFormula(){ _hmState.formula='impact * visibility * enabler'; renderFocusBar(); render(); }

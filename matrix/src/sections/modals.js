@@ -73,7 +73,7 @@ function confirmAdd(){
 function openCtx(e,id){
   e.preventDefault();e.stopPropagation();ctxProjId=id;
   const p=projects.find(p=>p.id===id);
-  G('ctx-proj-name').textContent=p?p.name:'PROJECT';
+  G('ctx-proj-name').textContent=p?p.name:t('PROJECT');
   const m=G('ctx-menu');
   m.style.left=Math.min(e.clientX,window.innerWidth-200)+'px';
   m.style.top=Math.min(e.clientY,window.innerHeight-140)+'px';
@@ -97,7 +97,7 @@ function showProjTab(tab){
   G('tab-sched-btn').classList.toggle('active',tab==='sched');
   G('tab-actions-btn').classList.toggle('active',tab==='actions');
   const p=projects.find(p=>p.id===tabProjId);
-  G('ptw-title').textContent=p?p.name:'PROJECT';
+  G('ptw-title').textContent=p?p.name:t('PROJECT');
   if(tab==='risk')renderRiskTab(p);
   else if(tab==='sched')renderSchedTab(p);
   else renderActionsTab(p);
@@ -125,13 +125,13 @@ function saveProjTab(){
 
 // renders the FMEA risk table
 function renderRiskTab(p){
-  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">No project.</p>';return;}
+  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">'+t('No project.')+'</p>';return;}
   if(!p.risks)p.risks=[];
   let h=`<table class="risk-table"><thead><tr>
-    <th>DESCRIPTION</th><th>PROB<br><small>1-5</small></th><th>IMP<br><small>1-5</small></th>
-    <th>MITIGATION</th><th>OWNER</th><th>STATUS</th>
-    <th>SEV<br><small>1-10</small></th><th>OCC<br><small>1-10</small></th><th>DET<br><small>1-10</small></th>
-    <th>RPN</th><th></th></tr></thead><tbody>`;
+    <th>${t('DESCRIPTION')}</th><th>${t('PROB')}<br><small>1-5</small></th><th>${t('IMP')}<br><small>1-5</small></th>
+    <th>${t('MITIGATION')}</th><th>${t('OWNER')}</th><th>${t('STATUS')}</th>
+    <th>${t('SEV')}<br><small>1-10</small></th><th>${t('OCC')}<br><small>1-10</small></th><th>${t('DET')}<br><small>1-10</small></th>
+    <th>${t('RPN')}</th><th></th></tr></thead><tbody>`;
   for(const r of p.risks){
     const rpn=(r.sev||1)*(r.occ||1)*(r.det||1);
     const rc=rpn<100?'rpn-lo':rpn<300?'rpn-med':'rpn-hi';
@@ -151,8 +151,8 @@ function renderRiskTab(p){
     </tr>`;
   }
   h+=`</tbody></table><div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-    <button class="sm primary" onclick="addRisk(${p.id})">+ ADD RISK</button>
-    <span style="font-size:10px;color:var(--muted)">RPN = Sev × Occ × Det · click × to delete · SAVE to persist</span></div>`;
+    <button class="sm primary" onclick="addRisk(${p.id})">${t('+ ADD RISK')}</button>
+    <span style="font-size:10px;color:var(--muted)">${t('RPN = Sev × Occ × Det · click × to delete · SAVE to persist')}</span></div>`;
   G('ptw-body').innerHTML=h;
   G('ptw-body').querySelectorAll('tr[data-rid]').forEach(tr=>{
     ['r-sev','r-occ','r-det'].forEach(c=>{
@@ -195,14 +195,14 @@ function schedEnsure(p){
 function schedNodes(p){
   // All items as unified list for dependency references
   const nodes={};
-  p.actions.forEach(a=>nodes['a'+a.id]={key:'a'+a.id,label:a.desc||'Action',type:'action'});
-  p.milestones.forEach(m=>nodes['m'+m.id]={key:'m'+m.id,label:(m.icon||'🎯')+' '+(m.name||'Milestone'),type:'ms'});
+  p.actions.forEach(a=>nodes['a'+a.id]={key:'a'+a.id,label:a.desc||t('Action'),type:'action'});
+  p.milestones.forEach(m=>nodes['m'+m.id]={key:'m'+m.id,label:(m.icon||'🎯')+' '+(m.name||t('Milestone')),type:'ms'});
   return nodes;
 }
 
 // renders the schedule editor (actions, milestones, gantt)
 function renderSchedTab(p){
-  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">No project.</p>';return;}
+  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">'+t('No project.')+'</p>';return;}
   schedEnsure(p);
   const nodes=schedNodes(p);
 
@@ -210,7 +210,7 @@ function renderSchedTab(p){
   function depTags(selfKey,storedDep){
     const sel=new Set((storedDep||'').split(',').map(s=>s.trim()).filter(Boolean));
     const opts=Object.values(nodes).filter(n=>n.key!==selfKey);
-    if(!opts.length)return '<span style="color:var(--muted);font-size:10px">No other items yet</span>';
+    if(!opts.length)return '<span style="color:var(--muted);font-size:10px">'+t('No other items yet')+'</span>';
     return opts.map(n=>{
       const on=sel.has(n.key);
       const col=n.type==='ms'?'var(--accent)':'var(--accent2)';
@@ -231,31 +231,31 @@ function renderSchedTab(p){
 
   // ── Toolbar ──
   h+=`<div style="display:flex;gap:8px;align-items:center;padding:8px 0 10px;flex-shrink:0;flex-wrap:wrap">
-    <button class="sm primary" onclick="schedAddAction(${p.id})">+ ACTION</button>
-    <button class="sm primary" onclick="schedAddMilestone(${p.id})">◆ MILESTONE</button>
+    <button class="sm primary" onclick="schedAddAction(${p.id})">${t('+ ACTION')}</button>
+    <button class="sm primary" onclick="schedAddMilestone(${p.id})">${t('◆ MILESTONE')}</button>
     <div style="flex:1"></div>
     <span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">
       ${(()=>{
         // Quick stats
         const a=p.actions.filter(a=>a.start&&a.end).length;
         const m=p.milestones.filter(m=>m.date||m.end).length;
-        return a+'&nbsp;actions&nbsp;·&nbsp;'+m+'&nbsp;milestones';
+        return a+'&nbsp;'+t('actions')+'&nbsp;·&nbsp;'+m+'&nbsp;'+t('milestones');
       })()}
     </span>
-    <button class="primary" onclick="schedSave(${p.id})">SAVE + REFRESH GANTT</button>
+    <button class="primary" onclick="schedSave(${p.id})">${t('SAVE + REFRESH GANTT')}</button>
   </div>`;
 
   // ── Actions table ──
-  h+=`<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em;margin-bottom:6px">ACTIONS</div>`;
+  h+=`<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em;margin-bottom:6px">${t('ACTIONS')}</div>`;
   h+=`<div style="overflow-x:auto;flex-shrink:0"><table style="border-collapse:collapse;width:100%;font-size:11px">
   <thead><tr style="border-bottom:1px solid var(--border)">
     <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:24px"></th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:160px">DESCRIPTION</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:106px">START</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:106px">END</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:90px">STATUS</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:100px">MEMBER</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DEPENDS ON <span style="font-weight:300">(click to toggle)</span></th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:160px">${t('DESCRIPTION')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:106px">${t('START')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:106px">${t('END')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:90px">${t('STATUS')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:100px">${t('MEMBER')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('DEPENDS ON')} <span style="font-weight:300">${t('(click to toggle)')}</span></th>
     <th style="width:22px"></th>
   </tr></thead><tbody>`;
 
@@ -265,7 +265,7 @@ function renderSchedTab(p){
     const col=a.color||ACTION_COLORS[ai%ACTION_COLORS.length];
     h+=`<tr data-acid="${a.id}" style="border-bottom:1px solid rgba(255,255,255,.04)">
       <td style="padding:3px 4px"><div style="width:10px;height:10px;border-radius:50%;background:${col};cursor:pointer"
-        onclick="schedCycleColor(${p.id},${a.id})" title="Click to change color"></div></td>
+        onclick="schedCycleColor(${p.id},${a.id})" title="${t('Click to change color')}"></div></td>
       <td style="padding:3px 4px"><input class="eng-card-inp a-desc-s" value="${escH(a.desc||'')}" style="width:100%;font-weight:600"></td>
       <td style="padding:3px 4px"><input class="eng-card-inp a-start-s" type="date" value="${a.start||''}"></td>
       <td style="padding:3px 4px"><input class="eng-card-inp a-end-s" type="date" value="${a.end||''}"></td>
@@ -275,23 +275,23 @@ function renderSchedTab(p){
       <td style="padding:3px 4px"><button class="row-del-btn" onclick="schedDelAction(${p.id},${a.id})">×</button></td>
     </tr>`;
   });
-  if(!p.actions.length)h+=`<tr><td colspan="8" style="padding:12px;text-align:center;color:var(--muted);font-size:11px">No actions yet — click + ACTION</td></tr>`;
+  if(!p.actions.length)h+=`<tr><td colspan="8" style="padding:12px;text-align:center;color:var(--muted);font-size:11px">${t('No actions yet — click + ACTION')}</td></tr>`;
   h+=`</tbody></table></div>`;
 
   // ── Milestones table ──
-  h+=`<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em;margin:12px 0 6px">MILESTONES</div>`;
+  h+=`<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em;margin:12px 0 6px">${t('MILESTONES')}</div>`;
   h+=`<div style="overflow-x:auto;flex-shrink:0"><table style="border-collapse:collapse;width:100%;font-size:11px">
   <thead><tr style="border-bottom:1px solid var(--border)">
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:34px">ICON</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:160px">NAME</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:120px">DATE</th>
-    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">DEPENDS ON <span style="font-weight:300">(click to toggle)</span></th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:34px">${t('ICON')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:160px">${t('NAME')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);width:120px">${t('DATE')}</th>
+    <th style="text-align:left;padding:4px 6px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('DEPENDS ON')} <span style="font-weight:300">${t('(click to toggle)')}</span></th>
     <th style="width:22px"></th>
   </tr></thead><tbody>`;
 
   p.milestones.forEach(m=>{
     h+=`<tr data-msid="${m.id}" style="border-bottom:1px solid rgba(255,255,255,.04)">
-      <td style="padding:3px 6px;font-size:18px;cursor:pointer" title="Click to change icon"
+      <td style="padding:3px 6px;font-size:18px;cursor:pointer" title="${t('Click to change icon')}"
           onclick="schedIconPick(${p.id},${m.id},this)">${m.icon||'🎯'}</td>
       <td style="padding:3px 4px"><input class="eng-card-inp ms-name-s" value="${escH(m.name||'')}" style="font-weight:600"></td>
       <td style="padding:3px 4px"><input class="eng-card-inp ms-date-s" type="date" value="${m.date||''}"></td>
@@ -299,15 +299,15 @@ function renderSchedTab(p){
       <td style="padding:3px 4px"><button class="row-del-btn" onclick="schedDelMilestone(${p.id},${m.id})">×</button></td>
     </tr>`;
   });
-  if(!p.milestones.length)h+=`<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--muted);font-size:11px">No milestones yet — click ◆ MILESTONE</td></tr>`;
+  if(!p.milestones.length)h+=`<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--muted);font-size:11px">${t('No milestones yet — click ◆ MILESTONE')}</td></tr>`;
   h+=`</tbody></table></div>`;
 
   // ── Gantt canvas area ──
   h+=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">GANTT <span style="font-weight:300">(drag bars to move · drag edges to resize · drag ◆ to reschedule)</span></span>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">${t('GANTT')} <span style="font-weight:300">${t('(drag bars to move · drag edges to resize · drag ◆ to reschedule)')}</span></span>
     <div style="flex:1"></div>
-    <button class="sm" onclick="exportGanttPNG()" title="Download Gantt as PNG" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ PNG</button>
-    <button class="sm" onclick="exportGanttSVG()" title="Download Gantt as SVG" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ SVG</button>
+    <button class="sm" onclick="exportGanttPNG()" title="${t('Download Gantt as PNG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ PNG</button>
+    <button class="sm" onclick="exportGanttSVG()" title="${t('Download Gantt as SVG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ SVG</button>
   </div>`;
   h+=`<div id="gantt-area" style="flex:1;min-height:280px;position:relative;overflow:auto;background:#0a0a0c;border:1px solid var(--border);border-radius:6px;display:block"></div>`;
 
@@ -368,11 +368,11 @@ function schedIconPick(pid,msid,td){
   const div=document.createElement('div');
   div.id='sched-icon-picker';
   div.style.cssText='position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;z-index:800;box-shadow:0 8px 24px rgba(0,0,0,.7);top:50%;left:50%;transform:translate(-50%,-50%)';
-  div.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-bottom:8px">PICK ICON</div>'
+  div.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-bottom:8px">'+t('PICK ICON')+'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:4px;max-width:240px">'
     +MS_ICONS.map(ic=>`<div onclick="schedPickIcon('${ic}')" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:4px;cursor:pointer;border:1px solid var(--border)" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${ic}</div>`).join('')
     +'</div>'
-    +'<button class="sm" onclick="G(\'sched-icon-picker\').remove()" style="margin-top:8px;width:100%">CLOSE</button>';
+    +'<button class="sm" onclick="G(\'sched-icon-picker\').remove()" style="margin-top:8px;width:100%">'+t('CLOSE')+'</button>';
   document.body.appendChild(div);
 }
 // applies the chosen milestone icon
@@ -536,7 +536,7 @@ function _ganttFileName(ext){
 // downloads the current Gantt as a standalone SVG file
 function exportGanttSVG(){
   const str=_ganttSVGString();
-  if(!str){alert('Add dated actions/milestones and render the Gantt first.');return;}
+  if(!str){alert(t('Add dated actions/milestones and render the Gantt first.'));return;}
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([str],{type:'image/svg+xml;charset=utf-8'}));
   a.download=_ganttFileName('svg');a.click();
@@ -545,7 +545,7 @@ function exportGanttSVG(){
 // renders the current Gantt to a 2× PNG and downloads it
 function exportGanttPNG(){
   const area=G('gantt-area'),svg=area&&area.querySelector('svg');
-  if(!svg){alert('Add dated actions/milestones and render the Gantt first.');return;}
+  if(!svg){alert(t('Add dated actions/milestones and render the Gantt first.'));return;}
   const w=+svg.getAttribute('width')||Math.round(svg.getBoundingClientRect().width)||820;
   const h=+svg.getAttribute('height')||Math.round(svg.getBoundingClientRect().height)||400;
   const str=_ganttSVGString();
@@ -557,13 +557,13 @@ function exportGanttPNG(){
     ctx.fillStyle='#0a0a0c';ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.scale(scale,scale);ctx.drawImage(img,0,0);
     canvas.toBlob(function(blob){
-      if(!blob){alert('PNG generation failed — try SVG export.');return;}
+      if(!blob){alert(t('PNG generation failed — try SVG export.'));return;}
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);a.download=_ganttFileName('png');a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),3000);
     },'image/png');
   };
-  img.onerror=function(){alert('PNG export failed — try SVG export.');};
+  img.onerror=function(){alert(t('PNG export failed — try SVG export.'));};
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(str);
 }
 
@@ -587,7 +587,7 @@ function schedRenderGantt(p){
   if(!acts.length&&!msts.length){
     area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:10px;color:var(--muted);font-family:monospace;font-size:11px">'
       +'<div style="font-size:32px">📊</div>'
-      +'<div>Add dates to actions or milestones, then click SAVE + REFRESH GANTT</div></div>';
+      +'<div>'+t('Add dates to actions or milestones, then click SAVE + REFRESH GANTT')+'</div></div>';
     return;
   }
 
@@ -600,7 +600,7 @@ function schedRenderGantt(p){
   });
   msts.forEach(m=>{const d=safeDate(m.date||m.end);if(d)dates.push(d);});
   if(!dates.length){
-    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:monospace;font-size:11px">No valid dates found — check date fields</div>';
+    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:monospace;font-size:11px">'+t('No valid dates found — check date fields')+'</div>';
     return;
   }
   const dMin=new Date(Math.min(...dates.map(d=>d.getTime())));
@@ -610,7 +610,7 @@ function schedRenderGantt(p){
   const tMax=new Date(dMax.getTime()+span*0.12);
   const totalMs=tMax.getTime()-tMin.getTime();
   if(!totalMs){
-    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:monospace;font-size:11px">All items have the same date — add a date range</div>';
+    area.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:monospace;font-size:11px">'+t('All items have the same date — add a date range')+'</div>';
     return;
   }
 
@@ -930,11 +930,11 @@ function schedRenderGantt(p){
   let note='';
   if(hiddenA||hiddenM){
     const parts=[];
-    if(hiddenA)parts.push(hiddenA+' action'+(hiddenA>1?'s':'')+' (no date — set a due, or start & end)');
-    if(hiddenM)parts.push(hiddenM+' milestone'+(hiddenM>1?'s':'')+' (need a date)');
+    if(hiddenA)parts.push(t('{n} action(s) (no date — set a due, or start & end)',{n:hiddenA}));
+    if(hiddenM)parts.push(t('{n} milestone(s) (need a date)',{n:hiddenM}));
     note='<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#f1a435;'
       +'padding:5px 8px;background:rgba(241,164,53,.08);border-bottom:1px solid var(--border)">'
-      +'⚠ Not shown: '+escH(parts.join(' · '))+'</div>';
+      +'⚠ '+t('Not shown:')+' '+escH(parts.join(' · '))+'</div>';
   }
   area.innerHTML=note+s;
 }
@@ -943,7 +943,7 @@ function schedRenderGantt(p){
 
 // renders the actions tab table + team summary
 function renderActionsTab(p){
-  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">No project.</p>';return;}
+  if(!p){G('ptw-body').innerHTML='<p style="color:var(--muted)">'+t('No project.')+'</p>';return;}
   if(!p.actions)p.actions=[];
 
   // Collect all team members across all projects for datalist
@@ -952,12 +952,12 @@ function renderActionsTab(p){
 
   let h=`<datalist id="member-list">${memberOpts}</datalist>
   <table class="actions-table"><thead><tr>
-    <th style="min-width:160px">ACTION</th>
-    <th style="min-width:110px">MEMBER</th>
-    <th style="width:110px">DUE DATE</th>
-    <th style="width:70px">PRIORITY</th>
-    <th style="width:80px">STATUS</th>
-    <th style="width:36px" title="Mark as milestone — appears in Gantt">⬥ MS</th>
+    <th style="min-width:160px">${t('ACTION')}</th>
+    <th style="min-width:110px">${t('MEMBER')}</th>
+    <th style="width:110px">${t('DUE DATE')}</th>
+    <th style="width:70px">${t('PRIORITY')}</th>
+    <th style="width:80px">${t('STATUS')}</th>
+    <th style="width:36px" title="${t('Mark as milestone — appears in Gantt')}">${t('⬥ MS')}</th>
     <th style="width:28px"></th>
   </tr></thead><tbody>`;
 
@@ -968,11 +968,11 @@ function renderActionsTab(p){
     const stOpts=['Open','In Progress','Done','Blocked'].map(v=>`<option${a.status===v?' selected':''}>${v}</option>`).join('');
     h+=`<tr data-aid="${a.id}" class="${stCls}">
       <td><input class="a-desc" value="${escH(a.desc||'')}"></td>
-      <td><input class="a-member" value="${escH(a.member||'')}" list="member-list" placeholder="Team member"></td>
+      <td><input class="a-member" value="${escH(a.member||'')}" list="member-list" placeholder="${t('Team member')}"></td>
       <td><input class="a-due" type="date" value="${a.due||''}"></td>
       <td><select class="a-prio">${prioOpts}</select></td>
       <td><select class="a-status">${stOpts}</select></td>
-      <td style="text-align:center" title="Toggle: show as milestone on Gantt">
+      <td style="text-align:center" title="${t('Toggle: show as milestone on Gantt')}">
         <input class="a-ms" type="checkbox" ${a.isMilestone?'checked':''}
           style="accent-color:var(--accent2);width:14px;height:14px;cursor:pointer"
           onchange="toggleActionMilestone(${p.id},${a.id},this.checked)">
@@ -982,11 +982,11 @@ function renderActionsTab(p){
   }
   h+=`</tbody></table>
   <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <button class="sm primary" onclick="addAction(${p.id})">+ ADD ACTION</button>
-    <span style="font-size:10px;color:var(--muted)">Assign actions to team members · SAVE to persist</span>
+    <button class="sm primary" onclick="addAction(${p.id})">${t('+ ADD ACTION')}</button>
+    <span style="font-size:10px;color:var(--muted)">${t('Assign actions to team members · SAVE to persist')}</span>
   </div>
   <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
-    <p style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:8px">TEAM SUMMARY</p>
+    <p style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:8px">${t('TEAM SUMMARY')}</p>
     ${renderMemberSummary(p)}
   </div>`;
   G('ptw-body').innerHTML=h;
@@ -1004,21 +1004,21 @@ function renderActionsTab(p){
 function renderMemberSummary(p){
   const byMember={};
   (p.actions||[]).forEach(a=>{
-    const m=a.member||'Unassigned';
+    const m=a.member||t('Unassigned');
     if(!byMember[m])byMember[m]={total:0,done:0,open:0,blocked:0};
     byMember[m].total++;
     if(a.status==='Done')byMember[m].done++;
     else if(a.status==='Blocked')byMember[m].blocked++;
     else byMember[m].open++;
   });
-  if(!Object.keys(byMember).length)return '<p style="font-size:11px;color:var(--muted)">No actions yet.</p>';
+  if(!Object.keys(byMember).length)return '<p style="font-size:11px;color:var(--muted)">'+t('No actions yet.')+'</p>';
   let h='<div style="display:flex;flex-wrap:wrap;gap:8px;">';
   for(const [m,s] of Object.entries(byMember)){
     const pct=Math.round(s.done/s.total*100);
     h+=`<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:140px">
       <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);margin-bottom:4px">${escH(m)}</div>
-      <div style="font-size:11px">${s.total} actions · <span style="color:var(--accent)">${pct}%</span> done</div>
-      ${s.blocked?`<div style="font-size:10px;color:var(--danger)">⚠ ${s.blocked} blocked</div>`:''}
+      <div style="font-size:11px">${s.total} ${t('actions')} · <span style="color:var(--accent)">${pct}%</span> ${t('done')}</div>
+      ${s.blocked?`<div style="font-size:10px;color:var(--danger)">⚠ ${t('{n} blocked',{n:s.blocked})}</div>`:''}
       <div style="margin-top:5px;height:4px;background:var(--border);border-radius:2px">
         <div style="height:4px;width:${pct}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
       </div>

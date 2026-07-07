@@ -40,10 +40,10 @@ export const AN_COLORS = {
 
 /* ── Coded ordinal/boolean values → human-readable axis labels ── */
 export const AN_VALUE_LABELS = {
-  nineBoxPerf: { 1:'Low', 2:'Moderate', 3:'High' },   // performance band
-  nineBoxPot:  { 1:'Low', 2:'Moderate', 3:'High' },   // potential band
-  isManager:   { true:'Manager', false:'Individual Contributor' },
-  gender:      { M:'Male', F:'Female', NB:'Non-binary', O:'Other' },
+  nineBoxPerf: { 1:t('Low'), 2:t('Moderate'), 3:t('High') },   // performance band
+  nineBoxPot:  { 1:t('Low'), 2:t('Moderate'), 3:t('High') },   // potential band
+  isManager:   { true:t('Manager'), false:t('Individual Contributor') },
+  gender:      { M:t('Male'), F:t('Female'), NB:t('Non-binary'), O:t('Other') },
 };
 // Format a raw dimension value for display on an axis / legend.
 function anFmtVal(dimId, v){
@@ -194,35 +194,35 @@ function _computeAnalyticsDataset(months) {
    ══════════════════════════════════════════════════════════════════ */
 export const ANALYTICS_DIMENSIONS = [
   // Compensation
-  {id:'monthlyCost', label:'Monthly Cost (€)', type:'numeric',     group:'Compensation'},
-  {id:'annualCost',  label:'Annual Cost (€)',  type:'numeric',     group:'Compensation'},
-  {id:'comparatio',  label:'Compa-ratio (%)',  type:'numeric',     group:'Compensation'},
+  {id:'monthlyCost', label:t('Monthly Cost (€)'), type:'numeric',     group:t('Compensation')},
+  {id:'annualCost',  label:t('Annual Cost (€)'),  type:'numeric',     group:t('Compensation')},
+  {id:'comparatio',  label:t('Compa-ratio (%)'),  type:'numeric',     group:t('Compensation')},
   // Grade & career
-  {id:'seniority',   label:'Seniority / Grade', type:'ordinal',    group:'Career', order:SENIORITY_ORDER},
-  {id:'grade',       label:'Career Grade (1–11)', type:'numeric',  group:'Career'},
-  {id:'role',        label:'Role',             type:'categorical', group:'Career'},
-  {id:'tenureYears', label:'Tenure (years)',   type:'numeric',     group:'Career'},
+  {id:'seniority',   label:t('Seniority / Grade'), type:'ordinal',    group:t('Career'), order:SENIORITY_ORDER},
+  {id:'grade',       label:t('Career Grade (1–11)'), type:'numeric',  group:t('Career')},
+  {id:'role',        label:t('Role'),             type:'categorical', group:t('Career')},
+  {id:'tenureYears', label:t('Tenure (years)'),   type:'numeric',     group:t('Career')},
   // Performance & talent
-  {id:'latestRating',   label:'Latest Perf Rating', type:'ordinal', group:'Performance', order:AN_RATING_ORDER},
-  {id:'latestRatingNum',label:'Rating (numeric)',   type:'numeric', group:'Performance'},
-  {id:'ratingTrend',    label:'Rating Trend',       type:'numeric', group:'Performance'},
-  {id:'potential',      label:'Potential (GTP)',    type:'categorical', group:'Talent'},
-  {id:'nineBoxPerf', label:'Nine-Box Performance', type:'ordinal', group:'Talent', order:[1,2,3]},
-  {id:'nineBoxPot',  label:'Nine-Box Potential',   type:'ordinal', group:'Talent', order:[1,2,3]},
-  {id:'nineBoxKey',  label:'Nine-Box Position',    type:'ninebox', group:'Talent'},
-  {id:'discProfile', label:'DISC Profile',         type:'categorical', group:'Talent'},
+  {id:'latestRating',   label:t('Latest Perf Rating'), type:'ordinal', group:t('Performance'), order:AN_RATING_ORDER},
+  {id:'latestRatingNum',label:t('Rating (numeric)'),   type:'numeric', group:t('Performance')},
+  {id:'ratingTrend',    label:t('Rating Trend'),       type:'numeric', group:t('Performance')},
+  {id:'potential',      label:t('Potential (GTP)'),    type:'categorical', group:t('Talent')},
+  {id:'nineBoxPerf', label:t('Nine-Box Performance'), type:'ordinal', group:t('Talent'), order:[1,2,3]},
+  {id:'nineBoxPot',  label:t('Nine-Box Potential'),   type:'ordinal', group:t('Talent'), order:[1,2,3]},
+  {id:'nineBoxKey',  label:t('Nine-Box Position'),    type:'ninebox', group:t('Talent')},
+  {id:'discProfile', label:t('DISC Profile'),         type:'categorical', group:t('Talent')},
   // Organisation / DEI
-  {id:'group',    label:'Team / Group', type:'categorical', group:'Organisation'},
-  {id:'location', label:'Location',     type:'categorical', group:'Organisation'},
-  {id:'gender',   label:'Gender',       type:'categorical', group:'DEI'},
-  {id:'isManager',label:'Is Manager',   type:'boolean',     group:'Organisation'},
-  {id:'directReports', label:'Direct Reports', type:'numeric', group:'Organisation'},
+  {id:'group',    label:t('Team / Group'), type:'categorical', group:t('Organisation')},
+  {id:'location', label:t('Location'),     type:'categorical', group:t('Organisation')},
+  {id:'gender',   label:t('Gender'),       type:'categorical', group:t('DEI')},
+  {id:'isManager',label:t('Is Manager'),   type:'boolean',     group:t('Organisation')},
+  {id:'directReports', label:t('Direct Reports'), type:'numeric', group:t('Organisation')},
   // Capacity
-  {id:'utilizationPct', label:'Utilisation (%)', type:'numeric', group:'Capacity'},
-  {id:'projectCount',   label:'Project Count',   type:'numeric', group:'Capacity'},
+  {id:'utilizationPct', label:t('Utilisation (%)'), type:'numeric', group:t('Capacity')},
+  {id:'projectCount',   label:t('Project Count'),   type:'numeric', group:t('Capacity')},
   // Skills
-  {id:'skillCount',     label:'Skill Count',     type:'numeric', group:'Skills'},
-  {id:'critSkillCount', label:'Critical Skills', type:'numeric', group:'Skills'},
+  {id:'skillCount',     label:t('Skill Count'),     type:'numeric', group:t('Skills')},
+  {id:'critSkillCount', label:t('Critical Skills'), type:'numeric', group:t('Skills')},
 ];
 
 export function anDim(id){ return ANALYTICS_DIMENSIONS.find(d => d.id === id) || null; }
@@ -262,7 +262,7 @@ function anNiceNum(v){
 // opt: { valLabel (x-axis title incl. unit), catLabel (y-axis title) }
 function anBarChart(items, opt){
   opt = opt || {};
-  if (!items.length) return anEmpty('No data');
+  if (!items.length) return anEmpty(t('No data'));
   const axes = !!(opt.valLabel || opt.catLabel);
   const W = 640, rowH = 26, padL = 162, padR = 70, padT = 14, padB = axes ? 44 : 12;
   const axisY = padT + items.length * rowH;
@@ -295,7 +295,7 @@ function anHistogram(input, opt){
   opt = opt || {};
   const rows = (input || []).map(x => (x && typeof x === 'object') ? { v:+x.v, id:x.id } : { v:+x, id:null })
     .filter(r => r.v != null && !isNaN(r.v));
-  if (rows.length < 3) return anEmpty('Need ≥3 data points');
+  if (rows.length < 3) return anEmpty(t('Need ≥3 data points'));
   const vals = rows.map(r => r.v);
   const min = Math.min(...vals), max = Math.max(...vals);
   const nb = Math.min(12, Math.max(4, Math.ceil(Math.sqrt(vals.length))));
@@ -348,7 +348,7 @@ function anHistogram(input, opt){
 function anBoxPlot(groups, opt){
   opt = opt || {};
   const g = groups.filter(x => x.values.filter(v => v != null && !isNaN(v)).length > 0);
-  if (!g.length) return anEmpty('No data');
+  if (!g.length) return anEmpty(t('No data'));
   let all = g.flatMap(x => x.values).filter(v => v != null && !isNaN(v));
   let min = Math.min(...all), max = Math.max(...all);
   if (opt.ref != null){ min = Math.min(min, opt.ref); max = Math.max(max, opt.ref); }
@@ -392,7 +392,7 @@ function anBoxPlot(groups, opt){
 // opt: { valLabel (x-axis title), catLabel (y-axis title), legend:[{key,color}] }
 function anStackedBar(rows, opt){
   opt = opt || {};
-  if (!rows.length) return anEmpty('No data');
+  if (!rows.length) return anEmpty(t('No data'));
   const legend = opt.legend || [];
   const W = 660, rowH = 30, padL = 162, padR = 60, padT = legend.length ? 30 : 14;
   const axisLabels = !!(opt.valLabel || opt.catLabel);
@@ -437,7 +437,7 @@ function anStackedBar(rows, opt){
 function anScatter(points, opt){
   opt = opt || {};
   const pts = points.filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
-  if (pts.length < 3) return anEmpty('Need ≥3 data points');
+  if (pts.length < 3) return anEmpty(t('Need ≥3 data points'));
   const W = 640, H = 380, padL = 52, padR = 20, padT = 18, padB = 40;
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
   const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
@@ -487,7 +487,7 @@ function anNineBox(data, opt){
   };
   const by = {}, byId = {};
   data.forEach(d => { if (d.nineBoxKey){ (by[d.nineBoxKey] = by[d.nineBoxKey] || []).push(d.name); (byId[d.nineBoxKey] = byId[d.nineBoxKey] || []).push(d.id); } });
-  if (!Object.keys(by).length) return anEmpty('No nine-box placements yet (place engineers on the Nine-Box tab)');
+  if (!Object.keys(by).length) return anEmpty(t('No nine-box placements yet (place engineers on the Nine-Box tab)'));
   const W = 560, H = 560, padL = 50, padB = 50, cell = (W - padL) / 3;
   let s = anSvgOpen(W, H);
   // rows top→bottom = potential 3,2,1 ; cols left→right = perf 1,2,3
@@ -510,7 +510,7 @@ function anNineBox(data, opt){
 // opt: { rowLabel (y-axis title), colLabel (x-axis title), unit (tooltip noun) }
 function anHeatmap(matrix, rowLabels, colLabels, opt){
   opt = opt || {};
-  if (!rowLabels.length || !colLabels.length) return anEmpty('No data');
+  if (!rowLabels.length || !colLabels.length) return anEmpty(t('No data'));
   let max = 0; matrix.forEach(r => r.forEach(v => { if (v > max) max = v; }));
   const padL = 168, padT = 70, cell = Math.min(64, Math.max(34, (640 - padL) / colLabels.length));
   const W = padL + colLabels.length * cell + 14, H = padT + rowLabels.length * cell + 30;
@@ -612,19 +612,19 @@ function anScorecard(data){
     + '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+label+'</div>'
     + (sub ? '<div style="font-size:9px;color:var(--muted);margin-top:1px">'+sub+'</div>' : '') + '</div>';
   let h = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">';
-  h += tile('Headcount', n, '');
-  h += tile('Avg compa-ratio', avgCR != null ? avgCR + '%' : '—', avgCR != null ? '' : 'no data', avgCR != null && avgCR < 95 ? AN_COLORS.warn : null);
-  h += tile('Flight risk', fr, fr ? 'below-market stars' : 'none', fr ? AN_COLORS.danger : null);
-  h += tile('Avg utilisation', avgU + '%', avgU > 100 ? 'over-allocated' : (avgU < 60 ? 'under-used' : ''), uColor);
-  h += tile('Women', pctF + '%', fF + ' of ' + n, null);
-  h += tile('SPOF skills', spof, spof ? 'single-holder' : 'none', spof ? AN_COLORS.warn : null);
+  h += tile(t('Headcount'), n, '');
+  h += tile(t('Avg compa-ratio'), avgCR != null ? avgCR + '%' : '—', avgCR != null ? '' : t('no data'), avgCR != null && avgCR < 95 ? AN_COLORS.warn : null);
+  h += tile(t('Flight risk'), fr, fr ? t('below-market stars') : t('none'), fr ? AN_COLORS.danger : null);
+  h += tile(t('Avg utilisation'), avgU + '%', avgU > 100 ? t('over-allocated') : (avgU < 60 ? t('under-used') : ''), uColor);
+  h += tile(t('Women'), pctF + '%', t('{a} of {b}',{a:fF,b:n}), null);
+  h += tile(t('SPOF skills'), spof, spof ? t('single-holder') : t('none'), spof ? AN_COLORS.warn : null);
   h += '</div>';
   // completeness chips
   const chip = (label, filled) => '<span style="font-size:10px;color:var(--muted)">'+label+' <b style="color:'+(filled === n ? AN_COLORS.secondary : (filled >= n * 0.6 ? 'var(--text)' : AN_COLORS.warn))+'">'+filled+'/'+n+'</b></span>';
   h += '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">DATA COMPLETENESS</span>'
-    + chip('compa-ratio', crv.length) + chip('reviews', data.filter(d => d.latestRating).length)
-    + chip('nine-box', data.filter(d => d.nineBoxKey).length) + chip('DISC', data.filter(d => d.discProfile).length)
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('DATA COMPLETENESS')+'</span>'
+    + chip(t('compa-ratio'), crv.length) + chip(t('reviews'), data.filter(d => d.latestRating).length)
+    + chip(t('nine-box'), data.filter(d => d.nineBoxKey).length) + chip('DISC', data.filter(d => d.discProfile).length)
     + '</div>';
   return h;
 }
@@ -634,17 +634,17 @@ function anInsights(data){
   const out = [];
   const meanCR = g => { const v = data.filter(d => d.gender === g && d.comparatio != null).map(d => d.comparatio); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const m = meanCR('M'), f = meanCR('F');
-  if (m != null && f != null){ const gap = Math.round((m - f) * 10) / 10; if (Math.abs(gap) >= 3) out.push({ sev:'danger', icon:'⚖', text:'Pay gap: women average ' + Math.abs(gap) + ' pts ' + (gap > 0 ? 'below' : 'above') + ' men (compa-ratio)', story:'pay_equity_full' }); }
+  if (m != null && f != null){ const gap = Math.round((m - f) * 10) / 10; if (Math.abs(gap) >= 3) out.push({ sev:'danger', icon:'⚖', text:t('Pay gap: women average {n} pts {dir} men (compa-ratio)',{n:Math.abs(gap),dir:(gap>0?t('below'):t('above'))}), story:'pay_equity_full' }); }
   const fr = anFlightRiskCount(data);
-  if (fr) out.push({ sev:'danger', icon:'🔥', text: fr + ' high performer' + (fr > 1 ? 's' : '') + ' paid below market (flight risk)', story:'retention_risk' });
+  if (fr) out.push({ sev:'danger', icon:'🔥', text: t('{n} high performer(s) paid below market (flight risk)',{n:fr}), story:'retention_risk' });
   const spof = anSpofSet(data).size;
-  if (spof) out.push({ sev:'warn', icon:'🧩', text: spof + ' critical skill' + (spof > 1 ? 's' : '') + ' held by one person (SPOF)', story:'skill_coverage' });
+  if (spof) out.push({ sev:'warn', icon:'🧩', text: t('{n} critical skill(s) held by one person (SPOF)',{n:spof}), story:'skill_coverage' });
   const over = data.filter(d => d.utilizationPct > 105).length;
-  if (over) out.push({ sev:'warn', icon:'🩺', text: over + ' engineer' + (over > 1 ? 's' : '') + ' over-allocated (>105%)', story:'capacity_health' });
+  if (over) out.push({ sev:'warn', icon:'🩺', text: t('{n} engineer(s) over-allocated (>105%)',{n:over}), story:'capacity_health' });
   const bench = data.filter(d => d.utilizationPct < 10).length;
-  if (bench) out.push({ sev:'info', icon:'🪑', text: bench + ' on the bench (<10% utilisation)', story:'capacity_health' });
+  if (bench) out.push({ sev:'info', icon:'🪑', text: t('{n} on the bench (<10% utilisation)',{n:bench}), story:'capacity_health' });
   const hipo = data.filter(d => d.nineBoxPot === 3 || d.potential === 'High').length;
-  if (hipo) out.push({ sev:'info', icon:'🌱', text: hipo + ' high-potential talent identified', story:'succession' });
+  if (hipo) out.push({ sev:'info', icon:'🌱', text: t('{n} high-potential talent identified',{n:hipo}), story:'succession' });
   // Talent movement since a prior year (only when ≥2 nine-box years exist)
   const years = nbYears();
   if (years.length >= 2) {
@@ -652,7 +652,7 @@ function anInsights(data){
     if (prev && prev !== cur) {
       const cm = _nineBoxHistory[cur] || {}, pm = _nineBoxHistory[prev] || {};
       let up = 0, dn = 0; data.forEach(d => { const k = cm[d.id]; if (!k) return; const mv = nbMove(k, pm[d.id]); if (mv === 'up') up++; else if (mv === 'down') dn++; });
-      if (up || dn) out.push({ sev: dn > up ? 'warn' : 'info', icon:'📈', text: up + ' rising · ' + dn + ' declining in talent since ' + prev, story:'talent_trajectory' });
+      if (up || dn) out.push({ sev: dn > up ? 'warn' : 'info', icon:'📈', text: t('{up} rising · {dn} declining in talent since {year}',{up:up,dn:dn,year:prev}), story:'talent_trajectory' });
     }
   }
   const rank = { danger:0, warn:1, info:2 };
@@ -664,10 +664,10 @@ function anInsightsBar(data){
   if (!ins.length) return '';
   const col = { danger:AN_COLORS.danger, warn:AN_COLORS.warn, info:AN_COLORS.secondary };
   let h = '<div style="margin-bottom:14px">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px">⚡ INSIGHTS</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px">'+t('⚡ INSIGHTS')+'</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">';
   ins.forEach(i => {
-    h += '<button onclick="anPickStory(\''+i.story+'\')" title="Open the related story view" '
+    h += '<button onclick="anPickStory(\''+i.story+'\')" title="'+t('Open the related story view')+'" '
       + 'style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid '+col[i.sev]+';border-left:3px solid '+col[i.sev]
       + ';border-radius:6px;padding:6px 11px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text)">'
       + '<span>'+i.icon+'</span><span>'+escH(i.text)+'</span><span style="color:var(--muted);font-size:9px">→</span></button>';
@@ -685,7 +685,7 @@ function anBindDrill(container){
     const ids = el.getAttribute('data-ids').split(',').map(Number).filter(n => !isNaN(n));
     if (!ids.length) return;
     if (ids.length === 1){ anCloseDrill(); openIdCardModal(ids[0]); return; }
-    anShowDrill(ids, el.getAttribute('data-dtitle') || 'Selection');
+    anShowDrill(ids, el.getAttribute('data-dtitle') || t('Selection'));
   });
 }
 function anDrillEsc(e){ if (e.key === 'Escape') anCloseDrill(); }
@@ -700,7 +700,7 @@ function anShowDrill(ids, title){
   ov.addEventListener('click', e => { if (e.target === ov) anCloseDrill(); });
   let h = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;max-width:560px;width:92%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)">'
-    + '<div style="font-weight:700;color:var(--text);font-size:13px">'+escH(title)+' · '+rows.length+' '+(rows.length === 1 ? 'person' : 'people')+'</div>'
+    + '<div style="font-weight:700;color:var(--text);font-size:13px">'+escH(title)+' · '+t('{n} person(s)',{n:rows.length})+'</div>'
     + '<button onclick="anCloseDrill()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px;padding:3px 9px">✕</button></div>'
     + '<div style="padding:8px 10px">';
   rows.forEach(d => {
@@ -710,12 +710,12 @@ function anShowDrill(ids, title){
       + '<div style="flex:1"><div style="font-weight:600;color:var(--text);font-size:12px">'+escH(d.name)+'</div>'
       + '<div style="font-size:10px;color:var(--muted)">'+escH(d.seniority || d.role || '—')+' · '+escH(d.group)+' · '+escH(d.location)+'</div></div>'
       + '<div style="text-align:right;font-size:10px;color:var(--muted);min-width:64px">'
-      + (d.comparatio != null ? '<div>CR '+d.comparatio+'%</div>' : '')
-      + '<div>util '+d.utilizationPct+'%</div>'
-      + (d.latestRating ? '<div>rating '+escH(d.latestRating)+'</div>' : '')
+      + (d.comparatio != null ? '<div>'+t('CR')+' '+d.comparatio+'%</div>' : '')
+      + '<div>'+t('util')+' '+d.utilizationPct+'%</div>'
+      + (d.latestRating ? '<div>'+t('rating')+' '+escH(d.latestRating)+'</div>' : '')
       + '</div></div>';
   });
-  h += '</div><div style="padding:8px 16px 14px;font-size:10px;color:var(--muted)">Click a row to open their ID card.</div></div>';
+  h += '</div><div style="padding:8px 16px 14px;font-size:10px;color:var(--muted)">'+t('Click a row to open their ID card.')+'</div></div>';
   ov.innerHTML = h;
   document.body.appendChild(ov);
   document.addEventListener('keydown', anDrillEsc);
@@ -724,15 +724,15 @@ function anShowDrill(ids, title){
 /* ── Summary stats (HTML block) ── */
 function anSummaryStats(values){
   const v = values.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b);
-  if (!v.length) return '<div style="color:var(--muted);font-size:11px">n = 0</div>';
+  if (!v.length) return '<div style="color:var(--muted);font-size:11px">'+t('n = 0')+'</div>';
   const n = v.length, sum = v.reduce((a, b) => a + b, 0), mean = sum / n;
   const q = p => { const i = (n - 1) * p, lo = Math.floor(i); return v[lo] + (v[Math.ceil(i)] - v[lo]) * (i - lo); };
   const sd = Math.sqrt(v.reduce((a, x) => a + (x - mean) ** 2, 0) / n);
   const stat = (k, val) => '<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:2px 0">'
     + '<span style="color:var(--muted)">'+k+'</span><span style="color:var(--text);font-weight:600">'+val+'</span></div>';
-  return stat('n', n) + stat('mean', anNiceNum(mean)) + stat('median', anNiceNum(q(.5)))
+  return stat('n', n) + stat(t('mean'), anNiceNum(mean)) + stat(t('median'), anNiceNum(q(.5)))
     + stat('p25', anNiceNum(q(.25))) + stat('p75', anNiceNum(q(.75)))
-    + stat('min', anNiceNum(v[0])) + stat('max', anNiceNum(v[n-1])) + stat('std dev', anNiceNum(sd));
+    + stat(t('min'), anNiceNum(v[0])) + stat(t('max'), anNiceNum(v[n-1])) + stat(t('std dev'), anNiceNum(sd));
 }
 
 /* ── "How to read a box plot" explainer (shown beneath the summary) ── */
@@ -752,13 +752,13 @@ function anBoxLegend(hasRef){
   const row = (c, t) => '<div style="display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--muted);padding:1px 0">'
     + '<span style="color:var(--text);font-weight:600;min-width:54px">'+c+'</span><span>'+t+'</span></div>';
   return '<div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg)">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">HOW TO READ</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">'+t('HOW TO READ')+'</div>'
     + g
     + '<div style="margin-top:8px">'
-    + row('Box', 'middle 50% of people (Q1–Q3, the IQR)')
-    + row('Line', 'median (50th percentile)')
-    + row('Whiskers', 'min to max')
-    + (hasRef ? '<div style="display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--muted);padding:1px 0"><span style="color:'+AN_COLORS.secondary+';font-weight:600;min-width:54px">Dashed</span><span>reference (midpoint 100%)</span></div>' : '')
+    + row(t('Box'), t('middle 50% of people (Q1–Q3, the IQR)'))
+    + row(t('Line'), t('median (50th percentile)'))
+    + row(t('Whiskers'), t('min to max'))
+    + (hasRef ? '<div style="display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--muted);padding:1px 0"><span style="color:'+AN_COLORS.secondary+';font-weight:600;min-width:54px">'+t('Dashed')+'</span><span>'+t('reference (midpoint 100%)')+'</span></div>' : '')
     + '</div></div>';
 }
 
@@ -797,8 +797,8 @@ function anGroupBy(data, dimId){
 
 export const ANALYTICS_TEMPLATES = [
   /* ── Single-dimension ── */
-  { id:'histogram', name:'Distribution', icon:'📊', dims:1, dimTypes:[['numeric']],
-    desc:'Histogram with mean & median',
+  { id:'histogram', name:t('Distribution'), icon:'📊', dims:1, dimTypes:[['numeric']],
+    desc:t('Histogram with mean & median'),
     render(data, a){
       const vals = data.map(d => d[a.id]);
       const rows = data.map(d => ({ v: d[a.id], id: d.id }));
@@ -807,9 +807,9 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anHistogram(rows, { xLabel: a.label, band }), stats: vals };
     } },
 
-  { id:'bar_count', name:'Count by Category', icon:'▤', dims:1, dimTypes:[['categorical','ordinal','boolean']],
-    nameFn:(a) => 'Headcount by ' + a.label,
-    desc:'Horizontal bars sorted by count',
+  { id:'bar_count', name:t('Count by Category'), icon:'▤', dims:1, dimTypes:[['categorical','ordinal','boolean']],
+    nameFn:(a) => t('Headcount by {dim}',{dim:a.label}),
+    desc:t('Horizontal bars sorted by count'),
     render(data, a){
       const g = anGroupBy(data, a.id);
       let items = Object.keys(g).map(k => ({ raw: k, label: anFmtVal(a.id, k), value: g[k].length, color: AN_COLORS.primary, ids: g[k].map(d => d.id) }));
@@ -819,32 +819,32 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:a.label }), stats: null };
     } },
 
-  { id:'seniority_pyramid', name:'Seniority Pyramid', icon:'🔺', dims:1, dimTypes:[['ordinal']],
+  { id:'seniority_pyramid', name:t('Seniority Pyramid'), icon:'🔺', dims:1, dimTypes:[['ordinal']],
     match:(a, b) => !!(a && !b && a.id === 'seniority'),
-    desc:'Headcount per grade, junior → senior',
+    desc:t('Headcount per grade, junior → senior'),
     render(data, a){
       const g = anGroupBy(data, 'seniority');
       const items = SENIORITY_ORDER.filter(s => g[s]).map(s => ({ label: s, value: g[s].length, color: AN_COLORS.secondary, ids: g[s].map(d => d.id) }));
       return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Seniority / Grade' }), stats: null };
     } },
 
-  { id:'rating_dist', name:'Rating Distribution', icon:'⭐', dims:1, dimTypes:[['ordinal']],
+  { id:'rating_dist', name:t('Rating Distribution'), icon:'⭐', dims:1, dimTypes:[['ordinal']],
     match:(a, b) => !!(a && !b && a.id === 'latestRating'),
-    desc:'Colour-coded latest-rating mix',
+    desc:t('Colour-coded latest-rating mix'),
     render(data){
       const g = anGroupBy(data.filter(d => d.latestRating), 'latestRating');
       const items = AN_RATING_ORDER.filter(r => g[r]).map(r => ({ label: r, value: g[r].length, color: AN_RATING_COLOR[r], ids: g[r].map(d => d.id) }));
       return { chart: anBarChart(items, { valLabel:'Headcount', catLabel:'Latest Perf Rating' }), stats: null };
     } },
 
-  { id:'ninebox_grid', name:'Nine-Box Grid', icon:'⊞', dims:1, dimTypes:[['ninebox']],
-    desc:'3×3 talent grid with names',
+  { id:'ninebox_grid', name:t('Nine-Box Grid'), icon:'⊞', dims:1, dimTypes:[['ninebox']],
+    desc:t('3×3 talent grid with names'),
     render(data){ return { chart: anNineBox(data), stats: null }; } },
 
   /* ── Two-dimension ── */
-  { id:'pay_by_grade', name:'Box Plot by Category', icon:'💶', dims:2, dimTypes:[['ordinal','categorical'],['numeric']],
-    nameFn:(a, b) => { const num = a.type === 'numeric' ? a : b, cat = num === a ? b : a; return num.label + ' by ' + cat.label; },
-    desc:'Distribution (median / IQR / range) of a metric per category',
+  { id:'pay_by_grade', name:t('Box Plot by Category'), icon:'💶', dims:2, dimTypes:[['ordinal','categorical'],['numeric']],
+    nameFn:(a, b) => { const num = a.type === 'numeric' ? a : b, cat = num === a ? b : a; return t('{num} by {cat}',{num:num.label,cat:cat.label}); },
+    desc:t('Distribution (median / IQR / range) of a metric per category'),
     render(data, a, b){
       const [ord, num] = anWhich(a, b, ['ordinal','categorical']);
       const g = anGroupBy(data, ord.id);
@@ -855,16 +855,16 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anBoxPlot(groups, { xLabel:num.label, ref, refLabel: ref ? 'midpoint 100%' : '', band }), stats: data.map(d => d[num.id]), kind:'box', ref: ref != null };
     } },
 
-  { id:'perf_by_grade', name:'Performance by Grade', icon:'▥', dims:2, dimTypes:[['ordinal'],['ordinal']],
+  { id:'perf_by_grade', name:t('Performance by Grade'), icon:'▥', dims:2, dimTypes:[['ordinal'],['ordinal']],
     match:(a, b) => !!(a && b && a.id !== b.id && (
       (a.id === 'latestRating' && b.type === 'ordinal') ||
       (b.id === 'latestRating' && a.type === 'ordinal'))),
-    desc:'Stacked rating mix per grade',
+    desc:t('Stacked rating mix per grade'),
     render(data, a, b){
       // one axis must be the rating dimension
       const ratingDim = (a.id==='latestRating') ? a : (b.id==='latestRating' ? b : null);
       const gradeDim  = ratingDim === a ? b : a;
-      if (!ratingDim) return { chart: anEmpty('One axis must be Latest Perf Rating'), stats: null };
+      if (!ratingDim) return { chart: anEmpty(t('One axis must be Latest Perf Rating')), stats: null };
       const g = anGroupBy(data.filter(d => d.latestRating), gradeDim.id);
       const keys = gradeDim.order ? gradeDim.order.filter(k => g[k]) : Object.keys(g);
       const rows = keys.map(k => ({
@@ -875,11 +875,11 @@ export const ANALYTICS_TEMPLATES = [
         legend: AN_RATING_ORDER.map(r => ({ key:r, color:AN_RATING_COLOR[r] })) }), stats: null };
     } },
 
-  { id:'pay_perf_matrix', name:'Pay × Performance', icon:'🎯', dims:2, dimTypes:[['numeric'],['ordinal']],
+  { id:'pay_perf_matrix', name:t('Pay × Performance'), icon:'🎯', dims:2, dimTypes:[['numeric'],['ordinal']],
     match:(a, b) => !!(a && b && (
       (a.type === 'numeric' && b.id === 'latestRating') ||
       (b.type === 'numeric' && a.id === 'latestRating'))),
-    desc:'Compa-ratio × rating, flight/cost-risk quadrants',
+    desc:t('Compa-ratio × rating, flight/cost-risk quadrants'),
     render(data, a, b){
       const num = a.type==='numeric' ? a : b;
       const ord = num===a ? b : a;
@@ -892,18 +892,18 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anScatter(pts, { xLabel:num.label, yLabel:ord.label, trend:true }), stats: data.map(d => d[num.id]) };
     } },
 
-  { id:'scatter', name:'Scatter Plot', icon:'📈', dims:2, dimTypes:[['numeric'],['numeric']],
-    desc:'Numeric × numeric, group-coloured',
+  { id:'scatter', name:t('Scatter Plot'), icon:'📈', dims:2, dimTypes:[['numeric'],['numeric']],
+    desc:t('Numeric × numeric, group-coloured'),
     render(data, a, b){
       const pts = data.filter(d => d[a.id] != null && d[b.id] != null).map(d => ({
         x:d[a.id], y:d[b.id], label:d.name, color:d.groupColor, id:d.id }));
       return { chart: anScatter(pts, { xLabel:a.label, yLabel:b.label, trend:true, corr:true }), stats: null };
     } },
 
-  { id:'tenure_pay', name:'Tenure vs Pay', icon:'📉', dims:2, dimTypes:[['numeric'],['numeric']],
+  { id:'tenure_pay', name:t('Tenure vs Pay'), icon:'📉', dims:2, dimTypes:[['numeric'],['numeric']],
     match:(a, b) => !!(a && b && a.type === 'numeric' && b.type === 'numeric' &&
       (a.id === 'tenureYears' || b.id === 'tenureYears') && a.id !== b.id),
-    desc:'Scatter + trend & r — detect pay drift',
+    desc:t('Scatter + trend & r — detect pay drift'),
     render(data, a, b){
       const ten = a.id === 'tenureYears' ? a : b, pay = ten === a ? b : a;
       const pts = data.filter(d => d[ten.id] != null && d[pay.id] != null)
@@ -911,8 +911,8 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anScatter(pts, { xLabel:ten.label, yLabel:pay.label, trend:true, corr:true }), stats: data.map(d => d[pay.id]) };
     } },
 
-  { id:'util_by_group', name:'Avg by Category', icon:'📶', dims:2, dimTypes:[['categorical'],['numeric']],
-    desc:'Mean metric per category (util over/under coloured)',
+  { id:'util_by_group', name:t('Avg by Category'), icon:'📶', dims:2, dimTypes:[['categorical'],['numeric']],
+    desc:t('Mean metric per category (util over/under coloured)'),
     render(data, a, b){
       const cat = a.type === 'categorical' ? a : b, num = cat === a ? b : a;
       const g = anGroupBy(data, cat.id);
@@ -926,8 +926,8 @@ export const ANALYTICS_TEMPLATES = [
       return { chart: anBarChart(items, { valLabel: 'Avg ' + num.label, catLabel: cat.label }), stats: data.map(d => d[num.id]) };
     } },
 
-  { id:'heatmap_2d', name:'Heatmap', icon:'▦', dims:2, dimTypes:[['categorical','ordinal'],['categorical','ordinal']],
-    desc:'Count matrix, density-coloured',
+  { id:'heatmap_2d', name:t('Heatmap'), icon:'▦', dims:2, dimTypes:[['categorical','ordinal'],['categorical','ordinal']],
+    desc:t('Count matrix, density-coloured'),
     render(data, a, b){
       const rowVals = anCatValues(data, a), colVals = anCatValues(data, b);
       const cellOf = (rv, cv) => data.filter(d => String(anCell(d, a)) === String(rv) && String(anCell(d, b)) === String(cv));
@@ -938,32 +938,32 @@ export const ANALYTICS_TEMPLATES = [
     } },
 
   /* ── Story views (always available; no dimensions) ── */
-  { id:'retention_risk', name:'Retention Risk', icon:'🔥', dims:0, isStoryView:true,
-    desc:'Stars & Key Players paid below market',
+  { id:'retention_risk', name:t('Retention Risk'), icon:'🔥', dims:0, isStoryView:true,
+    desc:t('Stars & Key Players paid below market'),
     render(data){ return { chart: anStoryRetention(data), stats: null }; } },
 
-  { id:'pay_equity_full', name:'Pay Equity', icon:'⚖', dims:0, isStoryView:true,
-    desc:'Compa-ratio distribution by grade',
+  { id:'pay_equity_full', name:t('Pay Equity'), icon:'⚖', dims:0, isStoryView:true,
+    desc:t('Compa-ratio distribution by grade'),
     render(data){ return { chart: anStoryPayEquity(data), stats: data.map(d => d.comparatio), kind:'box', ref:true }; } },
 
-  { id:'succession', name:'Succession', icon:'🌱', dims:0, isStoryView:true,
-    desc:'High-potential talent by grade',
+  { id:'succession', name:t('Succession'), icon:'🌱', dims:0, isStoryView:true,
+    desc:t('High-potential talent by grade'),
     render(data){ return { chart: anStorySuccession(data), stats: null }; } },
 
-  { id:'talent_trajectory', name:'Talent Trajectory', icon:'📈', dims:0, isStoryView:true,
-    desc:'Nine-box movement between two years',
+  { id:'talent_trajectory', name:t('Talent Trajectory'), icon:'📈', dims:0, isStoryView:true,
+    desc:t('Nine-box movement between two years'),
     render(data){ return { chart: anStoryTrajectory(data), stats: null }; } },
 
-  { id:'capacity_health', name:'Capacity Health', icon:'🩺', dims:0, isStoryView:true,
-    desc:'Utilisation buckets, bench & over-allocation',
+  { id:'capacity_health', name:t('Capacity Health'), icon:'🩺', dims:0, isStoryView:true,
+    desc:t('Utilisation buckets, bench & over-allocation'),
     render(data){ return { chart: anStoryCapacity(data), stats: data.map(d => d.utilizationPct) }; } },
 
-  { id:'skill_coverage', name:'Skill Coverage', icon:'🧩', dims:0, isStoryView:true,
-    desc:'Skill domain × team, with SPOF flags',
+  { id:'skill_coverage', name:t('Skill Coverage'), icon:'🧩', dims:0, isStoryView:true,
+    desc:t('Skill domain × team, with SPOF flags'),
     render(data){ return { chart: anStorySkillCoverage(data), stats: null }; } },
 
-  { id:'disc_team', name:'Team Dynamics', icon:'◉', dims:0, isStoryView:true,
-    desc:'DISC distribution by team',
+  { id:'disc_team', name:t('Team Dynamics'), icon:'◉', dims:0, isStoryView:true,
+    desc:t('DISC distribution by team'),
     render(data){ return { chart: anStoryDiscTeam(data), stats: null }; } },
 ];
 
@@ -974,7 +974,7 @@ function anStoryRetention(data){
     const star = (d.nineBoxPerf === 3 || d.nineBoxPot === 3 || ['E','E+'].includes(d.latestRating));
     return star && d.comparatio != null && d.comparatio < 95;
   }).sort((a, b) => (a.comparatio||0) - (b.comparatio||0));
-  if (!flagged.length) return anEmpty('No flight-risk engineers (need nine-box / rating + compa-ratio data)');
+  if (!flagged.length) return anEmpty(t('No flight-risk engineers (need nine-box / rating + compa-ratio data)'));
   let h = '<div style="display:flex;flex-direction:column;gap:8px">';
   flagged.forEach(d => {
     h += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-left:3px solid '+AN_COLORS.danger+';border-radius:6px;background:rgba(241,67,53,.05)">'
@@ -982,7 +982,7 @@ function anStoryRetention(data){
       + '<div style="font-size:10px;color:var(--muted)">'+escH(d.seniority||d.role||'')+' · '+escH(d.group)
       + (d.nineBoxKey?' · 9box '+escH(d.nineBoxKey):'')+(d.latestRating?' · '+escH(d.latestRating):'')+'</div></div>'
       + '<div style="text-align:right"><div style="font-weight:700;color:'+AN_COLORS.danger+'">'+d.comparatio+'%</div>'
-      + '<div style="font-size:9px;color:var(--muted)">compa-ratio</div></div></div>';
+      + '<div style="font-size:9px;color:var(--muted)">'+t('compa-ratio')+'</div></div></div>';
   });
   return h + '</div>';
 }
@@ -997,19 +997,19 @@ function anChips(list, color, label, sub){
 }
 
 function anStoryCapacity(data){
-  if (!data.length) return anEmpty('No engineers match the current filters');
+  if (!data.length) return anEmpty(t('No engineers match the current filters'));
   const buckets = [
-    {key:'Bench (<10%)',     test:u => u < 10,            color:AN_COLORS.muted},
-    {key:'Under (10–70%)',   test:u => u >= 10 && u < 70, color:AN_COLORS.warn},
-    {key:'Healthy (70–105%)',test:u => u >= 70 && u <= 105,color:AN_COLORS.secondary},
-    {key:'Over (>105%)',     test:u => u > 105,           color:AN_COLORS.danger},
+    {key:t('Bench (<10%)'),     test:u => u < 10,            color:AN_COLORS.muted},
+    {key:t('Under (10–70%)'),   test:u => u >= 10 && u < 70, color:AN_COLORS.warn},
+    {key:t('Healthy (70–105%)'),test:u => u >= 70 && u <= 105,color:AN_COLORS.secondary},
+    {key:t('Over (>105%)'),     test:u => u > 105,           color:AN_COLORS.danger},
   ];
   const items = buckets.map(b => ({ label:b.key, value:data.filter(d => b.test(d.utilizationPct)).length, color:b.color, ids:data.filter(d => b.test(d.utilizationPct)).map(d => d.id) }));
   const over  = data.filter(d => d.utilizationPct > 105).sort((a, b) => b.utilizationPct - a.utilizationPct);
   const bench = data.filter(d => d.utilizationPct < 10);
   return anBarChart(items, { valLabel:'Headcount', catLabel:'Utilisation band' })
-    + anChips(over,  AN_COLORS.danger, 'OVER-ALLOCATED', d => d.utilizationPct + '%')
-    + anChips(bench, AN_COLORS.muted,  'ON THE BENCH',   d => d.utilizationPct + '%');
+    + anChips(over,  AN_COLORS.danger, t('OVER-ALLOCATED'), d => d.utilizationPct + '%')
+    + anChips(bench, AN_COLORS.muted,  t('ON THE BENCH'),   d => d.utilizationPct + '%');
 }
 
 function anStorySkillCoverage(data){
@@ -1025,12 +1025,12 @@ function anStorySkillCoverage(data){
       idRows.push(teams.map(tm => data.filter(d => d.group === tm && d.skills.some(sk => (sk.domain || 'General') === dom)).map(d => d.id)));
     }
   });
-  const heat = rowLabels.length ? anHeatmap(rows, rowLabels, teams, { rowLabel:'Skill domain', colLabel:'Team', unit:'skills', ids:idRows }) : anEmpty('No skills recorded yet');
+  const heat = rowLabels.length ? anHeatmap(rows, rowLabels, teams, { rowLabel:'Skill domain', colLabel:'Team', unit:'skills', ids:idRows }) : anEmpty(t('No skills recorded yet'));
   const spof = [];
   data.forEach(d => d.spofSkills.forEach(sk => spof.push({ name:d.name, _sk:sk })));
   let spofH = '';
   if (spof.length) {
-    spofH = '<div style="margin-top:14px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:'+AN_COLORS.danger+';letter-spacing:.06em;margin-bottom:5px">⚠ SPOF — CRITICAL SKILLS WITH A SINGLE HOLDER · '+spof.length+'</div>'
+    spofH = '<div style="margin-top:14px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:'+AN_COLORS.danger+';letter-spacing:.06em;margin-bottom:5px">'+t('⚠ SPOF — CRITICAL SKILLS WITH A SINGLE HOLDER')+' · '+spof.length+'</div>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
       + spof.map(p => '<span style="border:1px solid var(--border);border-left:3px solid '+AN_COLORS.danger+';border-radius:5px;padding:4px 8px;font-size:11px;color:var(--text)">'
         + escH(p._sk) + ' <span style="color:var(--muted);font-size:9px">'+escH(p.name)+'</span></span>').join('')
@@ -1041,14 +1041,14 @@ function anStorySkillCoverage(data){
 
 function anStoryDiscTeam(data){
   const withDisc = data.filter(d => d.discProfile);
-  if (!withDisc.length) return anEmpty('No DISC placements yet (place engineers on the DISC tab)');
+  if (!withDisc.length) return anEmpty(t('No DISC placements yet (place engineers on the DISC tab)'));
   const DCOL = {D:'#f14335', I:'#c8f135', S:'#5be5c8', C:'#9090f0'};
   const teams = [...new Set(withDisc.map(d => d.group))].sort();
   const rows = teams.map(tm => {
     const members = withDisc.filter(d => d.group === tm);
     return { label:tm, segs:['D','I','S','C'].map(k => ({ key:k, color:DCOL[k], value:members.filter(d => d.discProfile === k).length, ids:members.filter(d => d.discProfile === k).map(d => d.id) })) };
   });
-  const discNames = { D:'D — Dominance', I:'I — Influence', S:'S — Steadiness', C:'C — Conscientiousness' };
+  const discNames = { D:t('D — Dominance'), I:t('I — Influence'), S:t('S — Steadiness'), C:t('C — Conscientiousness') };
   const legend = '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:10px">'
     + ['D','I','S','C'].map(k => '<span style="color:var(--muted)"><span style="display:inline-block;width:10px;height:10px;background:'+DCOL[k]+';border-radius:2px;margin-right:4px;vertical-align:middle"></span>'+discNames[k]+'</span>').join('')
     + '</div>';
@@ -1057,22 +1057,22 @@ function anStoryDiscTeam(data){
 
 function anStoryTrajectory(data){
   const years = nbYears();
-  if (years.length < 2) return anEmpty('Add a second nine-box year (Nine-Box tab → ＋) to compare talent movement over time.');
+  if (years.length < 2) return anEmpty(t('Add a second nine-box year (Nine-Box tab → ＋) to compare talent movement over time.'));
   const cur = _nbYear;
   let prev = _nbCompareYear || years[years.indexOf(cur) - 1] || years[0];
   if (prev === cur) prev = years[years.indexOf(cur) - 1] || years.find(y => y !== cur) || cur;
   const curMap = _nineBoxHistory[cur] || {}, prevMap = _nineBoxHistory[prev] || {};
-  const NBL = { '1-3':'Enigma','2-3':'Future Star','3-3':'Star','1-2':'Under-perf','2-2':'Core','3-2':'High Perf','1-1':'Risk','2-1':'Effective','3-1':'Expert' };
+  const NBL = { '1-3':t('Enigma'),'2-3':t('Future Star'),'3-3':t('Star'),'1-2':t('Under-perf'),'2-2':t('Core'),'3-2':t('High Perf'),'1-1':t('Risk'),'2-1':t('Effective'),'3-1':t('Expert') };
   const groups = { up:[], down:[], 'new':[], same:[] };
   data.forEach(d => { const k = curMap[d.id]; if (!k) return; const mv = nbMove(k, prevMap[d.id]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.id] || null, to: k }); });
   const order = [
-    { key:'up',   label:'RISING ▲',    color:'#c8f135' },
-    { key:'down', label:'DECLINING ▼', color:'#f14335' },
-    { key:'new',  label:'NEW ✦',       color:'#5be5c8' },
-    { key:'same', label:'STABLE •',    color:AN_COLORS.muted },
+    { key:'up',   label:t('RISING ▲'),    color:'#c8f135' },
+    { key:'down', label:t('DECLINING ▼'), color:'#f14335' },
+    { key:'new',  label:t('NEW ✦'),       color:'#5be5c8' },
+    { key:'same', label:t('STABLE •'),    color:AN_COLORS.muted },
   ];
-  let h = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Movement <b style="color:var(--text)">'+escH(prev)+'</b> → <b style="color:var(--accent)">'+escH(cur)+'</b></div>';
-  if (!order.some(o => groups[o.key].length)) return h + anEmpty('No placements to compare in these two years.');
+  let h = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+t('Movement')+' <b style="color:var(--text)">'+escH(prev)+'</b> → <b style="color:var(--accent)">'+escH(cur)+'</b></div>';
+  if (!order.some(o => groups[o.key].length)) return h + anEmpty(t('No placements to compare in these two years.'));
   order.forEach(o => {
     const list = groups[o.key]; if (!list.length) return;
     h += '<div style="margin-bottom:12px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:.06em;margin-bottom:5px;color:'+o.color+'">'+o.label+' · '+list.length+'</div>'
@@ -1090,7 +1090,7 @@ function anStoryTrajectory(data){
 function anStorySuccession(data){
   // High potential = nine-box potential 3, or GTP potential 'High'
   const hp = data.filter(d => d.nineBoxPot === 3 || d.potential === 'High');
-  if (!hp.length) return anEmpty('No high-potential talent flagged (set Nine-Box potential = high, or GTP Potential = High)');
+  if (!hp.length) return anEmpty(t('No high-potential talent flagged (set Nine-Box potential = high, or GTP Potential = High)'));
   const g = {};
   hp.forEach(d => { const k = d.seniority || '—'; (g[k] = g[k] || []).push(d); });
   const keys = SENIORITY_ORDER.filter(k => g[k]);
@@ -1110,7 +1110,7 @@ function anStorySuccession(data){
 function anStoryPayEquity(data){
   const g = anGroupBy(data.filter(d => d.comparatio != null), 'seniority');
   const keys = SENIORITY_ORDER.filter(k => g[k]);
-  if (!keys.length) return anEmpty('No compa-ratio data by grade');
+  if (!keys.length) return anEmpty(t('No compa-ratio data by grade'));
   const groups = keys.map(k => ({ label: k, values: g[k].map(d => d.comparatio), ids: g[k].map(d => d.id) }));
   return anBoxPlot(groups, { ref: 100, refLabel: 'midpoint 100%', xLabel: 'Compa-ratio (%)', catLabel: 'Seniority / Grade', band: { lo:95, hi:105 } });
 }
@@ -1121,7 +1121,7 @@ function anStoryPayEquity(data){
 export function renderAnalyticsTab(){
   const dimsByGroup = {};
   ANALYTICS_DIMENSIONS.forEach(d => { (dimsByGroup[d.group] = dimsByGroup[d.group] || []).push(d); });
-  const dimOpts = sel => '<option value="">— none —</option>' + Object.keys(dimsByGroup).map(grp =>
+  const dimOpts = sel => '<option value="">'+t('— none —')+'</option>' + Object.keys(dimsByGroup).map(grp =>
     '<optgroup label="'+escH(grp)+'">' + dimsByGroup[grp].map(d =>
       '<option value="'+d.id+'"'+(sel===d.id?' selected':'')+'>'+escH(d.label)+'</option>').join('') + '</optgroup>').join('');
 
@@ -1140,7 +1140,7 @@ export function renderAnalyticsTab(){
 
   // View-toggle button (collapse KPI / Insights panels to free up chart space)
   const vtog = (key, label) => { const on = _anState.show[key];
-    return '<button onclick="anToggleView(\''+key+'\')" title="Show/hide the '+label+' panel" '
+    return '<button onclick="anToggleView(\''+key+'\')" title="'+t('Show/hide the {label} panel',{label:label})+'" '
       + 'style="background:'+(on?'rgba(200,241,53,.10)':'var(--bg)')+';border:1px solid '+(on?'var(--accent)':'var(--border)')
       + ';color:'+(on?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">'
       + (on?'▾ ':'▸ ')+label+'</button>'; };
@@ -1148,25 +1148,25 @@ export function renderAnalyticsTab(){
   let h = '<div style="padding:14px 16px">';
   // Story pills + view toggles
   h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">STORY VIEWS</span>'
-    + '<span style="display:flex;gap:6px;align-items:center"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">PANELS</span>'
-    + vtog('kpi', 'KPIs') + vtog('insights', 'Insights') + '</span></div>';
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('STORY VIEWS')+'</span>'
+    + '<span style="display:flex;gap:6px;align-items:center"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('PANELS')+'</span>'
+    + vtog('kpi', t('KPIs')) + vtog('insights', t('Insights')) + '</span></div>';
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
     + stories.map(s => pill(s.id, s.name, s.icon, _anState.story === s.id)).join('') + '</div>';
   // Compare row
   h += '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">COMPARE</span>'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('COMPARE')+'</span>'
     + '<label style="font-size:11px;color:var(--muted)">A <select id="an-dimA" onchange="anPickDim()" style="'+selStyle+'">'+dimOpts(_anState.dimA)+'</select></label>'
     + '<span style="color:var(--muted)">×</span>'
     + '<label style="font-size:11px;color:var(--muted)">B <select id="an-dimB" onchange="anPickDim()" style="'+selStyle+'">'+dimOpts(_anState.dimB)+'</select></label>'
     + '</div>';
   // Filter row (reuse the app's multi-select dropdown helper)
   h += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">FILTER</span>'
-    + multiSelectHTML('an-fgroup', groups, _anState.filters.group, 'anFilterGroup', 'Group: All')
-    + multiSelectHTML('an-floc',   locs,   _anState.filters.location, 'anFilterLoc', 'Location: All')
-    + multiSelectHTML('an-fsen',   sens,   _anState.filters.seniority, 'anFilterSen', 'Seniority: All')
-    + '<button onclick="anClearFilters()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer">✕ Clear</button>'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('FILTER')+'</span>'
+    + multiSelectHTML('an-fgroup', groups, _anState.filters.group, 'anFilterGroup', t('Group: All'))
+    + multiSelectHTML('an-floc',   locs,   _anState.filters.location, 'anFilterLoc', t('Location: All'))
+    + multiSelectHTML('an-fsen',   sens,   _anState.filters.seniority, 'anFilterSen', t('Seniority: All'))
+    + '<button onclick="anClearFilters()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer">'+t('✕ Clear')+'</button>'
     + '</div>';
   // Main (swapped on every interaction)
   h += '<div id="an-main"></div>';
@@ -1206,9 +1206,9 @@ function anRenderMain(){
   if (!_anState.story) {
     const avail = getAvailableTemplates(dimA, dimB);
     if (!dimA && !dimB) {
-      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">Pick a dimension above, or choose a story view.</div>';
+      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">'+t('Pick a dimension above, or choose a story view.')+'</div>';
     } else if (!avail.length) {
-      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">No template fits that dimension combination. Try another pairing.</div>';
+      h += '<div style="color:var(--muted);font-size:12px;padding:8px 0">'+t('No template fits that dimension combination. Try another pairing.')+'</div>';
     } else {
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
       avail.forEach(t => {
@@ -1230,18 +1230,18 @@ function anRenderMain(){
   h += '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">';
   h += '<div id="an-chart" style="flex:1;min-width:340px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--surface)">';
   if (tpl) {
-    if (dataAll.length < 1 && tpl.dims) h += anEmpty('No engineers match the current filters');
+    if (dataAll.length < 1 && tpl.dims) h += anEmpty(t('No engineers match the current filters'));
     else {
       let out;
       try { out = tpl.render(dataAll, dimA, dimB); }
-      catch (err) { out = { chart: anEmpty('Render error: ' + err.message), stats: null }; }
+      catch (err) { out = { chart: anEmpty(t('Render error:') + ' ' + err.message), stats: null }; }
       h += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">'+tpl.icon+' '+escH(anTplName(tpl, dimA, dimB))+'</div>';
       h += out.chart;
       main._anStats = out.stats;
       chartKind = out.kind || null; chartRef = !!out.ref;
     }
   } else {
-    h += anEmpty('Select a dimension or story view to begin');
+    h += anEmpty(t('Select a dimension or story view to begin'));
     main._anStats = null;
   }
   h += '</div>';
@@ -1250,8 +1250,8 @@ function anRenderMain(){
   const stats = (tpl && main._anStats) ? main._anStats : null;
   h += '<div style="width:180px;flex-shrink:0">';
   h += '<div id="an-summary" style="border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg)">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">SUMMARY</div>'
-    + (stats ? anSummaryStats(stats) : '<div style="font-size:11px;color:var(--muted)">n = '+dataAll.length+'<br><span style="font-size:10px">(no numeric series)</span></div>')
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px">'+t('SUMMARY')+'</div>'
+    + (stats ? anSummaryStats(stats) : '<div style="font-size:11px;color:var(--muted)">'+t('n = {n}',{n:dataAll.length})+'<br><span style="font-size:10px">'+t('(no numeric series)')+'</span></div>')
     + '</div>';
   if (chartKind === 'box') h += anBoxLegend(chartRef);
   h += '</div>';
@@ -1319,9 +1319,9 @@ export function anExportCSV(){
 // Keeps the dark background (print-color-adjust:exact) so the light-on-dark SVG stays legible.
 export function anExportPDF(){
   const chart = G('an-chart'), summary = G('an-summary');
-  if (!chart) { alert('No chart to export'); return; }
+  if (!chart) { alert(t('No chart to export')); return; }
   const w = window.open('', '_blank');
-  if (!w) { alert('Pop-up blocked — allow pop-ups to export PDF'); return; }
+  if (!w) { alert(t('Pop-up blocked — allow pop-ups to export PDF')); return; }
   const title = ((chart.querySelector('div') || {}).innerText || 'Analytics').replace(/^[^A-Za-z0-9(]+/, '').trim();
   const s = (G('res-start') || {}).value || '', e = (G('res-end') || {}).value || '';
   const today = new Date().toISOString().slice(0, 10);
@@ -1344,7 +1344,7 @@ export function anExportPDF(){
 
 export function anExportPNG(){
   const svg = G('an-main') && G('an-main').querySelector('svg');
-  if (!svg) { alert('No chart to export'); return; }
+  if (!svg) { alert(t('No chart to export')); return; }
   const xml = new XMLSerializer().serializeToString(svg);
   const vb = svg.viewBox.baseVal;
   const W = (vb && vb.width) || 800, H = (vb && vb.height) || 600;

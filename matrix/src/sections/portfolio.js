@@ -74,18 +74,18 @@ function renderPortfolioAnalytics(){
   var months=getMonthRange();
   var h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
   h+='<div style="display:flex;align-items:baseline;gap:10px">'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">◎ PORTFOLIO ANALYTICS</span>'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ANALYTICS')+'</span>'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
-    +(months.length?('cost over '+months.length+' month'+(months.length>1?'s':'')+' · FROM/TO period'):'set a FROM/TO period for cost')
+    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
     +'</span></div>';
-  if(!projects.length){ body.innerHTML=h+pfEmpty('No projects yet — add projects on the matrix to see analytics.')+'</div>'; return; }
+  if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
   h+=pfScorecard(ds);
   h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
-  h+=pfSection('VALUE vs COST — ROI',      'Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.', pfRoiChart(ds));
+  h+=pfSection(t('VALUE vs COST — ROI'),      t('Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.'), pfRoiChart(ds));
   h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
-  h+=pfSection('DELIVERY PIPELINE — gates','How the portfolio and its revenue are distributed across current gate stages.', pfGateFunnel(ds));
-  h+=pfSection('PORTFOLIO MIX — sectors',  'Where investment (cost) and expected return (revenue) concentrate by sector.', pfSectorMix(ds));
-  h+=pfSection('RISK vs VALUE',            'Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.', pfRiskValue(ds));
+  h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
+  h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
+  h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
   h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
   h+='</div>';
   body.innerHTML=h;
@@ -118,12 +118,12 @@ function pfScorecard(ds){
   var roiColor=roi==null?'var(--muted)':(roi>=1?'var(--accent)':'var(--danger)');
   var h='<div style="display:flex;gap:10px;flex-wrap:wrap">';
   var entered=ds.filter(function(d){return !d.revDefault;}).length;
-  h+=pfKpi(ds.length, 'PROJECTS', entered+' € entered · '+(ds.length-entered)+' default');
-  h+=pfKpi(pfEur(totRev), 'REVENUE IMPACT', 'expected, all projects', 'var(--accent2)');
-  h+=pfKpi(pfEur(totCost), 'TEAM COST', 'allocated over period');
-  h+=pfKpi(roi==null?'—':(roi>=10?Math.round(roi)+'×':roi.toFixed(1)+'×'), 'PORTFOLIO ROI', roi==null?'assign team cost':'revenue ÷ cost', roiColor);
-  h+=pfKpi(avgComp==null?'—':avgComp+'%', 'AVG COMPLETION', 'todos + actions');
-  h+=pfKpi(hiRisk, 'HIGH-RISK', overdue+' overdue milestones', hiRisk?'var(--danger)':'var(--text)');
+  h+=pfKpi(ds.length, t('PROJECTS'), t('{a} € entered · {b} default',{a:entered,b:ds.length-entered}));
+  h+=pfKpi(pfEur(totRev), t('REVENUE IMPACT'), t('expected, all projects'), 'var(--accent2)');
+  h+=pfKpi(pfEur(totCost), t('TEAM COST'), t('allocated over period'));
+  h+=pfKpi(roi==null?'—':(roi>=10?Math.round(roi)+'×':roi.toFixed(1)+'×'), t('PORTFOLIO ROI'), roi==null?t('assign team cost'):t('revenue ÷ cost'), roiColor);
+  h+=pfKpi(avgComp==null?'—':avgComp+'%', t('AVG COMPLETION'), t('todos + actions'));
+  h+=pfKpi(hiRisk, t('HIGH-RISK'), t('{n} overdue milestones',{n:overdue}), hiRisk?'var(--danger)':'var(--text)');
   h+='</div>';
   return h;
 }
@@ -133,7 +133,7 @@ function pfScorecard(ds){
           breakeven:bool (y=x line), xguide:num, yguide:num } */
 function pfScatter(cfg){
   var pts=cfg.pts||[];
-  if(!pts.length) return pfEmpty(cfg.emptyMsg||'No data for this view');
+  if(!pts.length) return pfEmpty(cfg.emptyMsg||t('No data for this view'));
   var W=680, H=340, PADl=54, PADr=16, PADt=14, PADb=42;
   var pw=W-PADl-PADr, ph=H-PADt-PADb;
   var xmax=Math.max.apply(null,pts.map(function(p){return p.vx;}).concat([1]))*1.12;
@@ -181,7 +181,7 @@ function pfRoiChart(ds){
     return {vx:d.cost, vy:d.rev, r:4+Math.sqrt(d.avgFte)*6, color:(d.color[0]==='#'?d.color:'#c8f135'),
             label:d.name, tip:pfEur(d.rev)+' rev'+(d.revDefault?' (est.)':'')+' · '+pfEur(d.cost)+' cost · '+d.avgFte.toFixed(1)+' FTE'};
   });
-  if(!pts.length) return pfEmpty('Add revenue impact (€) on projects and allocate a team to see ROI.');
+  if(!pts.length) return pfEmpty(t('Add revenue impact (€) on projects and allocate a team to see ROI.'));
   return pfScatter({pts:pts, xlab:'Loaded team cost (€) →', ylab:'Revenue impact (€) →',
     xfmt:pfEur, yfmt:pfEur, breakeven:true});
 }
@@ -190,20 +190,21 @@ function pfGateFunnel(ds){
   var byGate={};
   ds.forEach(function(d){ var g=d.gate||'(no gate set)'; if(!byGate[g])byGate[g]={n:0,rev:0,cost:0}; byGate[g].n++; byGate[g].rev+=d.rev; byGate[g].cost+=d.cost; });
   var rows=Object.keys(byGate).map(function(g){return {gate:g,d:byGate[g]};}).sort(function(a,b){return b.d.n-a.d.n;});
-  if(!rows.length) return pfEmpty('No gate data');
+  if(!rows.length) return pfEmpty(t('No gate data'));
   var maxN=Math.max.apply(null,rows.map(function(r){return r.d.n;}));
   var h='<div style="display:flex;flex-direction:column;gap:8px">';
   rows.forEach(function(r){
     var pct=maxN?r.d.n/maxN*100:0;
     var noGate=r.gate==='(no gate set)';
+    var gateLbl=noGate?t('(no gate set)'):r.gate;
     h+='<div style="display:flex;align-items:center;gap:10px">'
-      +'<div style="width:150px;font-size:11px;color:'+(noGate?'var(--muted)':'var(--text)')+';font-family:IBM Plex Mono,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.gate)+'">'+escH(r.gate)+'</div>'
+      +'<div style="width:150px;font-size:11px;color:'+(noGate?'var(--muted)':'var(--text)')+';font-family:IBM Plex Mono,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(gateLbl)+'">'+escH(gateLbl)+'</div>'
       +'<div style="flex:1;height:22px;background:var(--bg);border-radius:5px;overflow:hidden;position:relative">'
       +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+(noGate?'var(--border)':'linear-gradient(90deg,rgba(200,241,53,.35),rgba(91,229,200,.25))')+';border-right:2px solid '+(noGate?'var(--muted)':'var(--accent)')+'"></div>'
-      +'<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--text)">'+r.d.n+' project'+(r.d.n>1?'s':'')+'</span></div>'
+      +'<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--text)">'+t('{n} project(s)',{n:r.d.n})+'</span></div>'
       +'<div style="width:120px;text-align:right;font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+pfEur(r.d.rev)+' · '+pfEur(r.d.cost)+'</div></div>';
   });
-  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">bar = project count · right = revenue · cost per stage</div>';
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = project count · right = revenue · cost per stage')+'</div>';
   h+='</div>';
   return h;
 }
@@ -212,7 +213,7 @@ function pfSectorMix(ds){
   var by={};
   ds.forEach(function(d){ if(!by[d.sector])by[d.sector]={cost:0,rev:0,n:0}; by[d.sector].cost+=d.cost; by[d.sector].rev+=d.rev; by[d.sector].n++; });
   var rows=Object.keys(by).map(function(s){return {sector:s,d:by[s]};}).sort(function(a,b){return (b.d.cost+b.d.rev)-(a.d.cost+a.d.rev);});
-  if(!rows.length) return pfEmpty('No sector data — tag projects with a sector/domain.');
+  if(!rows.length) return pfEmpty(t('No sector data — tag projects with a sector/domain.'));
   var maxCost=Math.max.apply(null,rows.map(function(r){return r.d.cost;}).concat([1]));
   var maxRev=Math.max.apply(null,rows.map(function(r){return r.d.rev;}).concat([1]));
   var h='<div style="display:flex;flex-direction:column;gap:10px">';
@@ -221,19 +222,19 @@ function pfSectorMix(ds){
     h+='<div style="display:flex;align-items:center;gap:10px">'
       +'<div style="width:120px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.sector)+'">'+escH(r.sector)+' <span style="color:var(--dim)">·'+r.d.n+'</span></div>'
       +'<div style="flex:1;display:flex;flex-direction:column;gap:3px">'
-      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+rp.toFixed(1)+'%;background:var(--accent2)" title="revenue '+pfEur(r.d.rev)+'"></div></div>'
-      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+cp.toFixed(1)+'%;background:var(--accent)" title="cost '+pfEur(r.d.cost)+'"></div></div>'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+rp.toFixed(1)+'%;background:var(--accent2)" title="'+t('revenue')+' '+pfEur(r.d.rev)+'"></div></div>'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+cp.toFixed(1)+'%;background:var(--accent)" title="'+t('cost')+' '+pfEur(r.d.cost)+'"></div></div>'
       +'</div>'
       +'<div style="width:150px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--accent2)">'+pfEur(r.d.rev)+'</span> / <span style="color:var(--accent)">'+pfEur(r.d.cost)+'</span></div></div>';
   });
-  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">top bar = revenue (teal) · bottom bar = cost (lime)</div>';
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('top bar = revenue (teal) · bottom bar = cost (lime)')+'</div>';
   h+='</div>';
   return h;
 }
 
 function pfRiskValue(ds){
   var withRisk=ds.filter(function(d){return d.rpnSum>0;});
-  if(!withRisk.length) return pfEmpty('No project risks logged yet — add risks to see exposure vs value.');
+  if(!withRisk.length) return pfEmpty(t('No project risks logged yet — add risks to see exposure vs value.'));
   var pts=withRisk.map(function(d){
     return {vx:d.rpnSum, vy:d.rev, r:5+Math.sqrt(d.avgFte)*5, color:(d.color[0]==='#'?d.color:'#f14335'),
             label:d.name, tip:'ΣRPN '+d.rpnSum+' · '+pfEur(d.rev)};
@@ -285,6 +286,11 @@ function pfMetricVal(d,metric){
   if(metric==='completion') return (d.completion!=null)?d.completion*100:null;
   return null;
 }
+// Translated display label for a distribution metric key.
+function pfMetricLabel(metric){
+  var m={revenue:t('Revenue'),cost:t('Cost'),roi:t('ROI'),risk:t('Risk'),fte:t('FTE'),completion:t('Completion')};
+  return m[metric]||metric;
+}
 function pfDistFmt(metric,v){
   if(metric==='revenue')    return (v>=10?Math.round(v):v.toFixed(1))+'M';
   if(metric==='cost')       return Math.round(v)+'k';
@@ -300,17 +306,17 @@ function pfTreemapSection(ds){
   var by=_pfState.treemapBy, grouped=_pfState.treemapGroup==='intent';
   var items=ds.map(function(d){ return {d:d, value:(by==='revenue'?d.rev:d.cost)}; }).filter(function(x){return x.value>0;});
   var controls='<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
-    +pfToggle("pfSet('treemapBy','cost')",'Size: Cost',by==='cost')
-    +pfToggle("pfSet('treemapBy','revenue')",'Size: Revenue',by==='revenue')
+    +pfToggle("pfSet('treemapBy','cost')",t('Size: Cost'),by==='cost')
+    +pfToggle("pfSet('treemapBy','revenue')",t('Size: Revenue'),by==='revenue')
     +'<span style="width:1px;height:16px;background:var(--border);margin:0 3px"></span>'
-    +pfToggle("pfSet('treemapGroup','none')",'Flat',!grouped)
-    +pfToggle("pfSet('treemapGroup','intent')",'By tactical intent',grouped)+'</span>';
-  var empty=by==='revenue'?'No revenue to map — add € impact or impact+enabler.':'No team cost to map — allocate a team over the period.';
+    +pfToggle("pfSet('treemapGroup','none')",t('Flat'),!grouped)
+    +pfToggle("pfSet('treemapGroup','intent')",t('By tactical intent'),grouped)+'</span>';
+  var empty=by==='revenue'?t('No revenue to map — add € impact or impact+enabler.'):t('No team cost to map — allocate a team over the period.');
   var inner=!items.length?pfEmpty(empty):(grouped?pfTreemapGroupedSvg(items,by):pfTreemapSvg(items));
   var hint=grouped
-    ? 'Grouped by tactical intent (Defend / Grow / Adapt / Diversify). Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank. Shows how '+(by==='revenue'?'value':'spend')+' splits across strategic postures.'
-    : 'Rectangle area = '+(by==='revenue'?'revenue':'team cost')+' · color = ROI rank (green = best return, red = worst). Instantly shows where '+(by==='revenue'?'value':'investment')+' concentrates.';
-  return pfSectionShell('SPEND MAP — treemap', hint, controls, inner);
+    ? t('Grouped by tactical intent (Defend / Grow / Adapt / Diversify). Rectangle area = {area} · color = ROI rank. Shows how {what} splits across strategic postures.',{area:(by==='revenue'?t('revenue'):t('team cost')),what:(by==='revenue'?t('value'):t('spend'))})
+    : t('Rectangle area = {area} · color = ROI rank (green = best return, red = worst). Instantly shows where {what} concentrates.',{area:(by==='revenue'?t('revenue'):t('team cost')),what:(by==='revenue'?t('value'):t('investment'))});
+  return pfSectionShell(t('SPEND MAP — treemap'), hint, controls, inner);
 }
 // ROI-rank percentile fn shared by flat + grouped treemaps (green = best return).
 function pfRoiPctFn(items){
@@ -352,8 +358,8 @@ function pfTreemapGroupedSvg(items,by){
     }
   });
   h+='</svg>';
-  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>ROI rank:</span>'
-    +'<span style="color:#f14335">■ low</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ high</span></div>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>'+t('ROI rank:')+'</span>'
+    +'<span style="color:#f14335">■ '+t('low')+'</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ '+t('high')+'</span></div>';
   return h;
 }
 function pfTreemapSvg(items){
@@ -374,8 +380,8 @@ function pfTreemapSvg(items){
     }
   });
   h+='</svg>';
-  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>ROI rank:</span>'
-    +'<span style="color:#f14335">■ low</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ high</span></div>';
+  h+='<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)"><span>'+t('ROI rank:')+'</span>'
+    +'<span style="color:#f14335">■ '+t('low')+'</span><span style="color:#f1a435">■</span><span style="color:#a8e820">■</span><span style="color:#c8f135">■ '+t('high')+'</span></div>';
   return h;
 }
 // Squarified treemap layout → [{d,x,y,w,h}]. items:[{d,value>0}].
@@ -417,13 +423,13 @@ function pfSqRec(nodes,rect,out){
 function pfBurnSection(){
   var by=_pfState.burnBy;
   var controls='<span style="display:flex;gap:6px">'
-    +pfToggle("pfSet('burnBy','sector')",'By: Sector',by==='sector')
-    +pfToggle("pfSet('burnBy','project')",'By: Project',by==='project')+'</span>';
-  return pfSectionShell('COST OVER TIME — burn','Monthly team cost stacked by '+by+' across the FROM/TO period — the spend ramp and where it concentrates over time.', controls, pfBurnSvg(by));
+    +pfToggle("pfSet('burnBy','sector')",t('By: Sector'),by==='sector')
+    +pfToggle("pfSet('burnBy','project')",t('By: Project'),by==='project')+'</span>';
+  return pfSectionShell(t('COST OVER TIME — burn'),t('Monthly team cost stacked by {by} across the FROM/TO period — the spend ramp and where it concentrates over time.',{by:(by==='project'?t('project'):t('sector'))}), controls, pfBurnSvg(by));
 }
 function pfBurnSvg(by){
   var months=getMonthRange();
-  if(months.length<2) return pfEmpty('Set a FROM/TO period of at least 2 months to see the burn curve.');
+  if(months.length<2) return pfEmpty(t('Set a FROM/TO period of at least 2 months to see the burn curve.'));
   var engById=_engByIdMap(), projById=_projByIdMap(), groups={};
   allocRows.forEach(function(r){
     var proj=projById.get(r.projectId); if(!proj) return;
@@ -435,7 +441,7 @@ function pfBurnSvg(by){
   var series=Object.keys(groups).map(function(k){return groups[k];})
     .filter(function(s){return s.arr.some(function(v){return v>0;});})
     .sort(function(a,b){return b.arr.reduce(function(s,v){return s+v;},0)-a.arr.reduce(function(s,v){return s+v;},0);});
-  if(!series.length) return pfEmpty('No allocation cost in this period.');
+  if(!series.length) return pfEmpty(t('No allocation cost in this period.'));
   series.forEach(function(s,i){ if(!s.color) s.color=pfPalette(i); });
   var totals=months.map(function(_,i){ return series.reduce(function(s,se){return s+se.arr[i];},0); });
   var ymax=Math.max.apply(null,totals.concat([1]))*1.08;
@@ -467,17 +473,17 @@ function pfBurnSvg(by){
 function pfDistSection(ds){
   ds=ds||pfBuildDataset();
   var m=_pfState.distMetric, fit=_pfState.distFit, bins=+_pfState.distBins||8;
-  var mOpts=[['revenue','Revenue'],['cost','Cost'],['roi','ROI'],['risk','Risk'],['fte','FTE'],['completion','Completion']];
-  var fOpts=[['none','Histogram'],['gauss','+ Gaussian'],['pareto','Pareto 80/20']];
+  var mOpts=[['revenue',t('Revenue')],['cost',t('Cost')],['roi',t('ROI')],['risk',t('Risk')],['fte',t('FTE')],['completion',t('Completion')]];
+  var fOpts=[['none',t('Histogram')],['gauss',t('+ Gaussian')],['pareto',t('Pareto 80/20')]];
   var sel=function(key,opts,cur){ return '<select onchange="pfSet(\''+key+'\',this.value)" style="'+PF_SEL+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+escH(o[1])+'</option>';}).join('')+'</select>'; };
-  var binsCtl=(fit==='pareto')?'':'<label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;display:flex;align-items:center;gap:5px">bins '+bins+'<input type="range" min="4" max="20" value="'+bins+'" onchange="pfSet(\'distBins\',this.value)" style="width:70px;accent-color:var(--accent)"></label>';
+  var binsCtl=(fit==='pareto')?'':'<label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;display:flex;align-items:center;gap:5px">'+t('bins')+' '+bins+'<input type="range" min="4" max="20" value="'+bins+'" onchange="pfSet(\'distBins\',this.value)" style="width:70px;accent-color:var(--accent)"></label>';
   var controls='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+sel('distMetric',mOpts,m)+sel('distFit',fOpts,fit)+binsCtl+'</div>';
   var chart=(fit==='pareto')?pfParetoSvg(ds,m):pfHistSvg(ds,m,fit,bins);
-  return pfSectionShell('DISTRIBUTION — '+m,'Spread of the chosen metric across projects. Gaussian overlays a bell curve (judge normality); Pareto shows 80/20 concentration.', controls, chart);
+  return pfSectionShell(t('DISTRIBUTION — {m}',{m:pfMetricLabel(m)}),t('Spread of the chosen metric across projects. Gaussian overlays a bell curve (judge normality); Pareto shows 80/20 concentration.'), controls, chart);
 }
 function pfHistSvg(ds,metric,fit,bins){
   var vals=[]; ds.forEach(function(d){ var v=pfMetricVal(d,metric); if(v!=null&&isFinite(v)) vals.push(v); });
-  if(vals.length<2) return pfEmpty('Not enough data for a distribution of this metric.');
+  if(vals.length<2) return pfEmpty(t('Not enough data for a distribution of this metric.'));
   var min=Math.min.apply(null,vals), max=Math.max.apply(null,vals); if(max<=min) max=min+1;
   var nb=Math.max(3,Math.min(30,bins|0)), bwv=(max-min)/nb, counts=new Array(nb).fill(0);
   vals.forEach(function(v){ var bi=Math.min(nb-1,Math.max(0,Math.floor((v-min)/bwv))); counts[bi]++; });
@@ -486,8 +492,8 @@ function pfHistSvg(ds,metric,fit,bins){
   var X=function(v){ return PADl+((v-min)/(max-min))*pw; };
   var h='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;font-family:IBM Plex Mono,monospace">';
   for(var g=0;g<=4;g++){ var gy=PADt+g/4*ph; h+='<line x1="'+PADl+'" y1="'+gy.toFixed(1)+'" x2="'+(PADl+pw)+'" y2="'+gy.toFixed(1)+'" stroke="#2a2a32" stroke-width=".5"/>'; h+='<text x="'+(PADl-6)+'" y="'+(gy+3).toFixed(1)+'" fill="#6b6b78" font-size="8" text-anchor="end">'+Math.round(maxCount*(1-g/4))+'</text>'; }
-  for(var i=0;i<nb;i++){ var x0=PADl+i/nb*pw, bwid=pw/nb-1.5, bh=(counts[i]/maxCount)*ph; h+='<rect x="'+(x0+0.75).toFixed(1)+'" y="'+(PADt+ph-bh).toFixed(1)+'" width="'+Math.max(1,bwid).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="rgba(200,241,53,.28)" stroke="var(--accent)" stroke-width=".7"><title>'+counts[i]+' project'+(counts[i]===1?'':'s')+'</title></rect>'; }
-  for(var t=0;t<=4;t++){ var xv=min+t/4*(max-min); h+='<text x="'+(PADl+t/4*pw).toFixed(1)+'" y="'+(PADt+ph+13)+'" fill="#6b6b78" font-size="8" text-anchor="middle">'+pfDistFmt(metric,xv)+'</text>'; }
+  for(var i=0;i<nb;i++){ var x0=PADl+i/nb*pw, bwid=pw/nb-1.5, bh=(counts[i]/maxCount)*ph; h+='<rect x="'+(x0+0.75).toFixed(1)+'" y="'+(PADt+ph-bh).toFixed(1)+'" width="'+Math.max(1,bwid).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="rgba(200,241,53,.28)" stroke="var(--accent)" stroke-width=".7"><title>'+t('{n} project(s)',{n:counts[i]})+'</title></rect>'; }
+  for(var tk=0;tk<=4;tk++){ var xv=min+tk/4*(max-min); h+='<text x="'+(PADl+tk/4*pw).toFixed(1)+'" y="'+(PADt+ph+13)+'" fill="#6b6b78" font-size="8" text-anchor="middle">'+pfDistFmt(metric,xv)+'</text>'; }
   if(fit==='gauss'){
     var mean=vals.reduce(function(s,v){return s+v;},0)/vals.length;
     var sd=Math.sqrt(vals.reduce(function(s,v){return s+(v-mean)*(v-mean);},0)/vals.length)||1e-9;
@@ -504,9 +510,9 @@ function pfParetoSvg(ds,metric){
   var items=ds.map(function(d){ return {name:d.name,color:(d.color&&d.color[0]==='#')?d.color:'#c8f135',v:pfMetricVal(d,metric)}; })
     .filter(function(it){return it.v!=null&&isFinite(it.v)&&it.v>0;})
     .sort(function(a,b){return b.v-a.v;});
-  if(items.length<2) return pfEmpty('Not enough positive values for a Pareto of this metric.');
+  if(items.length<2) return pfEmpty(t('Not enough positive values for a Pareto of this metric.'));
   var CAP=18;
-  if(items.length>CAP){ var tail=items.slice(CAP), sum=tail.reduce(function(s,it){return s+it.v;},0); items=items.slice(0,CAP); items.push({name:'+'+tail.length+' others',color:'#6b6b78',v:sum}); }
+  if(items.length>CAP){ var tail=items.slice(CAP), sum=tail.reduce(function(s,it){return s+it.v;},0); items=items.slice(0,CAP); items.push({name:t('+{n} others',{n:tail.length}),color:'#6b6b78',v:sum}); }
   var total=items.reduce(function(s,it){return s+it.v;},0)||1;
   var maxV=Math.max.apply(null,items.map(function(it){return it.v;}));
   var W=680,H=320,PADl=48,PADr=44,PADt=14,PADb=66,pw=W-PADl-PADr,ph=H-PADt-PADb,bw=pw/items.length;
@@ -529,6 +535,6 @@ function pfParetoSvg(ds,metric){
   h+='<line x1="'+PADl+'" y1="'+PADt+'" x2="'+PADl+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
   h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
   h+='</svg>';
-  var insight=eighty?('<div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:IBM Plex Mono,monospace">Top <span style="color:var(--accent)">'+(eighty.i+1)+'</span> of '+items.length+' ('+Math.round((eighty.i+1)/items.length*100)+'%) drive 80% of total '+escH(metric)+'.</div>'):'';
+  var insight=eighty?('<div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:IBM Plex Mono,monospace">'+t('Top {top} of {total} ({pct}%) drive 80% of total {metric}.',{top:'<span style="color:var(--accent)">'+(eighty.i+1)+'</span>',total:items.length,pct:Math.round((eighty.i+1)/items.length*100),metric:escH(pfMetricLabel(metric))})+'</div>'):'';
   return h+insight;
 }

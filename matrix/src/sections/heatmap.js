@@ -7,9 +7,11 @@
  *   _hmTier             — maps a normalised importance percentage to high/mid/low
  *   _hmPerfBucket       — maps a performance score to high/mid/low/none
  *   renderHeatmap       — renders the 3×4 heatmap matrix with advice flags
- *   _hmApplyFormula     — validates and applies the custom importance formula
- *   _hmSetFormula       — sets a preset formula and re-renders
- *   _hmResetFormula     — resets formula to default and re-renders
+ *
+ * The importance formula and focus star used to live here; they now live in the
+ * Portfolio matrix toolbar (renderFocusBar in matrix.js). This file keeps only
+ * the high/low importance thresholds, which affect the heatmap tiers only. All
+ * views share _hmState, so the formula edited on the matrix drives the heatmap.
  */
 
 // Persistent heatmap UI state (survives tab switches)
@@ -18,8 +20,9 @@ if (typeof _hmState === 'undefined') {
     formula:    'impact * visibility * enabler',
     threshHigh: 66,
     threshLow:  33,
-    showFormula: false,
-    showStar:   false,
+    showThresh: false,   // heatmap threshold panel toggle
+    showFormula: false,  // matrix importance-formula panel toggle (renderFocusBar)
+    showStar:   false,   // matrix focus-star overlay toggle
     starN:      3,
   };
 }
@@ -168,42 +171,15 @@ export function renderHeatmap() {
     + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'
     + visProjects.length + ' projects · ' + cur + '</span>'
     + '<div style="flex:1"></div>'
-    + '<button class="add-row-btn" onclick="_hmState.showFormula=!_hmState.showFormula;renderHeatmap()" '
+    + '<button class="add-row-btn" onclick="_hmState.showThresh=!_hmState.showThresh;renderHeatmap()" '
     + 'style="font-size:9px;padding:2px 8px;'
-    + (_hmState.showFormula ? 'border-color:var(--accent);color:var(--accent)' : '')
-    + '">⚙ FORMULA &amp; THRESHOLDS</button>'
-    + '<button onclick="_hmState.showStar=!_hmState.showStar;render();renderHeatmap()" '
-    + 'style="font-size:9px;padding:2px 8px;border:1px solid '
-    + (_hmState.showStar ? 'var(--accent);color:var(--accent);background:rgba(200,241,53,.12)' : 'var(--border);color:var(--muted)')
-    + ';border-radius:4px;cursor:pointer;font-family:IBM Plex Mono,monospace">'
-    + '⭐ FOCUS STAR: ' + (_hmState.showStar ? 'ON' : 'OFF') + '</button>'
+    + (_hmState.showThresh ? 'border-color:var(--accent);color:var(--accent)' : '')
+    + '">⚙ THRESHOLDS</button>'
     + '</div>';
 
-  if (_hmState.showFormula) {
+  if (_hmState.showThresh) {
     h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;'
-      + 'padding:12px 14px;margin-bottom:10px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">';
-    h += '<div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:.06em">'
-      + 'IMPORTANCE FORMULA — variables: <span style="color:var(--accent)">impact</span> '
-      + '(y 1-10) · <span style="color:var(--accent)">visibility</span> (vis 1-10) · '
-      + '<span style="color:var(--accent)">enabler</span> (ena 1-10) · '
-      + '<span style="color:var(--accent)">x</span></div>'
-      + '<div style="display:flex;gap:6px;align-items:center">'
-      + '<input id="hm-formula-input" value="' + escH(_hmState.formula) + '" '
-      + 'style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--accent);'
-      + 'font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:5px;outline:none" '
-      + 'placeholder="e.g. impact * visibility * enabler">'
-      + '<button class="sm primary" onclick="_hmApplyFormula()" style="font-size:10px;padding:3px 10px">APPLY</button>'
-      + '<button class="sm" onclick="_hmResetFormula()" style="font-size:10px;padding:3px 8px" title="Reset to default">↺</button>'
-      + '</div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-top:4px">'
-      + 'Presets: '
-      + '<a onclick="_hmSetFormula(\'impact * visibility * enabler\')" style="color:var(--accent);cursor:pointer;margin-right:10px">impact×vis×ena</a>'
-      + '<a onclick="_hmSetFormula(\'impact * visibility\')" style="color:var(--accent);cursor:pointer;margin-right:10px">impact×vis</a>'
-      + '<a onclick="_hmSetFormula(\'(impact + visibility + enabler) / 3\')" style="color:var(--accent);cursor:pointer;margin-right:10px">avg(i,v,e)</a>'
-      + '<a onclick="_hmSetFormula(\'impact * impact * visibility\')" style="color:var(--accent);cursor:pointer">impact²×vis</a>'
-      + '</div></div>';
-    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+      + 'padding:12px 14px;margin-bottom:10px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:14px">';
     h += '<div>'
       + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:4px">'
       + 'HIGH importance threshold: <span id="hm-high-val" style="color:#f14335">' + _hmState.threshHigh + '%</span></div>'
@@ -218,20 +194,10 @@ export function renderHeatmap() {
       + 'style="width:100%;accent-color:#888" '
       + 'oninput="document.getElementById(\'hm-low-val\').textContent=this.value+\'%\'" '
       + 'onchange="_hmState.threshLow=+this.value;renderHeatmap()"></div>';
-    h += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);'
-      + 'display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
-      + '<div style="display:flex;align-items:center;gap:10px">'
-      + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">FOCUS STAR — top</span>'
-      + '<input type="number" id="hm-star-n" min="1" max="' + Math.max(1,visProjects.length) + '" value="' + _hmState.starN + '" '
-      + 'style="width:48px;background:var(--bg);border:1px solid var(--border);color:var(--accent);'
-      + 'font-family:IBM Plex Mono,monospace;font-size:11px;padding:3px 6px;border-radius:4px;text-align:center" '
-      + 'oninput="_hmState.starN=Math.max(1,Math.min(+this.value,projects.filter(function(p){return p.visible;}).length));'
-      + 'if(_hmState.showStar)render();">'
-      + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">projects by importance</span>'
-      + '</div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">Centroid = importance-weighted average of the top N project positions</div>'
-      + '</div>';
-    h += '</div></div>';
+    h += '<div style="grid-column:1/-1;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'
+      + 'Importance formula: <span style="color:var(--accent)">' + escH(_hmState.formula) + '</span>'
+      + ' — edit it and the ⭐ focus star from the Portfolio matrix toolbar.</div>';
+    h += '</div>';
   }
 
   h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;flex-shrink:0">';
@@ -331,24 +297,3 @@ export function renderHeatmap() {
   h += '</div>';
   body.innerHTML = h;
 }
-
-// validates and applies the custom importance formula
-export function _hmApplyFormula() {
-  var input = G('hm-formula-input');
-  if (!input) return;
-  var formula = input.value.trim();
-  if (!formula) return;
-  try {
-    var fn = new Function('impact','visibility','enabler','x','return ('+formula+');');
-    var result = fn(7, 6, 8, 5);
-    if (typeof result !== 'number' || !isFinite(result)) throw new Error('not a number');
-    _hmState.formula = formula;
-    renderHeatmap();
-  } catch(e) {
-    alert('Formula error: ' + e.message + '\n\nExample: impact * visibility * enabler');
-  }
-}
-// sets a preset formula and re-renders
-export function _hmSetFormula(f) { _hmState.formula = f; renderHeatmap(); }
-// resets formula to default and re-renders
-export function _hmResetFormula() { _hmState.formula = 'impact * visibility * enabler'; renderHeatmap(); }

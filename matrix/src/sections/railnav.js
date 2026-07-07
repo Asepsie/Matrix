@@ -50,48 +50,51 @@ var RAIL_I = {
    org/summary/compare/matrix have their own openers. `action:true` items fire a
    function without changing activeView. ID cards & Succession are deliberately
    NOT rail views (modal / org sub-feature). ── */
+/* Labels run through t() at load (language is fixed per page load, resolved
+   before this file in the bundle). Every consumer — rail render, breadcrumb,
+   the Settings landing dropdown — reads these, so this is the single point. */
 var RAIL_DOMAINS = [
-  { id:'team', name:'TEAM', ico:RAIL_I.team, views:[
-    {id:'roster',      label:'Roster'},
-    {id:'org',         label:'Org chart'},
+  { id:'team', name:t('TEAM'), ico:RAIL_I.team, views:[
+    {id:'roster',      label:t('Roster')},
+    {id:'org',         label:t('Org chart')},
   ]},
-  { id:'work', name:'WORK', ico:RAIL_I.work, views:[
-    {id:'matrix',      label:'Portfolio matrix', bdg:'was home'},
-    {id:'plan',        label:'Resource plan'},
-    {id:'timeline',    label:'Timeline'},
-    {id:'charters',    label:'Financials analysis'},
-    {id:'decision',    label:'Trade-off decision'},
-    {id:'dtc',         label:'Design to cost'},
-    {id:'brief',       label:'Project brief'},
+  { id:'work', name:t('WORK'), ico:RAIL_I.work, views:[
+    {id:'matrix',      label:t('Portfolio matrix'), bdg:t('was home')},
+    {id:'plan',        label:t('Resource plan')},
+    {id:'timeline',    label:t('Timeline')},
+    {id:'charters',    label:t('Financials analysis')},
+    {id:'decision',    label:t('Trade-off decision')},
+    {id:'dtc',         label:t('Design to cost')},
+    {id:'brief',       label:t('Project brief')},
   ]},
-  { id:'skills', name:'SKILLS', ico:RAIL_I.skills, views:[
-    {id:'skills',      label:'Skills matrix'},
-    {id:'skillrisk',   label:'Skill risk', bdg:'SPOF'},
-    {id:'heatmap',     label:'Heatmap'},
+  { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
+    {id:'skills',      label:t('Skills matrix')},
+    {id:'skillrisk',   label:t('Skill risk'), bdg:'SPOF'},
+    {id:'heatmap',     label:t('Heatmap')},
   ]},
-  { id:'talent', name:'TALENT', ico:RAIL_I.talent, views:[
-    {id:'ninebox',     label:'Nine-box'},
+  { id:'talent', name:t('TALENT'), ico:RAIL_I.talent, views:[
+    {id:'ninebox',     label:t('Nine-box')},
     {id:'disc',        label:'DISC'},
-    {id:'profiles',    label:'Team profiles'},
-    {id:'development', label:'Development'},
+    {id:'profiles',    label:t('Team profiles')},
+    {id:'development', label:t('Development')},
   ]},
-  { id:'insights', name:'INSIGHTS', ico:RAIL_I.insights, views:[
-    {id:'portfolio',   label:'Portfolio analytics'},
-    {id:'analytics',   label:'People analytics'},
-    {id:'summary',     label:'Summary'},
-    {id:'dashboard',   label:'Cost dashboard'},
-    {id:'compare',     label:'Compare'},
+  { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
+    {id:'portfolio',   label:t('Portfolio analytics')},
+    {id:'analytics',   label:t('People analytics')},
+    {id:'summary',     label:t('Summary')},
+    {id:'dashboard',   label:t('Cost dashboard')},
+    {id:'compare',     label:t('Compare')},
   ]},
 ];
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
-  {id:'snap',     name:'Snapshots', ico:RAIL_I.snap},
-  {id:'backup',   name:'Backup',    ico:RAIL_I.backup},
-  {id:'restore',  name:'Restore',   ico:RAIL_I.restore},
-  {id:'ai',       name:'AI advisor',ico:RAIL_I.ai},
-  {id:'settings', name:'Settings',  ico:RAIL_I.settings},
-  {id:'help',     name:'Help',      ico:RAIL_I.help},
+  {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
+  {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
+  {id:'restore',  name:t('Restore'),   ico:RAIL_I.restore},
+  {id:'ai',       name:t('AI advisor'),ico:RAIL_I.ai},
+  {id:'settings', name:t('Settings'),  ico:RAIL_I.settings},
+  {id:'help',     name:t('Help'),      ico:RAIL_I.help},
 ];
 
 /* ── Module state (rail-prefixed; unique across the flat bundle) ── */
@@ -369,6 +372,13 @@ function railOpenSettings(){
       return '<optgroup label="'+d.name+'">'+opts+'</optgroup>';
     }).join('');
   }
+  var lg=G('set-lang');
+  if(lg){
+    var cl=i18nGetLang();
+    lg.innerHTML=I18N_LANGS.map(function(l){
+      return '<option value="'+l.code+'"'+(l.code===cl?' selected':'')+'>'+l.label+'</option>';
+    }).join('');
+  }
   var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
   var cp=G('set-chartpicker'); if(cp) cp.value=railChartPicker();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
@@ -387,6 +397,9 @@ function railSaveSettings(){
   railSavePrefs();
   var ov=G('settings-overlay'); if(ov) ov.classList.remove('show');
   railRender();   // reflect the auto-hide change on the foot toggle
+  // Language last: i18nSetLang reloads if it changed (every other pref is
+  // already persisted above, so the reload loses nothing).
+  var lg=G('set-lang'); if(lg&&lg.value) i18nSetLang(lg.value);
 }
 // Cancel Settings — revert any live width preview back to the saved value.
 function railCancelSettings(){
