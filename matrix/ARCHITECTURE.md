@@ -298,6 +298,54 @@ res-header" is obsolete — the rail owns navigation now.)
 
 ---
 
+## Cost model — allocation → € (the one place cost bugs hide)
+
+Every "cost" number in the app is `FTE × monthlyCost` summed over the FROM/TO months,
+via **`_allocCost(v, monthlyCost)`** / **`_allocNum(v)`** ([helpers.js](src/core/helpers.js) —
+invariant #2: never raw-multiply). Status letters matter: `m`/`r` (medical/resigned) = 0
+cost & 0 FTE, `p` (PTO) = full cost & counts as 1.0 FTE, numeric = prorated. The subtlety
+that caused real inconsistencies is **who counts** and **whether FTE is capped**, not the
+per-cell math.
+
+### Canonical inclusion policy — `_costCounts(eng)` ([helpers.js](src/core/helpers.js))
+
+`_costCounts(eng)` = `!excludeFromCalc && (!planningOnly || includeInCost)`. **Every
+project-cost-attribution path must gate on it** so headline "plan cost" agrees with the
+resource-plan export and honours the flags: `_computeCostMaps` (TOTAL PLAN COST / COST BY
+PROJECT / project-spending detail / monthly cost chart / burn), and `transferPlanCosts`
+(writes `project.planCost`). Before this existed these paths counted *every* row, so an
+engineer flagged `excludeFromCalc` — or a planning-only placeholder without `includeInCost`
+— still inflated project cost and got transferred into `planCost`. **Vacancies DO count**
+(planned/forecast spend), matching `plan.js`'s CSV `countsCost = !planningOnly||includeInCost`.
+
+### Two deliberate lenses (don't "reconcile" them into one)
+
+- **Project-attribution lens** (`_computeCostMaps` → COST BY PROJECT, TOTAL PLAN COST):
+  **uncapped** per-project shares. If someone is 1.5 FTE across two projects, each project
+  bears its share and the total exceeds one salary — that *is* the overallocation signal.
+- **Team-cost lens** (Financial Analysis block, built from `_buildEngUtil`): caps at
+  `Math.min(fte,1)` per person-month and excludes vacancies, giving the identity
+  **TEAM COST = ALLOCATED + UNALLOCATED**. The old 4th KPI card "PROJ ALLOC COST" pasted the
+  uncapped total next to these three, breaking the identity and inviting a false compare — it
+  was removed (it merely repeated the top TOTAL PLAN COST card).
+
+`_buildEngUtil` filters `!vacant && (!planningOnly||includeInCost)` but does **not** itself
+drop `excludeFromCalc`; the Financial Analysis loop and the per-engineer card render skip
+those explicitly. Keep that in mind if you add a new engUtil consumer.
+
+### Current-month KPIs are clamped to the period
+
+`_dashCur()` = the real calendar month. KPIs framed as "this month" (FTE THIS MONTH, ON
+BENCH, per-card bench, peak-month fallback) use **`curInRange`** — `cur` clamped into
+`[months[0], months[last]]` — so they stay meaningful when the plan period doesn't span today
+(e.g. planning a future project). Without the clamp, `monthAllocs[cur]` is `undefined` → 0,
+which silently reported *everyone on bench / 0 FTE*. The cost chart keeps the real `cur`
+(so the "current" marker simply doesn't draw when out of range, which is truthful). Filtered
+views: the monthly chart's FTE overlay uses `filteredRows` (like the cost bars), not the raw
+`allocRows`, so filter + overlay stay in sync.
+
+---
+
 ## Cross-functional project charter
 
 Per-project artifact to **align the 5 functions (Strategy / R&D / Offer Mgmt /

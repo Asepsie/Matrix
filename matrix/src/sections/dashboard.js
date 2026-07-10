@@ -33,7 +33,7 @@ function _computeCostMaps(months,filterEng,filterProj){
     return true;
   });
   filtered.forEach(function(r){
-    var eng=engById.get(r.engId);if(!eng)return;
+    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     if(r.projectId){projCost[r.projectId]=(projCost[r.projectId]||0)+cost;}
     else{unassignedCost+=cost;}
@@ -47,6 +47,10 @@ export function renderResDashboard(){
   var body=G('res-body');if(!body)return;
   var months=_dashMonths();
   var cur=_dashCur();
+  // "This month" clamped into the visible plan period, so the current-month KPIs
+  // (FTE this month, bench, peak fallback) stay meaningful when the period does
+  // not span today. The chart keeps the real `cur` (no marker when out of range).
+  var curInRange=months.length?(months.indexOf(cur)>=0?cur:(cur<months[0]?months[0]:months[months.length-1])):cur;
 
   if(!months.length){
     body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;flex-direction:column;gap:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px"><div style="font-size:28px">📅</div><div>'+t('Set FROM and TO dates in the header to see the dashboard')+'</div></div>';
@@ -56,12 +60,13 @@ export function renderResDashboard(){
   var cm=_buildCostMaps(months,engDashFilterEng,engDashFilterProj);
   var projCost=cm.projCost,totalCost=cm.totalCost,unassignedCost=cm.unassignedCost,filteredRows=cm.filteredRows;
   var engUtil=_buildEngUtil(months);
+  var engById=_engByIdMap();
 
   // FTE calcs
   var fteByEng={};
   filteredRows.forEach(function(r){
     if(!r.engId)return;
-    var v=r.allocs&&r.allocs[cur]!=null?_allocNum(r.allocs[cur]):0;
+    var v=r.allocs&&r.allocs[curInRange]!=null?_allocNum(r.allocs[curInRange]):0;
     fteByEng[r.engId]=(fteByEng[r.engId]||0)+v;
   });
   var fteCur=Object.values(fteByEng).reduce(function(s,v){return s+Math.min(v,1);},0);
@@ -72,8 +77,8 @@ export function renderResDashboard(){
   var projStaffedCount=Object.keys(projCost).length;
   var totalActiveEngs=engineers.filter(function(e){return !e.vacant&&!e.planningOnly&&!e.excludeFromCalc;}).length;
 
-  // Bench = engineers with zero allocation this month
-  var benchEngs=Object.values(engUtil).filter(function(eu){return eu.curAlloc===0;});
+  // Bench = engineers with zero allocation in the current (in-range) month
+  var benchEngs=Object.values(engUtil).filter(function(eu){return (eu.monthAllocs[curInRange]||0)===0;});
   var benchCount=benchEngs.length;
 
   // Avg team utilisation over full period
@@ -84,18 +89,18 @@ export function renderResDashboard(){
   // Budget burn: cost spent so far (months <= cur)
   var pastMonths=months.filter(function(m){return m<=cur;});
   var burnCost=filteredRows.reduce(function(s,r){
-    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng)return s;
+    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return s;
     return s+pastMonths.reduce(function(ss,m){return ss+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
   },0);
   var burnPct=totalCost>0?Math.round(burnCost/totalCost*100):0;
 
   // Monthly peaks
   var moCosts=months.map(function(m){return filteredRows.reduce(function(s,r){
-    var eng=engineers.find(function(e){return e.id===r.engId;});
-    return s+(eng&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
+    var eng=engById.get(r.engId);
+    return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
   },0);});
   var peakCostIdx=moCosts.indexOf(Math.max(...moCosts));
-  var peakMonth=months[peakCostIdx]||cur;
+  var peakMonth=months[peakCostIdx]||curInRange;
 
   // SPOF count from skill data
   var skillMap=buildSkillMap();
@@ -154,7 +159,7 @@ export function renderResDashboard(){
    +'<div class="kpi-card">'
    +'<div class="kpi-val">'+fteCur.toFixed(1)+'</div>'
    +'<div class="kpi-label">'+t('FTE THIS MONTH')+'</div>'
-   +'<div class="kpi-sub">'+cur+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div>'
+   +'<div class="kpi-sub">'+curInRange+(curInRange!==cur?' · '+t('nearest planned month'):'')+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div>'
    +'</div>'
    // Team avg utilisation
    +'<div class="kpi-card" style="cursor:pointer" onclick="_availPanel.open=!_availPanel.open;renderResDashboard()" title="'+t('Click to show availability panel')+'">'
@@ -188,7 +193,7 @@ export function renderResDashboard(){
   // Monthly FTE demand
   var moFte=months.map(function(m){
     var byE={};
-    allocRows.forEach(function(r){
+    filteredRows.forEach(function(r){
       if(!r.engId)return;
       var v=r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0;
       byE[r.engId]=(byE[r.engId]||0)+v;
@@ -268,8 +273,8 @@ export function renderResDashboard(){
       var monthFtes=months.map(function(m){return projRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);});
       var peakFte=Math.max.apply(null,monthFtes.concat([0]));
       var monthCosts=months.map(function(m){return projRows.reduce(function(s,r){
-        var eng=engineers.find(function(e){return e.id===r.engId;});
-        return s+(eng&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
+        var eng=engById.get(r.engId);
+        return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
       },0);});
       var maxMo=Math.max.apply(null,monthCosts.concat([1]));
       var sparkW=110,sparkH=16,bw=Math.max(1,Math.floor(sparkW/months.length)-1);
@@ -497,7 +502,7 @@ export function renderResDashboard(){
       var pct=Math.round(eu.avgAlloc*100);
       var utilPct=Math.round(eu.utilizationRate*100);
       var isOver=eu.overMonths&&eu.overMonths.length>0;
-      var isBench=eu.curAlloc===0;
+      var isBench=(eu.monthAllocs[curInRange]||0)===0;
       var isSpof=spofEngIds.has(eu.eng.id);
       var col=isOver?'var(--danger)':isBench?'var(--accent2)':pct>80?'var(--accent)':'var(--accent2)';
       // Spark for this engineer
@@ -558,10 +563,10 @@ export function renderResDashboard(){
       var pid = +kv[0], cost = kv[1];
       var p = projects.find(function(p){ return p.id === pid; });
       if (!p) return null;
-      var _rows = filteredRows.filter(function(r){ return r.projectId === pid && r.engId; });
+      var _rows = filteredRows.filter(function(r){ return r.projectId === pid && r.engId && _costCounts(engById.get(r.engId)); });
       var _engMap = {};
       _rows.forEach(function(r) {
-        if (!_engMap[r.engId]) _engMap[r.engId] = { fte: {}, eng: engineers.find(function(e){ return e.id === r.engId; }) };
+        if (!_engMap[r.engId]) _engMap[r.engId] = { fte: {}, eng: engById.get(r.engId) };
         months.forEach(function(m) {
           _engMap[r.engId].fte[m] = (_engMap[r.engId].fte[m] || 0) + (r.allocs && r.allocs[m] != null ? _allocNum(r.allocs[m]) : 0);
         });
@@ -775,13 +780,15 @@ export function renderResDashboard(){
       + '</div></div>';
   }
 
-  // KPI row
-  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">';
+  // KPI row — a clean reconciliation identity: TEAM COST = ALLOCATED + UNALLOCATED.
+  // (The uncapped per-project attribution total is the top "TOTAL PLAN COST" card;
+  // it is NOT repeated here because, unlike ALLOCATED, it is not capped at 1 FTE and
+  // so would not satisfy this identity. See ARCHITECTURE.md › Cost model.)
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">';
   [
     { val: Math.round(_teamCostIncl/1000) + 'k€', label: t('TEAM COST PERIOD'), sub: t('{n} mo × salaries',{n:_nMonths}), col: 'var(--accent2)' },
     { val: Math.round(_allocCostTotal/1000)    + 'k€', label: t('ALLOCATED TO PROJ'), sub: _allocPct + '% '+t('of team cost'),  col: 'var(--accent)' },
     { val: Math.round(_unallocCost/1000)  + 'k€', label: t('UNALLOCATED'),       sub: _unallocPct + '% '+t('bench / overhead'), col: _unallocPct > 30 ? 'var(--warn)' : 'var(--muted)' },
-    { val: Math.round(totalCost/1000)     + 'k€', label: t('PROJ ALLOC COST'),   sub: t('from allocation plan'),        col: 'var(--purple)' },
   ].forEach(function(k) {
     h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px">'
       + '<div style="font-family:IBM Plex Mono,monospace;font-size:20px;font-weight:700;color:' + k.col + '">' + k.val + '</div>'
@@ -957,8 +964,8 @@ export function _doExportDashboardPDF(){
     +'<div class="report-header">'
     +'<div><div class="report-title">'+escH(title)+'</div>'
     +'<div class="report-date">Generated '+dateStr
-    +(engDashFilterEng?' · Engineer: '+escH(engDashFilterEng):'')
-    +(engDashFilterProj?' · Project: '+escH(engDashFilterProj):'')
+    +(engDashFilterEng&&engDashFilterEng.size?' · Engineer: '+escH([...engDashFilterEng].join(', ')):'')
+    +(engDashFilterProj&&engDashFilterProj.size?' · Project: '+escH([...engDashFilterProj].join(', ')):'')
     +'</div></div>'
     +'<div style="font-size:9px;color:#9ca3af;text-align:right;font-family:monospace">Project Matrix</div>'
     +'</div>'
@@ -979,7 +986,7 @@ export function transferPlanCosts(){
   var projCost={};
   allocRows.forEach(function(r){
     if(!r.projectId)return;
-    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng)return;
+    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng||!_costCounts(eng))return;
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     projCost[r.projectId]=(projCost[r.projectId]||0)+cost;
   });

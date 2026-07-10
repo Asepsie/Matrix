@@ -59,6 +59,9 @@ main{display:flex;flex:1;overflow:hidden;}
 #editor{border-top:1px solid var(--border);padding:11px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;max-height:60vh;overflow-y:auto;}
 #editor h2{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;}
 .field{display:flex;flex-direction:column;gap:3px;}
+/* Theme the native <option> popup — transparent-bg selects (risk/actions tables)
+   otherwise render dim, unreadable options on dark backgrounds (Windows/Chrome). */
+select option{background:var(--surface);color:var(--text);}
 .field label{font-size:10px;color:var(--muted);}
 .field input[type=text],.field input[type=number],.field input[type=date],.field select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px;outline:none;width:100%;transition:border-color .15s;}
 .field input:focus,.field select:focus{border-color:var(--accent);}
@@ -77,6 +80,45 @@ main{display:flex;flex:1;overflow:hidden;}
 .todo-del:hover{color:var(--danger);}
 .todo-add-row{display:flex;gap:5px;margin-top:4px;}
 .todo-add-row input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px;outline:none;}
+/* priority dot: click to cycle High→Medium→Low→none */
+.todo-prio{flex-shrink:0;width:9px;height:9px;border-radius:50%;border:none;cursor:pointer;padding:0;}
+.todo-prio.p-high{background:var(--danger);}
+.todo-prio.p-medium{background:var(--warn);}
+.todo-prio.p-low{background:var(--muted);}
+.todo-prio.p-none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);}
+.items-head{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.tasks-expand{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:12px;line-height:1;padding:2px 6px;border-radius:4px;cursor:pointer;}
+.tasks-expand:hover{border-color:var(--accent);color:var(--accent);}
+.item-type-ico{flex-shrink:0;width:12px;text-align:center;font-size:11px;line-height:1;}
+.item-assignee{flex-shrink:0;font-size:9px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.item-overdue{flex-shrink:0;color:var(--danger);font-weight:700;font-size:11px;}
+.item-exp,.todo-item .item-exp{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:9px;padding:0 2px;line-height:1;}
+.item-exp:hover{color:var(--text);}
+.item-type-btn{flex-shrink:0;width:24px;background:var(--bg);border:1px solid var(--border);color:var(--muted);font-size:12px;line-height:1;padding:4px 0;border-radius:4px;cursor:pointer;text-align:center;}
+.item-type-btn:hover{border-color:var(--accent);}
+.item-detail{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;margin:0 0 5px 4px;display:flex;flex-direction:column;gap:4px;}
+.item-detail .idet-row{display:flex;align-items:center;gap:6px;}
+.item-detail .idet-row label{flex-shrink:0;width:58px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.item-detail .idet-row select,.item-detail .idet-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 5px;border-radius:3px;outline:none;min-width:0;}
+/* Backlog editable rows (PLAN › Backlog) */
+.bl-addbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}
+.bl-addbar #bl-add-text{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;}
+.bl-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-top:1px solid var(--border);}
+.bl-row.bl-done{opacity:.55;}
+.bl-check{accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer;}
+.bl-row .todo-prio{width:10px;height:10px;}
+.bl-text{flex:1;min-width:0;background:var(--bg);border:1px solid transparent;color:var(--text);font-size:12px;padding:3px 6px;border-radius:4px;outline:none;}
+.bl-text:hover{border-color:var(--border);}
+.bl-text:focus{border-color:var(--accent);}
+.bl-text-ro{flex:1;min-width:0;font-size:12px;color:var(--text);padding:3px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bl-text-ro.bl-strike{text-decoration:line-through;color:var(--muted);}
+.bl-assignee{flex:0 0 128px;width:128px;min-width:0;}
+.bl-due,.bl-est{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 4px;border-radius:4px;outline:none;flex-shrink:0;}
+.bl-due{width:120px;}
+.bl-est{width:46px;text-align:right;}
+.bl-due-ro{width:120px;flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);text-align:right;}
+.bl-open{flex-shrink:0;color:var(--accent2);cursor:pointer;font-size:13px;text-decoration:none;padding:0 6px;}
+.bl-open:hover{color:var(--accent);}
 
 /* MATRIX */
 #matrix-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -1144,11 +1186,14 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <div class="field"><label>NEXT GATE</label><input type="text" id="e-gate" placeholder="e.g. Gate 3 – Design Review"></div>
       <div class="field"><label>ETA</label><input type="date" id="e-eta"></div>
       <hr class="ed-sep">
-      <div class="field"><label>TODO LIST</label>
+      <div class="field">
+        <div class="items-head"><label data-i18n="Tasks">Tasks</label>
+          <button class="tasks-expand" onclick="openProjectBacklog()" title="Open the full backlog for this project" data-i18n-title="Open the full backlog for this project">⤢</button>
+        </div>
         <div id="todo-list"></div>
         <div class="todo-add-row">
-          <input type="text" id="todo-new" placeholder="New task…">
-          <button class="sm" onclick="addTodo()">+</button>
+          <input type="text" id="todo-new" placeholder="Add task, press Enter" data-i18n-ph="Add task, press Enter">
+          <button class="sm" onclick="addItem()">+</button>
         </div>
       </div>
       <hr class="ed-sep">
@@ -1323,6 +1368,14 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
         <option value="dropdown" data-i18n="Dropdown — a top selector (like Design-to-cost)">Dropdown — a top selector (like Design-to-cost)</option>
       </select>
       <span data-i18n="How you pick a project in Financials analysis & Trade-off decision." style="font-size:10px;color:var(--muted)">How you pick a project in Financials analysis &amp; Trade-off decision.</span>
+    </div>
+    <div class="field">
+      <label data-i18n="PROJECT LIST BADGE">PROJECT LIST BADGE</label>
+      <select id="set-badgescope">
+        <option value="all" data-i18n="All items (tasks + risks + actions)">All items (tasks + risks + actions)</option>
+        <option value="tasks" data-i18n="Tasks only">Tasks only</option>
+      </select>
+      <span data-i18n="What the ☑ count on each project row includes." style="font-size:10px;color:var(--muted)">What the ☑ count on each project row includes.</span>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
       <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">
@@ -1590,7 +1643,7 @@ var I18N_DICT = {
     'BUDGET CONSUMED':'BUDGET CONSOMMÉ', 'of':'sur', 'past months':'mois écoulés',
     'PEAK MONTH COST':'COÛT DU MOIS DE POINTE', 'PROJECTS STAFFED':'PROJETS DOTÉS',
     'of {n} total projects':'sur {n} projets au total',
-    'FTE THIS MONTH':'ETP CE MOIS', 'demand':'demande',
+    'FTE THIS MONTH':'ETP CE MOIS', 'demand':'demande', 'nearest planned month':'mois planifié le plus proche',
     'Click to show availability panel':'Cliquez pour afficher le panneau de disponibilité',
     'AVG UTILISATION':'UTILISATION MOY.', 'across full plan period':'sur toute la période du plan',
     '{n} engineers':'{n} ingénieurs', 'OVERALLOCATED':'SURALLOUÉ',
@@ -1634,7 +1687,6 @@ var I18N_DICT = {
     'TEAM COST PERIOD':'COÛT ÉQUIPE PÉRIODE', '{n} mo × salaries':'{n} mois × salaires',
     'ALLOCATED TO PROJ':'ALLOUÉ AUX PROJETS', 'of team cost':'du coût d\'équipe',
     'UNALLOCATED':'NON ALLOUÉ', 'bench / overhead':'réserve / frais généraux',
-    'PROJ ALLOC COST':'COÛT ALLOC. PROJET', 'from allocation plan':'depuis le plan d\'allocation',
     'Allocated to projects:':'Alloué aux projets :', 'Unallocated:':'Non alloué :',
     'PERIOD COST':'COÛT PÉRIODE', 'ALLOC COST':'COÛT ALLOC.', '% ALLOC':'% ALLOC', 'EXCLUDE':'EXCLURE',
     'excluded':'exclu', 'no cost':'aucun coût', 'Exclude from financial totals':'Exclure des totaux financiers',
@@ -2061,7 +2113,7 @@ var I18N_DICT = {
     'BUDGET CONSUMED':'已用预算', 'of':'/', 'past months':'过去月份',
     'PEAK MONTH COST':'峰值月份成本', 'PROJECTS STAFFED':'已配置人员的项目',
     'of {n} total projects':'共 {n} 个项目',
-    'FTE THIS MONTH':'本月全职当量', 'demand':'需求',
+    'FTE THIS MONTH':'本月全职当量', 'demand':'需求', 'nearest planned month':'最近的计划月份',
     'Click to show availability panel':'点击显示可用性面板',
     'AVG UTILISATION':'平均利用率', 'across full plan period':'覆盖整个计划周期',
     '{n} engineers':'{n} 名工程师', 'OVERALLOCATED':'超额分配',
@@ -2105,7 +2157,6 @@ var I18N_DICT = {
     'TEAM COST PERIOD':'周期团队成本', '{n} mo × salaries':'{n} 个月 × 薪资',
     'ALLOCATED TO PROJ':'已分配至项目', 'of team cost':'占团队成本',
     'UNALLOCATED':'未分配', 'bench / overhead':'闲置 / 间接成本',
-    'PROJ ALLOC COST':'项目分配成本', 'from allocation plan':'来自分配计划',
     'Allocated to projects:':'已分配至项目：', 'Unallocated:':'未分配：',
     'PERIOD COST':'周期成本', 'ALLOC COST':'分配成本', '% ALLOC':'% 分配', 'EXCLUDE':'排除',
     'excluded':'已排除', 'no cost':'无成本', 'Exclude from financial totals':'从财务总计中排除',
@@ -2955,6 +3006,16 @@ function _allocCost(v, monthlyCost){
   if(v==='p')          return monthlyCost||0; // PTO: full cost
   var n=+v; return isNaN(n)?0:n*(monthlyCost||0);
 }
+/* Canonical cost-inclusion policy (see ARCHITECTURE.md › Cost model).
+   A resource's allocations contribute to cost/budget totals only when it is a
+   real counted resource: planning-only placeholders count only if includeInCost,
+   and anything flagged excludeFromCalc never counts. Vacancies DO count (planned
+   spend), matching the resource-plan CSV export. Every project-cost attribution
+   path (dashboard cost maps, monthly cost chart, transfer-to-projects) must gate
+   on this so headline "plan cost" agrees with the plan and honours the flags. */
+function _costCounts(eng){
+  return !!eng && !eng.excludeFromCalc && !(eng.planningOnly && !eng.includeInCost);
+}
 
 /* ── Effective project revenue (M€) ─────────────────────────────────
    User-entered `impactEur` wins. When the user hasn't entered one, fall back
@@ -3090,6 +3151,118 @@ function nbMove(curKey,prevKey){
   if(!curKey&&!prevKey) return 'none';
   var c=nbScore(curKey), p=nbScore(prevKey);
   return c>p?'up':(c<p?'down':'same');
+}
+
+/* ── Unified project work-item layer ─────────────────────────────────
+ * To-dos, risks and actions are stored in their own arrays (p.todos /
+ * p.risks / p.actions) so the rich risk-FMEA and action-gantt tabs keep
+ * working. These accessors present all three as ONE list of normalized
+ * wrappers { type,id,ref,text,done,priority,assigneeId,assignee,due,
+ * overdue,status } so the project panel + backlog treat them uniformly.
+ * `type` is 'todo' | 'risk' | 'action'. Writes go back to the source array. */
+var PROJ_ITEM_TYPES=['todo','risk','action'];
+// display metadata for an item type (label + glyph + accent colour)
+function projItemTypeMeta(type){
+  if(type==='risk')   return {label:t('Risk'),   glyph:'⚑', color:'var(--danger)'};
+  if(type==='action') return {label:t('Action'), glyph:'▷', color:'var(--accent2)'};
+  return {label:t('Task'), glyph:'○', color:'var(--muted)'};
+}
+// resolve an item's assignee to a display name: roster person (by assigneeId)
+// wins; else the free-text owner/member fallback; else '' (unassigned).
+function resolveAssignee(raw){
+  if(raw && raw.assigneeId!=null){
+    var e=_engByIdMap().get(raw.assigneeId);
+    if(e) return e.name;
+  }
+  return (raw && (raw.owner||raw.member)) || '';
+}
+// is a risk/action considered closed/done from its status text?
+function _itemStatusDone(type,raw){
+  var st=raw.status||'';
+  if(type==='risk')   return /closed|done|resolved|mitigated/i.test(st);
+  if(type==='action') return /done|complete|closed/i.test(st);
+  return !!raw.done;
+}
+// normalize one raw record of the given type into a unified wrapper
+function projItemWrap(p,type,raw){
+  var text = type==='todo'?(raw.text||''):(raw.desc||'');
+  var done = _itemStatusDone(type,raw);
+  var due  = type==='action'?(raw.due||raw.end||''):'';
+  var overdue = !!due && !done && new Date(due) < new Date();
+  return { type:type, id:raw.id, ref:raw, pid:p.id, pname:p.name, pcolor:p.color,
+           text:text, done:done, priority:raw.priority||'',
+           assigneeId:(raw.assigneeId!=null?raw.assigneeId:null),
+           assignee:resolveAssignee(raw), due:due, overdue:overdue,
+           status:raw.status||(done?'Done':'Open') };
+}
+// all items on a project as unified wrappers (todos, then risks, then actions)
+function projItems(p){
+  var out=[];
+  (p.todos||[]).forEach(function(r){ out.push(projItemWrap(p,'todo',r)); });
+  (p.risks||[]).forEach(function(r){ out.push(projItemWrap(p,'risk',r)); });
+  (p.actions||[]).forEach(function(r){ out.push(projItemWrap(p,'action',r)); });
+  return out;
+}
+// find the raw record of a given type+id on a project
+function projItemRaw(p,type,id){
+  var arr = type==='todo'?p.todos : type==='risk'?p.risks : p.actions;
+  return (arr||[]).find(function(r){return r.id===id;});
+}
+// create a new item of the given type (default priority carried through)
+function projAddItem(p,type,text,priority){
+  priority = priority||'';
+  if(type==='risk'){
+    if(!p.risks)p.risks=[];
+    var r={id:nextRiskId++,desc:text,prob:2,imp:2,mit:'',owner:'',status:'open',sev:5,occ:5,det:5,priority:priority,assigneeId:null};
+    p.risks.push(r); return r;
+  }
+  if(type==='action'){
+    if(!p.actions)p.actions=[];
+    var a={id:nextActionId++,desc:text,start:'',end:'',dep:'',status:'Open',member:'',color:'#5be5c8',isMilestone:false,due:'',priority:priority||'Medium',assigneeId:null,estimateD:null};
+    p.actions.push(a); return a;
+  }
+  if(!p.todos)p.todos=[];
+  var td={id:nextTodoId++,text:text,done:false,priority:priority||'Medium',assigneeId:null,due:'',estimateD:null};
+  p.todos.push(td); return td;
+}
+// toggle an item's done/closed state (writes to the type-appropriate field)
+function projToggleItemDone(p,type,id){
+  var raw=projItemRaw(p,type,id); if(!raw)return;
+  var done=_itemStatusDone(type,raw);
+  if(type==='todo')       raw.done=!raw.done;
+  else if(type==='risk')  raw.status=done?'open':'closed';
+  else                    raw.status=done?'Open':'Done';
+}
+// set an item's priority ('High'|'Medium'|'Low'|'')
+function projSetItemPriority(p,type,id,prio){ var r=projItemRaw(p,type,id); if(r)r.priority=prio; }
+// set an item's text (writes text or desc)
+function projSetItemText(p,type,id,text){ var r=projItemRaw(p,type,id); if(!r)return; if(type==='todo')r.text=text; else r.desc=text; }
+// set an arbitrary field on an item's raw record (assigneeId, due, estimateD, mit…)
+function projSetItemField(p,type,id,field,val){ var r=projItemRaw(p,type,id); if(r)r[field]=val; }
+// delete an item from its source array
+function projDeleteItem(p,type,id){
+  if(type==='todo')       p.todos  =(p.todos||[]).filter(function(r){return r.id!==id;});
+  else if(type==='risk')  p.risks  =(p.risks||[]).filter(function(r){return r.id!==id;});
+  else                    p.actions=(p.actions||[]).filter(function(r){return r.id!==id;});
+}
+// <select> options for an assignee picker: Unassigned + roster. A legacy free-text
+// owner/member (present when there's no assigneeId) is preserved as a '__free__'
+// option so switching to the roster never silently discards a typed name.
+function assigneeOptionsHTML(selId,freeText){
+  var o='<option value="">'+t('— Unassigned')+'</option>';
+  if(freeText && selId==null) o+='<option value="__free__" selected>'+escH(freeText)+' '+t('(free text)')+'</option>';
+  engineers.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);}).forEach(function(e){
+    o+='<option value="'+e.id+'"'+(selId===e.id?' selected':'')+'>'+escH(e.name)+'</option>';
+  });
+  return o;
+}
+// apply an assignee-<select> value onto a raw record: sets assigneeId and mirrors
+// the resolved roster name into ownerField ('owner'|'member') so the many existing
+// readers of owner/member (brief export, member summary, AI context) still work.
+function applyAssigneeSelect(raw,ownerField,v){
+  if(v==='__free__'){ raw.assigneeId=null; return; }        // keep the existing free text
+  if(v===''||v==null){ raw.assigneeId=null; raw[ownerField]=''; return; }
+  var id=+v; raw.assigneeId=id; var e=_engByIdMap().get(id); raw[ownerField]=e?e.name:'';
 }
 /* ◄◄ END: core/helpers.js ►► */
 
@@ -5312,10 +5485,11 @@ function populateSectionDropdowns(){
  *   updateEditorLabels  — updates the editor's axis label to match the X-axis name
  *   saveEdit            — writes editor inputs back to the selected project
  *   deleteSelected      — deletes the selected project
- *   renderTodos         — renders the todo list for a project
- *   addTodo             — adds a todo to the selected project
- *   toggleTodo          — toggles a todo's done state
- *   removeTodo          — removes a todo from a project
+ *   renderItems         — renders the unified item list (todos+risks+actions) for a project
+ *   addItem             — quick-adds an item of the current type to the selected project
+ *   cycleNewItemType    — cycles the quick-add item type (todo→risk→action)
+ *   toggleItem/removeItem/cycleItemPrio — per-row done / delete / priority
+ *   itemDetailHTML + setItem*           — click-to-expand assignee/due/estimate/mitigation
  *   onProjDragStart     — drag start for a sidebar project row
  *   onProjDragEnd       — drag end for a sidebar project row
  *   onSectionDrop       — drops a dragged project into a section
@@ -5372,7 +5546,9 @@ function renderList(){
 
 // builds the HTML for one project row in the sidebar
 function projItemHTML(p){
-  const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
+  const scope=(typeof railBadgeScopeGet==='function')?railBadgeScopeGet():'all';
+  const its=projItems(p).filter(i=>scope==='tasks'?i.type==='todo':true);
+  const tt=its.length,td=its.filter(i=>i.done).length;
   const meta=[`${p.x},${+(getProjY(p)).toFixed(1)}`,p.gate?'🏁':'',tt?`☑${td}/${tt}`:''].filter(Boolean).join(' ');
   return `<div class="proj-item${p.id===selId?' sel':''}" draggable="true"
     ondragstart="onProjDragStart(event,${p.id})" ondragend="onProjDragEnd(event)">
@@ -5412,7 +5588,7 @@ function populateEditor(){
   G('e-color-hex').textContent=p.color;
   populateSectionDropdowns();
   G('e-section').value=p.sectionId||'';
-  updateEditorLabels();renderTodos(p);
+  updateEditorLabels();renderItems(p);
 }
 // updates the editor's axis label to match the X-axis name
 function updateEditorLabels(){
@@ -5439,21 +5615,97 @@ function deleteSelected(){
   G('editor').style.display='none';renderList();render();saveState();
 }
 
-// renders the todo list for a project
-function renderTodos(p){
-  G('todo-list').innerHTML=(p.todos||[]).map(t=>`
-    <div class="todo-item">
-      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${p.id},${t.id})">
-      <span class="todo-text${t.done?' done':''}">${escH(t.text)}</span>
-      <button class="todo-del" onclick="removeTodo(${p.id},${t.id})">×</button>
-    </div>`).join('');
+/* ── Task list in the project panel (tasks/to-dos only) ──────────────
+   Kept deliberately short: quick-add is type-and-Enter, priority is the
+   small click-to-cycle dot, assignee/due/estimate live in the expand row.
+   Risks & actions have their own project-window tabs; the full cross-type
+   backlog (all three) lives in PLAN › Backlog (⤢ button opens it filtered
+   to this project). */
+const _itemOpen=new Set();          // expanded item keys ("type:id"), UI-only
+const ITEM_PRIOS=['High','Medium','Low',''];   // cycle order ('' = none)
+// css class for the priority dot
+function prioDotClass(pr){ return pr==='High'?'p-high':pr==='Medium'?'p-medium':pr==='Low'?'p-low':'p-none'; }
+function _firstName(n){ return String(n||'').split(' ')[0]; }
+// roster <option> list for an assignee picker (value = eng.id; '' = unassigned)
+function itemAssigneeOptions(selId){
+  var o='<option value="">'+t('— Unassigned')+'</option>';
+  engineers.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);}).forEach(function(e){
+    o+='<option value="'+e.id+'"'+(selId===e.id?' selected':'')+'>'+escH(e.name)+'</option>';
+  });
+  return o;
 }
-// adds a todo to the selected project
-function addTodo(){const p=projects.find(p=>p.id===selId);if(!p)return;const txt=V('todo-new').trim();if(!txt)return;if(!p.todos)p.todos=[];p.todos.push({id:nextTodoId++,text:txt,done:false});SV('todo-new','');renderTodos(p);renderList();saveState();}
-// toggles a todo's done state
-function toggleTodo(pid,tid){const p=projects.find(p=>p.id===pid);if(!p)return;const t=p.todos.find(t=>t.id===tid);if(t)t.done=!t.done;renderTodos(p);renderList();render();saveState();}
-// removes a todo from a project
-function removeTodo(pid,tid){const p=projects.find(p=>p.id===pid);if(!p)return;p.todos=p.todos.filter(t=>t.id!==tid);renderTodos(p);renderList();render();saveNow();}
+// renders the task list (to-dos only) for a project
+function renderItems(p){
+  var host=G('todo-list'); if(!host)return;
+  var tasks=projItems(p).filter(function(it){return it.type==='todo';});
+  host.innerHTML=tasks.map(function(it){
+    var key=it.type+':'+it.id, open=_itemOpen.has(key);
+    var h='<div class="todo-item">'
+      +'<input type="checkbox" '+(it.done?'checked':'')+' onchange="toggleItem('+p.id+',\''+it.type+'\','+it.id+')">'
+      +'<button class="todo-prio '+prioDotClass(it.priority)+'" title="'+(it.priority||t('No priority'))+' — '+t('click to change')+'" onclick="cycleItemPrio('+p.id+',\''+it.type+'\','+it.id+')"></button>'
+      +'<span class="todo-text'+(it.done?' done':'')+'">'+escH(it.text||t('(empty)'))+'</span>'
+      +(it.assignee?'<span class="item-assignee" title="'+escH(it.assignee)+'">'+escH(_firstName(it.assignee))+'</span>':'')
+      +(it.overdue?'<span class="item-overdue" title="'+t('Overdue')+'">!</span>':'')
+      +'<button class="item-exp" title="'+t('Details')+'" onclick="toggleItemExpand(\''+key+'\')">'+(open?'▾':'▸')+'</button>'
+      +'<button class="todo-del" onclick="removeItem('+p.id+',\''+it.type+'\','+it.id+')">×</button>'
+      +'</div>';
+    if(open) h+=itemDetailHTML(p,it);
+    return h;
+  }).join('');
+}
+// the click-to-expand detail panel for one item
+function itemDetailHTML(p,it){
+  var raw=it.ref||{}, fieldName=it.type==='action'?'member':'owner';
+  var freeText=(it.assigneeId==null&&raw[fieldName])?raw[fieldName]:'';
+  var h='<div class="item-detail">'
+    +'<div class="idet-row"><label>'+t('Assignee')+'</label>'
+    +'<select onchange="setItemAssignee('+p.id+',\''+it.type+'\','+it.id+',this.value)">'+itemAssigneeOptions(it.assigneeId)+'</select></div>'
+    +'<div class="idet-row"><label>'+t('or name')+'</label>'
+    +'<input type="text" value="'+escH(freeText)+'" placeholder="'+t('free text')+'" onchange="setItemOwner('+p.id+',\''+it.type+'\','+it.id+',this.value)"></div>';
+  if(it.type!=='risk'){
+    h+='<div class="idet-row"><label>'+t('Due')+'</label>'
+      +'<input type="date" value="'+escH(raw.due||'')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'due\',this.value)"></div>'
+      +'<div class="idet-row"><label>'+t('Estimate')+'</label>'
+      +'<input type="number" min="0" step="0.5" value="'+(raw.estimateD!=null?raw.estimateD:'')+'" placeholder="'+t('FTE-days')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'estimateD\',this.value===\'\'?null:+this.value)"></div>';
+  } else {
+    h+='<div class="idet-row"><label>'+t('Mitigation')+'</label>'
+      +'<input type="text" value="'+escH(raw.mit||'')+'" placeholder="'+t('mitigation plan')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'mit\',this.value)"></div>';
+  }
+  return h+'</div>';
+}
+// quick-add: create a task (to-do) from the text box
+function addItem(){
+  var p=projects.find(function(p){return p.id===selId;}); if(!p)return;
+  var txt=V('todo-new').trim(); if(!txt)return;
+  projAddItem(p,'todo',txt,'Medium');
+  SV('todo-new','');
+  renderItems(p); renderList(); saveState();
+}
+// open the full cross-type backlog filtered to the selected project (⤢ button)
+function openProjectBacklog(){
+  if(typeof _blSetProjectFilter==='function') _blSetProjectFilter(selId);
+  if(typeof railGo==='function') railGo(null,'backlog');
+}
+// toggle the expand panel for an item row
+function toggleItemExpand(key){ if(_itemOpen.has(key))_itemOpen.delete(key); else _itemOpen.add(key); var p=projects.find(function(p){return p.id===selId;}); if(p)renderItems(p); }
+// cycle an item's priority (High → Medium → Low → none)
+function cycleItemPrio(pid,type,id){
+  var p=projects.find(function(p){return p.id===pid;}); if(!p)return;
+  var r=projItemRaw(p,type,id); if(!r)return;
+  var i=ITEM_PRIOS.indexOf(r.priority||'');
+  projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]);
+  renderItems(p); renderList(); saveState();
+}
+// toggle an item's done/closed state
+function toggleItem(pid,type,id){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projToggleItemDone(p,type,id); renderItems(p); renderList(); render(); saveState(); }
+// delete an item
+function removeItem(pid,type,id){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projDeleteItem(p,type,id); _itemOpen.delete(type+':'+id); renderItems(p); renderList(); render(); saveNow(); }
+// set the roster assignee ('' → unassigned/null)
+function setItemAssignee(pid,type,id,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,'assigneeId',val===''?null:+val); renderItems(p); saveState(); }
+// set free-text owner/member (clears the roster link if a name is typed)
+function setItemOwner(pid,type,id,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,type==='action'?'member':'owner',val); if(val)projSetItemField(p,type,id,'assigneeId',null); renderItems(p); saveState(); }
+// set an arbitrary field on an item (due, estimateD, mit)
+function setItemField(pid,type,id,field,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,field,val); saveState(); }
 
 let _dragProjId=null;
 // drag start for a sidebar project row
@@ -5593,7 +5845,7 @@ function saveProjTab(){
       const r=p.risks.find(r=>r.id===+tr.dataset.rid);if(!r)return;
       r.desc=tr.querySelector('.r-desc').value;r.prob=+tr.querySelector('.r-prob').value||1;
       r.imp=+tr.querySelector('.r-imp').value||1;r.mit=tr.querySelector('.r-mit').value;
-      r.owner=tr.querySelector('.r-owner').value;r.status=tr.querySelector('.r-status').value;
+      applyAssigneeSelect(r,'owner',tr.querySelector('.r-owner').value);r.status=tr.querySelector('.r-status').value;
       r.sev=+tr.querySelector('.r-sev').value||1;r.occ=+tr.querySelector('.r-occ').value||1;r.det=+tr.querySelector('.r-det').value||1;
     });
   } else {
@@ -5621,7 +5873,7 @@ function renderRiskTab(p){
       <td><input class="r-prob" type="number" min="1" max="5" value="${r.prob||1}" style="width:34px"></td>
       <td><input class="r-imp"  type="number" min="1" max="5" value="${r.imp||1}"  style="width:34px"></td>
       <td><input class="r-mit"  value="${escH(r.mit||'')}"></td>
-      <td><input class="r-owner" value="${escH(r.owner||'')}"></td>
+      <td><select class="r-owner" style="width:100%">${assigneeOptionsHTML(r.assigneeId,r.owner)}</select></td>
       <td><select class="r-status">${stO}</select></td>
       <td><input class="r-sev" type="number" min="1" max="10" value="${r.sev||1}" style="width:32px"></td>
       <td><input class="r-occ" type="number" min="1" max="10" value="${r.occ||1}" style="width:32px"></td>
@@ -5750,7 +6002,7 @@ function renderSchedTab(p){
       <td style="padding:3px 4px"><input class="eng-card-inp a-start-s" type="date" value="${a.start||''}"></td>
       <td style="padding:3px 4px"><input class="eng-card-inp a-end-s" type="date" value="${a.end||''}"></td>
       <td style="padding:3px 4px"><select class="alloc-sel a-status-s" style="width:100%;color:${statusColors[a.status]||'var(--text)'}">${stO}</select></td>
-      <td style="padding:3px 4px"><input class="eng-card-inp a-member-s" value="${escH(a.member||'')}" placeholder="—"></td>
+      <td style="padding:3px 4px"><select class="alloc-sel a-member-s" style="width:100%">${assigneeOptionsHTML(a.assigneeId,a.member)}</select></td>
       <td style="padding:3px 4px"><div id="dep-a${a.id}" style="display:flex;flex-wrap:wrap;gap:2px;padding:2px">${depTags('a'+a.id,a.dep)}</div></td>
       <td style="padding:3px 4px"><button class="row-del-btn" onclick="schedDelAction(${p.id},${a.id})">×</button></td>
     </tr>`;
@@ -5887,7 +6139,7 @@ function schedSave(pid){
     const s=tr.querySelector('.a-start-s'); if(s)a.start=s.value;
     const e=tr.querySelector('.a-end-s');   if(e)a.end=e.value;
     const st=tr.querySelector('.a-status-s');if(st)a.status=st.value;
-    const me=tr.querySelector('.a-member-s');if(me)a.member=me.value;
+    const me=tr.querySelector('.a-member-s');if(me)applyAssigneeSelect(a,'member',me.value);
     a.dep=schedGetDep('dep-a'+a.id);
   });
   // Milestones
@@ -6448,7 +6700,7 @@ function renderActionsTab(p){
     const stOpts=['Open','In Progress','Done','Blocked'].map(v=>`<option${a.status===v?' selected':''}>${v}</option>`).join('');
     h+=`<tr data-aid="${a.id}" class="${stCls}">
       <td><input class="a-desc" value="${escH(a.desc||'')}"></td>
-      <td><input class="a-member" value="${escH(a.member||'')}" list="member-list" placeholder="${t('Team member')}"></td>
+      <td><select class="a-member" style="width:100%">${assigneeOptionsHTML(a.assigneeId,a.member)}</select></td>
       <td><input class="a-due" type="date" value="${a.due||''}"></td>
       <td><select class="a-prio">${prioOpts}</select></td>
       <td><select class="a-status">${stOpts}</select></td>
@@ -6514,7 +6766,7 @@ function saveActionsTabData(p){
   G('ptw-body').querySelectorAll('tr[data-aid]').forEach(tr=>{
     const a=p.actions.find(a=>a.id===+tr.dataset.aid);if(!a)return;
     a.desc=tr.querySelector('.a-desc').value;
-    a.member=tr.querySelector('.a-member').value;
+    applyAssigneeSelect(a,'member',tr.querySelector('.a-member').value);
     a.due=tr.querySelector('.a-due').value;
     a.priority=tr.querySelector('.a-prio').value;
     a.status=tr.querySelector('.a-status').value;
@@ -8242,7 +8494,7 @@ function _computeCostMaps(months,filterEng,filterProj){
     return true;
   });
   filtered.forEach(function(r){
-    var eng=engById.get(r.engId);if(!eng)return;
+    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     if(r.projectId){projCost[r.projectId]=(projCost[r.projectId]||0)+cost;}
     else{unassignedCost+=cost;}
@@ -8256,6 +8508,10 @@ function renderResDashboard(){
   var body=G('res-body');if(!body)return;
   var months=_dashMonths();
   var cur=_dashCur();
+  // "This month" clamped into the visible plan period, so the current-month KPIs
+  // (FTE this month, bench, peak fallback) stay meaningful when the period does
+  // not span today. The chart keeps the real `cur` (no marker when out of range).
+  var curInRange=months.length?(months.indexOf(cur)>=0?cur:(cur<months[0]?months[0]:months[months.length-1])):cur;
 
   if(!months.length){
     body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;flex-direction:column;gap:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px"><div style="font-size:28px">📅</div><div>'+t('Set FROM and TO dates in the header to see the dashboard')+'</div></div>';
@@ -8265,12 +8521,13 @@ function renderResDashboard(){
   var cm=_buildCostMaps(months,engDashFilterEng,engDashFilterProj);
   var projCost=cm.projCost,totalCost=cm.totalCost,unassignedCost=cm.unassignedCost,filteredRows=cm.filteredRows;
   var engUtil=_buildEngUtil(months);
+  var engById=_engByIdMap();
 
   // FTE calcs
   var fteByEng={};
   filteredRows.forEach(function(r){
     if(!r.engId)return;
-    var v=r.allocs&&r.allocs[cur]!=null?_allocNum(r.allocs[cur]):0;
+    var v=r.allocs&&r.allocs[curInRange]!=null?_allocNum(r.allocs[curInRange]):0;
     fteByEng[r.engId]=(fteByEng[r.engId]||0)+v;
   });
   var fteCur=Object.values(fteByEng).reduce(function(s,v){return s+Math.min(v,1);},0);
@@ -8281,8 +8538,8 @@ function renderResDashboard(){
   var projStaffedCount=Object.keys(projCost).length;
   var totalActiveEngs=engineers.filter(function(e){return !e.vacant&&!e.planningOnly&&!e.excludeFromCalc;}).length;
 
-  // Bench = engineers with zero allocation this month
-  var benchEngs=Object.values(engUtil).filter(function(eu){return eu.curAlloc===0;});
+  // Bench = engineers with zero allocation in the current (in-range) month
+  var benchEngs=Object.values(engUtil).filter(function(eu){return (eu.monthAllocs[curInRange]||0)===0;});
   var benchCount=benchEngs.length;
 
   // Avg team utilisation over full period
@@ -8293,18 +8550,18 @@ function renderResDashboard(){
   // Budget burn: cost spent so far (months <= cur)
   var pastMonths=months.filter(function(m){return m<=cur;});
   var burnCost=filteredRows.reduce(function(s,r){
-    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng)return s;
+    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return s;
     return s+pastMonths.reduce(function(ss,m){return ss+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
   },0);
   var burnPct=totalCost>0?Math.round(burnCost/totalCost*100):0;
 
   // Monthly peaks
   var moCosts=months.map(function(m){return filteredRows.reduce(function(s,r){
-    var eng=engineers.find(function(e){return e.id===r.engId;});
-    return s+(eng&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
+    var eng=engById.get(r.engId);
+    return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
   },0);});
   var peakCostIdx=moCosts.indexOf(Math.max(...moCosts));
-  var peakMonth=months[peakCostIdx]||cur;
+  var peakMonth=months[peakCostIdx]||curInRange;
 
   // SPOF count from skill data
   var skillMap=buildSkillMap();
@@ -8363,7 +8620,7 @@ function renderResDashboard(){
    +'<div class="kpi-card">'
    +'<div class="kpi-val">'+fteCur.toFixed(1)+'</div>'
    +'<div class="kpi-label">'+t('FTE THIS MONTH')+'</div>'
-   +'<div class="kpi-sub">'+cur+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div>'
+   +'<div class="kpi-sub">'+curInRange+(curInRange!==cur?' · '+t('nearest planned month'):'')+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div>'
    +'</div>'
    // Team avg utilisation
    +'<div class="kpi-card" style="cursor:pointer" onclick="_availPanel.open=!_availPanel.open;renderResDashboard()" title="'+t('Click to show availability panel')+'">'
@@ -8397,7 +8654,7 @@ function renderResDashboard(){
   // Monthly FTE demand
   var moFte=months.map(function(m){
     var byE={};
-    allocRows.forEach(function(r){
+    filteredRows.forEach(function(r){
       if(!r.engId)return;
       var v=r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0;
       byE[r.engId]=(byE[r.engId]||0)+v;
@@ -8477,8 +8734,8 @@ function renderResDashboard(){
       var monthFtes=months.map(function(m){return projRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);});
       var peakFte=Math.max.apply(null,monthFtes.concat([0]));
       var monthCosts=months.map(function(m){return projRows.reduce(function(s,r){
-        var eng=engineers.find(function(e){return e.id===r.engId;});
-        return s+(eng&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
+        var eng=engById.get(r.engId);
+        return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
       },0);});
       var maxMo=Math.max.apply(null,monthCosts.concat([1]));
       var sparkW=110,sparkH=16,bw=Math.max(1,Math.floor(sparkW/months.length)-1);
@@ -8706,7 +8963,7 @@ function renderResDashboard(){
       var pct=Math.round(eu.avgAlloc*100);
       var utilPct=Math.round(eu.utilizationRate*100);
       var isOver=eu.overMonths&&eu.overMonths.length>0;
-      var isBench=eu.curAlloc===0;
+      var isBench=(eu.monthAllocs[curInRange]||0)===0;
       var isSpof=spofEngIds.has(eu.eng.id);
       var col=isOver?'var(--danger)':isBench?'var(--accent2)':pct>80?'var(--accent)':'var(--accent2)';
       // Spark for this engineer
@@ -8767,10 +9024,10 @@ function renderResDashboard(){
       var pid = +kv[0], cost = kv[1];
       var p = projects.find(function(p){ return p.id === pid; });
       if (!p) return null;
-      var _rows = filteredRows.filter(function(r){ return r.projectId === pid && r.engId; });
+      var _rows = filteredRows.filter(function(r){ return r.projectId === pid && r.engId && _costCounts(engById.get(r.engId)); });
       var _engMap = {};
       _rows.forEach(function(r) {
-        if (!_engMap[r.engId]) _engMap[r.engId] = { fte: {}, eng: engineers.find(function(e){ return e.id === r.engId; }) };
+        if (!_engMap[r.engId]) _engMap[r.engId] = { fte: {}, eng: engById.get(r.engId) };
         months.forEach(function(m) {
           _engMap[r.engId].fte[m] = (_engMap[r.engId].fte[m] || 0) + (r.allocs && r.allocs[m] != null ? _allocNum(r.allocs[m]) : 0);
         });
@@ -8984,13 +9241,15 @@ function renderResDashboard(){
       + '</div></div>';
   }
 
-  // KPI row
-  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">';
+  // KPI row — a clean reconciliation identity: TEAM COST = ALLOCATED + UNALLOCATED.
+  // (The uncapped per-project attribution total is the top "TOTAL PLAN COST" card;
+  // it is NOT repeated here because, unlike ALLOCATED, it is not capped at 1 FTE and
+  // so would not satisfy this identity. See ARCHITECTURE.md › Cost model.)
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">';
   [
     { val: Math.round(_teamCostIncl/1000) + 'k€', label: t('TEAM COST PERIOD'), sub: t('{n} mo × salaries',{n:_nMonths}), col: 'var(--accent2)' },
     { val: Math.round(_allocCostTotal/1000)    + 'k€', label: t('ALLOCATED TO PROJ'), sub: _allocPct + '% '+t('of team cost'),  col: 'var(--accent)' },
     { val: Math.round(_unallocCost/1000)  + 'k€', label: t('UNALLOCATED'),       sub: _unallocPct + '% '+t('bench / overhead'), col: _unallocPct > 30 ? 'var(--warn)' : 'var(--muted)' },
-    { val: Math.round(totalCost/1000)     + 'k€', label: t('PROJ ALLOC COST'),   sub: t('from allocation plan'),        col: 'var(--purple)' },
   ].forEach(function(k) {
     h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px">'
       + '<div style="font-family:IBM Plex Mono,monospace;font-size:20px;font-weight:700;color:' + k.col + '">' + k.val + '</div>'
@@ -9166,8 +9425,8 @@ function _doExportDashboardPDF(){
     +'<div class="report-header">'
     +'<div><div class="report-title">'+escH(title)+'</div>'
     +'<div class="report-date">Generated '+dateStr
-    +(engDashFilterEng?' · Engineer: '+escH(engDashFilterEng):'')
-    +(engDashFilterProj?' · Project: '+escH(engDashFilterProj):'')
+    +(engDashFilterEng&&engDashFilterEng.size?' · Engineer: '+escH([...engDashFilterEng].join(', ')):'')
+    +(engDashFilterProj&&engDashFilterProj.size?' · Project: '+escH([...engDashFilterProj].join(', ')):'')
     +'</div></div>'
     +'<div style="font-size:9px;color:#9ca3af;text-align:right;font-family:monospace">Project Matrix</div>'
     +'</div>'
@@ -9188,7 +9447,7 @@ function transferPlanCosts(){
   var projCost={};
   allocRows.forEach(function(r){
     if(!r.projectId)return;
-    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng)return;
+    var eng=engineers.find(function(e){return e.id===r.engId;});if(!eng||!_costCounts(eng))return;
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     projCost[r.projectId]=(projCost[r.projectId]||0)+cost;
   });
@@ -17330,6 +17589,248 @@ function pfParetoSvg(ds,metric){
 }
 /* ◄◄ END: sections/portfolio.js ►► */
 
+/* ►► SECTION: BACKLOG ◄◄ Cross-project backlog & planner: aggregates every
+ * to-do, risk and action across all projects into one editable list with type +
+ * project filters, grouping and light analytics. This is the roomy home for
+ * managing work items; the project panel keeps only a short task list.
+ *
+ * Reads the existing shapes via the unified accessor layer in helpers.js
+ * (projItems / projItemRaw / proj*  + resolveAssignee). Editing depth:
+ *   - TASKS (to-dos): full — text, priority, assignee, due, estimate, done, delete.
+ *   - RISKS / ACTIONS: lighter — priority, assignee, done + a ↗ link to their own
+ *     project-window tab for deep fields (FMEA / gantt / mitigation).
+ *
+ * Functions defined in this file:
+ *   _blItems / renderBacklogTab      — flatten + render
+ *   blToggleType / blSetGroup        — view controls
+ *   _blSetProjectFilter / blSetProjectFilter — project scope (⤢ from the panel)
+ *   blQuickAdd                        — add a task to a project
+ *   blToggleDone/blCyclePrio/blSetText/blSetAssignee/blSetField/blDelete/blOpenTab — inline edit
+ */
+
+// Active work-item types (module state; not persisted).
+var _blTypes    = { todo:true, risk:true, action:true };
+// Group-by mode: 'project' | 'assignee' | 'type' | 'priority'.
+var _blGroupBy  = 'project';
+// Project scope: null = all projects; else a project id (set by the panel ⤢ button).
+var _blProjFilter = null;
+
+// Type presentation: label + accent colour used for badges/toggles.
+var _BL_TYPE_META = {
+  todo:   { label:'To-dos',  color:'var(--muted)'  },
+  risk:   { label:'Risks',   color:'var(--danger)' },
+  action: { label:'Actions', color:'var(--accent2)'},
+};
+
+// Coarse High/Med/Low fallback for a risk with no explicit priority, from the
+// FMEA RPN (sev·occ·det) when present, else probability·impact. '' if unscored.
+function _blRiskPriority(r){
+  var rpn = (r.sev&&r.occ&&r.det) ? r.sev*r.occ*r.det : (r.prob||0)*(r.imp||0);
+  if(!rpn) return '';
+  if(r.sev&&r.occ&&r.det) return rpn>=200?'High':rpn>=80?'Medium':'Low';
+  return rpn>=6?'High':rpn>=3?'Medium':'Low';
+}
+
+// Flatten projects into normalized rows honouring the type + project filters.
+// Each row: {pid,pname,pcolor,kind,id,ref,text,assignee,status,priority,due,estimateD,done,overdue}.
+function _blItems(){
+  var today=new Date(), rows=[];
+  projects.forEach(function(p){
+    if(_blProjFilter!=null && p.id!==_blProjFilter) return;
+    if(_blTypes.todo)(p.todos||[]).forEach(function(td){
+      rows.push({ pid:p.id,pname:p.name,pcolor:p.color,kind:'todo',id:td.id,ref:td,
+        text:td.text||'',assignee:resolveAssignee(td),status:td.done?'Done':'Open',
+        priority:td.priority||'',due:td.due||'',estimateD:td.estimateD,done:!!td.done,
+        overdue:!!(td.due)&&!td.done&&new Date(td.due)<today });
+    });
+    if(_blTypes.risk)(p.risks||[]).forEach(function(r){
+      var st=r.status||'open', closed=/closed|done|resolved|mitigated/i.test(st);
+      rows.push({ pid:p.id,pname:p.name,pcolor:p.color,kind:'risk',id:r.id,ref:r,
+        text:r.desc||'',assignee:resolveAssignee(r),status:st,
+        priority:r.priority||_blRiskPriority(r),due:'',estimateD:null,done:closed,overdue:false });
+    });
+    if(_blTypes.action)(p.actions||[]).forEach(function(a){
+      var st=a.status||'Open', done=/done|complete|closed/i.test(st);
+      var dueStr=a.due||a.end||'', overdue=!!dueStr&&!done&&new Date(dueStr)<today;
+      rows.push({ pid:p.id,pname:p.name,pcolor:p.color,kind:'action',id:a.id,ref:a,
+        text:a.desc||'',assignee:resolveAssignee(a),status:st,
+        priority:a.priority||'',due:dueStr,estimateD:a.estimateD,done:done,overdue:overdue });
+    });
+  });
+  return rows;
+}
+
+// small coloured chip
+function _blChip(txt,color,bg){
+  return '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;'
+    +'background:'+(bg||'rgba(120,120,140,.12)')+';color:'+(color||'var(--muted)')+'">'+escH(txt)+'</span>';
+}
+
+// project <option> list (value = pid; selVal picks the current one)
+function _blProjectOptions(selVal){
+  return projects.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);})
+    .map(function(p){return '<option value="'+p.id+'"'+(selVal===p.id?' selected':'')+'>'+escH(p.name)+'</option>';}).join('');
+}
+
+// one editable backlog row (tasks: full edit; risks/actions: lighter)
+function _blRowHTML(r){
+  var m=_BL_TYPE_META[r.kind], isTask=r.kind==='todo', raw=r.ref||{};
+  var freeText=(raw.assigneeId==null)?(raw.owner||raw.member||''):'';
+  var prTitle=(r.priority||t('No priority'))+' — '+t('click to change');
+  var h='<div class="bl-row'+(r.done?' bl-done':'')+'">'
+    +'<input type="checkbox" class="bl-check" '+(r.done?'checked':'')+' onchange="blToggleDone('+r.pid+',\''+r.kind+'\','+r.id+')">'
+    +_blChip(t(m.label),m.color)
+    +'<button class="todo-prio '+(r.priority==='High'?'p-high':r.priority==='Medium'?'p-medium':r.priority==='Low'?'p-low':'p-none')+'" title="'+prTitle+'" onclick="blCyclePrio('+r.pid+',\''+r.kind+'\','+r.id+')"></button>'
+    +(isTask
+       ?'<input class="bl-text" value="'+escH(r.text)+'" onchange="blSetText('+r.pid+',\'todo\','+r.id+',this.value)">'
+       :'<span class="bl-text-ro'+(r.done?' bl-strike':'')+'">'+escH(r.text||t('(empty)'))+'</span>')
+    +'<select class="bl-assignee alloc-sel" onchange="blSetAssignee('+r.pid+',\''+r.kind+'\','+r.id+',this.value)">'+assigneeOptionsHTML(raw.assigneeId!=null?raw.assigneeId:null,freeText)+'</select>'
+    +(isTask
+       ?'<input type="date" class="bl-due" value="'+escH(r.due||'')+'" onchange="blSetField('+r.pid+',\'todo\','+r.id+',\'due\',this.value)">'
+        +'<input type="number" class="bl-est" min="0" step="0.5" value="'+(r.estimateD!=null?r.estimateD:'')+'" placeholder="'+t('d')+'" title="'+t('Estimate (FTE-days)')+'" onchange="blSetField('+r.pid+',\'todo\','+r.id+',\'estimateD\',this.value===\'\'?null:+this.value)">'
+        +'<button class="bl-del todo-del" title="'+t('Delete')+'" onclick="blDelete('+r.pid+',\'todo\','+r.id+')">×</button>'
+       :'<span class="bl-due-ro">'+(r.overdue?'⚠ ':'')+escH(r.due||'')+'</span>'
+        +'<a class="bl-open" title="'+t('Open in its project tab')+'" onclick="blOpenTab('+r.pid+',\''+r.kind+'\')">↗</a>')
+    +'</div>';
+  return h;
+}
+
+// Render the backlog tab into #res-body.
+function renderBacklogTab(){
+  var body=G('res-body'); if(!body) return;
+  if(_blProjFilter!=null && !projects.some(function(p){return p.id===_blProjFilter;})) _blProjFilter=null;
+
+  // Per-type totals across the CURRENT project scope (independent of the type filter).
+  var allCounts={ todo:0, risk:0, action:0 };
+  projects.forEach(function(p){
+    if(_blProjFilter!=null && p.id!==_blProjFilter) return;
+    allCounts.todo   += (p.todos||[]).length;
+    allCounts.risk   += (p.risks||[]).length;
+    allCounts.action += (p.actions||[]).length;
+  });
+
+  var rows=_blItems();
+  var total=rows.length;
+  var doneCount=rows.filter(function(r){return r.done;}).length;
+  var openCount=total-doneCount;
+  var overdueCount=rows.filter(function(r){return r.overdue;}).length;
+  var comp=total?Math.round(doneCount/total*100):0;
+  var scopedName=_blProjFilter!=null?(projects.find(function(p){return p.id===_blProjFilter;})||{}).name:'';
+
+  var h='';
+
+  // ── Filter bar: project scope + type + group-by ────────────────
+  h+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">'
+   +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">'+t('PROJECT:')+'</span>'
+   +'<select class="alloc-sel" style="max-width:200px" onchange="blSetProjectFilter(this.value)">'
+   +'<option value="">'+t('All projects')+'</option>'+_blProjectOptions(_blProjFilter)+'</select>'
+   +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-left:8px">'+t('SHOW:')+'</span>';
+  ['todo','risk','action'].forEach(function(k){
+    var on=_blTypes[k], m=_BL_TYPE_META[k];
+    h+='<button class="sm'+(on?' active':'')+'" onclick="blToggleType(\''+k+'\')" '
+      +'style="font-size:10px;padding:3px 9px'+(on?';border-color:'+m.color+';color:'+m.color:'')+'">'
+      +(on?'☑ ':'☐ ')+t(m.label)+' <span style="opacity:.6">'+allCounts[k]+'</span></button>';
+  });
+  h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-left:8px">'+t('GROUP BY:')+'</span>';
+  [['project',t('PROJECT')],['assignee',t('ASSIGNEE')],['type',t('TYPE')],['priority',t('PRIORITY')]].forEach(function(g){
+    h+='<button class="sm'+(_blGroupBy===g[0]?' active':'')+'" onclick="blSetGroup(\''+g[0]+'\')" '
+      +'style="font-size:10px;padding:3px 9px'+(_blGroupBy===g[0]?';border-color:var(--accent);color:var(--accent)':'')+'">'+g[1]+'</button>';
+  });
+  h+='</div>';
+
+  // ── Quick-add task bar ─────────────────────────────────────────
+  if(projects.length){
+    var addProj=_blProjFilter!=null?_blProjFilter:projects[0].id;
+    h+='<div class="bl-addbar">'
+     +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent)">'+t('+ TASK')+'</span>'
+     +'<select id="bl-add-proj" class="alloc-sel" style="max-width:200px">'+_blProjectOptions(addProj)+'</select>'
+     +'<input id="bl-add-text" type="text" placeholder="'+t('Add a task, press Enter')+'" onkeydown="if(event.key===\'Enter\')blQuickAdd()">'
+     +'<button class="sm primary" style="font-size:10px" onclick="blQuickAdd()">'+t('Add')+'</button>'
+     +'</div>';
+  }
+
+  // ── Analytics KPIs ─────────────────────────────────────────────
+  h+='<div class="alloc-kpi-grid" style="margin-bottom:14px">'
+   +'<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-label">'+t('BACKLOG ITEMS')+'</div>'
+   +'<div class="kpi-sub">'+(scopedName?escH(scopedName):t('all projects'))+'</div></div>'
+   +'<div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">'+openCount+'</div><div class="kpi-label">'+t('OPEN')+'</div>'
+   +'<div class="kpi-sub">'+doneCount+' '+t('done')+' · '+comp+'% '+t('complete')+'</div></div>'
+   +'<div class="kpi-card" style="'+(overdueCount?'border-color:var(--danger)':'')+'"><div class="kpi-val" style="color:'+(overdueCount?'var(--danger)':'var(--accent)')+'">'+overdueCount+'</div>'
+   +'<div class="kpi-label">'+t('OVERDUE')+'</div><div class="kpi-sub">'+t('past due date')+'</div></div>'
+   +'<div class="kpi-card"><div class="kpi-val" style="font-size:16px">'+comp+'%</div><div class="kpi-label">'+t('COMPLETION')+'</div>'
+   +'<div class="kpi-sub">'+t('across all selected items')+'</div></div>'
+   +'</div>';
+
+  if(!total){
+    h+='<div style="text-align:center;padding:34px;color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px">'
+      +'<div style="font-size:24px;margin-bottom:8px">🗂️</div>'
+      +t('No items for the selected filters. Add a task above, or capture risks/actions on a project.')+'</div>';
+    body.innerHTML=h;
+    return;
+  }
+
+  // ── Group the rows ─────────────────────────────────────────────
+  var groups={};
+  rows.forEach(function(r){
+    var key,color;
+    if(_blGroupBy==='project'){ key=r.pname||t('(unnamed project)'); color=r.pcolor; }
+    else if(_blGroupBy==='assignee'){ key=r.assignee||t('— Unassigned'); color='var(--accent2)'; }
+    else if(_blGroupBy==='type'){ key=t(_BL_TYPE_META[r.kind].label); color=_BL_TYPE_META[r.kind].color; }
+    else { key=r.priority||t('— Unprioritised'); color=r.priority==='High'?'var(--danger)':r.priority==='Medium'?'var(--warn)':'var(--muted)'; }
+    if(!groups[key]) groups[key]={color:color,rows:[]};
+    groups[key].rows.push(r);
+  });
+
+  Object.keys(groups).sort().forEach(function(gk){
+    var g=groups[gk];
+    var gOpen=g.rows.filter(function(r){return !r.done;}).length;
+    h+='<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:7px;overflow:hidden">'
+     +'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)">'
+     +'<div style="width:8px;height:8px;border-radius:50%;background:'+g.color+';flex-shrink:0"></div>'
+     +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(gk)+'</span>'
+     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">'+t('{n} open',{n:gOpen})+' · '+g.rows.length+' '+t('total')+'</span>'
+     +'</div><div>';
+    g.rows.forEach(function(r){ h+=_blRowHTML(r); });
+    h+='</div></div>';
+  });
+
+  body.innerHTML=h;
+}
+
+// helper: find a project by id
+function _blProj(pid){ return projects.find(function(p){return p.id===pid;}); }
+
+// Toggle a work-item type in/out of the view (kept at least one on).
+function blToggleType(k){
+  if(!_blTypes.hasOwnProperty(k)) return;
+  var next=Object.assign({},_blTypes); next[k]=!next[k];
+  if(!next.todo&&!next.risk&&!next.action) return;
+  _blTypes=next; renderBacklogTab();
+}
+// Set the group-by mode and re-render.
+function blSetGroup(g){ _blGroupBy=g; renderBacklogTab(); }
+// Set the project scope programmatically (used by the panel ⤢ button).
+function _blSetProjectFilter(pid){ _blProjFilter=(pid==null?null:pid); }
+// Set the project scope from the dropdown.
+function blSetProjectFilter(v){ _blProjFilter=(v===''?null:+v); renderBacklogTab(); }
+// Quick-add a task to the chosen project.
+function blQuickAdd(){
+  var psel=G('bl-add-proj'); var pid=psel?+psel.value:_blProjFilter;
+  var p=_blProj(pid); if(!p) return;
+  var txt=(V('bl-add-text')||'').trim(); if(!txt) return;
+  projAddItem(p,'todo',txt,'Medium'); SV('bl-add-text',''); saveState(); renderBacklogTab();
+}
+// inline edits ---------------------------------------------------------------
+function blToggleDone(pid,type,id){ var p=_blProj(pid); if(!p)return; projToggleItemDone(p,type,id); saveState(); renderBacklogTab(); }
+function blCyclePrio(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; var i=ITEM_PRIOS.indexOf(r.priority||''); projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]); saveState(); renderBacklogTab(); }
+function blSetText(pid,type,id,v){ var p=_blProj(pid); if(!p)return; projSetItemText(p,type,id,v); saveState(); }
+function blSetAssignee(pid,type,id,v){ var p=_blProj(pid); if(!p)return; var raw=projItemRaw(p,type,id); if(!raw)return; applyAssigneeSelect(raw,type==='action'?'member':'owner',v); saveState(); renderBacklogTab(); }
+function blSetField(pid,type,id,field,v){ var p=_blProj(pid); if(!p)return; projSetItemField(p,type,id,field,v); saveState(); }
+function blDelete(pid,type,id){ var p=_blProj(pid); if(!p)return; projDeleteItem(p,type,id); saveNow(); renderBacklogTab(); }
+// open a risk/action in its own project-window tab (deep editing)
+function blOpenTab(pid,type){ if(typeof showProjTab!=='function')return; tabProjId=pid; showProjTab(type==='risk'?'risk':'actions'); var w=G('proj-tab-win'); if(w)w.classList.add('show'); }
+/* ◄◄ END: sections/backlog.js ►► */
+
 /* ►► SECTION: BACKUP ◄◄ Full backup export/import with photos; roster CSV export/import
  *
  * Functions defined in this file:
@@ -18460,7 +18961,7 @@ function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio'].forEach(function(t){
+  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','backlog'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -18485,6 +18986,7 @@ function showResTab(tab){
   else if(tab==='heatmap')     renderHeatmap();
   else if(tab==='analytics')   renderAnalyticsTab();
   else if(tab==='portfolio')   renderPortfolioAnalytics();
+  else if(tab==='backlog')     renderBacklogTab();
   else                         renderResDashboard();
 }
 
@@ -18656,6 +19158,7 @@ var RAIL_I = {
   skills:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="1.4"/></svg>',
   talent:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-8.5"/><path d="M12 12.5C11.4 9.6 8.9 8 5.9 8c.1 3 2.5 4.9 6.1 4.5z"/><path d="M12 11.5c.5-2.6 2.7-4 5.6-4-.1 2.8-2.3 4.3-5.6 4z"/></svg>',
   insights:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="12" width="3.6" height="7.5" rx="1"/><rect x="10.2" y="6" width="3.6" height="13.5" rx="1"/><rect x="16.4" y="9" width="3.6" height="10.5" rx="1"/></svg>',
+  planning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 12h10"/><path d="M4 18h7"/><path d="m16.5 16.5 2 2 3.5-3.8"/></svg>',
   snap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
   backup:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v8.6L12 20l-7.5-4.2V7.2z"/><path d="M4.8 7.4L12 11.5l7.2-4.1"/><path d="M12 11.5V20"/></svg>',
   restore:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v3.4h3.4"/></svg>',
@@ -18689,6 +19192,9 @@ var RAIL_DOMAINS = [
     {id:'decision',    label:t('Trade-off decision')},
     {id:'dtc',         label:t('Design to cost')},
     {id:'brief',       label:t('Project brief')},
+  ]},
+  { id:'planning', name:t('PLAN'), ico:RAIL_I.planning, views:[
+    {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
     {id:'skills',      label:t('Skills matrix')},
@@ -18728,6 +19234,7 @@ var railLanding=null;        // stored default landing view id; null = first run
 var railRouting=false;       // true while railGo/railRoute is switching surfaces
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
+var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
 var railFlyDom=null, railFlyTimer=null;
 var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
@@ -18739,14 +19246,17 @@ function railLoadPrefs(){
        if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
               if(typeof p.landing==='string')  railLanding=p.landing;
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
+              if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope})); }catch(e){}
 }
 // Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
 function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
+// Sidebar badge scope accessor (read by sidebar.js projItemHTML). 'all' | 'tasks'.
+function railBadgeScopeGet(){ return railBadgeScope==='tasks' ? 'tasks' : 'all'; }
 // clamp the collapsed width to a range that keeps the icon strip + layout intact
 function railClampWidth(v){ v=+v; if(isNaN(v)) return RAIL_W_DEFAULT; return Math.max(RAIL_W_MIN,Math.min(RAIL_W_MAX,Math.round(v))); }
 // push the collapsed width to the --rail CSS variable; everything (gutter, overlay
@@ -18857,7 +19367,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -19004,6 +19514,7 @@ function railOpenSettings(){
   }
   var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
   var cp=G('set-chartpicker'); if(cp) cp.value=railChartPicker();
+  var bs=G('set-badgescope'); if(bs) bs.value=railBadgeScopeGet();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
@@ -19015,6 +19526,7 @@ function railSaveSettings(){
   if(sel&&sel.value) railLanding=sel.value;
   if(ah) railHoverMode=ah.checked;
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
+  var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railSavePrefs();
@@ -20549,7 +21061,7 @@ document.addEventListener('keydown',e=>{
   const inInput=(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
   if(e.key==='Escape'){closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeCompare();closeSummary();closeRes();closeSnap();closeSkillsPdfDlg();closeOrgChart();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();}
   if(e.key==='Enter'&&G('add-overlay').classList.contains('show'))confirmAdd();
-  if(e.key==='Enter'&&document.activeElement.id==='todo-new')addTodo();
+  if(e.key==='Enter'&&document.activeElement.id==='todo-new')addItem();
   if(e.key==='Delete'&&selId&&!inInput)deleteSelected();
   if(inInput)return; // don't fire shortcuts while typing
   if(e.key==='?'||e.key==='/')openHelp();

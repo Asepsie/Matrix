@@ -36,6 +36,16 @@ export function _allocCost(v, monthlyCost){
   if(v==='p')          return monthlyCost||0; // PTO: full cost
   var n=+v; return isNaN(n)?0:n*(monthlyCost||0);
 }
+/* Canonical cost-inclusion policy (see ARCHITECTURE.md › Cost model).
+   A resource's allocations contribute to cost/budget totals only when it is a
+   real counted resource: planning-only placeholders count only if includeInCost,
+   and anything flagged excludeFromCalc never counts. Vacancies DO count (planned
+   spend), matching the resource-plan CSV export. Every project-cost attribution
+   path (dashboard cost maps, monthly cost chart, transfer-to-projects) must gate
+   on this so headline "plan cost" agrees with the plan and honours the flags. */
+export function _costCounts(eng){
+  return !!eng && !eng.excludeFromCalc && !(eng.planningOnly && !eng.includeInCost);
+}
 
 /* ── Effective project revenue (M€) ─────────────────────────────────
    User-entered `impactEur` wins. When the user hasn't entered one, fall back
@@ -171,4 +181,116 @@ export function nbMove(curKey,prevKey){
   if(!curKey&&!prevKey) return 'none';
   var c=nbScore(curKey), p=nbScore(prevKey);
   return c>p?'up':(c<p?'down':'same');
+}
+
+/* ── Unified project work-item layer ─────────────────────────────────
+ * To-dos, risks and actions are stored in their own arrays (p.todos /
+ * p.risks / p.actions) so the rich risk-FMEA and action-gantt tabs keep
+ * working. These accessors present all three as ONE list of normalized
+ * wrappers { type,id,ref,text,done,priority,assigneeId,assignee,due,
+ * overdue,status } so the project panel + backlog treat them uniformly.
+ * `type` is 'todo' | 'risk' | 'action'. Writes go back to the source array. */
+var PROJ_ITEM_TYPES=['todo','risk','action'];
+// display metadata for an item type (label + glyph + accent colour)
+function projItemTypeMeta(type){
+  if(type==='risk')   return {label:t('Risk'),   glyph:'⚑', color:'var(--danger)'};
+  if(type==='action') return {label:t('Action'), glyph:'▷', color:'var(--accent2)'};
+  return {label:t('Task'), glyph:'○', color:'var(--muted)'};
+}
+// resolve an item's assignee to a display name: roster person (by assigneeId)
+// wins; else the free-text owner/member fallback; else '' (unassigned).
+function resolveAssignee(raw){
+  if(raw && raw.assigneeId!=null){
+    var e=_engByIdMap().get(raw.assigneeId);
+    if(e) return e.name;
+  }
+  return (raw && (raw.owner||raw.member)) || '';
+}
+// is a risk/action considered closed/done from its status text?
+function _itemStatusDone(type,raw){
+  var st=raw.status||'';
+  if(type==='risk')   return /closed|done|resolved|mitigated/i.test(st);
+  if(type==='action') return /done|complete|closed/i.test(st);
+  return !!raw.done;
+}
+// normalize one raw record of the given type into a unified wrapper
+function projItemWrap(p,type,raw){
+  var text = type==='todo'?(raw.text||''):(raw.desc||'');
+  var done = _itemStatusDone(type,raw);
+  var due  = type==='action'?(raw.due||raw.end||''):'';
+  var overdue = !!due && !done && new Date(due) < new Date();
+  return { type:type, id:raw.id, ref:raw, pid:p.id, pname:p.name, pcolor:p.color,
+           text:text, done:done, priority:raw.priority||'',
+           assigneeId:(raw.assigneeId!=null?raw.assigneeId:null),
+           assignee:resolveAssignee(raw), due:due, overdue:overdue,
+           status:raw.status||(done?'Done':'Open') };
+}
+// all items on a project as unified wrappers (todos, then risks, then actions)
+function projItems(p){
+  var out=[];
+  (p.todos||[]).forEach(function(r){ out.push(projItemWrap(p,'todo',r)); });
+  (p.risks||[]).forEach(function(r){ out.push(projItemWrap(p,'risk',r)); });
+  (p.actions||[]).forEach(function(r){ out.push(projItemWrap(p,'action',r)); });
+  return out;
+}
+// find the raw record of a given type+id on a project
+function projItemRaw(p,type,id){
+  var arr = type==='todo'?p.todos : type==='risk'?p.risks : p.actions;
+  return (arr||[]).find(function(r){return r.id===id;});
+}
+// create a new item of the given type (default priority carried through)
+function projAddItem(p,type,text,priority){
+  priority = priority||'';
+  if(type==='risk'){
+    if(!p.risks)p.risks=[];
+    var r={id:nextRiskId++,desc:text,prob:2,imp:2,mit:'',owner:'',status:'open',sev:5,occ:5,det:5,priority:priority,assigneeId:null};
+    p.risks.push(r); return r;
+  }
+  if(type==='action'){
+    if(!p.actions)p.actions=[];
+    var a={id:nextActionId++,desc:text,start:'',end:'',dep:'',status:'Open',member:'',color:'#5be5c8',isMilestone:false,due:'',priority:priority||'Medium',assigneeId:null,estimateD:null};
+    p.actions.push(a); return a;
+  }
+  if(!p.todos)p.todos=[];
+  var td={id:nextTodoId++,text:text,done:false,priority:priority||'Medium',assigneeId:null,due:'',estimateD:null};
+  p.todos.push(td); return td;
+}
+// toggle an item's done/closed state (writes to the type-appropriate field)
+function projToggleItemDone(p,type,id){
+  var raw=projItemRaw(p,type,id); if(!raw)return;
+  var done=_itemStatusDone(type,raw);
+  if(type==='todo')       raw.done=!raw.done;
+  else if(type==='risk')  raw.status=done?'open':'closed';
+  else                    raw.status=done?'Open':'Done';
+}
+// set an item's priority ('High'|'Medium'|'Low'|'')
+function projSetItemPriority(p,type,id,prio){ var r=projItemRaw(p,type,id); if(r)r.priority=prio; }
+// set an item's text (writes text or desc)
+function projSetItemText(p,type,id,text){ var r=projItemRaw(p,type,id); if(!r)return; if(type==='todo')r.text=text; else r.desc=text; }
+// set an arbitrary field on an item's raw record (assigneeId, due, estimateD, mit…)
+function projSetItemField(p,type,id,field,val){ var r=projItemRaw(p,type,id); if(r)r[field]=val; }
+// delete an item from its source array
+function projDeleteItem(p,type,id){
+  if(type==='todo')       p.todos  =(p.todos||[]).filter(function(r){return r.id!==id;});
+  else if(type==='risk')  p.risks  =(p.risks||[]).filter(function(r){return r.id!==id;});
+  else                    p.actions=(p.actions||[]).filter(function(r){return r.id!==id;});
+}
+// <select> options for an assignee picker: Unassigned + roster. A legacy free-text
+// owner/member (present when there's no assigneeId) is preserved as a '__free__'
+// option so switching to the roster never silently discards a typed name.
+function assigneeOptionsHTML(selId,freeText){
+  var o='<option value="">'+t('— Unassigned')+'</option>';
+  if(freeText && selId==null) o+='<option value="__free__" selected>'+escH(freeText)+' '+t('(free text)')+'</option>';
+  engineers.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);}).forEach(function(e){
+    o+='<option value="'+e.id+'"'+(selId===e.id?' selected':'')+'>'+escH(e.name)+'</option>';
+  });
+  return o;
+}
+// apply an assignee-<select> value onto a raw record: sets assigneeId and mirrors
+// the resolved roster name into ownerField ('owner'|'member') so the many existing
+// readers of owner/member (brief export, member summary, AI context) still work.
+function applyAssigneeSelect(raw,ownerField,v){
+  if(v==='__free__'){ raw.assigneeId=null; return; }        // keep the existing free text
+  if(v===''||v==null){ raw.assigneeId=null; raw[ownerField]=''; return; }
+  var id=+v; raw.assigneeId=id; var e=_engByIdMap().get(id); raw[ownerField]=e?e.name:'';
 }

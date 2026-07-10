@@ -33,6 +33,7 @@ var RAIL_I = {
   skills:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="1.4"/></svg>',
   talent:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-8.5"/><path d="M12 12.5C11.4 9.6 8.9 8 5.9 8c.1 3 2.5 4.9 6.1 4.5z"/><path d="M12 11.5c.5-2.6 2.7-4 5.6-4-.1 2.8-2.3 4.3-5.6 4z"/></svg>',
   insights:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="12" width="3.6" height="7.5" rx="1"/><rect x="10.2" y="6" width="3.6" height="13.5" rx="1"/><rect x="16.4" y="9" width="3.6" height="10.5" rx="1"/></svg>',
+  planning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 12h10"/><path d="M4 18h7"/><path d="m16.5 16.5 2 2 3.5-3.8"/></svg>',
   snap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
   backup:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v8.6L12 20l-7.5-4.2V7.2z"/><path d="M4.8 7.4L12 11.5l7.2-4.1"/><path d="M12 11.5V20"/></svg>',
   restore:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v3.4h3.4"/></svg>',
@@ -66,6 +67,9 @@ var RAIL_DOMAINS = [
     {id:'decision',    label:t('Trade-off decision')},
     {id:'dtc',         label:t('Design to cost')},
     {id:'brief',       label:t('Project brief')},
+  ]},
+  { id:'planning', name:t('PLAN'), ico:RAIL_I.planning, views:[
+    {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
     {id:'skills',      label:t('Skills matrix')},
@@ -105,6 +109,7 @@ var railLanding=null;        // stored default landing view id; null = first run
 var railRouting=false;       // true while railGo/railRoute is switching surfaces
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
+var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
 var railFlyDom=null, railFlyTimer=null;
 var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
@@ -116,14 +121,17 @@ function railLoadPrefs(){
        if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
               if(typeof p.landing==='string')  railLanding=p.landing;
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
+              if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope})); }catch(e){}
 }
 // Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
 function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
+// Sidebar badge scope accessor (read by sidebar.js projItemHTML). 'all' | 'tasks'.
+function railBadgeScopeGet(){ return railBadgeScope==='tasks' ? 'tasks' : 'all'; }
 // clamp the collapsed width to a range that keeps the icon strip + layout intact
 function railClampWidth(v){ v=+v; if(isNaN(v)) return RAIL_W_DEFAULT; return Math.max(RAIL_W_MIN,Math.min(RAIL_W_MAX,Math.round(v))); }
 // push the collapsed width to the --rail CSS variable; everything (gutter, overlay
@@ -234,7 +242,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -381,6 +389,7 @@ function railOpenSettings(){
   }
   var ah=G('set-autohide'); if(ah) ah.checked=railHoverMode;
   var cp=G('set-chartpicker'); if(cp) cp.value=railChartPicker();
+  var bs=G('set-badgescope'); if(bs) bs.value=railBadgeScopeGet();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
@@ -392,6 +401,7 @@ function railSaveSettings(){
   if(sel&&sel.value) railLanding=sel.value;
   if(ah) railHoverMode=ah.checked;
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
+  var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railSavePrefs();

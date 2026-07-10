@@ -41,6 +41,9 @@ main{display:flex;flex:1;overflow:hidden;}
 #editor{border-top:1px solid var(--border);padding:11px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;max-height:60vh;overflow-y:auto;}
 #editor h2{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;}
 .field{display:flex;flex-direction:column;gap:3px;}
+/* Theme the native <option> popup — transparent-bg selects (risk/actions tables)
+   otherwise render dim, unreadable options on dark backgrounds (Windows/Chrome). */
+select option{background:var(--surface);color:var(--text);}
 .field label{font-size:10px;color:var(--muted);}
 .field input[type=text],.field input[type=number],.field input[type=date],.field select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px;outline:none;width:100%;transition:border-color .15s;}
 .field input:focus,.field select:focus{border-color:var(--accent);}
@@ -59,6 +62,45 @@ main{display:flex;flex:1;overflow:hidden;}
 .todo-del:hover{color:var(--danger);}
 .todo-add-row{display:flex;gap:5px;margin-top:4px;}
 .todo-add-row input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 6px;border-radius:4px;outline:none;}
+/* priority dot: click to cycle High→Medium→Low→none */
+.todo-prio{flex-shrink:0;width:9px;height:9px;border-radius:50%;border:none;cursor:pointer;padding:0;}
+.todo-prio.p-high{background:var(--danger);}
+.todo-prio.p-medium{background:var(--warn);}
+.todo-prio.p-low{background:var(--muted);}
+.todo-prio.p-none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border);}
+.items-head{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.tasks-expand{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:12px;line-height:1;padding:2px 6px;border-radius:4px;cursor:pointer;}
+.tasks-expand:hover{border-color:var(--accent);color:var(--accent);}
+.item-type-ico{flex-shrink:0;width:12px;text-align:center;font-size:11px;line-height:1;}
+.item-assignee{flex-shrink:0;font-size:9px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.item-overdue{flex-shrink:0;color:var(--danger);font-weight:700;font-size:11px;}
+.item-exp,.todo-item .item-exp{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:9px;padding:0 2px;line-height:1;}
+.item-exp:hover{color:var(--text);}
+.item-type-btn{flex-shrink:0;width:24px;background:var(--bg);border:1px solid var(--border);color:var(--muted);font-size:12px;line-height:1;padding:4px 0;border-radius:4px;cursor:pointer;text-align:center;}
+.item-type-btn:hover{border-color:var(--accent);}
+.item-detail{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;margin:0 0 5px 4px;display:flex;flex-direction:column;gap:4px;}
+.item-detail .idet-row{display:flex;align-items:center;gap:6px;}
+.item-detail .idet-row label{flex-shrink:0;width:58px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.item-detail .idet-row select,.item-detail .idet-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 5px;border-radius:3px;outline:none;min-width:0;}
+/* Backlog editable rows (PLAN › Backlog) */
+.bl-addbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}
+.bl-addbar #bl-add-text{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;}
+.bl-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-top:1px solid var(--border);}
+.bl-row.bl-done{opacity:.55;}
+.bl-check{accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer;}
+.bl-row .todo-prio{width:10px;height:10px;}
+.bl-text{flex:1;min-width:0;background:var(--bg);border:1px solid transparent;color:var(--text);font-size:12px;padding:3px 6px;border-radius:4px;outline:none;}
+.bl-text:hover{border-color:var(--border);}
+.bl-text:focus{border-color:var(--accent);}
+.bl-text-ro{flex:1;min-width:0;font-size:12px;color:var(--text);padding:3px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bl-text-ro.bl-strike{text-decoration:line-through;color:var(--muted);}
+.bl-assignee{flex:0 0 128px;width:128px;min-width:0;}
+.bl-due,.bl-est{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 4px;border-radius:4px;outline:none;flex-shrink:0;}
+.bl-due{width:120px;}
+.bl-est{width:46px;text-align:right;}
+.bl-due-ro{width:120px;flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);text-align:right;}
+.bl-open{flex-shrink:0;color:var(--accent2);cursor:pointer;font-size:13px;text-decoration:none;padding:0 6px;}
+.bl-open:hover{color:var(--accent);}
 
 /* MATRIX */
 #matrix-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}

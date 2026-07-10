@@ -16,7 +16,7 @@ area.
 | Task | File to read |
 |------|-------------|
 | Add a field to Engineer | src/data/model.js only |
-| Fix allocation/cost bug | src/core/helpers.js |
+| Fix allocation/cost bug | src/core/helpers.js (+ ARCHITECTURE.md › Cost model) |
 | Fix save/load/sanitise | src/core/persist.js (+ ARCHITECTURE.md) |
 | Fix photos / backup / restore | src/core/photo.js, src/sections/backup.js (+ ARCHITECTURE.md) |
 | AI advisor / chatbot (WebLLM) | src/sections/ai.js (+ ARCHITECTURE.md) |
