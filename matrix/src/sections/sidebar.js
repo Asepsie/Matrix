@@ -10,10 +10,11 @@
  *   updateEditorLabels  — updates the editor's axis label to match the X-axis name
  *   saveEdit            — writes editor inputs back to the selected project
  *   deleteSelected      — deletes the selected project
- *   renderTodos         — renders the todo list for a project
- *   addTodo             — adds a todo to the selected project
- *   toggleTodo          — toggles a todo's done state
- *   removeTodo          — removes a todo from a project
+ *   renderItems         — renders the unified item list (todos+risks+actions) for a project
+ *   addItem             — quick-adds an item of the current type to the selected project
+ *   cycleNewItemType    — cycles the quick-add item type (todo→risk→action)
+ *   toggleItem/removeItem/cycleItemPrio — per-row done / delete / priority
+ *   itemDetailHTML + setItem*           — click-to-expand assignee/due/estimate/mitigation
  *   onProjDragStart     — drag start for a sidebar project row
  *   onProjDragEnd       — drag end for a sidebar project row
  *   onSectionDrop       — drops a dragged project into a section
@@ -70,7 +71,9 @@ function renderList(){
 
 // builds the HTML for one project row in the sidebar
 function projItemHTML(p){
-  const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
+  const scope=(typeof railBadgeScopeGet==='function')?railBadgeScopeGet():'all';
+  const its=projItems(p).filter(i=>scope==='tasks'?i.type==='todo':true);
+  const tt=its.length,td=its.filter(i=>i.done).length;
   const meta=[`${p.x},${+(getProjY(p)).toFixed(1)}`,p.gate?'🏁':'',tt?`☑${td}/${tt}`:''].filter(Boolean).join(' ');
   return `<div class="proj-item${p.id===selId?' sel':''}" draggable="true"
     ondragstart="onProjDragStart(event,${p.id})" ondragend="onProjDragEnd(event)">
@@ -110,7 +113,7 @@ function populateEditor(){
   G('e-color-hex').textContent=p.color;
   populateSectionDropdowns();
   G('e-section').value=p.sectionId||'';
-  updateEditorLabels();renderTodos(p);
+  updateEditorLabels();renderItems(p);
 }
 // updates the editor's axis label to match the X-axis name
 function updateEditorLabels(){
@@ -137,21 +140,97 @@ function deleteSelected(){
   G('editor').style.display='none';renderList();render();saveState();
 }
 
-// renders the todo list for a project
-function renderTodos(p){
-  G('todo-list').innerHTML=(p.todos||[]).map(t=>`
-    <div class="todo-item">
-      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${p.id},${t.id})">
-      <span class="todo-text${t.done?' done':''}">${escH(t.text)}</span>
-      <button class="todo-del" onclick="removeTodo(${p.id},${t.id})">×</button>
-    </div>`).join('');
+/* ── Task list in the project panel (tasks/to-dos only) ──────────────
+   Kept deliberately short: quick-add is type-and-Enter, priority is the
+   small click-to-cycle dot, assignee/due/estimate live in the expand row.
+   Risks & actions have their own project-window tabs; the full cross-type
+   backlog (all three) lives in PLAN › Backlog (⤢ button opens it filtered
+   to this project). */
+const _itemOpen=new Set();          // expanded item keys ("type:id"), UI-only
+const ITEM_PRIOS=['High','Medium','Low',''];   // cycle order ('' = none)
+// css class for the priority dot
+function prioDotClass(pr){ return pr==='High'?'p-high':pr==='Medium'?'p-medium':pr==='Low'?'p-low':'p-none'; }
+function _firstName(n){ return String(n||'').split(' ')[0]; }
+// roster <option> list for an assignee picker (value = eng.id; '' = unassigned)
+function itemAssigneeOptions(selId){
+  var o='<option value="">'+t('— Unassigned')+'</option>';
+  engineers.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);}).forEach(function(e){
+    o+='<option value="'+e.id+'"'+(selId===e.id?' selected':'')+'>'+escH(e.name)+'</option>';
+  });
+  return o;
 }
-// adds a todo to the selected project
-function addTodo(){const p=projects.find(p=>p.id===selId);if(!p)return;const txt=V('todo-new').trim();if(!txt)return;if(!p.todos)p.todos=[];p.todos.push({id:nextTodoId++,text:txt,done:false});SV('todo-new','');renderTodos(p);renderList();saveState();}
-// toggles a todo's done state
-function toggleTodo(pid,tid){const p=projects.find(p=>p.id===pid);if(!p)return;const t=p.todos.find(t=>t.id===tid);if(t)t.done=!t.done;renderTodos(p);renderList();render();saveState();}
-// removes a todo from a project
-function removeTodo(pid,tid){const p=projects.find(p=>p.id===pid);if(!p)return;p.todos=p.todos.filter(t=>t.id!==tid);renderTodos(p);renderList();render();saveNow();}
+// renders the task list (to-dos only) for a project
+function renderItems(p){
+  var host=G('todo-list'); if(!host)return;
+  var tasks=projItems(p).filter(function(it){return it.type==='todo';});
+  host.innerHTML=tasks.map(function(it){
+    var key=it.type+':'+it.id, open=_itemOpen.has(key);
+    var h='<div class="todo-item">'
+      +'<input type="checkbox" '+(it.done?'checked':'')+' onchange="toggleItem('+p.id+',\''+it.type+'\','+it.id+')">'
+      +'<button class="todo-prio '+prioDotClass(it.priority)+'" title="'+(it.priority||t('No priority'))+' — '+t('click to change')+'" onclick="cycleItemPrio('+p.id+',\''+it.type+'\','+it.id+')"></button>'
+      +'<span class="todo-text'+(it.done?' done':'')+'">'+escH(it.text||t('(empty)'))+'</span>'
+      +(it.assignee?'<span class="item-assignee" title="'+escH(it.assignee)+'">'+escH(_firstName(it.assignee))+'</span>':'')
+      +(it.overdue?'<span class="item-overdue" title="'+t('Overdue')+'">!</span>':'')
+      +'<button class="item-exp" title="'+t('Details')+'" onclick="toggleItemExpand(\''+key+'\')">'+(open?'▾':'▸')+'</button>'
+      +'<button class="todo-del" onclick="removeItem('+p.id+',\''+it.type+'\','+it.id+')">×</button>'
+      +'</div>';
+    if(open) h+=itemDetailHTML(p,it);
+    return h;
+  }).join('');
+}
+// the click-to-expand detail panel for one item
+function itemDetailHTML(p,it){
+  var raw=it.ref||{}, fieldName=it.type==='action'?'member':'owner';
+  var freeText=(it.assigneeId==null&&raw[fieldName])?raw[fieldName]:'';
+  var h='<div class="item-detail">'
+    +'<div class="idet-row"><label>'+t('Assignee')+'</label>'
+    +'<select onchange="setItemAssignee('+p.id+',\''+it.type+'\','+it.id+',this.value)">'+itemAssigneeOptions(it.assigneeId)+'</select></div>'
+    +'<div class="idet-row"><label>'+t('or name')+'</label>'
+    +'<input type="text" value="'+escH(freeText)+'" placeholder="'+t('free text')+'" onchange="setItemOwner('+p.id+',\''+it.type+'\','+it.id+',this.value)"></div>';
+  if(it.type!=='risk'){
+    h+='<div class="idet-row"><label>'+t('Due')+'</label>'
+      +'<input type="date" value="'+escH(raw.due||'')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'due\',this.value)"></div>'
+      +'<div class="idet-row"><label>'+t('Estimate')+'</label>'
+      +'<input type="number" min="0" step="0.5" value="'+(raw.estimateD!=null?raw.estimateD:'')+'" placeholder="'+t('FTE-days')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'estimateD\',this.value===\'\'?null:+this.value)"></div>';
+  } else {
+    h+='<div class="idet-row"><label>'+t('Mitigation')+'</label>'
+      +'<input type="text" value="'+escH(raw.mit||'')+'" placeholder="'+t('mitigation plan')+'" onchange="setItemField('+p.id+',\''+it.type+'\','+it.id+',\'mit\',this.value)"></div>';
+  }
+  return h+'</div>';
+}
+// quick-add: create a task (to-do) from the text box
+function addItem(){
+  var p=projects.find(function(p){return p.id===selId;}); if(!p)return;
+  var txt=V('todo-new').trim(); if(!txt)return;
+  projAddItem(p,'todo',txt,'Medium');
+  SV('todo-new','');
+  renderItems(p); renderList(); saveState();
+}
+// open the full cross-type backlog filtered to the selected project (⤢ button)
+function openProjectBacklog(){
+  if(typeof _blSetProjectFilter==='function') _blSetProjectFilter(selId);
+  if(typeof railGo==='function') railGo(null,'backlog');
+}
+// toggle the expand panel for an item row
+function toggleItemExpand(key){ if(_itemOpen.has(key))_itemOpen.delete(key); else _itemOpen.add(key); var p=projects.find(function(p){return p.id===selId;}); if(p)renderItems(p); }
+// cycle an item's priority (High → Medium → Low → none)
+function cycleItemPrio(pid,type,id){
+  var p=projects.find(function(p){return p.id===pid;}); if(!p)return;
+  var r=projItemRaw(p,type,id); if(!r)return;
+  var i=ITEM_PRIOS.indexOf(r.priority||'');
+  projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]);
+  renderItems(p); renderList(); saveState();
+}
+// toggle an item's done/closed state
+function toggleItem(pid,type,id){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projToggleItemDone(p,type,id); renderItems(p); renderList(); render(); saveState(); }
+// delete an item
+function removeItem(pid,type,id){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projDeleteItem(p,type,id); _itemOpen.delete(type+':'+id); renderItems(p); renderList(); render(); saveNow(); }
+// set the roster assignee ('' → unassigned/null)
+function setItemAssignee(pid,type,id,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,'assigneeId',val===''?null:+val); renderItems(p); saveState(); }
+// set free-text owner/member (clears the roster link if a name is typed)
+function setItemOwner(pid,type,id,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,type==='action'?'member':'owner',val); if(val)projSetItemField(p,type,id,'assigneeId',null); renderItems(p); saveState(); }
+// set an arbitrary field on an item (due, estimateD, mit)
+function setItemField(pid,type,id,field,val){ var p=projects.find(function(p){return p.id===pid;}); if(!p)return; projSetItemField(p,type,id,field,val); saveState(); }
 
 let _dragProjId=null;
 // drag start for a sidebar project row

@@ -51,6 +51,7 @@ const JS_FILES = [
   'sections/disc.js',
   'sections/analytics.js',
   'sections/portfolio.js',
+  'sections/backlog.js',
   'sections/backup.js',
   'sections/ai.js',
   'sections/nav.js',

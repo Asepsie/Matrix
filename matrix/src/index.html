@@ -192,11 +192,14 @@
       <div class="field"><label>NEXT GATE</label><input type="text" id="e-gate" placeholder="e.g. Gate 3 – Design Review"></div>
       <div class="field"><label>ETA</label><input type="date" id="e-eta"></div>
       <hr class="ed-sep">
-      <div class="field"><label>TODO LIST</label>
+      <div class="field">
+        <div class="items-head"><label data-i18n="Tasks">Tasks</label>
+          <button class="tasks-expand" onclick="openProjectBacklog()" title="Open the full backlog for this project" data-i18n-title="Open the full backlog for this project">⤢</button>
+        </div>
         <div id="todo-list"></div>
         <div class="todo-add-row">
-          <input type="text" id="todo-new" placeholder="New task…">
-          <button class="sm" onclick="addTodo()">+</button>
+          <input type="text" id="todo-new" placeholder="Add task, press Enter" data-i18n-ph="Add task, press Enter">
+          <button class="sm" onclick="addItem()">+</button>
         </div>
       </div>
       <hr class="ed-sep">
@@ -371,6 +374,14 @@
         <option value="dropdown" data-i18n="Dropdown — a top selector (like Design-to-cost)">Dropdown — a top selector (like Design-to-cost)</option>
       </select>
       <span data-i18n="How you pick a project in Financials analysis & Trade-off decision." style="font-size:10px;color:var(--muted)">How you pick a project in Financials analysis &amp; Trade-off decision.</span>
+    </div>
+    <div class="field">
+      <label data-i18n="PROJECT LIST BADGE">PROJECT LIST BADGE</label>
+      <select id="set-badgescope">
+        <option value="all" data-i18n="All items (tasks + risks + actions)">All items (tasks + risks + actions)</option>
+        <option value="tasks" data-i18n="Tasks only">Tasks only</option>
+      </select>
+      <span data-i18n="What the ☑ count on each project row includes." style="font-size:10px;color:var(--muted)">What the ☑ count on each project row includes.</span>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text)">
       <input type="checkbox" id="set-autohide" style="accent-color:var(--accent);width:14px;height:14px">

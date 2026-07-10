@@ -16,7 +16,7 @@ document.addEventListener('keydown',e=>{
   const inInput=(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
   if(e.key==='Escape'){closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeCompare();closeSummary();closeRes();closeSnap();closeSkillsPdfDlg();closeOrgChart();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();}
   if(e.key==='Enter'&&G('add-overlay').classList.contains('show'))confirmAdd();
-  if(e.key==='Enter'&&document.activeElement.id==='todo-new')addTodo();
+  if(e.key==='Enter'&&document.activeElement.id==='todo-new')addItem();
   if(e.key==='Delete'&&selId&&!inInput)deleteSelected();
   if(inInput)return; // don't fire shortcuts while typing
   if(e.key==='?'||e.key==='/')openHelp();

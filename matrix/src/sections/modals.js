@@ -113,7 +113,7 @@ function saveProjTab(){
       const r=p.risks.find(r=>r.id===+tr.dataset.rid);if(!r)return;
       r.desc=tr.querySelector('.r-desc').value;r.prob=+tr.querySelector('.r-prob').value||1;
       r.imp=+tr.querySelector('.r-imp').value||1;r.mit=tr.querySelector('.r-mit').value;
-      r.owner=tr.querySelector('.r-owner').value;r.status=tr.querySelector('.r-status').value;
+      applyAssigneeSelect(r,'owner',tr.querySelector('.r-owner').value);r.status=tr.querySelector('.r-status').value;
       r.sev=+tr.querySelector('.r-sev').value||1;r.occ=+tr.querySelector('.r-occ').value||1;r.det=+tr.querySelector('.r-det').value||1;
     });
   } else {
@@ -141,7 +141,7 @@ function renderRiskTab(p){
       <td><input class="r-prob" type="number" min="1" max="5" value="${r.prob||1}" style="width:34px"></td>
       <td><input class="r-imp"  type="number" min="1" max="5" value="${r.imp||1}"  style="width:34px"></td>
       <td><input class="r-mit"  value="${escH(r.mit||'')}"></td>
-      <td><input class="r-owner" value="${escH(r.owner||'')}"></td>
+      <td><select class="r-owner" style="width:100%">${assigneeOptionsHTML(r.assigneeId,r.owner)}</select></td>
       <td><select class="r-status">${stO}</select></td>
       <td><input class="r-sev" type="number" min="1" max="10" value="${r.sev||1}" style="width:32px"></td>
       <td><input class="r-occ" type="number" min="1" max="10" value="${r.occ||1}" style="width:32px"></td>
@@ -270,7 +270,7 @@ function renderSchedTab(p){
       <td style="padding:3px 4px"><input class="eng-card-inp a-start-s" type="date" value="${a.start||''}"></td>
       <td style="padding:3px 4px"><input class="eng-card-inp a-end-s" type="date" value="${a.end||''}"></td>
       <td style="padding:3px 4px"><select class="alloc-sel a-status-s" style="width:100%;color:${statusColors[a.status]||'var(--text)'}">${stO}</select></td>
-      <td style="padding:3px 4px"><input class="eng-card-inp a-member-s" value="${escH(a.member||'')}" placeholder="—"></td>
+      <td style="padding:3px 4px"><select class="alloc-sel a-member-s" style="width:100%">${assigneeOptionsHTML(a.assigneeId,a.member)}</select></td>
       <td style="padding:3px 4px"><div id="dep-a${a.id}" style="display:flex;flex-wrap:wrap;gap:2px;padding:2px">${depTags('a'+a.id,a.dep)}</div></td>
       <td style="padding:3px 4px"><button class="row-del-btn" onclick="schedDelAction(${p.id},${a.id})">×</button></td>
     </tr>`;
@@ -407,7 +407,7 @@ function schedSave(pid){
     const s=tr.querySelector('.a-start-s'); if(s)a.start=s.value;
     const e=tr.querySelector('.a-end-s');   if(e)a.end=e.value;
     const st=tr.querySelector('.a-status-s');if(st)a.status=st.value;
-    const me=tr.querySelector('.a-member-s');if(me)a.member=me.value;
+    const me=tr.querySelector('.a-member-s');if(me)applyAssigneeSelect(a,'member',me.value);
     a.dep=schedGetDep('dep-a'+a.id);
   });
   // Milestones
@@ -968,7 +968,7 @@ function renderActionsTab(p){
     const stOpts=['Open','In Progress','Done','Blocked'].map(v=>`<option${a.status===v?' selected':''}>${v}</option>`).join('');
     h+=`<tr data-aid="${a.id}" class="${stCls}">
       <td><input class="a-desc" value="${escH(a.desc||'')}"></td>
-      <td><input class="a-member" value="${escH(a.member||'')}" list="member-list" placeholder="${t('Team member')}"></td>
+      <td><select class="a-member" style="width:100%">${assigneeOptionsHTML(a.assigneeId,a.member)}</select></td>
       <td><input class="a-due" type="date" value="${a.due||''}"></td>
       <td><select class="a-prio">${prioOpts}</select></td>
       <td><select class="a-status">${stOpts}</select></td>
@@ -1034,7 +1034,7 @@ function saveActionsTabData(p){
   G('ptw-body').querySelectorAll('tr[data-aid]').forEach(tr=>{
     const a=p.actions.find(a=>a.id===+tr.dataset.aid);if(!a)return;
     a.desc=tr.querySelector('.a-desc').value;
-    a.member=tr.querySelector('.a-member').value;
+    applyAssigneeSelect(a,'member',tr.querySelector('.a-member').value);
     a.due=tr.querySelector('.a-due').value;
     a.priority=tr.querySelector('.a-prio').value;
     a.status=tr.querySelector('.a-status').value;
