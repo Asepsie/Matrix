@@ -85,6 +85,7 @@ function renderPortfolioAnalytics(){
   h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
   h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
   h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
+  h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on OFFER MNGT ▸ Channel mix.'), pfChannelMix(ds));
   h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
   h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
   h+='</div>';
@@ -228,6 +229,28 @@ function pfSectorMix(ds){
       +'<div style="width:150px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--accent2)">'+pfEur(r.d.rev)+'</span> / <span style="color:var(--accent)">'+pfEur(r.d.cost)+'</span></div></div>';
   });
   h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('top bar = revenue (teal) · bottom bar = cost (lime)')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// Portfolio go-to-market channel mix — aggregates charter.channelModel across
+// projects via the pure chanAggregate() helper (revenue = project revenue ×
+// channel share). Horizontal bars, sorted by € revenue, with % of total + margin.
+function pfChannelMix(ds){
+  var rows=(typeof chanAggregate==='function')?chanAggregate(projects):[];
+  rows=rows.filter(function(r){return r.revenue>0;});
+  if(!rows.length) return pfEmpty(t('No channel mix defined yet — set channels on OFFER MNGT ▸ Channel mix.'));
+  var total=rows.reduce(function(s,r){return s+r.revenue;},0);
+  var max=rows.reduce(function(s,r){return Math.max(s,r.revenue);},0)||1;
+  var h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(function(r){
+    var bp=r.revenue/max*100, share=total>0?(r.revenue/total*100):0;
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:120px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.name)+'">'+escH(r.name)+'</div>'
+      +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bp.toFixed(1)+'%;background:'+r.color+'"></div></div>'
+      +'<div style="width:170px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--text)">'+pfEur(r.revenue)+'</span> <span style="color:var(--dim)">'+share.toFixed(0)+'%</span>'+(r.margin!=null?' <span style="color:var(--accent2)">m'+r.margin.toFixed(0)+'%</span>':'')+'</div></div>';
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = € revenue by channel · share of portfolio · blended margin')+'</div>';
   h+='</div>';
   return h;
 }

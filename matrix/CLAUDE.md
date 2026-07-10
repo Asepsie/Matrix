@@ -24,6 +24,8 @@ area.
 | Portfolio (project) analytics | src/sections/portfolio.js |
 | Cross-functional charter (demands / square / financials / deck) | src/sections/charter.js, src/core/financial.js (+ ARCHITECTURE.md) |
 | Design-to-cost (cascade / waterfall / guidelines) | src/sections/dtc.js (+ ARCHITECTURE.md) |
+| Channel mix / go-to-market synoptic | src/sections/channels.js (+ ARCHITECTURE.md) |
+| Portfolio economics (cross-layer analytics) | src/sections/econ.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
 | Fix ID card modal (engineer) | src/sections/idcard.js |

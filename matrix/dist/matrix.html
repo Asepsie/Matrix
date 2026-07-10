@@ -998,6 +998,41 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .chthub-prio.lo{ color:var(--muted); }
 .chthub-metric.ok{ color:var(--accent2); border-color:var(--accent2); }
 .chthub-metric.conflict{ color:var(--danger); border-color:var(--danger); }
+
+/* ── Channel mix (OFFER MNGT › Channel mix rail view) ── */
+#chan-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
+}
+#chan-overlay.show{ display:flex; }
+#chan-pick{ display:inline-flex; align-items:center; gap:6px; }
+#chan-header{ display:flex; align-items:center; gap:10px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+#chan-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#chan-body{ flex:1; overflow:auto; padding:18px 22px; max-width:1000px; }
+.chan-head{ display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end; margin-bottom:16px; }
+.chan-head .cht-f{ margin:0; }
+.chan-ctx{ flex-basis:100%; font-size:11px; color:var(--muted); }
+.chan-ctx b{ color:var(--text); }
+.chan-card{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; margin:0 0 16px; }
+.chan-sec-t{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--accent);
+  letter-spacing:.06em; margin-bottom:10px; }
+.chan-synoptic{ overflow-x:auto; }
+.chan-svg{ display:block; }
+.chan-totals{ display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline;
+  font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--border);
+  border-radius:6px; padding:8px 12px; margin:0 0 16px; }
+.chan-totals b{ color:var(--text); }
+.chan-totals .good{ color:var(--accent2); }
+.chan-totals .bad{ color:var(--danger); }
+.chan-tbl-wrap{ overflow-x:auto; }
+.chan-tbl th{ white-space:nowrap; }
+.chan-tbl .chan-num{ width:74px; text-align:right; }
+.chan-tbl .chan-val{ font-family:IBM Plex Mono,monospace; font-size:11px; color:var(--accent2); white-space:nowrap; }
+.chan-swatch{ display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid var(--border); }
+.chan-color{ width:30px; height:24px; padding:0; border:1px solid var(--border); border-radius:4px;
+  background:none; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -1452,18 +1487,18 @@ var I18N_PSEUDO   = 'xx';         // dev pseudo-locale — see i18nPseudo()
 var I18N_DICT = {
   fr: {
     /* Nav rail — domains */
-    'TEAM':'ÉQUIPE', 'WORK':'TRAVAIL', 'SKILLS':'COMPÉTENCES',
+    'TEAM':'ÉQUIPE', 'WORK':'TRAVAIL', 'OFFER MNGT':'GESTION D\'OFFRE', 'SKILLS':'COMPÉTENCES',
     'TALENT':'TALENTS', 'INSIGHTS':'ANALYSES',
     /* Nav rail — views */
     'Roster':'Effectif', 'Org chart':'Organigramme',
     'Portfolio matrix':'Matrice de portefeuille', 'was home':'ancien accueil',
     'Resource plan':'Plan de ressources', 'Timeline':'Chronologie',
     'Financials analysis':'Analyse financière', 'Trade-off decision':'Décision d\'arbitrage',
-    'Design to cost':'Conception à coût objectif', 'Project brief':'Brief projet',
+    'Design to cost':'Conception à coût objectif', 'Channel mix':'Mix de canaux', 'Project brief':'Brief projet',
     'Skills matrix':'Matrice de compétences', 'Skill risk':'Risque de compétence',
     'Heatmap':'Carte de chaleur', 'Nine-box':'Nine-box',
     'Team profiles':'Profils d\'équipe', 'Development':'Développement',
-    'Portfolio analytics':'Analyse de portefeuille', 'People analytics':'Analyse RH',
+    'Portfolio analytics':'Analyse de portefeuille', 'Portfolio economics':'Économie de portefeuille', 'People analytics':'Analyse RH',
     'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Compare':'Comparer',
     /* Nav rail — utility actions */
     'Snapshots':'Instantanés', 'Backup':'Sauvegarde', 'Restore':'Restaurer',
@@ -1922,18 +1957,18 @@ var I18N_DICT = {
   },
   zh: {
     /* Nav rail — domains */
-    'TEAM':'团队', 'WORK':'工作', 'SKILLS':'技能',
+    'TEAM':'团队', 'WORK':'工作', 'OFFER MNGT':'产品管理', 'SKILLS':'技能',
     'TALENT':'人才', 'INSIGHTS':'洞察',
     /* Nav rail — views */
     'Roster':'花名册', 'Org chart':'组织架构图',
     'Portfolio matrix':'组合矩阵', 'was home':'原主页',
     'Resource plan':'资源计划', 'Timeline':'时间线',
     'Financials analysis':'财务分析', 'Trade-off decision':'权衡决策',
-    'Design to cost':'成本设计', 'Project brief':'项目简介',
+    'Design to cost':'成本设计', 'Channel mix':'渠道组合', 'Project brief':'项目简介',
     'Skills matrix':'技能矩阵', 'Skill risk':'技能风险',
     'Heatmap':'热力图', 'Nine-box':'九宫格',
     'Team profiles':'团队画像', 'Development':'发展',
-    'Portfolio analytics':'组合分析', 'People analytics':'人员分析',
+    'Portfolio analytics':'组合分析', 'Portfolio economics':'组合经济', 'People analytics':'人员分析',
     'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Compare':'对比',
     /* Nav rail — utility actions */
     'Snapshots':'快照', 'Backup':'备份', 'Restore':'恢复',
@@ -2628,8 +2663,32 @@ function makeCharter(overrides = {}) {
     financials: makeCharterFinancials(),
     decision:   makeDecisionCard(),
     costModel:  makeCostModel(),
+    channelModel: makeChannelModel(),
     ...overrides,
   };
+}
+
+// Go-to-market CHANNEL model (on the charter). The go-to-market synoptic:
+// company/project → channels → segments. `basis` sets what each channel's `pct`
+// means: 'revenue' (split the charter's expected revenue → € per channel),
+// 'volume' (split `totalUnits` → units per channel) or 'emphasis' (a relative
+// go-to-market weighting only). Percentages are shares that ideally sum to 100.
+function makeChannelModel(overrides = {}) {
+  return {
+    company: '',            // labels the top of the synoptic (per-project)
+    basis: 'revenue',       // 'revenue' | 'volume' | 'emphasis'
+    totalUnits: null,       // used only when basis==='volume'
+    channels: ['OEM','Distributor','E-commerce','Retail','Partner'].map(name => makeChannel({ name })),
+    ...overrides,
+  };
+}
+// One go-to-market channel. `pct` = share (%); `margin` = channel margin (%);
+// `partner` = named partner/account; `segment` = the single downstream customer
+// segment this channel serves (one segment per channel — a segment reached via
+// two channels appears under each, so the synoptic never needs crossing arrows).
+// `color` is an optional swatch (assigned from a palette by index when blank).
+function makeChannel(overrides = {}) {
+  return { name: '', pct: 0, margin: null, partner: '', segment: '', color: '', note: '', ...overrides };
 }
 
 // One stakeholder demand. `dimension` is the trade-off corner it pushes
@@ -3876,6 +3935,23 @@ function sanitiseCharter(p){
     if(s.include==null) s.include=true;
     if(!Array.isArray(s.items)) s.items=[];
     s.items.forEach(it=>{ if(it.include==null) it.include=true; if(it.cost==null) it.cost=0; });
+  });
+  // Go-to-market channel model (added later; back-fill for older charters).
+  // A missing model is seeded with the default channels; an intentionally
+  // emptied one stays empty (we only replace when absent/invalid).
+  if(!c.channelModel||typeof c.channelModel!=='object') c.channelModel=makeChannelModel();
+  if(typeof c.channelModel.company!=='string') c.channelModel.company='';
+  if(!['revenue','volume','emphasis'].includes(c.channelModel.basis)) c.channelModel.basis='revenue';
+  if(c.channelModel.totalUnits===undefined) c.channelModel.totalUnits=null;
+  if(!Array.isArray(c.channelModel.channels)) c.channelModel.channels=[];
+  c.channelModel.channels.forEach(ch=>{
+    if(typeof ch.name!=='string') ch.name='';
+    if(ch.pct==null||!Number.isFinite(+ch.pct)) ch.pct=0;
+    if(ch.margin===undefined) ch.margin=null;
+    if(typeof ch.partner!=='string') ch.partner='';
+    if(typeof ch.segment!=='string') ch.segment='';
+    if(typeof ch.color!=='string') ch.color='';
+    if(typeof ch.note!=='string') ch.note='';
   });
   if(!Array.isArray(c.financials.cashFlows))       c.financials.cashFlows=[];
   if(!c.financials.unit)                           c.financials.unit='eur';
@@ -17134,6 +17210,7 @@ function renderPortfolioAnalytics(){
   h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
   h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
   h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
+  h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on OFFER MNGT ▸ Channel mix.'), pfChannelMix(ds));
   h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
   h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
   h+='</div>';
@@ -17277,6 +17354,28 @@ function pfSectorMix(ds){
       +'<div style="width:150px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--accent2)">'+pfEur(r.d.rev)+'</span> / <span style="color:var(--accent)">'+pfEur(r.d.cost)+'</span></div></div>';
   });
   h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('top bar = revenue (teal) · bottom bar = cost (lime)')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// Portfolio go-to-market channel mix — aggregates charter.channelModel across
+// projects via the pure chanAggregate() helper (revenue = project revenue ×
+// channel share). Horizontal bars, sorted by € revenue, with % of total + margin.
+function pfChannelMix(ds){
+  var rows=(typeof chanAggregate==='function')?chanAggregate(projects):[];
+  rows=rows.filter(function(r){return r.revenue>0;});
+  if(!rows.length) return pfEmpty(t('No channel mix defined yet — set channels on OFFER MNGT ▸ Channel mix.'));
+  var total=rows.reduce(function(s,r){return s+r.revenue;},0);
+  var max=rows.reduce(function(s,r){return Math.max(s,r.revenue);},0)||1;
+  var h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(function(r){
+    var bp=r.revenue/max*100, share=total>0?(r.revenue/total*100):0;
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:120px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.name)+'">'+escH(r.name)+'</div>'
+      +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bp.toFixed(1)+'%;background:'+r.color+'"></div></div>'
+      +'<div style="width:170px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--text)">'+pfEur(r.revenue)+'</span> <span style="color:var(--dim)">'+share.toFixed(0)+'%</span>'+(r.margin!=null?' <span style="color:var(--accent2)">m'+r.margin.toFixed(0)+'%</span>':'')+'</div></div>';
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = € revenue by channel · share of portfolio · blended margin')+'</div>';
   h+='</div>';
   return h;
 }
@@ -18961,7 +19060,7 @@ function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','backlog'].forEach(function(t){
+  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','econ','backlog'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -18986,6 +19085,7 @@ function showResTab(tab){
   else if(tab==='heatmap')     renderHeatmap();
   else if(tab==='analytics')   renderAnalyticsTab();
   else if(tab==='portfolio')   renderPortfolioAnalytics();
+  else if(tab==='econ')        renderEconTab();
   else if(tab==='backlog')     renderBacklogTab();
   else                         renderResDashboard();
 }
@@ -19184,16 +19284,17 @@ var RAIL_DOMAINS = [
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
   ]},
-  { id:'work', name:t('WORK'), ico:RAIL_I.work, views:[
+  { id:'work', name:t('OFFER MNGT'), ico:RAIL_I.work, views:[
     {id:'matrix',      label:t('Portfolio matrix'), bdg:t('was home')},
-    {id:'plan',        label:t('Resource plan')},
-    {id:'timeline',    label:t('Timeline')},
     {id:'charters',    label:t('Financials analysis')},
     {id:'decision',    label:t('Trade-off decision')},
+    {id:'channels',    label:t('Channel mix')},
     {id:'dtc',         label:t('Design to cost')},
     {id:'brief',       label:t('Project brief')},
   ]},
   { id:'planning', name:t('PLAN'), ico:RAIL_I.planning, views:[
+    {id:'plan',        label:t('Resource plan')},
+    {id:'timeline',    label:t('Timeline')},
     {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
@@ -19209,6 +19310,7 @@ var RAIL_DOMAINS = [
   ]},
   { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
     {id:'portfolio',   label:t('Portfolio analytics')},
+    {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
     {id:'summary',     label:t('Summary')},
     {id:'dashboard',   label:t('Cost dashboard')},
@@ -19367,7 +19469,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -19382,6 +19484,7 @@ function closeAllOverlays(){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
+  if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
 }
 
@@ -19397,6 +19500,7 @@ function railOpenRes(tab){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
+  if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -19413,6 +19517,7 @@ function railRoute(viewId){
   else if(viewId==='charters')chtOpenFinancials();
   else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
+  else if(viewId==='channels')openChannelsView();
   else if(viewId==='brief')   openProjectBriefExport();
 }
 
@@ -19675,7 +19780,7 @@ function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfter
 // is still visible beneath (hub mode) it stays highlighted as the charter view.
 // Reads railnav module state directly (one shared bundle scope).
 function chtSyncRailAfterClose(){
-  const anyShown=['cht-overlay','dec-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
+  const anyShown=['cht-overlay','dec-overlay','chan-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
   if(anyShown) return;
   if(typeof railRouting!=='undefined' && railRouting) return;
   if(typeof activeView!=='undefined' && activeView!=='matrix'){
@@ -19717,8 +19822,11 @@ function chtRenderPicker(target){
 // the hub again.
 let _chtHubTarget='financials';
 function openCharterHub(target){
-  _chtHubTarget = target==='decision' ? 'decision' : 'financials';
-  const t=G('chthub-title'); if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION' : 'FINANCIALS ANALYSIS';
+  _chtHubTarget = (target==='decision'||target==='channels') ? target : 'financials';
+  const t=G('chthub-title');
+  if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION'
+                      : _chtHubTarget==='channels' ? 'CHANNEL MIX'
+                      : 'FINANCIALS ANALYSIS';
   G('chthub-overlay').classList.add('show');
   chtRenderHub();
 }
@@ -19726,7 +19834,9 @@ function closeCharterHub(){ G('chthub-overlay').classList.remove('show'); }
 
 function chtRenderHub(){
   const body=G('chthub-body'); if(!body) return;
-  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision' : 'openCharter';
+  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision'
+               : _chtHubTarget==='channels' ? 'openChannels'
+               : 'openCharter';
   if(!projects.length){
     body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open it here.</div>';
     return;
@@ -19736,8 +19846,20 @@ function chtRenderHub(){
     const r = calculateFinancials(c.financials);
     const prio = c.priority||'—';
     const prioCls = c.priority==='High'?'hi':c.priority==='Medium'?'med':c.priority==='Low'?'lo':'';
-    const conflicts = chtConflicts(c).length;
-    const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
+    let badges;
+    if(_chtHubTarget==='channels'){
+      // Channel-mix summary: number of channels + whether the shares sum to 100%.
+      const m = chanMixSummary(c);
+      badges = `<span class="chthub-metric">${m.count} channel${m.count===1?'':'s'}</span>`
+             + `<span class="chthub-metric ${m.ok?'ok':(m.count?'conflict':'')}">Σ ${m.total}%</span>`;
+    } else {
+      const conflicts = chtConflicts(c).length;
+      const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
+      badges = `<span class="chthub-metric">NPV ${r.display.npv}</span>`
+             + `<span class="chthub-metric">IRR ${r.display.irr}</span>`
+             + (conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
+                        :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`);
+    }
     return `<div class="chthub-card" onclick="${opener}(${p.id})" title="Open">
       <div class="chthub-top">
         <span class="chthub-name">${escH(p.name||'Untitled project')}</span>
@@ -19745,10 +19867,7 @@ function chtRenderHub(){
       </div>
       <div class="chthub-badges">
         <span class="chthub-prio ${prioCls}">${escH(prio)}</span>
-        <span class="chthub-metric">NPV ${r.display.npv}</span>
-        <span class="chthub-metric">IRR ${r.display.irr}</span>
-        ${conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
-                   :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`}
+        ${badges}
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -21043,6 +21162,819 @@ function dtcDemandResp(sec,i,key,value){
 }
 /* ◄◄ END: sections/dtc.js ►► */
 
+/* ►► SECTION: CHANNEL-MIX ◄◄ OFFER MNGT › Channel mix rail view.
+ *   openChannelsView()   — rail entry point (honours the shared picker mode)
+ *   openChannels(projId) — open the panel for one project
+ *   closeChannels()      — close the panel (syncs the rail highlight)
+ *
+ * A per-project go-to-market synoptic: Company/Project → Channels → Segments.
+ * Each channel has a share % (basis = revenue | volume | emphasis), a margin %,
+ * a named partner and one downstream segment. Data lives on
+ * `charter.channelModel`, so it flows through save / backup / snapshot with the
+ * charter and is back-filled by sanitiseCharter. Everything is `chan`-prefixed
+ * and reuses the charter `cht-*` / `dtc-*` styles. Money is EUR.
+ *
+ * Shares the Charters HUB (target 'channels') + the Settings picker mode with
+ * Financials / Trade-off / Design-to-cost (railChartPicker → hub | dropdown).
+ * Pure helpers (chanMixSummary, chanChannelValue, chanAggregate) are reused by
+ * the hub badges and by Portfolio analytics.
+ */
+
+let _chanProjId = null;
+
+// Default channel swatch palette (assigned by index when a channel has no colour).
+const CHAN_PALETTE = ['#5be5c8','#c8f135','#f1a435','#7aa2ff','#f14335','#c07af0','#5bd0f1','#f19bd0'];
+function chanColor(ch,i){ return (ch&&ch.color) || CHAN_PALETTE[i%CHAN_PALETTE.length]; }
+function chanHexOr(col){ return /^#[0-9a-f]{6}$/i.test(col) ? col : '#5be5c8'; }
+
+// Picker mode (shared with the charter panels).
+function chanPickerMode(){ return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub'; }
+function chanFirstProj(){ return projects.length ? projects[0].id : null; }
+
+// ── open / close (rail view) ─────────────────────────────────────────────────
+function openChannelsView(){
+  if(chanPickerMode()==='dropdown') openChannels(chanFirstProj());
+  else openCharterHub('channels');
+}
+function openChannels(projId){
+  const p = projects.find(x=>x.id===+projId);
+  _chanProjId = p ? p.id : (projects.length ? projects[0].id : null);
+  const pp = projects.find(x=>x.id===_chanProjId);
+  if(pp && (!pp.charter || typeof pp.charter!=='object')) pp.charter = makeCharter();
+  const o=G('chan-overlay'); if(o) o.classList.add('show');
+  chanRender();
+}
+function closeChannels(){
+  const o=G('chan-overlay'); if(o) o.classList.remove('show');
+  if(typeof chtSyncRailAfterClose==='function') chtSyncRailAfterClose();
+}
+function chanSelectProject(id){ openChannels(id); }
+function chanBackToHub(){ closeChannels(); openCharterHub('channels'); }
+
+// ── data access + save ───────────────────────────────────────────────────────
+function chanProject(){ return projects.find(x=>x.id===_chanProjId) || null; }
+function chanCharter(){
+  const p=chanProject(); if(!p) return null;
+  if(!p.charter || typeof p.charter!=='object') p.charter=makeCharter();
+  if(!p.charter.channelModel || typeof p.charter.channelModel!=='object') p.charter.channelModel=makeChannelModel();
+  return p.charter;
+}
+function chanModel(){ const c=chanCharter(); return c ? c.channelModel : null; }
+function chanSave(){ saveState(); }
+function chanSaveNow(){ saveNow(); flashSaved(); }
+
+// ── money / unit formatters ──────────────────────────────────────────────────
+function chanEur(v){
+  v=+v||0;
+  if(Math.abs(v)>=1e6) return (v/1e6).toFixed(Math.abs(v)>=1e7?0:1)+'M€';
+  if(Math.abs(v)>=1e3) return Math.round(v/1e3)+'k€';
+  return Math.round(v)+'€';
+}
+function chanUnits(v){ return Math.round(+v||0).toLocaleString('en-US'); }
+// A channel's margin as a finite number, or null when none is entered. (Number()
+// coerces null/'' to 0 — which would wrongly drag a blank margin into averages.)
+function chanMarginOf(ch){
+  if(ch.margin==null || ch.margin==='') return null;
+  const m=Number(ch.margin);
+  return Number.isFinite(m) ? m : null;
+}
+
+// ── pure helpers (also used by the hub + Portfolio analytics) ────────────────
+// Channel-mix summary for a charter: channel count + share total + whether it's 100%.
+function chanMixSummary(c){
+  const chs=(c && c.channelModel && Array.isArray(c.channelModel.channels)) ? c.channelModel.channels : [];
+  const total=chs.reduce((s,x)=>s+(Number(x.pct)||0),0);
+  return { count:chs.length, total:Math.round(total*10)/10, ok:chs.length>0 && Math.abs(total-100)<0.05 };
+}
+// The value a channel represents, per the model basis. Returns {kind,v} or null
+// (null = no derived value, e.g. emphasis basis or missing revenue/volume total).
+function chanChannelValue(c, ch){
+  const cm=c.channelModel, pct=Number(ch.pct)||0;
+  if(cm.basis==='revenue'){
+    const revM=Number(c.expectedRevenueM);
+    if(!Number.isFinite(revM) || revM<=0) return null;
+    return { kind:'eur', v:revM*1e6*pct/100 };
+  }
+  if(cm.basis==='volume'){
+    const tu=Number(cm.totalUnits);
+    if(!Number.isFinite(tu) || tu<=0) return null;
+    return { kind:'units', v:tu*pct/100 };
+  }
+  return null;
+}
+// Aggregate channel revenue across projects → portfolio go-to-market mix. Revenue
+// per channel = the charter's expected revenue (expectedRevenueM, M€→€) × the
+// channel's share %, regardless of basis (pct is always the share) — the SAME base
+// the panel splits, so the two agree. Projects with no expected revenue set
+// contribute €0. Sorted desc by €. Kept pure so future visualizations can reuse it.
+function chanAggregate(projList){
+  const byName={};
+  (projList||[]).forEach(p=>{
+    const c=p.charter; if(!c || typeof c!=='object') return;
+    const cm=c.channelModel; if(!cm || !Array.isArray(cm.channels)) return;
+    const revM=Number(c.expectedRevenueM);
+    const rev=(Number.isFinite(revM) && revM>0) ? revM*1e6 : 0;
+    cm.channels.forEach((ch,i)=>{
+      const name=((ch.name||'').trim())||'—';
+      const pct=Number(ch.pct)||0;
+      const r=byName[name] || (byName[name]={name, revenue:0, mw:0, ws:0, count:0, color:''});
+      r.revenue += rev*pct/100;
+      const mg=chanMarginOf(ch);
+      if(pct>0 && mg!=null){ r.mw+=pct*mg; r.ws+=pct; }
+      if(!r.color) r.color=chanColor(ch,i);
+      r.count++;
+    });
+  });
+  return Object.values(byName)
+    .map(r=>({ name:r.name, revenue:r.revenue, margin:r.ws>0?r.mw/r.ws:null, count:r.count, color:r.color }))
+    .sort((a,b)=>b.revenue-a.revenue);
+}
+
+// Share-weighted blended margin (%) of a charter's channel mix, or null when no
+// channel has a margin. Same rule as the panel totals (chanMarginOf excludes blanks).
+function chanBlendedMargin(c){
+  const cm=c && c.channelModel; if(!cm || !Array.isArray(cm.channels)) return null;
+  let mw=0, ws=0;
+  cm.channels.forEach(ch=>{ const p=Number(ch.pct)||0, mg=chanMarginOf(ch); if(p>0 && mg!=null){ mw+=p*mg; ws+=p; } });
+  return ws>0 ? mw/ws : null;
+}
+// Portfolio profit pools: revenue AND gross profit (revenue × channel margin)
+// aggregated by channel and by segment, using the same expectedRevenueM base as
+// the panel. profit/margin are null for a pool whose channels have no margin set.
+function chanProfitPools(projList){
+  const agg=keyFn=>{
+    const map={};
+    (projList||[]).forEach(p=>{
+      const c=p.charter; if(!c || typeof c!=='object') return;
+      const cm=c.channelModel; if(!cm || !Array.isArray(cm.channels)) return;
+      const revM=Number(c.expectedRevenueM);
+      const base=(Number.isFinite(revM) && revM>0) ? revM*1e6 : 0;
+      cm.channels.forEach((ch,i)=>{
+        const key=((keyFn(ch)||'').trim())||'—';
+        const rev=base*(Number(ch.pct)||0)/100;
+        const mg=chanMarginOf(ch);
+        const r=map[key] || (map[key]={name:key, revenue:0, profit:0, hasMargin:false, color:''});
+        r.revenue+=rev;
+        if(mg!=null){ r.profit+=rev*mg/100; r.hasMargin=true; }
+        if(!r.color) r.color=chanColor(ch,i);
+      });
+    });
+    return Object.values(map)
+      .map(r=>({ name:r.name, revenue:r.revenue, profit:r.hasMargin?r.profit:null,
+                 margin:(r.hasMargin&&r.revenue>0)?r.profit/r.revenue*100:null, color:r.color }))
+      .sort((a,b)=>b.revenue-a.revenue);
+  };
+  const byChannel=agg(ch=>ch.name), bySegment=agg(ch=>ch.segment);
+  return {
+    byChannel, bySegment,
+    totalRevenue: byChannel.reduce((s,r)=>s+r.revenue,0),
+    totalProfit:  byChannel.reduce((s,r)=>s+(r.profit||0),0),
+  };
+}
+// Concentration (normalised HHI, 0–1) + top dependency by channel / segment /
+// partner. HHI = Σ share² over revenue shares; higher = more concentrated.
+function chanConcentration(projList){
+  const hhi=rows=>{
+    const tot=rows.reduce((s,r)=>s+r.revenue,0);
+    if(tot<=0) return { hhi:null, top:null, topPct:null };
+    let h=0, top=null, topR=-1;
+    rows.forEach(r=>{ const sh=r.revenue/tot; h+=sh*sh; if(r.revenue>topR){ topR=r.revenue; top=r.name; } });
+    return { hhi:h, top, topPct:topR/tot*100 };
+  };
+  const pools=chanProfitPools(projList);
+  const pmap={};
+  (projList||[]).forEach(p=>{
+    const c=p.charter; if(!c) return; const cm=c.channelModel; if(!cm || !Array.isArray(cm.channels)) return;
+    const revM=Number(c.expectedRevenueM), base=(Number.isFinite(revM)&&revM>0)?revM*1e6:0;
+    cm.channels.forEach(ch=>{ const key=((ch.partner||'').trim())||'—'; (pmap[key] || (pmap[key]={name:key,revenue:0})).revenue += base*(Number(ch.pct)||0)/100; });
+  });
+  return {
+    channel: hhi(pools.byChannel),
+    segment: hhi(pools.bySegment.filter(r=>r.name!=='—')),
+    partner: hhi(Object.values(pmap).filter(r=>r.name!=='—')),
+  };
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+function chanRender(){
+  const body=G('chan-body'); if(!body) return;
+  chanRenderPicker();
+  const p=chanProject();
+  const ttl=G('chan-title'); if(ttl) ttl.textContent = p ? (p.name||'PROJECT') : 'CHANNEL MIX';
+  if(!projects.length){ body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add a project on the Portfolio matrix.</div>'; return; }
+  const c=chanCharter(); if(!c){ body.innerHTML=''; return; }
+  body.innerHTML = chanHeadForm(c,p) + chanSynopticWrap(c,p) + chanTotalsBar(c) + chanEditor(c);
+}
+
+function chanRenderPicker(){
+  const slot=G('chan-pick'); if(!slot) return;
+  if(chanPickerMode()==='dropdown'){
+    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
+      <select class="cht-sel" onchange="chanSelectProject(this.value)">
+        ${projects.length ? projects.map(p=>`<option value="${p.id}"${p.id===_chanProjId?' selected':''}>${escH(p.name||'Untitled project')}</option>`).join('')
+                          : '<option>— no projects —</option>'}
+      </select>`;
+  } else {
+    slot.innerHTML = `<button class="sm" onclick="chanBackToHub()">‹ Projects</button>`;
+  }
+}
+
+function chanHeadForm(c,p){
+  const cm=c.channelModel;
+  const bases=[['revenue','Revenue split'],['volume','Unit volume'],['emphasis','GTM emphasis']];
+  const revM=Number(c.expectedRevenueM);
+  const ctx = cm.basis==='revenue'
+    ? (Number.isFinite(revM)&&revM>0
+        ? `Splitting expected revenue <b>${chanEur(revM*1e6)}</b> (set on Financials ▸ Overview) across channels.`
+        : `No expected revenue set — add it on <b>Financials ▸ Overview</b> to see € per channel.`)
+    : cm.basis==='volume'
+    ? `Splitting the total unit volume across channels.`
+    : `Relative go-to-market weighting only (no € or units).`;
+  return `<div class="chan-head">
+    <label class="cht-f"><span class="cht-l">Company</span>
+      <input class="cht-in" value="${escH(cm.company||'')}" placeholder="Company name" oninput="chanSetCompany(this.value)"></label>
+    <label class="cht-f"><span class="cht-l">Project</span>
+      <input class="cht-in" value="${escH((p&&p.name)||'')}" placeholder="Project name" oninput="chanSetProjectName(this.value)"></label>
+    <div class="cht-f cht-f-wide"><span class="cht-l">Percentages mean</span>
+      <div class="cht-toggle">
+        ${bases.map(([b,l])=>`<button class="cht-tg${cm.basis===b?' on':''}" onclick="chanSetBasis('${b}')">${l}</button>`).join('')}
+      </div></div>
+    ${cm.basis==='volume' ? `<label class="cht-f"><span class="cht-l">Total units</span>
+      <input class="cht-in" type="number" min="0" value="${cm.totalUnits==null?'':cm.totalUnits}" oninput="chanSetTotalUnits(this.value)"></label>` : ''}
+    <div class="chan-ctx">${ctx}</div>
+  </div>`;
+}
+
+function chanSynopticWrap(c,p){
+  return `<div class="chan-card">
+    <div class="chan-sec-t">GO-TO-MARKET SYNOPTIC</div>
+    <div id="chan-synoptic" class="chan-synoptic">${chanSynopticSVG(c,p)}</div>
+  </div>`;
+}
+
+function chanTotalsBar(c){ return `<div class="chan-totals" id="chan-totals">${chanTotalsInner(c)}</div>`; }
+function chanTotalsInner(c){
+  const m=chanMixSummary(c);
+  const chs=c.channelModel.channels||[];
+  let mw=0, ws=0;
+  chs.forEach(ch=>{ const p=Number(ch.pct)||0, mg=chanMarginOf(ch); if(p>0&&mg!=null){ mw+=p*mg; ws+=p; } });
+  const blended = ws>0 ? mw/ws : null;
+  const cls = m.ok ? 'good' : (m.count ? 'bad' : '');
+  return `<span>Share total: <b class="${cls}">${m.total}%</b>${m.ok?' ✓':(m.count?' — should total 100%':'')}</span>`
+       + (blended!=null?`<span>Blended margin: <b>${blended.toFixed(1)}%</b></span>`:'')
+       + `<span>${m.count} channel${m.count===1?'':'s'}</span>`;
+}
+
+function chanRowVal(c,ch){
+  const val=chanChannelValue(c,ch);
+  if(!val) return '<span class="cht-muted">—</span>';
+  return val.kind==='eur' ? chanEur(val.v) : chanUnits(val.v)+' u';
+}
+
+function chanEditor(c){
+  const chs=c.channelModel.channels||[];
+  const rows=chs.map((ch,i)=>{
+    const col=chanColor(ch,i);
+    return `<tr>
+      <td><span class="chan-swatch" id="chan-sw-${i}" style="background:${col}"></span></td>
+      <td><input class="cht-in" value="${escH(ch.name)}" placeholder="channel" oninput="chanSet(${i},'name',this.value)"></td>
+      <td><input class="cht-in chan-num" type="number" min="0" max="100" value="${ch.pct==null?'':ch.pct}" oninput="chanSetNum(${i},'pct',this.value)"></td>
+      <td><input class="cht-in chan-num" type="number" min="0" max="100" value="${ch.margin==null?'':ch.margin}" placeholder="—" oninput="chanSetNum(${i},'margin',this.value)"></td>
+      <td><input class="cht-in" value="${escH(ch.partner)}" placeholder="partner/account" oninput="chanSet(${i},'partner',this.value)"></td>
+      <td><input class="cht-in" value="${escH(ch.segment)}" placeholder="segment" oninput="chanSet(${i},'segment',this.value)"></td>
+      <td><input class="chan-color" type="color" value="${chanHexOr(col)}" title="Channel colour" oninput="chanSet(${i},'color',this.value)"></td>
+      <td class="chan-val" id="chan-rowval-${i}">${chanRowVal(c,ch)}</td>
+      <td><button class="cht-cf-del" title="Remove channel" onclick="chanRemove(${i})">×</button></td>
+    </tr>`;
+  }).join('');
+  return `<div class="chan-card">
+    <div class="chan-sec-t">CHANNELS</div>
+    <div class="chan-tbl-wrap">
+      <table class="dtc-tbl chan-tbl">
+        <thead><tr><th></th><th>Channel</th><th>Share %</th><th>Margin %</th><th>Partner</th><th>Segment</th><th>Colour</th><th>Value</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="9" class="cht-muted">No channels — add one.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <button class="sm" onclick="chanAdd()">+ Add channel</button>
+  </div>`;
+}
+
+// Recompute ONLY the derived outputs in place (synoptic + totals + per-row value
+// + swatches) — never the input elements — so typing keeps focus & scroll.
+function chanRefreshDerived(){
+  const c=chanCharter(); if(!c) return;
+  const p=chanProject();
+  const syn=G('chan-synoptic'); if(syn) syn.innerHTML=chanSynopticSVG(c,p);
+  const tot=G('chan-totals'); if(tot) tot.innerHTML=chanTotalsInner(c);
+  (c.channelModel.channels||[]).forEach((ch,i)=>{
+    const rv=G('chan-rowval-'+i); if(rv) rv.innerHTML=chanRowVal(c,ch);
+    const sw=G('chan-sw-'+i);     if(sw) sw.style.background=chanColor(ch,i);
+  });
+}
+
+// ── mutators ─────────────────────────────────────────────────────────────────
+function chanSet(i,key,value){
+  const m=chanModel(); if(!m||!m.channels[i]) return;
+  m.channels[i][key]=value; chanSave(); chanRefreshDerived();
+}
+function chanSetNum(i,key,value){
+  const m=chanModel(); if(!m||!m.channels[i]) return;
+  m.channels[i][key] = value==='' ? (key==='margin'?null:0) : (Number(value)||0);
+  chanSave(); chanRefreshDerived();
+}
+function chanAdd(){ const m=chanModel(); if(!m) return; m.channels.push(makeChannel()); chanSave(); chanRender(); }
+function chanRemove(i){ const m=chanModel(); if(!m) return; m.channels.splice(i,1); chanSave(); chanRender(); }
+function chanSetBasis(b){ const m=chanModel(); if(!m) return; m.basis=b; chanSave(); chanRender(); }
+function chanSetTotalUnits(v){ const m=chanModel(); if(!m) return; m.totalUnits = v==='' ? null : (Number(v)||0); chanSave(); chanRefreshDerived(); }
+function chanSetCompany(v){
+  const m=chanModel(); if(!m) return; m.company=v; chanSave();
+  const c=chanCharter(), syn=G('chan-synoptic'); if(syn&&c) syn.innerHTML=chanSynopticSVG(c,chanProject());
+}
+function chanSetProjectName(v){
+  const p=chanProject(); if(!p) return; p.name=v; chanSave();
+  const c=chanCharter(), syn=G('chan-synoptic'); if(syn&&c) syn.innerHTML=chanSynopticSVG(c,p);
+  const ttl=G('chan-title'); if(ttl) ttl.textContent=v||'PROJECT';
+}
+
+// ── the go-to-market synoptic (pure SVG, CSS-var themed) ─────────────────────
+// Three tiers, top-down: Company/Project → Channels → Segments. One arrow per
+// channel (thickness ∝ share), one segment box per channel (so a segment reached
+// by two channels appears under each — the synoptic never needs crossing arrows).
+function chanArrowHead(cx, ty, col){
+  return `<path d="M ${cx-5} ${ty-6} L ${cx+5} ${ty-6} L ${cx} ${ty} Z" fill="${col}" fill-opacity="0.85"/>`;
+}
+function chanWrapText(txt, cx, y, maxW){
+  const words=String(txt).split(/\s+/);
+  const per=Math.max(6, Math.floor(maxW/5.6));
+  const lines=[]; let cur='';
+  words.forEach(w=>{ if((cur+' '+w).trim().length>per && cur){ lines.push(cur); cur=w; } else cur=(cur?cur+' ':'')+w; });
+  if(cur) lines.push(cur);
+  const two=lines.slice(0,2);
+  if(lines.length>2) two[1]=two[1].slice(0,Math.max(0,per-1))+'…';
+  return two.map((ln,i)=>`<text x="${cx}" y="${y+i*12}" fill="var(--text)" font-size="10" text-anchor="middle">${escH(ln)}</text>`).join('');
+}
+function chanSynopticSVG(c,p){
+  const cm=c.channelModel, chs=cm.channels||[];
+  if(!chs.length) return '<div class="cht-muted" style="padding:24px;text-align:center">No channels yet — add one below to build the go-to-market synoptic.</div>';
+  const P=18, boxW=156, gx=20, chH=60, compH=48, segH=46;
+  const N=chs.length, contentW=N*boxW+(N-1)*gx;
+  const W=Math.max(360, contentW+2*P);
+  const x0=(W-contentW)/2;
+  const y0=P, y1=y0+compH+56, y2=y1+chH+54, H=y2+segH+P;
+  const cxOf=i=>x0+i*(boxW+gx)+boxW/2;
+  const compW=Math.min(contentW, 300), compX=(W-compW)/2;
+
+  let arrows='', chan='', seg='';
+  chs.forEach((ch,i)=>{
+    const cx=cxOf(i), col=chanColor(ch,i), pct=Number(ch.pct)||0;
+    // company → channel arrow (thickness ∝ share)
+    const sw=(1.4+Math.max(0,Math.min(100,pct))/9).toFixed(1);
+    const sx=W/2, sy=y0+compH, ty=y1, midY=(sy+ty)/2;
+    arrows+=`<path d="M ${sx} ${sy} C ${sx} ${midY}, ${cx} ${midY}, ${cx} ${ty-7}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-opacity="0.5"/>`;
+    arrows+=chanArrowHead(cx, ty-1, col);
+    // channel box
+    const bx=cx-boxW/2;
+    chan+=`<rect x="${bx}" y="${y1}" width="${boxW}" height="${chH}" rx="8" fill="${col}" fill-opacity="0.12" stroke="${col}" stroke-width="1.5"/>`;
+    chan+=`<rect x="${bx+8}" y="${y1+chH-9}" width="${boxW-16}" height="4" rx="2" fill="var(--border)"/>`;
+    chan+=`<rect x="${bx+8}" y="${y1+chH-9}" width="${((boxW-16)*Math.max(0,Math.min(100,pct))/100).toFixed(1)}" height="4" rx="2" fill="${col}"/>`;
+    chan+=`<text x="${cx}" y="${y1+18}" fill="var(--text)" font-size="12" font-weight="700" text-anchor="middle">${escH(ch.name||'—')}</text>`;
+    const val=chanChannelValue(c,ch);
+    const valTxt = val ? (val.kind==='eur'?chanEur(val.v):chanUnits(val.v)+' u') : '';
+    chan+=`<text x="${cx}" y="${y1+35}" fill="${col}" font-size="13" font-weight="700" text-anchor="middle" font-family="IBM Plex Mono,monospace">${pct}%${valTxt?`  ·  ${valTxt}`:''}</text>`;
+    const meta=[];
+    if(ch.margin!=null && ch.margin!=='') meta.push('m '+ch.margin+'%');
+    if(ch.partner) meta.push(escH(ch.partner));
+    if(meta.length) chan+=`<text x="${cx}" y="${y1+49}" fill="var(--muted)" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace">${meta.join('  ·  ')}</text>`;
+    // channel → segment
+    const segTxt=(ch.segment||'').trim();
+    seg+=`<line x1="${cx}" y1="${y1+chH}" x2="${cx}" y2="${y2-7}" stroke="${col}" stroke-width="1.6" stroke-opacity="0.5"/>`;
+    seg+=chanArrowHead(cx, y2-1, col);
+    if(segTxt){
+      seg+=`<rect x="${bx}" y="${y2}" width="${boxW}" height="${segH}" rx="8" fill="var(--surface)" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+      seg+=`<text x="${cx}" y="${y2+16}" fill="var(--muted)" font-size="8" text-anchor="middle" font-family="IBM Plex Mono,monospace" letter-spacing="0.08em">SEGMENT</text>`;
+      seg+=chanWrapText(segTxt, cx, y2+31, boxW-14);
+    } else {
+      seg+=`<rect x="${bx}" y="${y2}" width="${boxW}" height="${segH}" rx="8" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>`;
+      seg+=`<text x="${cx}" y="${y2+segH/2+3}" fill="var(--dim)" font-size="9" text-anchor="middle">+ add segment</text>`;
+    }
+  });
+  const comp=`<rect x="${compX}" y="${y0}" width="${compW}" height="${compH}" rx="10" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="${W/2}" y="${y0+21}" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">${escH(cm.company||'Company')}</text>
+    <text x="${W/2}" y="${y0+38}" fill="var(--muted)" font-size="11" text-anchor="middle">${escH((p&&p.name)||'Project')}</text>`;
+  const minW=Math.max(360, Math.min(W, 760));
+  return `<svg viewBox="0 0 ${W} ${H}" class="cht-svg chan-svg" role="img" aria-label="Go-to-market channel synoptic" style="width:100%;height:auto;min-width:${minW}px">
+    ${arrows}${comp}${chan}${seg}
+  </svg>`;
+}
+/* ◄◄ END: sections/channels.js ►► */
+
+/* ►► SECTION: PORTFOLIO-ECONOMICS ◄◄ INSIGHTS › Portfolio economics.
+ *
+ * A read-only tab that CROSSES the four data layers the rest of the app keeps
+ * apart: value (charter financials — NPV/IRR/PI), cost (allocations + design-to-
+ * cost unit cost), route-to-market (channel mix — share/margin/partner/segment)
+ * and decision (trade-off conflicts + cross-functional alignment). Renders into
+ * #res-body like every Resources tab. All identifiers are `ec`-prefixed.
+ *
+ * Reuses pure helpers only: pfBuildDataset / pfSection / pfEmpty / pfEur (cost &
+ * layout), calculateFinancials + resolveUnitEconomics + dtcTarget + amortized*
+ * (financial engine), chanBlendedMargin / chanProfitPools / chanConcentration
+ * (channel data), chtConflicts + CHT_FUNCS (decision). Nothing here mutates state
+ * — a mix-shift what-if is computed at the pool level, not written back.
+ *
+ * Revenue here is the charter's expectedRevenueM (the same base the channel panel
+ * splits), so € figures agree with the Channel-mix view.
+ */
+
+// Interactive mix-shift what-if state (UI-only, not persisted).
+let _ecMixFrom = 0, _ecMixTo = 0, _ecMixPct = 10;
+
+// ── per-project enriched dataset (financials × channel × decision × cost) ─────
+function ecDataset(){
+  const base=(typeof pfBuildDataset==='function') ? pfBuildDataset() : [];
+  return base.map(b=>{
+    const p=b.p;
+    const c=(p.charter && typeof p.charter==='object') ? p.charter : makeCharter();
+    const fin=calculateFinancials(c.financials);
+    const revM=Number(c.expectedRevenueM);
+    const chanRev=(Number.isFinite(revM) && revM>0) ? revM*1e6 : 0;
+    const blended=(typeof chanBlendedMargin==='function') ? chanBlendedMargin(c) : null;
+    const grossProfit=(blended!=null) ? chanRev*blended/100 : null;
+    const eco=resolveUnitEconomics(c.financials);
+    const unitMarginPct=eco.price>0 ? (eco.price-eco.directVar)/eco.price*100 : null;
+    const conflicts=(typeof chtConflicts==='function') ? chtConflicts(c).length : 0;
+    const aligns=(typeof CHT_FUNCS!=='undefined'?CHT_FUNCS:[]).map(f=>Number(c[f[0]].alignment)).filter(v=>Number.isFinite(v)&&v>0);
+    const alignMin=aligns.length ? Math.min.apply(null,aligns) : null;
+    const alignAvg=aligns.length ? aligns.reduce((s,v)=>s+v,0)/aligns.length : null;
+    const rpnMax=(p.risks||[]).reduce((s,r)=>Math.max(s,(r.sev||1)*(r.occ||1)*(r.det||1)),0);
+    // Risk haircut on the UPSIDE only (never inflate a loss): normalise the worst
+    // RPN by its theoretical max (1000 = 10×10×10).
+    const riskFactor=1-Math.min(rpnMax/1000,1);
+    const riskAdjNpv=(fin.npv==null) ? null : (fin.npv>0 ? fin.npv*riskFactor : fin.npv);
+    return {
+      p, name:p.name||'Untitled', color:p.color||'var(--accent)',
+      cost:b.cost, avgFte:b.avgFte, intent:b.intent, sector:b.sector, rpnSum:b.rpnSum, rpnMax,
+      npv:fin.npv, pi:fin.profitabilityIndex, irr:fin.irr, invested:fin.effInvestment,
+      chanRev, blended, grossProfit, unitMarginPct, riskAdjNpv,
+      conflicts, alignMin, alignAvg,
+      dtcTarget:(typeof dtcTarget==='function')?dtcTarget(c.financials):null,
+      dtcCurrent:ecDtcCurrent(c), amortUnits:Number(c.financials&&c.financials.investment&&c.financials.investment.amortUnits)||0,
+    };
+  });
+}
+// Rolled-up current unit cost from the design-to-cost cascade (included subsystems).
+function ecDtcCurrent(c){
+  const cm=c && c.costModel; if(!cm || !Array.isArray(cm.subsystems)) return null;
+  let sum=0, any=false;
+  cm.subsystems.forEach(s=>{
+    if(s.include===false) return;
+    let v;
+    if(Array.isArray(s.items) && s.items.length) v=s.items.reduce((t,it)=>t+(it.include===false?0:(Number(it.cost)||0)),0);
+    else v=Number(s.current)||0;
+    if(v){ sum+=v; any=true; }
+  });
+  return any ? sum : null;
+}
+
+// ── small shared renderers (inline-styled, matching the Portfolio tab) ───────
+function ecKpi(val,label,sub,color){
+  return '<div style="flex:1;min-width:132px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px">'
+    +'<div style="font-size:18px;font-weight:700;color:'+(color||'var(--text)')+'">'+val+'</div>'
+    +'<div style="font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;letter-spacing:.05em;text-transform:uppercase;margin-top:3px">'+escH(label)+'</div>'
+    +(sub?'<div style="font-size:10px;color:var(--dim);margin-top:2px">'+sub+'</div>':'')+'</div>';
+}
+// A labelled horizontal bar row. `rightHtml` is pre-formatted (may contain spans).
+function ecBar(label,frac,rightHtml,color,title){
+  return '<div style="display:flex;align-items:center;gap:10px">'
+    +'<div style="width:150px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(title||label)+'">'+escH(label)+'</div>'
+    +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(Math.max(0,Math.min(100,frac*100))).toFixed(1)+'%;background:'+(color||'var(--accent)')+'"></div></div>'
+    +'<div style="width:200px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace">'+rightHtml+'</div></div>';
+}
+function ecEur(v){ return (typeof pfEur==='function') ? pfEur(v) : Math.round(+v||0)+'€'; }
+function ecPct(v){ return v==null||!Number.isFinite(v) ? '—' : v.toFixed(1)+'%'; }
+
+// ── entry point ──────────────────────────────────────────────────────────────
+function renderEconTab(){
+  const body=G('res-body'); if(!body) return;
+  const ds=ecDataset();
+  const months=getMonthRange();
+  let h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
+  h+='<div style="display:flex;align-items:baseline;gap:10px">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ECONOMICS')+'</span>'
+    +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
+    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
+    +'</span></div>';
+  if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
+  h+=ecScorecard(ds);
+  h+=pfSection(t('CAPITAL ALLOCATION — value per €'), t('NPV created against capital invested, ranked by profitability index (PV of inflows ÷ outlay). PI > 1 creates value; fund the top, review the bottom.'), ecCapital(ds));
+  h+=pfSection(t('CHANNEL PROFIT POOLS'), t('Revenue vs gross profit (revenue × channel margin) by channel. A big low-margin channel can trail a small high-margin one — profit, not revenue, is the ranking that matters.'), ecPools('byChannel'));
+  h+=pfSection(t('SEGMENT PROFIT POOLS'), t('The same revenue-and-profit view by customer segment.'), ecPools('bySegment'));
+  h+=pfSection(t('CONCENTRATION & DEPENDENCY'), t('How concentrated revenue is by channel, segment and partner (HHI 0–1; higher = more concentrated). A high score with one dominant name is a single point of failure.'), ecConcentration());
+  h+='<div id="ec-sec-mix">'+ecMixSensitivity()+'</div>';
+  h+=pfSection(t('MARGIN REALISM'), t('Does each project’s blended channel margin square with its unit economics (price − direct cost) and its design-to-cost target? A channel margin far above the unit margin is optimistic pricing.'), ecMarginRealism(ds));
+  h+=pfSection(t('COST GAP → MARGIN AT RISK'), t('Design-to-cost: (current − target) unit cost × amortization volume = the margin exposed if cost-downs don’t land.'), ecCostGap(ds));
+  h+=pfSection(t('STRATEGY COHERENCE'), t('Cost, revenue and NPV grouped by tactical intent — are you investing where the strategy says you are?'), ecStrategy(ds));
+  h+=pfSection(t('DECISION QUALITY'), t('Trade-off conflicts and low cross-functional alignment on high-value projects — execution risk on your best bets.'), ecDecision(ds));
+  h+=pfSection(t('VALUE PER FTE'), t('NPV and revenue per average FTE over the period — the productivity of where people are placed.'), ecValuePerFte(ds));
+  h+='<div id="ec-sec-traj">'+ecTrajectoryShell()+'</div>';
+  h+='</div>';
+  body.innerHTML=h;
+}
+
+// ── 1. scorecard ─────────────────────────────────────────────────────────────
+function ecScorecard(ds){
+  const sum=k=>ds.reduce((s,d)=>s+(Number(d[k])||0),0);
+  const totNpv=ds.reduce((s,d)=>s+(d.npv||0),0);
+  const totInv=sum('invested');
+  const totRev=sum('chanRev');
+  const totGP=ds.reduce((s,d)=>s+(d.grossProfit||0),0);
+  const anyGP=ds.some(d=>d.grossProfit!=null);
+  const pi=totInv>0 ? (totNpv+totInv)/totInv : null;
+  const blended=(anyGP && totRev>0) ? totGP/totRev*100 : null;
+  const riskAdj=ds.reduce((s,d)=>s+(d.riskAdjNpv||0),0);
+  const conflicts=ds.reduce((s,d)=>s+d.conflicts,0);
+  const cards=[
+    ecKpi(ecEur(totNpv), t('Portfolio NPV'), null, totNpv>=0?'var(--accent2)':'var(--danger)'),
+    ecKpi(ecEur(riskAdj), t('Risk-adjusted NPV'), t('upside haircut by RPN'), riskAdj>=0?'var(--text)':'var(--danger)'),
+    ecKpi(pi==null?'—':pi.toFixed(2), t('Portfolio PI'), t('value per € invested'), pi!=null&&pi>=1?'var(--accent2)':''),
+    ecKpi(ecEur(totInv), t('Capital invested'), null),
+    ecKpi(ecEur(totRev), t('Expected revenue'), null),
+    ecKpi(blended==null?'—':blended.toFixed(1)+'%', t('Blended gross margin'), null, 'var(--accent2)'),
+    ecKpi(ecEur(totGP), t('Gross profit'), t('revenue × channel margin')),
+    ecKpi(String(conflicts), t('Trade-off conflicts'), null, conflicts?'var(--danger)':'var(--accent2)'),
+  ].join('');
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px">'+cards+'</div>';
+}
+
+// ── 2. capital allocation (PI-ranked) ────────────────────────────────────────
+function ecCapital(ds){
+  const rows=ds.filter(d=>d.invested>0 || d.npv!=null).slice()
+    .sort((a,b)=>((b.pi==null?-1e9:b.pi))-((a.pi==null?-1e9:a.pi)));
+  if(!rows.length) return pfEmpty(t('No financials yet — set investment & cash flows on Financials analysis.'));
+  const maxInv=rows.reduce((s,d)=>Math.max(s,d.invested||0),1);
+  let h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(d=>{
+    const npvCls=(d.npv||0)>=0?'var(--accent2)':'var(--danger)';
+    const piTxt=d.pi==null?'—':d.pi.toFixed(2);
+    const verdict=d.pi==null?'':(d.pi>=1.3?'<span style="color:var(--accent2)"> ▲ fund</span>':(d.pi<1?'<span style="color:var(--danger)"> ▽ review</span>':''));
+    const right='<span style="color:'+npvCls+'">NPV '+ecEur(d.npv||0)+'</span> · inv '+ecEur(d.invested||0)+' · <b>PI '+piTxt+'</b>'+verdict;
+    h+=ecBar(d.name, (d.invested||0)/maxInv, right, d.color, d.name);
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = capital invested · sorted by profitability index (PV inflows ÷ outlay)')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// ── 3/4. channel & segment profit pools ──────────────────────────────────────
+function ecPools(which){
+  const pools=(typeof chanProfitPools==='function') ? chanProfitPools(projects) : {byChannel:[],bySegment:[]};
+  let rows=pools[which]||[];
+  if(which==='bySegment') rows=rows.map(r=>({...r, name:r.name==='—'?t('Unassigned'):r.name}));
+  rows=rows.filter(r=>r.revenue>0);
+  if(!rows.length) return pfEmpty(t('No channel mix defined yet — set channels on OFFER MNGT ▸ Channel mix.'));
+  const maxRev=rows.reduce((s,r)=>Math.max(s,r.revenue),1);
+  const totRev=rows.reduce((s,r)=>s+r.revenue,0);
+  let h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(r=>{
+    const profTxt=r.profit==null?'—':ecEur(r.profit);
+    const mgTxt=r.margin==null?'':' <span style="color:var(--accent2)">m'+r.margin.toFixed(0)+'%</span>';
+    const share=totRev>0?r.revenue/totRev*100:0;
+    const right='<span style="color:var(--text)">'+ecEur(r.revenue)+'</span> <span style="color:var(--dim)">'+share.toFixed(0)+'%</span> · <span style="color:var(--accent)">GP '+profTxt+'</span>'+mgTxt;
+    h+=ecBar(r.name, r.revenue/maxRev, right, r.color, r.name);
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = revenue · GP = gross profit (revenue × margin)')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// ── 5. concentration & dependency ────────────────────────────────────────────
+function ecConcentration(){
+  const cc=(typeof chanConcentration==='function') ? chanConcentration(projects) : null;
+  if(!cc) return pfEmpty(t('No channel data yet.'));
+  const tile=(label,o)=>{
+    if(!o || o.hhi==null) return ecKpi('—', label, t('no revenue'), '');
+    const lvl=o.hhi>=0.5?'var(--danger)':(o.hhi>=0.25?'var(--warn)':'var(--accent2)');
+    const word=o.hhi>=0.5?t('high'):(o.hhi>=0.25?t('moderate'):t('low'));
+    return ecKpi(o.hhi.toFixed(2), label, escH(word)+' · '+t('top: {name} {pct}%',{name:o.top,pct:Math.round(o.topPct)}), lvl);
+  };
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px">'
+    +tile(t('Channel HHI'),cc.channel)+tile(t('Segment HHI'),cc.segment)+tile(t('Partner HHI'),cc.partner)
+    +'</div><div style="font-size:9px;color:var(--dim);margin-top:8px;font-family:IBM Plex Mono,monospace">'
+    +t('HHI = Σ share² over revenue (0–1). ≥0.50 high concentration · 0.25–0.50 moderate · <0.25 diversified.')+'</div>';
+}
+
+// ── 6. mix-shift what-if (interactive, pool-level, non-mutating) ─────────────
+function ecMixSensitivity(){
+  const pools=(typeof chanProfitPools==='function') ? chanProfitPools(projects) : {byChannel:[]};
+  const ch=(pools.byChannel||[]).filter(r=>r.revenue>0);
+  if(ch.length<2) return pfSection(t('MIX-SHIFT WHAT-IF'), t('Add at least two channels with revenue to simulate shifting mix.'), pfEmpty(t('Not enough channels.')));
+  // Clamp indices to current channel list.
+  _ecMixFrom=Math.max(0,Math.min(_ecMixFrom,ch.length-1));
+  _ecMixTo  =Math.max(0,Math.min(_ecMixTo,ch.length-1));
+  if(_ecMixFrom===_ecMixTo) _ecMixTo=(_ecMixFrom+1)%ch.length;
+  const totRev=ch.reduce((s,r)=>s+r.revenue,0);
+  const from=ch[_ecMixFrom], to=ch[_ecMixTo];
+  const move=totRev*(_ecMixPct/100);
+  const mFrom=from.margin==null?0:from.margin/100, mTo=to.margin==null?0:to.margin/100;
+  const dProfit=move*(mTo-mFrom);
+  const baseProfit=ch.reduce((s,r)=>s+(r.profit||0),0);
+  const newBlended=totRev>0?((baseProfit+dProfit)/totRev*100):null;
+  const oldBlended=totRev>0?(baseProfit/totRev*100):null;
+  const opt=(sel)=>ch.map((r,i)=>'<option value="'+i+'"'+(i===sel?' selected':'')+'>'+escH(r.name)+' (m'+(r.margin==null?'—':Math.round(r.margin))+'%)</option>').join('');
+  const controls='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11px">'
+    +'<label style="color:var(--muted)">move</label>'
+    +'<input type="range" min="0" max="30" step="1" value="'+_ecMixPct+'" oninput="ecMixSet(\'pct\',this.value)" style="width:120px">'
+    +'<b style="color:var(--accent);font-family:IBM Plex Mono,monospace">'+_ecMixPct+'%</b>'
+    +'<label style="color:var(--muted)">from</label><select class="cht-sel" onchange="ecMixSet(\'from\',this.value)">'+opt(_ecMixFrom)+'</select>'
+    +'<label style="color:var(--muted)">to</label><select class="cht-sel" onchange="ecMixSet(\'to\',this.value)">'+opt(_ecMixTo)+'</select>'
+    +'</div>';
+  const dCls=dProfit>=0?'var(--accent2)':'var(--danger)';
+  const inner='<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;font-size:13px">'
+    +'<div>Δ gross profit <b style="color:'+dCls+'">'+(dProfit>=0?'+':'')+ecEur(dProfit)+'</b></div>'
+    +'<div>Blended margin <b>'+ecPct(oldBlended)+'</b> → <b style="color:'+dCls+'">'+ecPct(newBlended)+'</b></div>'
+    +'<div style="font-size:11px;color:var(--muted)">'+t('moving {v} of revenue {a} → {b}',{v:ecEur(move),a:escH(from.name),b:escH(to.name)})+'</div>'
+    +'</div>';
+  return pfSectionShell(t('MIX-SHIFT WHAT-IF'), t('Shift a slice of revenue between channels to see the gross-profit and blended-margin impact. Pool-level estimate — nothing is written back.'), controls, inner);
+}
+function ecMixSet(key,val){
+  if(key==='pct') _ecMixPct=Math.max(0,Math.min(30,parseInt(val,10)||0));
+  else if(key==='from') _ecMixFrom=parseInt(val,10)||0;
+  else if(key==='to')   _ecMixTo=parseInt(val,10)||0;
+  const el=G('ec-sec-mix'); if(el) el.innerHTML=ecMixSensitivity();
+}
+
+// ── 7. margin realism (channel vs unit economics vs DTC) ─────────────────────
+function ecMarginRealism(ds){
+  const rows=ds.filter(d=>d.blended!=null || d.unitMarginPct!=null);
+  if(!rows.length) return pfEmpty(t('Set channel margins and unit economics (price/cost) to compare.'));
+  let h='<div style="overflow-x:auto"><table class="dtc-tbl" style="min-width:560px"><thead><tr>'
+    +'<th>'+t('Project')+'</th><th>'+t('Channel margin')+'</th><th>'+t('Unit margin')+'</th><th>'+t('Gap')+'</th><th>'+t('Read')+'</th></tr></thead><tbody>';
+  rows.forEach(d=>{
+    const gap=(d.blended!=null&&d.unitMarginPct!=null)?d.blended-d.unitMarginPct:null;
+    let read='—', col='var(--muted)';
+    if(gap!=null){
+      if(gap>10){ read=t('optimistic — channel margin above unit economics'); col='var(--danger)'; }
+      else if(gap<-10){ read=t('conservative — headroom vs unit economics'); col='var(--accent2)'; }
+      else { read=t('consistent'); col='var(--muted)'; }
+    } else if(d.blended!=null && d.unitMarginPct==null){ read=t('no unit economics set'); }
+      else if(d.blended==null){ read=t('no channel margin set'); }
+    h+='<tr><td>'+escH(d.name)+'</td><td>'+ecPct(d.blended)+'</td><td>'+ecPct(d.unitMarginPct)+'</td>'
+      +'<td style="color:'+(gap==null?'var(--muted)':(Math.abs(gap)>10?col:'var(--muted)'))+'">'+(gap==null?'—':(gap>=0?'+':'')+gap.toFixed(0)+' pt')+'</td>'
+      +'<td style="color:'+col+';font-size:11px">'+read+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+// ── 8. cost gap → margin at risk ─────────────────────────────────────────────
+function ecCostGap(ds){
+  const rows=ds.filter(d=>d.dtcCurrent!=null && d.dtcTarget!=null);
+  if(!rows.length) return pfEmpty(t('Set target margin and a design-to-cost cascade to see cost gaps.'));
+  const maxRisk=rows.reduce((s,d)=>Math.max(s,Math.abs((d.dtcCurrent-d.dtcTarget)*(d.amortUnits||0))),1);
+  let h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(d=>{
+    const gap=d.dtcCurrent-d.dtcTarget;                       // €/unit over(+)/under(−) target
+    const risk=gap*(d.amortUnits||0);                         // total € at risk over amortized volume
+    const cls=gap>0?'var(--danger)':'var(--accent2)';
+    const right='<span>cur €'+d.dtcCurrent.toFixed(0)+' / tgt €'+d.dtcTarget.toFixed(0)+'</span> · <b style="color:'+cls+'">'+(gap>0?'+':'')+gap.toFixed(0)+'€/u</b>'
+      +(d.amortUnits>0?' · <span style="color:'+cls+'">'+ecEur(risk)+'</span>':' · <span style="color:var(--dim)">no volume</span>');
+    h+=ecBar(d.name, Math.abs(risk)/maxRisk, right, gap>0?'var(--danger)':'var(--accent2)', d.name);
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = |margin at risk| = (current − target €/unit) × amortization volume · red = over target')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// ── 9. strategy coherence (by tactical intent) ───────────────────────────────
+function ecStrategy(ds){
+  const groups={};
+  ds.forEach(d=>{ const k=(d.intent||'').trim()||t('Unassigned'); (groups[k]||(groups[k]={cost:0,rev:0,npv:0,n:0})); groups[k].cost+=d.cost; groups[k].rev+=d.chanRev; groups[k].npv+=(d.npv||0); groups[k].n++; });
+  const rows=Object.keys(groups).map(k=>({k,g:groups[k]})).sort((a,b)=>(b.g.rev+b.g.cost)-(a.g.rev+a.g.cost));
+  if(!rows.length) return pfEmpty(t('Tag projects with a tactical intent (Defend/Grow/Adapt/Diversify).'));
+  const maxV=rows.reduce((s,r)=>Math.max(s,r.g.cost,r.g.rev),1);
+  let h='<div style="display:flex;flex-direction:column;gap:12px">';
+  rows.forEach(r=>{
+    const col=(typeof PROJECT_INTENT_COLORS!=='undefined'&&PROJECT_INTENT_COLORS[r.k])||'var(--accent)';
+    const npvCls=r.g.npv>=0?'var(--accent2)':'var(--danger)';
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:110px;font-size:11px;color:'+col+';font-weight:600">'+escH(r.k)+' <span style="color:var(--dim)">·'+r.g.n+'</span></div>'
+      +'<div style="flex:1;display:flex;flex-direction:column;gap:3px">'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(r.g.rev/maxV*100).toFixed(1)+'%;background:var(--accent2)"></div></div>'
+      +'<div style="height:11px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(r.g.cost/maxV*100).toFixed(1)+'%;background:var(--accent)"></div></div>'
+      +'</div>'
+      +'<div style="width:190px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--accent2)">'+ecEur(r.g.rev)+'</span>/<span style="color:var(--accent)">'+ecEur(r.g.cost)+'</span> · <span style="color:'+npvCls+'">'+ecEur(r.g.npv)+'</span></div></div>';
+  });
+  h+='<div style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace">'+t('top bar = revenue · bottom bar = cost · right = NPV')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// ── 10. decision quality ─────────────────────────────────────────────────────
+function ecDecision(ds){
+  const withNpv=ds.filter(d=>d.npv!=null).slice().sort((a,b)=>(b.npv)-(a.npv));
+  const medNpv=withNpv.length?withNpv[Math.floor(withNpv.length/2)].npv:0;
+  const flags=ds.map(d=>{
+    const highValue=(d.npv!=null && d.npv>Math.max(0,medNpv));
+    const lowAlign=(d.alignMin!=null && d.alignMin<=4);
+    return {d, conflict:d.conflicts>0, riskyBet:highValue&&lowAlign};
+  }).filter(f=>f.conflict||f.riskyBet);
+  if(!flags.length) return '<div style="font-size:12px;color:var(--accent2);font-family:IBM Plex Mono,monospace">'+t('✓ No conflicts and no high-value / low-alignment bets.')+'</div>';
+  let h='<div style="display:flex;flex-direction:column;gap:6px">';
+  flags.forEach(f=>{
+    const tags=[];
+    if(f.conflict) tags.push('<span style="color:var(--danger)">⚠ '+f.d.conflicts+' '+t('conflict(s)')+'</span>');
+    if(f.riskyBet) tags.push('<span style="color:var(--warn)">◆ '+t('high value, low alignment (min {n}/10)',{n:f.d.alignMin})+'</span>');
+    h+='<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;border-bottom:1px solid var(--border);padding:5px 0">'
+      +'<span style="color:var(--text)">'+escH(f.d.name)+' <span style="color:var(--dim);font-family:IBM Plex Mono,monospace">NPV '+ecEur(f.d.npv||0)+'</span></span>'
+      +'<span style="text-align:right">'+tags.join(' · ')+'</span></div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+// ── 11. value per FTE ────────────────────────────────────────────────────────
+function ecValuePerFte(ds){
+  const rows=ds.filter(d=>d.avgFte>0).map(d=>({...d, npvPerFte:(d.npv||0)/d.avgFte, revPerFte:d.chanRev/d.avgFte}))
+    .sort((a,b)=>b.npvPerFte-a.npvPerFte);
+  if(!rows.length) return pfEmpty(t('No allocated FTE in the period — set a FROM/TO range with allocations.'));
+  const maxAbs=rows.reduce((s,d)=>Math.max(s,Math.abs(d.npvPerFte)),1);
+  let h='<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(d=>{
+    const cls=d.npvPerFte>=0?'var(--accent2)':'var(--danger)';
+    const right='<span style="color:'+cls+'">NPV/FTE '+ecEur(d.npvPerFte)+'</span> · rev/FTE '+ecEur(d.revPerFte)+' · '+d.avgFte.toFixed(1)+' FTE';
+    h+=ecBar(d.name, Math.abs(d.npvPerFte)/maxAbs, right, cls, d.name);
+  });
+  h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = |NPV per average FTE| over the period')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+// ── 12. trajectory over snapshots (async, on demand) ─────────────────────────
+function ecTrajectoryShell(){
+  const n=(typeof snapshots!=='undefined'&&Array.isArray(snapshots))?snapshots.length:0;
+  const controls='<button class="sm" onclick="ecLoadTrajectory()">'+t('↻ Load history')+'</button>';
+  const inner='<div id="ec-traj-body" style="font-size:11px;color:var(--muted)">'
+    +(n?t('{n} snapshot(s) available — load to plot how portfolio NPV, revenue and blended margin have drifted.',{n})
+        :t('No snapshots yet — take snapshots over time to build a trajectory.'))+'</div>';
+  return pfSectionShell(t('TRAJECTORY (snapshots)'), t('How the portfolio’s value and margin have moved across saved snapshots, ending at the live state.'), controls, inner);
+}
+function ecLoadTrajectory(){
+  const box=G('ec-traj-body'); if(!box) return;
+  if(typeof snapshots==='undefined' || !Array.isArray(snapshots) || !snapshots.length){ box.textContent=t('No snapshots to load.'); return; }
+  if(typeof snapIdbGetData!=='function'){ box.textContent=t('Snapshot storage unavailable.'); return; }
+  box.textContent=t('Loading…');
+  const snaps=snapshots.filter(s=>s.scope==='full'||s.scope==='projects');
+  Promise.all(snaps.map(s=>snapIdbGetData(s.id).then(d=>({s,d})).catch(()=>({s,d:null}))))
+    .then(loaded=>{
+      const pts=[];
+      loaded.forEach(({s,d})=>{ if(d&&Array.isArray(d.projects)) pts.push(ecTrajPoint(new Date(s.ts).getTime(), s.label||'', d.projects)); });
+      pts.push(ecTrajPoint(Date.now(), t('now'), projects));   // live state as the final point
+      pts.sort((a,b)=>a.ts-b.ts);
+      box.innerHTML=ecTrajCharts(pts);
+    })
+    .catch(()=>{ box.textContent=t('Could not read snapshot history.'); });
+}
+// One trajectory point: Σ NPV, Σ revenue, blended margin over a projects array.
+function ecTrajPoint(ts, label, projList){
+  let npv=0, rev=0, gp=0, anyGp=false;
+  (projList||[]).forEach(p=>{
+    const c=p.charter; if(!c||typeof c!=='object') return;
+    const fin=calculateFinancials(c.financials); if(fin.npv!=null) npv+=fin.npv;
+    const revM=Number(c.expectedRevenueM); const base=(Number.isFinite(revM)&&revM>0)?revM*1e6:0; rev+=base;
+    const bl=(typeof chanBlendedMargin==='function')?chanBlendedMargin(c):null;
+    if(bl!=null){ gp+=base*bl/100; anyGp=true; }
+  });
+  return { ts, label, npv, rev, margin:(anyGp&&rev>0)?gp/rev*100:null };
+}
+function ecTrajCharts(pts){
+  if(pts.length<2) return '<div style="font-size:11px;color:var(--muted)">'+t('Need at least two points (one snapshot + now) to plot a trend.')+'</div>';
+  const line=(title,key,fmt,color)=>{
+    const vals=pts.map(p=>p[key]).filter(v=>v!=null&&Number.isFinite(v));
+    if(!vals.length) return '';
+    const W=520,H=90,padL=6,padR=6,padT=10,padB=14;
+    let lo=Math.min(0,...vals), hi=Math.max(0,...vals); if(lo===hi){lo-=1;hi+=1;}
+    const n=pts.length;
+    const X=i=>padL+(n===1?0:i/(n-1))*(W-padL-padR);
+    const Y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
+    let path='', dots='';
+    pts.forEach((p,i)=>{ const v=p[key]; if(v==null||!Number.isFinite(v)) return;
+      path+=(path?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';
+      dots+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="2.4" fill="'+color+'"/>'; });
+    const last=vals[vals.length-1];
+    return '<div style="flex:1;min-width:240px"><div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;margin-bottom:2px">'+escH(title)+' · <b style="color:'+color+'">'+fmt(last)+'</b></div>'
+      +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img" aria-label="'+escH(title)+'">'
+      +'<line x1="'+padL+'" y1="'+Y(0).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+Y(0).toFixed(1)+'" stroke="var(--border)" stroke-width="1"/>'
+      +'<path d="'+path.trim()+'" fill="none" stroke="'+color+'" stroke-width="2"/>'+dots+'</svg></div>';
+  };
+  return '<div style="display:flex;flex-wrap:wrap;gap:16px">'
+    +line(t('Portfolio NPV'),'npv',ecEur,'var(--accent)')
+    +line(t('Expected revenue'),'rev',ecEur,'var(--accent2)')
+    +line(t('Blended margin'),'margin',v=>v.toFixed(1)+'%','var(--warn)')
+    +'</div><div style="font-size:9px;color:var(--dim);margin-top:6px;font-family:IBM Plex Mono,monospace">'
+    +t('{n} points · oldest → live "now" (rightmost)',{n:pts.length})+'</div>';
+}
+/* ◄◄ END: sections/econ.js ►► */
+
 /* ►► SECTION: BOOT ◄◄ Global event wiring, keyboard shortcuts, and app init/boot sequence
  *
  * Functions defined in this file: (none — this is the entry point: top-level event
@@ -21260,7 +22192,7 @@ railInit();   // render the persistent nav rail + land on the initial view
   <div id="chthub-body"></div>
 </div>
 
-<!-- DESIGN-TO-COST (WORK › Design to cost rail view) -->
+<!-- DESIGN-TO-COST (OFFER MNGT › Design to cost rail view) -->
 <div id="dtc-overlay">
   <div id="dtc-header">
     <span id="dtc-title">DESIGN TO COST</span>
@@ -21270,6 +22202,18 @@ railInit();   // render the persistent nav rail + land on the initial view
     <button onclick="closeDtc()">✕ CLOSE</button>
   </div>
   <div id="dtc-body"></div>
+</div>
+
+<!-- CHANNEL MIX (OFFER MNGT › Channel mix rail view) — go-to-market synoptic -->
+<div id="chan-overlay">
+  <div id="chan-header">
+    <span id="chan-title">CHANNEL MIX</span>
+    <span id="chan-pick"></span>
+    <div style="flex:1"></div>
+    <button class="sm primary" onclick="chanSaveNow()">SAVE</button>
+    <button onclick="closeChannels()">✕ CLOSE</button>
+  </div>
+  <div id="chan-body"></div>
 </div>
 
 <!-- ICON PICKER (permanent, outside ptw-body) -->

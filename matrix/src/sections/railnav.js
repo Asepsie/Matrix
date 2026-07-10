@@ -59,16 +59,17 @@ var RAIL_DOMAINS = [
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
   ]},
-  { id:'work', name:t('WORK'), ico:RAIL_I.work, views:[
+  { id:'work', name:t('OFFER MNGT'), ico:RAIL_I.work, views:[
     {id:'matrix',      label:t('Portfolio matrix'), bdg:t('was home')},
-    {id:'plan',        label:t('Resource plan')},
-    {id:'timeline',    label:t('Timeline')},
     {id:'charters',    label:t('Financials analysis')},
     {id:'decision',    label:t('Trade-off decision')},
+    {id:'channels',    label:t('Channel mix')},
     {id:'dtc',         label:t('Design to cost')},
     {id:'brief',       label:t('Project brief')},
   ]},
   { id:'planning', name:t('PLAN'), ico:RAIL_I.planning, views:[
+    {id:'plan',        label:t('Resource plan')},
+    {id:'timeline',    label:t('Timeline')},
     {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
@@ -84,6 +85,7 @@ var RAIL_DOMAINS = [
   ]},
   { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
     {id:'portfolio',   label:t('Portfolio analytics')},
+    {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
     {id:'summary',     label:t('Summary')},
     {id:'dashboard',   label:t('Cost dashboard')},
@@ -242,7 +244,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -257,6 +259,7 @@ function closeAllOverlays(){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
+  if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
 }
 
@@ -272,6 +275,7 @@ function railOpenRes(tab){
   if(typeof chtClose==='function')          chtClose();
   if(typeof chtCloseDecision==='function')  chtCloseDecision();
   if(typeof closeDtc==='function')        closeDtc();
+  if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -288,6 +292,7 @@ function railRoute(viewId){
   else if(viewId==='charters')chtOpenFinancials();
   else if(viewId==='decision')chtOpenDecisionView();
   else if(viewId==='dtc')     openDtc();
+  else if(viewId==='channels')openChannelsView();
   else if(viewId==='brief')   openProjectBriefExport();
 }
 

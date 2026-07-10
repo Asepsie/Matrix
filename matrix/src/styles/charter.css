@@ -322,3 +322,38 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .chthub-prio.lo{ color:var(--muted); }
 .chthub-metric.ok{ color:var(--accent2); border-color:var(--accent2); }
 .chthub-metric.conflict{ color:var(--danger); border-color:var(--danger); }
+
+/* ── Channel mix (OFFER MNGT › Channel mix rail view) ── */
+#chan-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:410; flex-direction:column;
+}
+#chan-overlay.show{ display:flex; }
+#chan-pick{ display:inline-flex; align-items:center; gap:6px; }
+#chan-header{ display:flex; align-items:center; gap:10px;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+#chan-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#chan-body{ flex:1; overflow:auto; padding:18px 22px; max-width:1000px; }
+.chan-head{ display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end; margin-bottom:16px; }
+.chan-head .cht-f{ margin:0; }
+.chan-ctx{ flex-basis:100%; font-size:11px; color:var(--muted); }
+.chan-ctx b{ color:var(--text); }
+.chan-card{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; margin:0 0 16px; }
+.chan-sec-t{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--accent);
+  letter-spacing:.06em; margin-bottom:10px; }
+.chan-synoptic{ overflow-x:auto; }
+.chan-svg{ display:block; }
+.chan-totals{ display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline;
+  font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--border);
+  border-radius:6px; padding:8px 12px; margin:0 0 16px; }
+.chan-totals b{ color:var(--text); }
+.chan-totals .good{ color:var(--accent2); }
+.chan-totals .bad{ color:var(--danger); }
+.chan-tbl-wrap{ overflow-x:auto; }
+.chan-tbl th{ white-space:nowrap; }
+.chan-tbl .chan-num{ width:74px; text-align:right; }
+.chan-tbl .chan-val{ font-family:IBM Plex Mono,monospace; font-size:11px; color:var(--accent2); white-space:nowrap; }
+.chan-swatch{ display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid var(--border); }
+.chan-color{ width:30px; height:24px; padding:0; border:1px solid var(--border); border-radius:4px;
+  background:none; cursor:pointer; }

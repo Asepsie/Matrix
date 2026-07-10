@@ -367,6 +367,23 @@ export function sanitiseCharter(p){
     if(!Array.isArray(s.items)) s.items=[];
     s.items.forEach(it=>{ if(it.include==null) it.include=true; if(it.cost==null) it.cost=0; });
   });
+  // Go-to-market channel model (added later; back-fill for older charters).
+  // A missing model is seeded with the default channels; an intentionally
+  // emptied one stays empty (we only replace when absent/invalid).
+  if(!c.channelModel||typeof c.channelModel!=='object') c.channelModel=makeChannelModel();
+  if(typeof c.channelModel.company!=='string') c.channelModel.company='';
+  if(!['revenue','volume','emphasis'].includes(c.channelModel.basis)) c.channelModel.basis='revenue';
+  if(c.channelModel.totalUnits===undefined) c.channelModel.totalUnits=null;
+  if(!Array.isArray(c.channelModel.channels)) c.channelModel.channels=[];
+  c.channelModel.channels.forEach(ch=>{
+    if(typeof ch.name!=='string') ch.name='';
+    if(ch.pct==null||!Number.isFinite(+ch.pct)) ch.pct=0;
+    if(ch.margin===undefined) ch.margin=null;
+    if(typeof ch.partner!=='string') ch.partner='';
+    if(typeof ch.segment!=='string') ch.segment='';
+    if(typeof ch.color!=='string') ch.color='';
+    if(typeof ch.note!=='string') ch.note='';
+  });
   if(!Array.isArray(c.financials.cashFlows))       c.financials.cashFlows=[];
   if(!c.financials.unit)                           c.financials.unit='eur';
   if(!c.financials.investment||typeof c.financials.investment!=='object')

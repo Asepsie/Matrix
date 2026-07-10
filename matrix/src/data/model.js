@@ -116,8 +116,32 @@ export function makeCharter(overrides = {}) {
     financials: makeCharterFinancials(),
     decision:   makeDecisionCard(),
     costModel:  makeCostModel(),
+    channelModel: makeChannelModel(),
     ...overrides,
   };
+}
+
+// Go-to-market CHANNEL model (on the charter). The go-to-market synoptic:
+// company/project → channels → segments. `basis` sets what each channel's `pct`
+// means: 'revenue' (split the charter's expected revenue → € per channel),
+// 'volume' (split `totalUnits` → units per channel) or 'emphasis' (a relative
+// go-to-market weighting only). Percentages are shares that ideally sum to 100.
+export function makeChannelModel(overrides = {}) {
+  return {
+    company: '',            // labels the top of the synoptic (per-project)
+    basis: 'revenue',       // 'revenue' | 'volume' | 'emphasis'
+    totalUnits: null,       // used only when basis==='volume'
+    channels: ['OEM','Distributor','E-commerce','Retail','Partner'].map(name => makeChannel({ name })),
+    ...overrides,
+  };
+}
+// One go-to-market channel. `pct` = share (%); `margin` = channel margin (%);
+// `partner` = named partner/account; `segment` = the single downstream customer
+// segment this channel serves (one segment per channel — a segment reached via
+// two channels appears under each, so the synoptic never needs crossing arrows).
+// `color` is an optional swatch (assigned from a palette by index when blank).
+export function makeChannel(overrides = {}) {
+  return { name: '', pct: 0, margin: null, partner: '', segment: '', color: '', note: '', ...overrides };
 }
 
 // One stakeholder demand. `dimension` is the trade-off corner it pushes

@@ -92,7 +92,7 @@ export function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRa
 // is still visible beneath (hub mode) it stays highlighted as the charter view.
 // Reads railnav module state directly (one shared bundle scope).
 function chtSyncRailAfterClose(){
-  const anyShown=['cht-overlay','dec-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
+  const anyShown=['cht-overlay','dec-overlay','chan-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
   if(anyShown) return;
   if(typeof railRouting!=='undefined' && railRouting) return;
   if(typeof activeView!=='undefined' && activeView!=='matrix'){
@@ -134,8 +134,11 @@ function chtRenderPicker(target){
 // the hub again.
 let _chtHubTarget='financials';
 export function openCharterHub(target){
-  _chtHubTarget = target==='decision' ? 'decision' : 'financials';
-  const t=G('chthub-title'); if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION' : 'FINANCIALS ANALYSIS';
+  _chtHubTarget = (target==='decision'||target==='channels') ? target : 'financials';
+  const t=G('chthub-title');
+  if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION'
+                      : _chtHubTarget==='channels' ? 'CHANNEL MIX'
+                      : 'FINANCIALS ANALYSIS';
   G('chthub-overlay').classList.add('show');
   chtRenderHub();
 }
@@ -143,7 +146,9 @@ export function closeCharterHub(){ G('chthub-overlay').classList.remove('show');
 
 function chtRenderHub(){
   const body=G('chthub-body'); if(!body) return;
-  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision' : 'openCharter';
+  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision'
+               : _chtHubTarget==='channels' ? 'openChannels'
+               : 'openCharter';
   if(!projects.length){
     body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open it here.</div>';
     return;
@@ -153,8 +158,20 @@ function chtRenderHub(){
     const r = calculateFinancials(c.financials);
     const prio = c.priority||'—';
     const prioCls = c.priority==='High'?'hi':c.priority==='Medium'?'med':c.priority==='Low'?'lo':'';
-    const conflicts = chtConflicts(c).length;
-    const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
+    let badges;
+    if(_chtHubTarget==='channels'){
+      // Channel-mix summary: number of channels + whether the shares sum to 100%.
+      const m = chanMixSummary(c);
+      badges = `<span class="chthub-metric">${m.count} channel${m.count===1?'':'s'}</span>`
+             + `<span class="chthub-metric ${m.ok?'ok':(m.count?'conflict':'')}">Σ ${m.total}%</span>`;
+    } else {
+      const conflicts = chtConflicts(c).length;
+      const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
+      badges = `<span class="chthub-metric">NPV ${r.display.npv}</span>`
+             + `<span class="chthub-metric">IRR ${r.display.irr}</span>`
+             + (conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
+                        :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`);
+    }
     return `<div class="chthub-card" onclick="${opener}(${p.id})" title="Open">
       <div class="chthub-top">
         <span class="chthub-name">${escH(p.name||'Untitled project')}</span>
@@ -162,10 +179,7 @@ function chtRenderHub(){
       </div>
       <div class="chthub-badges">
         <span class="chthub-prio ${prioCls}">${escH(prio)}</span>
-        <span class="chthub-metric">NPV ${r.display.npv}</span>
-        <span class="chthub-metric">IRR ${r.display.irr}</span>
-        ${conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
-                   :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`}
+        ${badges}
       </div>
     </div>`;
   }).join('')+'</div>';

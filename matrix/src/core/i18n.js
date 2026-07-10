@@ -38,18 +38,18 @@ var I18N_PSEUDO   = 'xx';         // dev pseudo-locale — see i18nPseudo()
 export var I18N_DICT = {
   fr: {
     /* Nav rail — domains */
-    'TEAM':'ÉQUIPE', 'WORK':'TRAVAIL', 'SKILLS':'COMPÉTENCES',
+    'TEAM':'ÉQUIPE', 'WORK':'TRAVAIL', 'OFFER MNGT':'GESTION D\'OFFRE', 'SKILLS':'COMPÉTENCES',
     'TALENT':'TALENTS', 'INSIGHTS':'ANALYSES',
     /* Nav rail — views */
     'Roster':'Effectif', 'Org chart':'Organigramme',
     'Portfolio matrix':'Matrice de portefeuille', 'was home':'ancien accueil',
     'Resource plan':'Plan de ressources', 'Timeline':'Chronologie',
     'Financials analysis':'Analyse financière', 'Trade-off decision':'Décision d\'arbitrage',
-    'Design to cost':'Conception à coût objectif', 'Project brief':'Brief projet',
+    'Design to cost':'Conception à coût objectif', 'Channel mix':'Mix de canaux', 'Project brief':'Brief projet',
     'Skills matrix':'Matrice de compétences', 'Skill risk':'Risque de compétence',
     'Heatmap':'Carte de chaleur', 'Nine-box':'Nine-box',
     'Team profiles':'Profils d\'équipe', 'Development':'Développement',
-    'Portfolio analytics':'Analyse de portefeuille', 'People analytics':'Analyse RH',
+    'Portfolio analytics':'Analyse de portefeuille', 'Portfolio economics':'Économie de portefeuille', 'People analytics':'Analyse RH',
     'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Compare':'Comparer',
     /* Nav rail — utility actions */
     'Snapshots':'Instantanés', 'Backup':'Sauvegarde', 'Restore':'Restaurer',
@@ -508,18 +508,18 @@ export var I18N_DICT = {
   },
   zh: {
     /* Nav rail — domains */
-    'TEAM':'团队', 'WORK':'工作', 'SKILLS':'技能',
+    'TEAM':'团队', 'WORK':'工作', 'OFFER MNGT':'产品管理', 'SKILLS':'技能',
     'TALENT':'人才', 'INSIGHTS':'洞察',
     /* Nav rail — views */
     'Roster':'花名册', 'Org chart':'组织架构图',
     'Portfolio matrix':'组合矩阵', 'was home':'原主页',
     'Resource plan':'资源计划', 'Timeline':'时间线',
     'Financials analysis':'财务分析', 'Trade-off decision':'权衡决策',
-    'Design to cost':'成本设计', 'Project brief':'项目简介',
+    'Design to cost':'成本设计', 'Channel mix':'渠道组合', 'Project brief':'项目简介',
     'Skills matrix':'技能矩阵', 'Skill risk':'技能风险',
     'Heatmap':'热力图', 'Nine-box':'九宫格',
     'Team profiles':'团队画像', 'Development':'发展',
-    'Portfolio analytics':'组合分析', 'People analytics':'人员分析',
+    'Portfolio analytics':'组合分析', 'Portfolio economics':'组合经济', 'People analytics':'人员分析',
     'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Compare':'对比',
     /* Nav rail — utility actions */
     'Snapshots':'快照', 'Backup':'备份', 'Restore':'恢复',

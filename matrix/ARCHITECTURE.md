@@ -540,6 +540,75 @@ helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `
 
 ---
 
+## Channel mix — go-to-market synoptic
+
+`OFFER MNGT › Channel mix` ([src/sections/channels.js](src/sections/channels.js),
+all `chan`-prefixed) — a **per-project** go-to-market view: a top-down synoptic of
+**Company/Project → Channels → Segments**, plus an editor. Data lives on
+`charter.channelModel` (via `makeChannelModel`/`makeChannel` in
+[model.js](src/data/model.js)), so it rides save / backup / snapshot with the charter
+and is back-filled by `sanitiseCharter` ([persist.js](src/core/persist.js)). Reuses the
+`cht-*` / `dtc-*` styles (registered in `build.js`, `charter.css`). Money is EUR.
+
+### Key facts (non-obvious)
+
+- **It's the 3rd charter-hub target.** The rail entry `openChannelsView()` honours the
+  SAME picker mode as Financials/Trade-off/DTC (`railChartPicker()` → `hub | dropdown`).
+  In hub mode it opens the shared `#chthub-overlay` with `_chtHubTarget='channels'`;
+  `chtRenderHub` (in charter.js) routes the card opener to `openChannels` and shows
+  channel-summary badges via `chanMixSummary`. `chtSyncRailAfterClose` includes
+  `chan-overlay` so closing over the hub doesn't wrongly reset the rail highlight.
+  `#chan-overlay` is a rail-inset VIEW (`left:var(--rail)`, z410), like `#dec-overlay`.
+- **`basis` sets what `pct` means** (`revenue | volume | emphasis`): revenue splits the
+  charter's `expectedRevenueM` (M€) into € per channel; volume splits `channelModel.totalUnits`;
+  emphasis is weighting only (no derived value). `pct` is ALWAYS the share regardless of basis.
+- **Percentages are advisory, not enforced.** A live `chanMixSummary` shows the share total
+  with a 100%-check; nothing clamps the sum. Blended margin is share-weighted over channels
+  that actually have a margin — `chanMarginOf` returns `null` (not 0) for a blank margin, because
+  `Number(null)===0` would otherwise drag empty margins into the average (a real bug caught in test).
+- **One segment per channel (no crossing arrows).** Each channel routes to a single `segment`
+  box; a segment reached via two channels simply appears under each. Arrow thickness ∝ share.
+- **In-place derived refresh (the DTC pattern).** Typing in the editor calls
+  `chanRefreshDerived()` — re-renders ONLY `#chan-synoptic` + `#chan-totals` + per-row value/swatch,
+  never the inputs — so focus/scroll survive. Structural changes (add/remove/basis) do a full
+  `chanRender`. Company/project-name edits refresh only the synoptic (the name inputs aren't touched).
+- **`chanAggregate(projList)` is a pure portfolio helper** reused by INSIGHTS › Portfolio analytics
+  (`pfChannelMix`): revenue per channel uses the SAME `expectedRevenueM` base as the panel (NOT
+  `projRevenueM`), so the panel and the rollup agree. Projects with no expected revenue contribute €0.
+
+## Portfolio economics — cross-layer analytics
+
+`INSIGHTS › Portfolio economics` ([src/sections/econ.js](src/sections/econ.js),
+all `ec`-prefixed) — a read-only Resources tab (`renderEconTab`) that **crosses the four
+data layers** the rest of the app keeps separate: value (`charter.financials` →
+`calculateFinancials`), cost (allocations via `pfBuildDataset` + design-to-cost unit cost),
+route-to-market (`channelModel`), decision (`chtConflicts` + `CHT_FUNCS` alignment). Wired
+like any tab: `JS_FILES`, `showResTab` case + highlight array, `RAIL_DOMAINS` insights view +
+`RAIL_RES_TABS`. No new CSS file — sections are inline-styled like [portfolio.js](src/sections/portfolio.js)
+and reuse its `pfSection`/`pfSectionShell`/`pfEmpty`/`pfEur` helpers.
+
+### Key facts (non-obvious)
+
+- **Nothing here mutates state.** Every section is a pure function of a per-project `ecDataset()`
+  (financials × channel × decision × cost). The mix-shift what-if is computed at the **pool level**
+  (`ΔprofitΔ = Δrevenue × (marginTo − marginFrom)`), never written back; its only state is the
+  UI-only module vars `_ecMixFrom/_ecMixTo/_ecMixPct`, re-rendered into `#ec-sec-mix` by `ecMixSet`.
+- **Revenue base is `expectedRevenueM`, NOT `projRevenueM`.** All €/margin figures use the charter's
+  expected revenue (the same base the Channel-mix panel splits), so this tab, the channel panel, and
+  the Portfolio-analytics channel block all agree. Cost/FTE come from `pfBuildDataset` (the allocation
+  engine, FROM/TO period).
+- **Reused pure helpers live in [channels.js](src/sections/channels.js):** `chanBlendedMargin`,
+  `chanProfitPools` (revenue + gross profit by channel AND segment), `chanConcentration` (normalised
+  HHI + top dependency by channel/segment/partner). `chanMarginOf` returns `null` (not 0) for a blank
+  margin so empty margins don't drag averages — the same bug class caught in the channel totals.
+- **Risk-adjusted NPV haircuts the UPSIDE only** (`npv>0 ? npv×(1−min(rpnMax/1000,1)) : npv`) so a
+  loss is never flattered by risk. PI = `(Σnpv+Σinvested)/Σinvested` (PV inflows ÷ outlay).
+- **Trajectory is the one ASYNC section.** `ecLoadTrajectory` (on a button) reads each full/projects
+  snapshot via `snapIdbGetData(id)` (`Promise.all`), recomputes Σ NPV / Σ revenue / blended margin per
+  snapshot with `ecTrajPoint`, appends the live state as "now", and renders sparklines into
+  `#ec-traj-body`. Snapshot data isn't sanitised, so every helper it calls must tolerate missing fields
+  (they do). This is the portfolio "trajectory over snapshots" that was previously deferred.
+
 ## Localization (i18n)
 
 Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded **first** in
