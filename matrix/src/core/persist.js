@@ -386,6 +386,9 @@ export function sanitiseCharter(p){
   });
   if(!Array.isArray(c.financials.cashFlows))       c.financials.cashFlows=[];
   if(!c.financials.unit)                           c.financials.unit='eur';
+  // Commercial cost/unit added later: back-fill 0 so old charters read gross = commercial.
+  if(c.financials.commercialCostPerUnit==null||!Number.isFinite(+c.financials.commercialCostPerUnit))
+                                                   c.financials.commercialCostPerUnit=0;
   if(!c.financials.investment||typeof c.financials.investment!=='object')
                                                    c.financials.investment={items:[],amortUnits:null};
   if(!Array.isArray(c.financials.investment.items))c.financials.investment.items=[];

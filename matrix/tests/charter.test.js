@@ -335,6 +335,57 @@ test('margin mode: targetCost margin excludes amortized per-unit (break-even inc
   assert.ok(Math.abs(r.breakEvenUnits - (1000/19.5)) < 1e-6);
 });
 
+test('gross vs commercial margin — waterfall split', () => {
+  const r = calculateFinancials(makeCharterFinancials({
+    pricePerUnit: 100, variableCostPerUnit: 40, commercialCostPerUnit: 15,
+  }));
+  assert.equal(r.grossMarginPerUnit, 60);        // 100 − 40
+  assert.equal(r.grossMarginPct, 60);
+  assert.equal(r.commercialMarginPerUnit, 45);   // 100 − 40 − 15
+  assert.equal(r.commercialMarginPct, 45);
+  assert.equal(r.marginPerUnit, 60);             // legacy alias = gross
+  assert.equal(r.display.commercialMarginPerUnit, '€45');
+});
+
+test('commercial margin — back-compat: no commercial cost ⇒ commercial = gross', () => {
+  const r = calculateFinancials(makeCharterFinancials({
+    pricePerUnit: 100, variableCostPerUnit: 40,   // commercialCostPerUnit defaults 0
+  }));
+  assert.equal(r.commercialMarginPerUnit, r.grossMarginPerUnit);
+  assert.equal(r.commercialMarginPct, r.grossMarginPct);
+});
+
+test('commercial cost feeds effVarCost & break-even (fully loaded)', () => {
+  const r = calculateFinancials(makeCharterFinancials({
+    initialInvestment: 1000, pricePerUnit: 100,
+    variableCostPerUnit: 40, commercialCostPerUnit: 10,
+  }));
+  assert.equal(r.effVarCost, 50);                // 40 production + 10 commercial
+  // break-even uses commercial margin (price − effVarCost) = 50 → 1000/50 = 20
+  assert.ok(Math.abs(r.breakEvenUnits - 20) < 1e-9, `be=${r.breakEvenUnits}`);
+  assert.equal(r.grossMarginPerUnit, 60);        // gross unchanged by commercial cost
+});
+
+test('commercial margin — target-margin mode still drives GROSS only', () => {
+  const r = calculateFinancials(makeCharterFinancials({
+    marginMode:'targetCost', pricePerUnit:50, targetMarginPct:40, commercialCostPerUnit:5,
+  }));
+  assert.equal(r.grossMarginPerUnit, 20);        // 50 − 30 (derived production cost), hits target
+  assert.equal(r.grossMarginPct, 40);
+  assert.equal(r.commercialMarginPerUnit, 15);   // 20 − 5
+});
+
+test('commercial/gross margin — null-safe on empty input', () => {
+  const r = calculateFinancials({});
+  assert.equal(r.grossMarginPct, null);
+  assert.equal(r.commercialMarginPct, null);
+  assert.equal(r.display.commercialMarginPerUnit, '—');
+});
+
+test('makeCharterFinancials — carries commercialCostPerUnit default 0', () => {
+  assert.equal(makeCharterFinancials().commercialCostPerUnit, 0);
+});
+
 test('calculateFinancials — margin, ROI and profitability index', () => {
   const r = calculateFinancials(makeCharterFinancials({
     initialInvestment: 1000, cashFlows: [300,300,300,300], discountRate: 0.10,

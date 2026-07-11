@@ -191,7 +191,9 @@ export function makeCharterFinancials(overrides = {}) {
     cashFlows:           [],        // net annual cash flows, years 1..N (EUR)
     discountRate:        0.10,      // decimal
     pricePerUnit:        0,         // EUR per unit (unit economics — not scaled by `unit`)
-    variableCostPerUnit: 0,         // EUR per unit (direct COGS)
+    variableCostPerUnit: 0,         // EUR per unit — PRODUCTION cost / COGS (drives gross margin)
+    commercialCostPerUnit: 0,       // EUR per unit — commercial cost (distribution, commissions,
+                                    // discounts). Gross − commercial = commercial margin.
     // Margin scenario mode: 'compute' (price & cost → margin), 'targetPrice'
     // (cost + target margin → required price), 'targetCost' (price + target
     // margin → max allowable unit cost). targetMarginPct is a percent (40 = 40%).

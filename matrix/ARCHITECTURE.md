@@ -214,7 +214,7 @@ full/connected drill-down, streaming chat.
 All top-level navigation lives in a persistent left **rail** ([src/sections/railnav.js](src/sections/railnav.js)
 + [src/styles/nav.css](src/styles/nav.css)). It **replaced** the old multi-group `<header>`
 (removed) and the 12-button tab strip that used to sit inside `#res-header`. The matrix
-canvas is no longer the front door — it's one view under WORK.
+canvas is no longer the front door — it's one view under OFFER MNGT (the renamed WORK domain).
 
 ### Key facts (non-obvious)
 
@@ -223,7 +223,7 @@ canvas is no longer the front door — it's one view under WORK.
   default `'roster'`. The router **`railGo(viewId)`** sets it, routes, and refreshes the
   rail highlight + the `DOMAIN › View` breadcrumb in `#topbar`.
 - **Views vs actions.** *Views* set `activeView` and change the visible surface; `railRoute`
-  dispatches them: the 12 Resources tabs via `openRes()`+`showResTab(tab)`, plus
+  dispatches them: the Resources tabs (`RAIL_RES_TABS`) via `openRes()`+`showResTab(tab)`, plus
   `openOrgChart` / `openSummary` / `openCompare`, and `closeAllOverlays()` for the base
   matrix. *Actions* (brief/snap/backup/restore/AI/settings/help) just fire their existing
   function via `railAction` and do **not** touch `activeView`.
@@ -270,20 +270,23 @@ canvas is no longer the front door — it's one view under WORK.
 
 ## Resources tabs & analytics
 
-The **Resources overlay** (`#res-overlay`) hosts 12 tabs rendered into `#res-body` by
-`showResTab(tab)` ([src/sections/nav.js](src/sections/nav.js)). The global FROM/TO period
+The **Resources overlay** (`#res-overlay`) hosts the tabs listed in `RAIL_RES_TABS`, rendered
+into `#res-body` by `showResTab(tab)` ([src/sections/nav.js](src/sections/nav.js)). The global FROM/TO period
 (`#res-start`/`#res-end`) is **shared by every tab** (`getMonthRange()` in helpers.js).
 **Adding a tab:** new `src/sections/mytab.js` with `renderMyTab()` → add to `JS_FILES`
 (build.js) → add a `showResTab` case + the highlight-loop array → add a rail view in
 `RAIL_DOMAINS` + `RAIL_RES_TABS` (railnav.js). (Old `CLAUDE.md` step "add a button in
 res-header" is obsolete — the rail owns navigation now.)
 
-- **Two analytics tabs.** *People analytics* = [analytics.js](src/sections/analytics.js)
+- **Three analytics tabs.** *People analytics* = [analytics.js](src/sections/analytics.js)
   (`renderAnalyticsTab`, a story/dimension/template engine). *Portfolio analytics* =
   [portfolio.js](src/sections/portfolio.js) (`renderPortfolioAnalytics`) — project-side
-  €/ROI/gate/sector/risk plus treemap, cost-over-time burn, and a distribution panel
-  (histogram + Gaussian / Pareto). All `pf`-prefixed; reuses `getMonthRange` / `_allocCost` /
-  `_engByIdMap`. Interactive sub-controls re-render only their own wrapper via `pfSet`.
+  €/ROI/gate/sector/risk plus treemap, cost-over-time burn, a distribution panel
+  (histogram + Gaussian / Pareto), and a channel-mix block (`pfChannelMix` via `chanAggregate`).
+  All `pf`-prefixed; reuses `getMonthRange` / `_allocCost` / `_engByIdMap`. Interactive sub-controls
+  re-render only their own wrapper via `pfSet`. *Portfolio economics* = [econ.js](src/sections/econ.js)
+  (`renderEconTab`, `ec`-prefixed) — the cross-layer value×cost×channel×decision tab (its own
+  ARCHITECTURE section below); it reuses `pfBuildDataset`/`pfSection`/`pfEur` and the channel helpers.
 - **Spend-map treemap has two axes of control** (`_pfState.treemapBy` = `cost|revenue`,
   `_pfState.treemapGroup` = `none|intent`). `intent` mode = a **nested** treemap:
   outer cells are `project.tacticalIntent` groups (`pfTreemapGroupedSvg`, squarified twice —
@@ -361,23 +364,24 @@ approvals, and investment-type fed no calculation).
 ### Two PANELS (not a modal), a shared project + picker mode (non-obvious)
 
 The charter is now **two rail-inset panels**, split out of the old 4-tab modal:
-- **WORK › Financials analysis** (`#cht-overlay`) — Overview / Demands / Financials tabs
+- **OFFER MNGT › Financials analysis** (`#cht-overlay`) — Overview / Demands / Financials tabs
   (`chtOpenFinancials` → per mode). `openCharter(projId)` renders it.
-- **WORK › Trade-off decision** (`#dec-overlay`) — the configurable triangle(s) +
+- **OFFER MNGT › Trade-off decision** (`#dec-overlay`) — the configurable triangle(s) +
   non-negotiables/flexibilities (`chtOpenDecisionView` → per mode; `chtOpenDecision(projId)`).
 - Both share one selected project (`_chtProjId`) and a **picker MODE** from Settings
   (`railChartPicker()` → `'hub' | 'dropdown'`, persisted in `eim_rail_prefs.chartPicker`):
   - `hub` — `openCharterHub(target)` shows `#chthub-overlay` (the card grid). A card opens the
-    matching panel (`target` = 'financials' | 'decision') stacked **above** the hub. One hub
-    overlay serves both panels via `_chtHubTarget`.
-  - `dropdown` — the panel opens directly with a `<select>` in its header (`#cht-pick`/`#dec-pick`,
-    rendered by `chtRenderPicker`), like Design-to-cost's `#dtc-picker`.
-- **Both panels are VIEWS now** (rail-inset `left:var(--rail)`), NOT modals: `#cht-overlay`
-  and `#dec-overlay` are `z-index:410` so they sit **above** the hub (`z400`) — closing a panel
-  reveals the hub again. Only the deck/synopsis stay full-cover modals (z1150).
-- **Rail-highlight sync on close** is done inside `chtClose`/`chtCloseDecision` via
+    matching panel stacked **above** the hub. One hub overlay serves **three** targets via
+    `_chtHubTarget` (`target` = 'financials' | 'decision' | **'channels'** — the last opens the
+    Channel-mix panel; see the Channel-mix section). Card badges are target-aware.
+  - `dropdown` — the panel opens directly with a `<select>` in its header (`#cht-pick`/`#dec-pick`/
+    `#chan-pick`, rendered by `chtRenderPicker` / `chanRenderPicker`), like Design-to-cost's `#dtc-picker`.
+- **These panels are VIEWS now** (rail-inset `left:var(--rail)`), NOT modals: `#cht-overlay`,
+  `#dec-overlay` and `#chan-overlay` are `z-index:410` so they sit **above** the hub (`z400`) —
+  closing a panel reveals the hub again. Only the deck/synopsis stay full-cover modals (z1150).
+- **Rail-highlight sync on close** is done inside `chtClose`/`chtCloseDecision`/`closeChannels` via
   `chtSyncRailAfterClose()` (NOT the railnav `railWrapClosers` wrap): it resets `activeView`
-  to `'matrix'` only when NO charter surface (panel or hub) is left showing and we're not
+  to `'matrix'` only when NO charter surface (`cht`/`dec`/`chan` panel or hub) is left showing and we're not
   mid-navigation (`railRouting`). Wrapping `chtClose` in railnav instead would wrongly reset the
   highlight when the hub is still visible beneath a just-closed panel. `railChartPicker`,
   `railRouting`, `activeView` are read cross-file (one shared bundle scope).
@@ -493,7 +497,7 @@ pixels for numbers anyway.
 
 ### Design-to-cost workspace ([src/sections/dtc.js](src/sections/dtc.js), `dtc`-prefixed)
 
-A **second WORK rail view** (`WORK › Design to cost`) — a *view*, not a modal, so its
+A **rail view under OFFER MNGT** (`OFFER MNGT › Design to cost`) — a *view*, not a modal, so its
 `#dtc-overlay` stays `left:var(--rail)` (z400), wired into railnav exactly like the Charters
 hub (`RAIL_DOMAINS` work views, `railRoute`, `closeAllOverlays`, `railOpenRes`,
 `railWrapClosers` all include it). A project **picker** (`#dtc-picker`) at the top chooses
@@ -619,15 +623,17 @@ Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded **firs
 > [I18N.md](I18N.md) — read that to continue the work.** This section is the durable design
 > rationale only.
 
-Done so far (966 keys, all translated): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
+Done so far (~966 keys fully translated; a further ~130 `econ.js` keys are wrapped but FR/ZH
+pending — English fallback): Phase 0 seam · Phase 1 shell chrome (rail, Settings,
 first-run, Help) · Phase 2 partial — matrix canvas, Roster + engineer card, Resources period
 header, Resource plan, org-chart header/tools/dialogs + headcount-KPI, cost dashboard (+ replacement
 finder + add-resource modal), Portfolio + People analytics, Team profiles, and section-6 modals &
 misc (idcard, backup, tooltip, sidebar, Summary overlay, AI advisor dialogs, project-window
 risk/schedule/actions modals) — all DOM chrome. Deliberately left English: SVG chart `<text>`,
 the AI LLM prompt/context, stored status/priority option values, print-doc/CSV export builders.
-Remaining: nine-box, DISC, development, skills, heatmap, charter, dtc, timeline, org node/context-
-menus; then Phase 3 (SVG labels, print docs, `i18nNum`/`i18nDate` wiring). See I18N.md.
+Remaining: nine-box, DISC, development, skills, heatmap, charter, dtc, channels (Channel mix),
+timeline, org node/context-menus, plus the FR/ZH values for the wrapped `econ.js` keys; then
+Phase 3 (SVG labels, print docs, `i18nNum`/`i18nDate` wiring). See I18N.md.
 
 **Load order:** `core/i18n.js` is the **first** file in `JS_FILES` (before `data/model.js`
 and `core/globals.js`) so `t()` is defined for every later file — including globals, whose

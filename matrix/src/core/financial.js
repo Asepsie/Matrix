@@ -6,8 +6,10 @@
  *   cashFlows[i]       NET cash flow for year i+1 (index 0 = year 1). May be
  *                      negative (a loss-making year).
  *   discountRate       decimal, 0.10 = 10%.
- *   pricePerUnit /     used only for the units break-even; contribution margin
- *   variableCostPerUnit  = price − variable cost.
+ *   pricePerUnit         selling price per unit.
+ *   variableCostPerUnit  direct PRODUCTION cost / COGS (price − this = gross margin).
+ *   commercialCostPerUnit  commercial cost per unit — distribution, sales
+ *                      commission, discounts (gross margin − this = commercial margin).
  *
  * All money is EUR. Every metric can be null when it is undefined for the given
  * inputs (e.g. IRR of flows that never turn positive, payback that never
@@ -29,21 +31,25 @@ export function effectiveInvestment(fin){
   for(const it of items) if(it.target==='kpi') inv += Number(it.amount)||0;
   return inv;
 }
-// Resolve unit economics per the margin mode. Returns the effective price and
-// DIRECT variable cost (COGS), plus whichever was derived from the target margin.
+// Resolve unit economics per the margin mode. Returns the effective price, the
+// DIRECT PRODUCTION cost (COGS, drives gross margin) and the COMMERCIAL cost
+// (distribution/commissions/discounts), plus whichever was derived from the
+// target margin. The target-margin modes act on the GROSS margin (price vs
+// production cost); the commercial cost is a plain input on top.
 //   compute      → price & directVar as entered
-//   targetPrice  → price = directVar / (1 − margin)   (cost-plus)
-//   targetCost   → directVar = price × (1 − margin)   (max allowable unit cost)
+//   targetPrice  → price = directVar / (1 − margin)   (cost-plus, gross)
+//   targetCost   → directVar = price × (1 − margin)   (max allowable production cost)
 export function resolveUnitEconomics(fin){
   fin=fin||{};
   const mode=fin.marginMode||'compute';
   const tm=Number(fin.targetMarginPct);
   let price=Number(fin.pricePerUnit)||0;
   let directVar=Number(fin.variableCostPerUnit)||0;
+  const commercialVar=Number(fin.commercialCostPerUnit)||0;
   let derivedPrice=null, derivedCost=null;
   if(mode==='targetPrice' && tm>0 && tm<100){ price=directVar/(1-tm/100); derivedPrice=price; }
   else if(mode==='targetCost' && Number.isFinite(tm) && tm>=0 && tm<100){ directVar=price*(1-tm/100); derivedCost=directVar; }
-  return { mode, price, directVar, derivedPrice, derivedCost };
+  return { mode, price, directVar, commercialVar, derivedPrice, derivedCost };
 }
 // Design-to-cost envelope: the max allowable DIRECT unit cost the design must hit.
 // Prefers the target-margin-derived cost; else price×(1−targetMargin); else the
@@ -65,9 +71,11 @@ export function amortizedPerUnit(fin){
   const au=Number(inv.amortUnits)||0;
   return pool>0&&au>0 ? pool/au : 0;
 }
-// Fully-loaded variable cost per unit = resolved direct COGS + amortized per-unit.
+// Fully-loaded variable cost per unit = production COGS + commercial cost +
+// amortized per-unit. This is the cost the commercial margin & break-even use.
 export function effectiveVarCost(fin){
-  return resolveUnitEconomics(fin).directVar + amortizedPerUnit(fin);
+  const eco=resolveUnitEconomics(fin);
+  return eco.directVar + eco.commercialVar + amortizedPerUnit(fin);
 }
 // Format an EUR amount in the chosen display unit, e.g. "1.2 M€".
 export function fmtMoneyUnit(baseEur, unit){
@@ -209,10 +217,18 @@ export function calculateFinancials(fin){
   const beUnits=computeBreakEvenUnits(init,price,varCost);
   const cumulative=computeCumulative(flows);
 
-  // Product margin = price − DIRECT variable cost (COGS), excluding amortized
-  // investment. This is the margin the target-margin modes control.
-  const margin=price-eco.directVar;                 // €/unit (can be negative)
-  const marginPct=price>0 ? (margin/price)*100 : null;
+  // Margin waterfall (all €/unit, can be negative):
+  //   Gross margin      = price − production COGS (the target-margin modes control this).
+  //   Commercial margin = gross − commercial cost (distribution/commissions/discounts).
+  // Amortized per-unit investment is NOT in either margin — it belongs to break-even
+  // (via effVarCost), keeping unit profitability and payback-of-investment distinct.
+  const grossMargin=price-eco.directVar;
+  const grossMarginPct=price>0 ? (grossMargin/price)*100 : null;
+  const commercialMargin=price-eco.directVar-eco.commercialVar;
+  const commercialMarginPct=price>0 ? (commercialMargin/price)*100 : null;
+  // marginPerUnit/marginPct kept as the GROSS margin for back-compat with existing callers.
+  const margin=grossMargin, marginPct=grossMarginPct;
+  const hasEco=price>0||eco.directVar>0||eco.commercialVar>0;
   // Whole-project returns.
   const totalFlow=flows.reduce((s,v)=>s+v,0);
   const roi=init>0 ? ((totalFlow-init)/init)*100 : null;        // simple undiscounted ROI %
@@ -222,8 +238,12 @@ export function calculateFinancials(fin){
     npv, irr, yieldPct:yld, paybackYears:payback,
     breakEvenUnits:beUnits, breakEvenYears:payback, cumulative,
     effInvestment:init, effVarCost:varCost,
-    price, directVarCost:eco.directVar, derivedPrice:eco.derivedPrice, derivedCost:eco.derivedCost,
-    marginPerUnit:margin, marginPct, roi, profitabilityIndex:pi,
+    price, directVarCost:eco.directVar, commercialVarCost:eco.commercialVar,
+    derivedPrice:eco.derivedPrice, derivedCost:eco.derivedCost,
+    marginPerUnit:margin, marginPct,
+    grossMarginPerUnit:grossMargin, grossMarginPct,
+    commercialMarginPerUnit:commercialMargin, commercialMarginPct,
+    roi, profitabilityIndex:pi,
     display:{
       npv:        fmtEur(npv),
       irr:        irr==null?'—':fmtPct(irr*100),
@@ -231,8 +251,12 @@ export function calculateFinancials(fin){
       payback:    fmtYears(payback),
       breakEvenUnits: fmtUnits(beUnits),
       breakEvenTime:  fmtYears(payback),
-      marginPerUnit:  price>0||eco.directVar>0 ? `€${margin.toLocaleString('en-US',{maximumFractionDigits:2})}` : '—',
-      marginPct:      fmtPct(marginPct),
+      marginPerUnit:  hasEco ? `€${grossMargin.toLocaleString('en-US',{maximumFractionDigits:2})}` : '—',
+      marginPct:      fmtPct(grossMarginPct),
+      grossMarginPerUnit:      hasEco ? `€${grossMargin.toLocaleString('en-US',{maximumFractionDigits:2})}` : '—',
+      grossMarginPct:          fmtPct(grossMarginPct),
+      commercialMarginPerUnit: hasEco ? `€${commercialMargin.toLocaleString('en-US',{maximumFractionDigits:2})}` : '—',
+      commercialMarginPct:     fmtPct(commercialMarginPct),
       roi:            fmtPct(roi),
       profitabilityIndex: pi==null?'—':pi.toFixed(2),
     },

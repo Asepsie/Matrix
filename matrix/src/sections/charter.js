@@ -423,23 +423,28 @@ function chtUnitEconomicsFields(f){
   const priceEditable=`<label class="cht-f"><span class="cht-l">Price / unit (€)</span>
     <input class="cht-in" type="number" min="0" value="${f.pricePerUnit||0}" oninput="chtFinSet('pricePerUnit',this.value)">
     ${chtHint('Selling price of one unit (always €).')}</label>`;
-  const costEditable=`<label class="cht-f"><span class="cht-l">Variable cost / unit (€)</span>
+  const costEditable=`<label class="cht-f"><span class="cht-l">Production cost / unit (€)</span>
     <input class="cht-in" type="number" min="0" value="${f.variableCostPerUnit||0}" oninput="chtFinSet('variableCostPerUnit',this.value)">
-    ${chtHint('Direct cost that scales with each unit (COGS).')}</label>`;
+    ${chtHint('Direct production cost / COGS per unit. Price − this = gross margin.')}</label>`;
+  const commercialEditable=`<label class="cht-f"><span class="cht-l">Commercial cost / unit (€)</span>
+    <input class="cht-in" type="number" min="0" value="${f.commercialCostPerUnit||0}" oninput="chtFinSet('commercialCostPerUnit',this.value)">
+    ${chtHint('Per-unit commercial cost: distribution, sales commission, discounts. Gross margin − this = commercial margin.')}</label>`;
   const targetField=`<label class="cht-f"><span class="cht-l">Target margin (%)</span>
     <input class="cht-in" type="number" min="0" max="99" value="${f.targetMarginPct==null?'':f.targetMarginPct}" oninput="chtFinSet('targetMarginPct',this.value)">
-    ${chtHint('Product margin you want: (price − direct cost) ÷ price.')}</label>`;
+    ${chtHint('Gross margin you want: (price − production cost) ÷ price.')}</label>`;
   const derived=(label,val)=>`<div class="cht-f"><span class="cht-l">${label}</span>
     <div class="cht-derived" id="cht-derived-val">${val}</div></div>`;
   if(mode==='targetPrice'){
     return costEditable+modeToggle+targetField+
-      derived('→ Required price / unit', eco.derivedPrice!=null?`€${eco.derivedPrice.toLocaleString('en-US',{maximumFractionDigits:2})}`:'set cost & margin');
+      derived('→ Required price / unit', eco.derivedPrice!=null?`€${eco.derivedPrice.toLocaleString('en-US',{maximumFractionDigits:2})}`:'set cost & margin')
+      +commercialEditable;
   }
   if(mode==='targetCost'){
     return priceEditable+modeToggle+targetField+
-      derived('→ Max unit cost (€)', eco.derivedCost!=null?`€${eco.derivedCost.toLocaleString('en-US',{maximumFractionDigits:2})}`:'set price & margin');
+      derived('→ Max production cost (€)', eco.derivedCost!=null?`€${eco.derivedCost.toLocaleString('en-US',{maximumFractionDigits:2})}`:'set price & margin')
+      +commercialEditable;
   }
-  return priceEditable+costEditable+modeToggle;
+  return priceEditable+costEditable+commercialEditable+modeToggle;
 }
 export function chtFinMode(m){ chtFin().marginMode=m; chtSave(); chtShowTab('financials'); }
 
@@ -491,7 +496,8 @@ function chtFinResultsHTML(){
          <div>Effective investment (KPIs): <b>${fmtMoneyUnit(r.effInvestment,f.unit)}</b></div>
          <div>Effective variable cost / unit: <b>€${(r.effVarCost).toLocaleString('en-US',{maximumFractionDigits:2})}</b></div>
        </div>` : '';
-  const marginClass = r.marginPerUnit==null?'':(r.marginPerUnit>=0?'pos':'neg');
+  const grossClass = r.grossMarginPerUnit==null?'':(r.grossMarginPerUnit>=0?'pos':'neg');
+  const commClass  = r.commercialMarginPerUnit==null?'':(r.commercialMarginPerUnit>=0?'pos':'neg');
   return `<div class="cht-metrics">
     <div class="cht-metric big ${npvClass}"><span class="cht-m-l">NPV</span>
       <span class="cht-m-v">${fmtMoneyUnit(r.npv,f.unit)}</span></div>
@@ -500,9 +506,12 @@ function chtFinResultsHTML(){
     ${metric('Yield',         r.display.yieldPct)}
     ${metric('Profitability index', r.display.profitabilityIndex)}
     ${metric('Payback',       r.display.payback)}
-    <div class="cht-metric ${marginClass}"><span class="cht-m-l">Margin / unit</span>
-      <span class="cht-m-v">${r.display.marginPerUnit}</span></div>
-    ${metric('Margin %',      r.display.marginPct)}
+    <div class="cht-metric ${grossClass}"><span class="cht-m-l">Gross margin / unit</span>
+      <span class="cht-m-v">${r.display.grossMarginPerUnit}</span></div>
+    ${metric('Gross margin %', r.display.grossMarginPct)}
+    <div class="cht-metric ${commClass}"><span class="cht-m-l">Commercial margin / unit</span>
+      <span class="cht-m-v">${r.display.commercialMarginPerUnit}</span></div>
+    ${metric('Commercial margin %', r.display.commercialMarginPct)}
     ${metric('Break-even',    r.display.breakEvenUnits)}
     ${metric('Break-even (t)',r.display.breakEvenTime)}
   </div>
@@ -515,8 +524,9 @@ function chtFinResultsHTML(){
       <dt>Yield</dt><dd>Average annual cash flow ÷ initial investment. A quick, undiscounted return proxy.</dd>
       <dt>Profitability index</dt><dd>Present value of the inflows ÷ investment. Above 1.0 = value-creating; useful to rank projects competing for the same budget.</dd>
       <dt>Payback</dt><dd>Years until cumulative (undiscounted) cash flow recovers the investment.</dd>
-      <dt>Margin / unit &amp; Margin %</dt><dd>Contribution margin = price − variable cost per unit, and as a % of price. This is the per-unit money left to cover the investment; it drives the break-even.</dd>
-      <dt>Break-even (units)</dt><dd>Units to sell to cover the investment at the current margin.</dd>
+      <dt>Gross margin / unit &amp; %</dt><dd>Price − production cost (COGS) per unit, and as a % of price. What each unit contributes before commercial costs. The target-margin modes steer this margin.</dd>
+      <dt>Commercial margin / unit &amp; %</dt><dd>Gross margin − commercial cost per unit (distribution, sales commission, discounts). The per-unit money actually left after selling; this is the fully-loaded margin the break-even uses.</dd>
+      <dt>Break-even (units)</dt><dd>Units to sell to cover the investment, at the fully-loaded variable cost (production + commercial + any amortized per-unit investment).</dd>
       <dt>Break-even (t)</dt><dd>Same as payback — the point cumulative cash flow first turns positive.</dd>
     </dl>
   </details>`;
