@@ -279,7 +279,8 @@ into `#res-body` by `showResTab(tab)` ([src/sections/nav.js](src/sections/nav.js
 res-header" is obsolete — the rail owns navigation now.)
 
 - **Three analytics tabs.** *People analytics* = [analytics.js](src/sections/analytics.js)
-  (`renderAnalyticsTab`, a story/dimension/template engine). *Portfolio analytics* =
+  (`renderAnalyticsTab`, a story/dimension/template engine — see its own section below).
+  *Portfolio analytics* =
   [portfolio.js](src/sections/portfolio.js) (`renderPortfolioAnalytics`) — project-side
   €/ROI/gate/sector/risk plus treemap, cost-over-time burn, a distribution panel
   (histogram + Gaussian / Pareto), and a channel-mix block (`pfChannelMix` via `chanAggregate`).
@@ -298,6 +299,38 @@ res-header" is obsolete — the rail owns navigation now.)
   else a fallback `impact(y) + enabler(ena)`. It's a **pure computed accessor — it never
   writes back to `impactEur`** — so backups/snapshots stay consistent (only the real user
   value is stored; sanitise keeps `impactEur` null-if-unset and y/ena numeric).
+
+### People analytics — dataset, dimensions, story views, risk model ([analytics.js](src/sections/analytics.js))
+
+All `an`/`_an`-prefixed (flat-bundle collision rule). `renderAnalyticsTab` drives three
+things off one **memoised** `buildAnalyticsDataset()` (one row per *active, non-vacant,
+non-planning, non-excluded* engineer, all fields pre-computed): a **dimension × template**
+compare mode (`ANALYTICS_DIMENSIONS` × `ANALYTICS_TEMPLATES`, matched by type), the
+always-on **story views** (`isStoryView` templates, shown as pills), and the KPI scorecard +
+auto-insights. Chart primitives are pure **SVG-string builders** (`anBarChart`/`anHistogram`/
+`anBoxPlot`/`anStackedBar`/`anScatter`/`anNineBox`/`anHeatmap`); shapes carry `data-tip`
+(hover, `anBindTips`) and `data-ids` (click-to-drill → ID card / people list, `anBindDrill`).
+
+- **The dataset is the contract.** Adding an analytic = add a computed field in
+  `_computeAnalyticsDataset` + a `{id,label,type,group}` entry in `ANALYTICS_DIMENSIONS`
+  (types: `numeric｜ordinal｜categorical｜boolean｜ninebox`; `AN_VALUE_LABELS` maps coded
+  values to axis labels). A **story view** is just a `{isStoryView:true, render(data)}`
+  template — no dimension wiring. Both auto-appear in the UI. Fields flow through CSV export
+  (`anExportCSV` `cols`) and are read straight from `eng.idcard` — so they ride save/backup
+  with the engineer; **nothing here mutates state**.
+- **Talent-lifecycle fields** (added on top of comp/career/perf/capacity/skills): review
+  currency (`reviewCurrencyMonths` from `idcard.reviewdate`), `hasSuccessor` (from
+  `idcard.succession`), `mobility`, `contract`, `cohortYear`, `hasNextMove`. These power the
+  *Review Governance* and *Pay Progression* story views and are usable in any template.
+- **Composite `anRiskModel(row)` (the Talent Risk Radar).** A **pure** 0–100 score + a factor
+  breakdown, computed in a **third dataset pass** (it needs the SPOF second pass + `hasKTPlan`
+  + nine-box movement already on the row). Weighted signals: below-market star (30), SPOF w/o
+  KT plan (25), declining nine-box (15), over-allocated (15), stale/absent review (12), no
+  successor for a manager/senior (10), on bench (8); capped at 100, banded ≥50 / 25–49 / 1–24
+  via `anRiskColor`. The score is exposed as the `riskScore` **dimension**, a **KPI tile**, and
+  an **auto-insight chip** — all three read the same per-row value, so they never diverge.
+  It deliberately **fuses** the flight-risk logic here with the rule-based priority signals in
+  [development.js](src/sections/development.js) into one ranked "who needs attention" view.
 
 ---
 

@@ -71,7 +71,25 @@
       "Bash(py --version)",
       "Bash(npx --version)",
       "Bash(grep -nE \"^#{1,3} \" \"matrix/reference document/matrix-redevelopment.md\")",
-      "Bash(node --test tests/charter.test.js)"
+      "Bash(node --test tests/charter.test.js)",
+      "Bash(ls -la \"/c/Users/pyro3/Downloads/\" | grep -iE \"matrix|logo|\\\\.docx|\\\\.png|\\\\.jpg\" )",
+      "Bash(node -e \"require\\('docx'\\); console.log\\('docx OK', require\\('docx/package.json'\\).version\\)\")",
+      "Bash(node -e 'console.log\\(require\\('\\\\''C:/Users/pyro3/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/0b41c287-99ac-4ebc-a7fd-b2e1d0a7c5e4/8bc4cdf8-88bd-4e39-ac92-4b76faca55ad/skills/docx/node_modules/docx/package.json'\\\\''\\).version\\)')",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node -e 'console.log\\('\\\\''docx'\\\\'',require\\('\\\\''C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/96cdcf3c-eb8d-455c-afa0-7b371c06a246/scratchpad/node_modules/docx/package.json'\\\\''\\).version\\)')",
+      "Bash(node build-guide.js)",
+      "Bash(python __TRACKED_VAR__/scripts/office/soffice.py --headless --convert-to pdf Project_Matrix_User_Guide.docx)",
+      "PowerShell($paths = @\\(\"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\",\"C:\\\\Program Files \\(x86\\)\\\\LibreOffice\\\\program\\\\soffice.exe\"\\); $s = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1; if\\($s\\){ \"FOUND: $s\" } else { \"NOT FOUND\"; \\(Get-Command soffice -ErrorAction SilentlyContinue\\).Source })",
+      "PowerShell($dir=\"C:\\\\Users\\\\pyro3\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-pyro3-Documents-Matrix\\\\96cdcf3c-eb8d-455c-afa0-7b371c06a246\\\\scratchpad\"; & \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" --headless --convert-to pdf --outdir $dir \"$dir\\\\Project_Matrix_User_Guide.docx\" 2>&1 | Out-String; if\\(Test-Path \"$dir\\\\Project_Matrix_User_Guide.pdf\"\\){ \"PDF OK: \" + \\(Get-Item \"$dir\\\\Project_Matrix_User_Guide.pdf\"\\).Length + \" bytes\" })",
+      "Bash(pdftoppm -jpeg -r 90 Project_Matrix_User_Guide.pdf page)",
+      "Bash(rm -f Project_Matrix_User_Guide.pdf page-*.jpg)",
+      "PowerShell($dir=\"C:\\\\Users\\\\pyro3\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-pyro3-Documents-Matrix\\\\96cdcf3c-eb8d-455c-afa0-7b371c06a246\\\\scratchpad\"; & \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" --headless --convert-to pdf --outdir $dir \"$dir\\\\Project_Matrix_User_Guide.docx\" | Out-Null; if\\(Test-Path \"$dir\\\\Project_Matrix_User_Guide.pdf\"\\){ \"PDF OK\" })",
+      "Bash(cp Project_Matrix_User_Guide.docx \"/c/Users/pyro3/Downloads/Project_Matrix_User_Guide.docx\")",
+      "Bash(pdftoppm -jpeg -r 90 -f 3 -l 3 Project_Matrix_User_Guide.pdf n3)",
+      "Bash(pdftoppm -jpeg -r 90 -f 18 -l 18 Project_Matrix_User_Guide.pdf n18)",
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); console.log\\('top keys:',Object.keys\\(d\\)\\); const s=d.state||d; console.log\\('state keys:',Object.keys\\(s\\).slice\\(0,40\\)\\); console.log\\('engineers:',\\(s.engineers||[]\\).length\\); const e=\\(s.engineers||[]\\)[0]; console.log\\('sample idcard keys:', e&&e.idcard?Object.keys\\(e.idcard\\):null\\);\")",
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); require\\('fs'\\).writeFileSync\\('./dist/_demo_state.json', JSON.stringify\\(d.state\\)\\);\")"
     ]
   }
 }

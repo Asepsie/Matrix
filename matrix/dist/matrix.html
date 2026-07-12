@@ -15831,6 +15831,8 @@ const AN_VALUE_LABELS = {
   nineBoxPerf: { 1:t('Low'), 2:t('Moderate'), 3:t('High') },   // performance band
   nineBoxPot:  { 1:t('Low'), 2:t('Moderate'), 3:t('High') },   // potential band
   isManager:   { true:t('Manager'), false:t('Individual Contributor') },
+  hasSuccessor:{ true:t('Successor named'), false:t('No successor') },
+  hasNextMove: { true:t('Move planned'), false:t('No move planned') },
   gender:      { M:t('Male'), F:t('Female'), NB:t('Non-binary'), O:t('Other') },
 };
 // Format a raw dimension value for display on an axis / legend.
@@ -15879,6 +15881,21 @@ function _computeAnalyticsDataset(months) {
       const startMs = c.startdate ? new Date(c.startdate).getTime() : null;
       const tenureMonths = (startMs && !isNaN(startMs))
         ? Math.max(0, Math.floor((Date.now() - startMs) / 2628e6)) : null;
+      const cohortYear = (startMs && !isNaN(startMs)) ? String(new Date(startMs).getFullYear()) : '';
+
+      // Review currency — months since the last recorded performance review
+      const revMs = c.reviewdate ? new Date(c.reviewdate).getTime() : null;
+      const reviewAgeMonths = (revMs && !isNaN(revMs))
+        ? Math.max(0, Math.floor((Date.now() - revMs) / 2628e6)) : null;
+
+      // Succession — a named successor (id or free-text) counts as covered
+      const succ = c.succession || {};
+      const hasSuccessor = !!((succ.successorId != null && String(succ.successorId).trim())
+        || (succ.successorFreeText && succ.successorFreeText.trim()));
+
+      // Internal-mobility signal — a next-move target has been captured
+      const nm = c.nextMove || {};
+      const hasNextMove = !!((nm.position && nm.position.trim()) || (nm.timeline && nm.timeline.trim()));
 
       // Allocation over the selected period
       const myRows = rowsByEng.get(e.id) || [];
@@ -15935,6 +15952,16 @@ function _computeAnalyticsDataset(months) {
         startdate: c.startdate || null,
         tenureMonths,
         tenureYears: tenureMonths != null ? +(tenureMonths / 12).toFixed(1) : null,
+        cohortYear,
+        // Career / mobility
+        mobility: c.mobility || '',
+        contract: c.contract || '',
+        hasNextMove, nextMovePos: (nm.position || ''),
+        // Review governance
+        reviewdate: c.reviewdate || null,
+        reviewCurrencyMonths: reviewAgeMonths,
+        // Succession
+        hasSuccessor, successionGaps: (succ.gaps || ''), successionTimeframe: (succ.timeframe || ''),
         // Allocation / capacity
         utilizationRate,
         utilizationPct: Math.round(utilizationRate * 100),
@@ -15974,8 +16001,33 @@ function _computeAnalyticsDataset(months) {
       .map(s => s.name);
   });
 
+  // ── Third pass: composite TALENT RISK score (needs spofSkills + KT + movement) ──
+  rows.forEach(r => { const rk = anRiskModel(r); r.riskScore = rk.score; r.riskFactors = rk.factors; });
+
   return rows;
 }
+
+/* Composite talent-risk model — fuses flight-risk, key-person and hygiene signals
+   into one 0–100 score + a factor breakdown (used by the Talent Risk Radar story,
+   the KPI scorecard and auto-insights). Pure function of one dataset row. */
+function anRiskModel(d){
+  const f = [];
+  const star = (d.nineBoxPerf === 3 || d.nineBoxPot === 3 || ['E','E+'].includes(d.latestRating));
+  if (star && d.comparatio != null && d.comparatio < 95) f.push({ k:t('Below-market star'), p:30 });
+  if (d.spofSkills.length && !d.hasKTPlan)               f.push({ k:t('SPOF, no KT plan'), p:25 });
+  if (d.nineBoxMove === 'down')                          f.push({ k:t('Declining nine-box'), p:15 });
+  if (d.utilizationPct > 105)                            f.push({ k:t('Over-allocated'), p:15 });
+  const staleReview = d.reviewCurrencyMonths == null
+    ? (d.tenureMonths != null && d.tenureMonths > 12)   // on staff >1yr, never reviewed
+    : d.reviewCurrencyMonths > 15;
+  if (staleReview)                                       f.push({ k:t('Stale / no review'), p:12 });
+  if ((d.isManager || (d.grade != null && d.grade >= 8)) && !d.hasSuccessor)
+                                                         f.push({ k:t('No successor'), p:10 });
+  if (d.utilizationPct < 10)                             f.push({ k:t('On the bench'), p:8 });
+  return { score: Math.min(100, f.reduce((s, x) => s + x.p, 0)), factors: f };
+}
+// Risk band → colour (shared by radar + scorecard)
+function anRiskColor(score){ return score >= 50 ? AN_COLORS.danger : score >= 25 ? AN_COLORS.warn : AN_COLORS.secondary; }
 
 /* ══════════════════════════════════════════════════════════════════
    2. DIMENSIONS catalogue
@@ -15990,10 +16042,15 @@ const ANALYTICS_DIMENSIONS = [
   {id:'grade',       label:t('Career Grade (1–11)'), type:'numeric',  group:t('Career')},
   {id:'role',        label:t('Role'),             type:'categorical', group:t('Career')},
   {id:'tenureYears', label:t('Tenure (years)'),   type:'numeric',     group:t('Career')},
+  {id:'cohortYear',  label:t('Joined (year)'),    type:'ordinal',     group:t('Career')},
+  {id:'mobility',    label:t('Mobility'),         type:'categorical', group:t('Career')},
   // Performance & talent
   {id:'latestRating',   label:t('Latest Perf Rating'), type:'ordinal', group:t('Performance'), order:AN_RATING_ORDER},
   {id:'latestRatingNum',label:t('Rating (numeric)'),   type:'numeric', group:t('Performance')},
   {id:'ratingTrend',    label:t('Rating Trend'),       type:'numeric', group:t('Performance')},
+  {id:'reviewCurrencyMonths', label:t('Months Since Review'), type:'numeric', group:t('Performance')},
+  {id:'riskScore',      label:t('Talent Risk Score'),  type:'numeric', group:t('Talent')},
+  {id:'hasSuccessor',   label:t('Has Successor'),      type:'boolean', group:t('Talent')},
   {id:'potential',      label:t('Potential (GTP)'),    type:'categorical', group:t('Talent')},
   {id:'nineBoxPerf', label:t('Nine-Box Performance'), type:'ordinal', group:t('Talent'), order:[1,2,3]},
   {id:'nineBoxPot',  label:t('Nine-Box Potential'),   type:'ordinal', group:t('Talent'), order:[1,2,3]},
@@ -16005,6 +16062,7 @@ const ANALYTICS_DIMENSIONS = [
   {id:'gender',   label:t('Gender'),       type:'categorical', group:t('DEI')},
   {id:'isManager',label:t('Is Manager'),   type:'boolean',     group:t('Organisation')},
   {id:'directReports', label:t('Direct Reports'), type:'numeric', group:t('Organisation')},
+  {id:'contract', label:t('Contract Type'), type:'categorical', group:t('Organisation')},
   // Capacity
   {id:'utilizationPct', label:t('Utilisation (%)'), type:'numeric', group:t('Capacity')},
   {id:'projectCount',   label:t('Project Count'),   type:'numeric', group:t('Capacity')},
@@ -16406,6 +16464,8 @@ function anScorecard(data){
   h += tile(t('Avg utilisation'), avgU + '%', avgU > 100 ? t('over-allocated') : (avgU < 60 ? t('under-used') : ''), uColor);
   h += tile(t('Women'), pctF + '%', t('{a} of {b}',{a:fF,b:n}), null);
   h += tile(t('SPOF skills'), spof, spof ? t('single-holder') : t('none'), spof ? AN_COLORS.warn : null);
+  const hiRisk = data.filter(d => d.riskScore >= 50).length;
+  h += tile(t('High risk'), hiRisk, hiRisk ? t('score ≥ 50') : t('none'), hiRisk ? AN_COLORS.danger : null);
   h += '</div>';
   // completeness chips
   const chip = (label, filled) => '<span style="font-size:10px;color:var(--muted)">'+label+' <b style="color:'+(filled === n ? AN_COLORS.secondary : (filled >= n * 0.6 ? 'var(--text)' : AN_COLORS.warn))+'">'+filled+'/'+n+'</b></span>';
@@ -16425,6 +16485,10 @@ function anInsights(data){
   if (m != null && f != null){ const gap = Math.round((m - f) * 10) / 10; if (Math.abs(gap) >= 3) out.push({ sev:'danger', icon:'⚖', text:t('Pay gap: women average {n} pts {dir} men (compa-ratio)',{n:Math.abs(gap),dir:(gap>0?t('below'):t('above'))}), story:'pay_equity_full' }); }
   const fr = anFlightRiskCount(data);
   if (fr) out.push({ sev:'danger', icon:'🔥', text: t('{n} high performer(s) paid below market (flight risk)',{n:fr}), story:'retention_risk' });
+  const hiRisk = data.filter(d => d.riskScore >= 50).length;
+  if (hiRisk) out.push({ sev:'danger', icon:'🛰', text: t('{n} at high talent risk (composite score ≥ 50)',{n:hiRisk}), story:'talent_risk' });
+  const overdue = data.filter(d => d.reviewCurrencyMonths == null || d.reviewCurrencyMonths > 24).length;
+  if (overdue) out.push({ sev:'warn', icon:'🗓', text: t('{n} without a current review (>24 mo or none)',{n:overdue}), story:'review_governance' });
   const spof = anSpofSet(data).size;
   if (spof) out.push({ sev:'warn', icon:'🧩', text: t('{n} critical skill(s) held by one person (SPOF)',{n:spof}), story:'skill_coverage' });
   const over = data.filter(d => d.utilizationPct > 105).length;
@@ -16753,6 +16817,18 @@ const ANALYTICS_TEMPLATES = [
   { id:'disc_team', name:t('Team Dynamics'), icon:'◉', dims:0, isStoryView:true,
     desc:t('DISC distribution by team'),
     render(data){ return { chart: anStoryDiscTeam(data), stats: null }; } },
+
+  { id:'talent_risk', name:t('Talent Risk Radar'), icon:'🛰', dims:0, isStoryView:true,
+    desc:t('Composite risk score — who needs attention first'),
+    render(data){ return { chart: anStoryTalentRisk(data), stats: data.map(d => d.riskScore) }; } },
+
+  { id:'review_governance', name:t('Review Governance'), icon:'🗓', dims:0, isStoryView:true,
+    desc:t('Review freshness, aging & overdue'),
+    render(data){ return { chart: anStoryReviewGov(data), stats: data.map(d => d.reviewCurrencyMonths) }; } },
+
+  { id:'pay_progression', name:t('Pay Progression'), icon:'📐', dims:0, isStoryView:true,
+    desc:t('Compa-ratio vs tenure — compression & inversions'),
+    render(data){ return { chart: anStoryPayProgression(data), stats: data.map(d => d.comparatio), kind:'scatter' }; } },
 ];
 
 /* ── Story view bodies ── */
@@ -16901,6 +16977,73 @@ function anStoryPayEquity(data){
   if (!keys.length) return anEmpty(t('No compa-ratio data by grade'));
   const groups = keys.map(k => ({ label: k, values: g[k].map(d => d.comparatio), ids: g[k].map(d => d.id) }));
   return anBoxPlot(groups, { ref: 100, refLabel: 'midpoint 100%', xLabel: 'Compa-ratio (%)', catLabel: 'Seniority / Grade', band: { lo:95, hi:105 } });
+}
+
+/* Talent Risk Radar — ranked list of at-risk people with their factor breakdown.
+   Reuses the composite anRiskModel score computed on the dataset. */
+function anStoryTalentRisk(data){
+  const flagged = data.filter(d => d.riskScore > 0).sort((a, b) => b.riskScore - a.riskScore);
+  if (!flagged.length) return anEmpty(t('No talent-risk signals — add compa-ratio, nine-box, reviews, skills or allocations to light this up.'));
+  const bands = [
+    { key:t('High (≥50)'),   test:s => s >= 50,           color:AN_COLORS.danger },
+    { key:t('Medium (25–49)'),test:s => s >= 25 && s < 50, color:AN_COLORS.warn },
+    { key:t('Low (1–24)'),   test:s => s > 0 && s < 25,   color:AN_COLORS.secondary },
+  ];
+  // Band summary tiles
+  let h = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
+  bands.forEach(b => { const list = flagged.filter(d => b.test(d.riskScore));
+    h += '<div style="flex:1;min-width:120px;border:1px solid var(--border);border-left:3px solid '+b.color+';border-radius:8px;padding:9px 12px;background:var(--bg)">'
+      + '<div style="font-size:21px;font-weight:700;color:'+b.color+'">'+list.length+'</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+b.key+'</div></div>'; });
+  h += '</div>';
+  // Ranked cards (clickable → drill/ID card)
+  h += '<div style="display:flex;flex-direction:column;gap:7px">';
+  flagged.forEach(d => {
+    const col = anRiskColor(d.riskScore);
+    h += '<div data-ids="'+d.id+'" data-dtitle="'+escH(d.name)+'" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--border);border-left:3px solid '+col+';border-radius:6px">'
+      + '<div style="min-width:40px;text-align:center"><div style="font-size:18px;font-weight:700;color:'+col+';line-height:1;pointer-events:none">'+d.riskScore+'</div>'
+      + '<div style="font-size:8px;color:var(--muted);pointer-events:none">'+t('risk')+'</div></div>'
+      + '<div style="flex:1;min-width:0;pointer-events:none">'
+      + '<div style="font-weight:600;color:var(--text);font-size:12px">'+escH(d.name)+'</div>'
+      + '<div style="font-size:10px;color:var(--muted)">'+escH(d.seniority || d.role || '')+' · '+escH(d.group)+'</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">'
+      + d.riskFactors.map(f => '<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(241,164,53,.10);border:1px solid var(--border);color:var(--text)">'+escH(f.k)+' <span style="color:var(--muted)">+'+f.p+'</span></span>').join('')
+      + '</div></div></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+/* Review Governance — how fresh are performance reviews across the (filtered) team. */
+function anStoryReviewGov(data){
+  if (!data.length) return anEmpty(t('No engineers match the current filters'));
+  const buckets = [
+    { key:t('Fresh (≤12 mo)'),  test:d => d.reviewCurrencyMonths != null && d.reviewCurrencyMonths <= 12, color:AN_COLORS.secondary },
+    { key:t('Aging (12–24 mo)'),test:d => d.reviewCurrencyMonths != null && d.reviewCurrencyMonths > 12 && d.reviewCurrencyMonths <= 24, color:AN_COLORS.warn },
+    { key:t('Overdue (>24 mo)'),test:d => d.reviewCurrencyMonths != null && d.reviewCurrencyMonths > 24, color:AN_COLORS.danger },
+    { key:t('Never reviewed'),  test:d => d.reviewCurrencyMonths == null, color:AN_COLORS.muted },
+  ];
+  const items = buckets.map(b => { const list = data.filter(b.test);
+    return { label:b.key, value:list.length, color:b.color, ids:list.map(d => d.id) }; });
+  const needsReview = data.filter(d => d.reviewCurrencyMonths == null || d.reviewCurrencyMonths > 24)
+    .sort((a, b) => (b.reviewCurrencyMonths || 999) - (a.reviewCurrencyMonths || 999));
+  return anBarChart(items, { valLabel:t('Headcount'), catLabel:t('Review freshness') })
+    + anChips(needsReview, AN_COLORS.danger, t('NEEDS A REVIEW'),
+        d => d.reviewCurrencyMonths == null ? t('never') : d.reviewCurrencyMonths + t('mo'));
+}
+
+/* Pay Progression — compa-ratio vs tenure, to expose compression (long-tenured yet
+   below market) and flat/negative pay drift. */
+function anStoryPayProgression(data){
+  const pts = data.filter(d => d.comparatio != null && d.tenureYears != null)
+    .map(d => ({ x:d.tenureYears, y:d.comparatio, label:d.name, color:d.groupColor, id:d.id }));
+  if (pts.length < 3) return anEmpty(t('Need ≥3 people with both compa-ratio and a start date.'));
+  const chart = anScatter(pts, { xLabel:t('Tenure (years)'), yLabel:t('Compa-ratio (%)'), trend:true, corr:true });
+  // Compression watchlist: tenured (>4y) yet paid below market (<92%)
+  const compressed = data.filter(d => d.comparatio != null && d.tenureYears != null && d.tenureYears > 4 && d.comparatio < 92)
+    .sort((a, b) => a.comparatio - b.comparatio);
+  return chart + anChips(compressed, AN_COLORS.warn, t('COMPRESSION WATCH — tenured & below market'),
+    d => d.comparatio + '% · ' + d.tenureYears + t('y'));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -17091,7 +17234,8 @@ function anExportCSV(){
   const data = anApplyFilters(buildAnalyticsDataset());
   const cols = ['name','group','role','location','gender','seniority','tenureYears',
     'monthlyCost','comparatio','latestRating','nineBoxKey','discProfile',
-    'utilizationPct','projectCount','skillCount','critSkillCount'];
+    'utilizationPct','projectCount','skillCount','critSkillCount',
+    'contract','mobility','cohortYear','reviewCurrencyMonths','hasSuccessor','riskScore'];
   const esc = v => { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   let csv = cols.join(',') + '\n';
   data.forEach(d => csv += cols.map(c => esc(d[c])).join(',') + '\n');

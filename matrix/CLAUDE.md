@@ -21,6 +21,7 @@ area.
 | Fix photos / backup / restore | src/core/photo.js, src/sections/backup.js (+ ARCHITECTURE.md) |
 | AI advisor / chatbot (WebLLM) | src/sections/ai.js (+ ARCHITECTURE.md) |
 | Navigation / rail / topbar / overlays | src/sections/railnav.js, src/styles/nav.css (+ ARCHITECTURE.md) |
+| People / talent analytics (dimensions, story views, Talent Risk Radar) | src/sections/analytics.js |
 | Portfolio (project) analytics | src/sections/portfolio.js |
 | Cross-functional charter (demands / square / financials / deck) | src/sections/charter.js, src/core/financial.js (+ ARCHITECTURE.md) |
 | Design-to-cost (cascade / waterfall / guidelines) | src/sections/dtc.js (+ ARCHITECTURE.md) |
