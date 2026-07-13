@@ -127,7 +127,7 @@
       <option value="visibility" selected>Visibility</option>
       <option value="enabler">Enabler</option>
     </select>
-    <button onclick="closeCompare()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="compare-panes">
     <div class="cmp-pane">
@@ -145,7 +145,7 @@
 <div id="summary-overlay">
   <div id="summary-header">
     <h2>▤ PORTFOLIO SUMMARY</h2>
-    <button onclick="closeSummary()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="summary-body"></div>
 </div>
@@ -435,7 +435,7 @@
          The global period (title + FROM/TO month inputs) stays here — it is shared by
          every Resources tab. #res-body still renders the active tab. -->
     <input type="file" id="roster-file-input" accept=".json" style="display:none" onchange="handleRosterImport(event)">
-    <button onclick="closeRes()" data-i18n="✕ CLOSE">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="res-body"></div>
 </div>
@@ -450,7 +450,7 @@
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
     <button class="sm" onclick="chtOpenSynopsis()">⧉ Synopsis</button>
     <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
-    <button onclick="chtClose()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="cht-tabs"></div>
   <div id="cht-body"></div>
@@ -462,7 +462,7 @@
     <span id="dec-title">TRADE-OFF DECISION</span>
     <span id="dec-pick"></span>
     <div style="flex:1"></div>
-    <button onclick="chtCloseDecision()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="dec-body"></div>
 </div>
@@ -495,7 +495,7 @@
   <div id="chthub-header">
     <span id="chthub-title">CHARTERS</span>
     <div style="flex:1"></div>
-    <button onclick="closeCharterHub()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="chthub-body"></div>
 </div>
@@ -507,7 +507,7 @@
     <label class="cht-hl" style="margin-left:10px">PROJECT</label>
     <select id="dtc-picker" class="cht-sel" onchange="dtcSelectProject(this.value)"></select>
     <div style="flex:1"></div>
-    <button onclick="closeDtc()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="dtc-body"></div>
 </div>
@@ -519,7 +519,7 @@
     <span id="chan-pick"></span>
     <div style="flex:1"></div>
     <button class="sm primary" onclick="chanSaveNow()">SAVE</button>
-    <button onclick="closeChannels()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="chan-body"></div>
 </div>
@@ -887,7 +887,7 @@
 
 
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
-      <button onclick="closeOrgChart()" style="font-weight:600;padding:4px 12px" data-i18n="✕ CLOSE">✕ CLOSE</button>
+      <button onclick="railBack()" style="font-weight:600;padding:4px 12px" data-i18n="← BACK">← BACK</button>
     </div>
 
     <!-- ROW 2: Drawing tools · Selection · Annotations -->
@@ -958,7 +958,7 @@
     <div style="flex:1"></div>
     <button class="sm primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
     <button class="sm" onclick="exportProjectBriefHTML()">↓ HTML</button>
-    <button onclick="closeBrief()">✕ CLOSE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="brief-body">
     <div class="brief-wrap">

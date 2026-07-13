@@ -1,0 +1,4802 @@
+{
+  "_type": "full_backup",
+  "_version": 1,
+  "_exportedAt": "2026-06-19T02:07:43.026Z",
+  "_photoCount": 0,
+  "_engineerCount": 40,
+  "_projectCount": 6,
+  "state": {
+    "projects": [
+      {
+        "id": 1,
+        "name": "Rotor — Next-gen Controller",
+        "x": 5,
+        "y": 9,
+        "vis": 8,
+        "ena": 10,
+        "note": "",
+        "color": "#c8f135",
+        "gate": "G3",
+        "currentGate": "G3",
+        "eta": "2026-12",
+        "status": "On Track",
+        "sector": "Product",
+        "impactEur": 1800000,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      },
+      {
+        "id": 2,
+        "name": "Helios — Solar Inverter",
+        "x": 5,
+        "y": 8,
+        "vis": 7,
+        "ena": 9,
+        "note": "",
+        "color": "#a78bfa",
+        "gate": "G2",
+        "currentGate": "G2",
+        "eta": "2026-12",
+        "status": "On Track",
+        "sector": "Product",
+        "impactEur": 1200000,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      },
+      {
+        "id": 3,
+        "name": "Atlas — Platform Refresh",
+        "x": 5,
+        "y": 6,
+        "vis": 9,
+        "ena": 8,
+        "note": "",
+        "color": "#5be5c8",
+        "gate": "G2",
+        "currentGate": "G2",
+        "eta": "2026-12",
+        "status": "On Track",
+        "sector": "Platform",
+        "impactEur": 900000,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      },
+      {
+        "id": 4,
+        "name": "Sentinel — Safety Subsystem",
+        "x": 5,
+        "y": 7,
+        "vis": 6,
+        "ena": 7,
+        "note": "",
+        "color": "#c8f135",
+        "gate": "G4",
+        "currentGate": "G4",
+        "eta": "2026-12",
+        "status": "On Track",
+        "sector": "Compliance",
+        "impactEur": 600000,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      },
+      {
+        "id": 5,
+        "name": "Beacon — IoT Gateway",
+        "x": 5,
+        "y": 5,
+        "vis": 6,
+        "ena": 6,
+        "note": "",
+        "color": "#f1a435",
+        "gate": "G1",
+        "currentGate": "G1",
+        "eta": "2026-12",
+        "status": "At Risk",
+        "sector": "Product",
+        "impactEur": 400000,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      },
+      {
+        "id": 6,
+        "name": "Internal — Tooling & CI",
+        "x": 5,
+        "y": 3,
+        "vis": 8,
+        "ena": 5,
+        "note": "",
+        "color": "#a78bfa",
+        "gate": "G1",
+        "currentGate": "G1",
+        "eta": "2026-12",
+        "status": "On Track",
+        "sector": "Internal",
+        "impactEur": 0,
+        "costSource": "plan",
+        "planCost": 0,
+        "sectionId": null,
+        "visible": true,
+        "todos": [],
+        "risks": [],
+        "milestones": [],
+        "actions": []
+      }
+    ],
+    "sections": [],
+    "engineers": [
+      {
+        "id": 1,
+        "name": "Chen Kapoor",
+        "monthlyCost": 4250,
+        "groupId": 1,
+        "role": "Engineering Manager",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Integration Testing",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "People Management",
+            "cat": "diff",
+            "domain": "Leadership",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "31",
+          "manager": "",
+          "seniority": "Engineering Manager",
+          "potential": "High",
+          "mobility": "Remote-friendly",
+          "startdate": "2023-03-20",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 79,
+          "grade": 6,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 2,
+        "name": "Raj Patel",
+        "monthlyCost": 6550,
+        "groupId": 1,
+        "role": "Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CI/CD",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "BACnet Stack",
+            "cat": "crit",
+            "domain": "Software",
+            "level": 5,
+            "gaps": "",
+            "risks": "Single point of failure — only holder in the org.",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "High performer, flagged below-market pay.",
+          "comparatio": 84,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 3,
+        "name": "Karim Dupont",
+        "monthlyCost": 4500,
+        "groupId": 1,
+        "role": "Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Modbus",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "Low",
+          "mobility": "",
+          "startdate": "2026-01-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "Recent hire at top of band.",
+          "comparatio": 118,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 4,
+        "name": "Mathis Lefebvre",
+        "monthlyCost": 5450,
+        "groupId": 1,
+        "role": "Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Python Tooling",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "System Architecture",
+            "cat": "crit",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Modbus",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 108,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 5,
+        "name": "Raj Tremblay",
+        "monthlyCost": 3850,
+        "groupId": 1,
+        "role": "Junior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Integration Testing",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Python Tooling",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 106,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 6,
+        "name": "Omar Laurent",
+        "monthlyCost": 3600,
+        "groupId": 1,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Bootloader / OTA",
+            "cat": "diff",
+            "domain": "Software",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Modbus",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-01-17",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 110,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "U",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 7,
+        "name": "Viktor Dubois",
+        "monthlyCost": 7500,
+        "groupId": 1,
+        "role": "Staff Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "HIL Testing",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Staff",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 89,
+          "grade": 4,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 8,
+        "name": "Mei Khan",
+        "monthlyCost": 2500,
+        "groupId": 1,
+        "role": "Junior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CI/CD",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Low",
+          "mobility": "",
+          "startdate": "2025-11-17",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 81,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "D",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 9,
+        "name": "Hugo Patel",
+        "monthlyCost": 7150,
+        "groupId": 1,
+        "role": "Senior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "CI/CD",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Integration Testing",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Unit Testing",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 102,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 10,
+        "name": "Raj Rossi",
+        "monthlyCost": 6400,
+        "groupId": 1,
+        "role": "Senior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Python Tooling",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Embedded C",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "High",
+          "mobility": "Open to relocation",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 113,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 11,
+        "name": "Sara Patel",
+        "monthlyCost": 3800,
+        "groupId": 1,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Unit Testing",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2025-06-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 83,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "U",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 12,
+        "name": "Emma Haddad",
+        "monthlyCost": 4750,
+        "groupId": 1,
+        "role": "Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "HIL Testing",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CI/CD",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Modbus",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "1",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2025-12-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 95,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 13,
+        "name": "Lucas Wang",
+        "monthlyCost": 9900,
+        "groupId": 2,
+        "role": "Engineering Manager",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Schematic Capture",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Mentoring",
+            "cat": "mand",
+            "domain": "Leadership",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "31",
+          "manager": "",
+          "seniority": "Engineering Manager",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2019-11-20",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 96,
+          "grade": 6,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 14,
+        "name": "Viktor Moreau",
+        "monthlyCost": 2500,
+        "groupId": 2,
+        "role": "Junior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "EMC Compliance",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Signal Integrity",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "High",
+          "mobility": "Remote-friendly",
+          "startdate": "2025-04-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "High performer, flagged below-market pay.",
+          "comparatio": 89,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 15,
+        "name": "Ingrid Garcia",
+        "monthlyCost": 6350,
+        "groupId": 2,
+        "role": "Senior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "EMC Compliance",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "RF Calibration",
+            "cat": "crit",
+            "domain": "Electronics",
+            "level": 5,
+            "gaps": "",
+            "risks": "Single point of failure — only holder in the org.",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2025-10-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "Long tenure, salary lagged behind band.",
+          "comparatio": 86,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 16,
+        "name": "Felix Fontaine",
+        "monthlyCost": 3900,
+        "groupId": 2,
+        "role": "Junior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "EMC Compliance",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2025-11-17",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 92,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "D",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 17,
+        "name": "Noah Kowalski",
+        "monthlyCost": 6900,
+        "groupId": 2,
+        "role": "Senior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "EMC Compliance",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 105,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 18,
+        "name": "Lucas Cloutier",
+        "monthlyCost": 6750,
+        "groupId": 2,
+        "role": "Senior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Schematic Capture",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "PCB Design",
+            "cat": "crit",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2026-01-17",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 97,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 19,
+        "name": "Noa Lindqvist",
+        "monthlyCost": 5050,
+        "groupId": 2,
+        "role": "Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Schematic Capture",
+            "cat": "mand",
+            "domain": "Electronics",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Power Electronics",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "NB",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 99,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "U",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 20,
+        "name": "Diego Kapoor",
+        "monthlyCost": 3300,
+        "groupId": 2,
+        "role": "Senior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "PCB Design",
+            "cat": "crit",
+            "domain": "Electronics",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Low",
+          "mobility": "Remote-friendly",
+          "startdate": "2025-10-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 108,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 21,
+        "name": "Sara Mensah",
+        "monthlyCost": 3100,
+        "groupId": 2,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Analog Design",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Power Electronics",
+            "cat": "diff",
+            "domain": "Electronics",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "PCB Design",
+            "cat": "crit",
+            "domain": "Electronics",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "13",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2025-12-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 113,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 22,
+        "name": "Pavel Patel",
+        "monthlyCost": 7900,
+        "groupId": 3,
+        "role": "Tech Lead",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Injection Molding",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Tolerance Analysis",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Strategic Planning",
+            "cat": "diff",
+            "domain": "Leadership",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "31",
+          "manager": "",
+          "seniority": "Tech Lead",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2009-10-25",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 104,
+          "grade": 5,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 23,
+        "name": "Viktor Reddy",
+        "monthlyCost": 4550,
+        "groupId": 3,
+        "role": "Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "DFM",
+            "cat": "mand",
+            "domain": "Mechanical",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2024-01-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "High performer, flagged below-market pay.",
+          "comparatio": 91,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 24,
+        "name": "Priya Costa",
+        "monthlyCost": 5050,
+        "groupId": 3,
+        "role": "Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "CAD Modeling",
+            "cat": "mand",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Tolerance Analysis",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "High",
+          "mobility": "Remote-friendly",
+          "startdate": "2024-09-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 83,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 25,
+        "name": "Hugo Costa",
+        "monthlyCost": 3850,
+        "groupId": 3,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CAD Modeling",
+            "cat": "mand",
+            "domain": "Mechanical",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Thermal CFD",
+            "cat": "crit",
+            "domain": "Thermal",
+            "level": 5,
+            "gaps": "",
+            "risks": "Single point of failure — only holder in the org.",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 104,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "D",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 26,
+        "name": "Louis Roy",
+        "monthlyCost": 4050,
+        "groupId": 3,
+        "role": "Junior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Heat Sink Design",
+            "cat": "diff",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CAD Modeling",
+            "cat": "mand",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 94,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "U",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "D",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 27,
+        "name": "Nadia Okafor",
+        "monthlyCost": 2500,
+        "groupId": 3,
+        "role": "Junior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Injection Molding",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Low",
+          "mobility": "",
+          "startdate": "2025-12-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 111,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "U",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 28,
+        "name": "Ananya Dupont",
+        "monthlyCost": 8850,
+        "groupId": 3,
+        "role": "Principal Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Injection Molding",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Principal",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 95,
+          "grade": 5,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 29,
+        "name": "Camille Nguyen",
+        "monthlyCost": 3600,
+        "groupId": 3,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Thermal Testing",
+            "cat": "mand",
+            "domain": "Thermal",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Tolerance Analysis",
+            "cat": "diff",
+            "domain": "Mechanical",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "CAD Modeling",
+            "cat": "mand",
+            "domain": "Mechanical",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "22",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Remote-friendly",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 98,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 30,
+        "name": "Wei Reddy",
+        "monthlyCost": 10500,
+        "groupId": 4,
+        "role": "Tech Lead",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Building Automation",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Risk Management",
+            "cat": "diff",
+            "domain": "Project Management",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Agile / Scrum",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Strategic Planning",
+            "cat": "diff",
+            "domain": "Leadership",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "31",
+          "manager": "",
+          "seniority": "Tech Lead",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2022-11-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 100,
+          "grade": 5,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "E",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 31,
+        "name": "Omar Mercier",
+        "monthlyCost": 14350,
+        "groupId": 4,
+        "role": "Director of Engineering",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Integration Testing",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Mentoring",
+            "cat": "mand",
+            "domain": "Leadership",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "",
+          "manager": "",
+          "seniority": "Director",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2008-02-25",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 94,
+          "grade": 8,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 32,
+        "name": "Diego Wang",
+        "monthlyCost": 6300,
+        "groupId": 4,
+        "role": "Senior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Agile / Scrum",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Building Automation",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "30",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 111,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 33,
+        "name": "Mathis Bianchi",
+        "monthlyCost": 2500,
+        "groupId": 4,
+        "role": "Junior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "HIL Testing",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "30",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Low",
+          "mobility": "",
+          "startdate": "2017-09-21",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 103,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 34,
+        "name": "Elena Sharma",
+        "monthlyCost": 3750,
+        "groupId": 4,
+        "role": "Junior Engineer",
+        "location": "Montréal",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Building Automation",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Risk Management",
+            "cat": "diff",
+            "domain": "Project Management",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "30",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, HI",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 97,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "D",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 35,
+        "name": "Sara Aziz",
+        "monthlyCost": 4600,
+        "groupId": 4,
+        "role": "Junior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Requirements Mgmt",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Building Automation",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Integration Testing",
+            "cat": "mand",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Agile / Scrum",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "30",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2026-01-17",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 95,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 36,
+        "name": "Olivia Bensaïd",
+        "monthlyCost": 4500,
+        "groupId": 4,
+        "role": "Junior Engineer",
+        "location": "Paris",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Risk Management",
+            "cat": "diff",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Safety (ISO 26262)",
+            "cat": "diff",
+            "domain": "Systems",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "30",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Low",
+          "mobility": "",
+          "startdate": "2026-02-16",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 118,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "U",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 37,
+        "name": "Marie Müller",
+        "monthlyCost": 4650,
+        "groupId": 5,
+        "role": "Tech Lead",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "CI/CD",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "HVAC Controls",
+            "cat": "crit",
+            "domain": "Domain Expert",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Building Automation",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Mentoring",
+            "cat": "mand",
+            "domain": "Leadership",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "31",
+          "manager": "",
+          "seniority": "Tech Lead",
+          "potential": "High",
+          "mobility": "",
+          "startdate": "2023-04-20",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "F",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 97,
+          "grade": 5,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 38,
+        "name": "Tariq Wang",
+        "monthlyCost": 2600,
+        "groupId": 5,
+        "role": "Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "HVAC Controls",
+            "cat": "crit",
+            "domain": "Domain Expert",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Unit Testing",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Embedded C",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "37",
+          "manager": "",
+          "seniority": "Mid-level",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 107,
+          "grade": 2,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "M+",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M+",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 39,
+        "name": "Raj Dubois",
+        "monthlyCost": 3800,
+        "groupId": 5,
+        "role": "Senior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "Modbus",
+            "cat": "mand",
+            "domain": "Software",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "RTOS",
+            "cat": "crit",
+            "domain": "Software",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Energy Optimization",
+            "cat": "diff",
+            "domain": "Domain Expert",
+            "level": 1,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "HVAC Controls",
+            "cat": "crit",
+            "domain": "Domain Expert",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Agile / Scrum",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 5,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "37",
+          "manager": "",
+          "seniority": "Senior",
+          "potential": "Medium",
+          "mobility": "Open to relocation",
+          "startdate": "2026-03-19",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, DE",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 95,
+          "grade": 3,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "E",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      },
+      {
+        "id": 40,
+        "name": "Arjun Khan",
+        "monthlyCost": 2500,
+        "groupId": 5,
+        "role": "Junior Engineer",
+        "location": "Bangalore",
+        "vacant": false,
+        "planningOnly": false,
+        "includeInCost": true,
+        "excludeFromCalc": false,
+        "includeTalent": true,
+        "skills": [
+          {
+            "name": "RTOS",
+            "cat": "crit",
+            "domain": "Software",
+            "level": 2,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Risk Management",
+            "cat": "diff",
+            "domain": "Project Management",
+            "level": 4,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          },
+          {
+            "name": "Stakeholder Mgmt",
+            "cat": "mand",
+            "domain": "Project Management",
+            "level": 3,
+            "gaps": "",
+            "risks": "",
+            "notes": "",
+            "comment": ""
+          }
+        ],
+        "idcard": {
+          "reportsTo": "37",
+          "manager": "",
+          "seniority": "Junior",
+          "potential": "Medium",
+          "mobility": "",
+          "startdate": "2025-06-18",
+          "reviewdate": "2026-03-15",
+          "languages": "EN, FR",
+          "gender": "M",
+          "aspirations": "",
+          "strengths": "",
+          "devarea": "",
+          "notes": "",
+          "comparatio": 109,
+          "grade": 1,
+          "nextMove": {
+            "position": "",
+            "timeline": "",
+            "show": false
+          },
+          "contract": "Permanent",
+          "photo": "",
+          "cops": [],
+          "reviews": [
+            {
+              "year": "2024",
+              "rating": "D",
+              "comments": ""
+            },
+            {
+              "year": "2025",
+              "rating": "M",
+              "comments": ""
+            }
+          ],
+          "succession": {
+            "successorId": "",
+            "successorFreeText": "",
+            "timeframe": "",
+            "gaps": ""
+          },
+          "_isDictionary": false
+        }
+      }
+    ],
+    "engGroups": [
+      {
+        "id": 1,
+        "name": "Firmware & Embedded",
+        "color": "#c8f135"
+      },
+      {
+        "id": 2,
+        "name": "Hardware / Electronics",
+        "color": "#5be5c8"
+      },
+      {
+        "id": 3,
+        "name": "Mechanical & Thermal",
+        "color": "#f1a435"
+      },
+      {
+        "id": 4,
+        "name": "Systems & Integration",
+        "color": "#a78bfa"
+      },
+      {
+        "id": 5,
+        "name": "Quality & Test",
+        "color": "#60a5fa"
+      }
+    ],
+    "allocRows": [
+      {
+        "id": 1,
+        "engId": 1,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.93,
+          "2026-02": 0.93,
+          "2026-03": 0.93,
+          "2026-04": 0.93,
+          "2026-05": 0.93,
+          "2026-06": 0.93,
+          "2026-07": 0.93,
+          "2026-08": 0.93,
+          "2026-09": 0.93,
+          "2026-10": 0.93,
+          "2026-11": 0.93,
+          "2026-12": 0.93
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 2,
+        "engId": 2,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.96,
+          "2026-02": 0.96,
+          "2026-03": 0.96,
+          "2026-04": 0.96,
+          "2026-05": 0.96,
+          "2026-06": 0.96,
+          "2026-07": 0.96,
+          "2026-08": 0.96,
+          "2026-09": 0.96,
+          "2026-10": 0.96,
+          "2026-11": 0.96,
+          "2026-12": 0.96
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 3,
+        "engId": 3,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.65,
+          "2026-02": 0.65,
+          "2026-03": 0.65,
+          "2026-04": 0.65,
+          "2026-05": 0.65,
+          "2026-06": 0.65,
+          "2026-07": 0.65,
+          "2026-08": 0.65,
+          "2026-09": 0.65,
+          "2026-10": 0.65,
+          "2026-11": 0.65,
+          "2026-12": 0.65
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 4,
+        "engId": 3,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.55,
+          "2026-02": 0.55,
+          "2026-03": 0.55,
+          "2026-04": 0.55,
+          "2026-05": 0.55,
+          "2026-06": 0.55,
+          "2026-07": 0.55,
+          "2026-08": 0.55,
+          "2026-09": 0.55,
+          "2026-10": 0.55,
+          "2026-11": 0.55,
+          "2026-12": 0.55
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 5,
+        "engId": 4,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.81,
+          "2026-02": 0.81,
+          "2026-03": 0.81,
+          "2026-04": 0.81,
+          "2026-05": 0.81,
+          "2026-06": 0.81,
+          "2026-07": 0.81,
+          "2026-08": 0.81,
+          "2026-09": 0.81,
+          "2026-10": 0.81,
+          "2026-11": 0.81,
+          "2026-12": 0.81
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 6,
+        "engId": 5,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.91,
+          "2026-02": 0.91,
+          "2026-03": 0.91,
+          "2026-04": "m",
+          "2026-05": "m",
+          "2026-06": 0.91,
+          "2026-07": 0.91,
+          "2026-08": 0.91,
+          "2026-09": 0.91,
+          "2026-10": 0.91,
+          "2026-11": 0.91,
+          "2026-12": 0.91
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 7,
+        "engId": 6,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 1,
+          "2026-02": 1,
+          "2026-03": 1,
+          "2026-04": 1,
+          "2026-05": 1,
+          "2026-06": 1,
+          "2026-07": 1,
+          "2026-08": 1,
+          "2026-09": 1,
+          "2026-10": 1,
+          "2026-11": 1,
+          "2026-12": 1
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 8,
+        "engId": 7,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.86,
+          "2026-02": 0.86,
+          "2026-03": 0.86,
+          "2026-04": 0.86,
+          "2026-05": 0.86,
+          "2026-06": 0.86,
+          "2026-07": 0.86,
+          "2026-08": 0.86,
+          "2026-09": 0.86,
+          "2026-10": 0.86,
+          "2026-11": 0.86,
+          "2026-12": 0.86
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 9,
+        "engId": 8,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.77,
+          "2026-02": 0.77,
+          "2026-03": 0.77,
+          "2026-04": 0.77,
+          "2026-05": 0.77,
+          "2026-06": 0.77,
+          "2026-07": 0.77,
+          "2026-08": 0.77,
+          "2026-09": 0.77,
+          "2026-10": 0.77,
+          "2026-11": 0.77,
+          "2026-12": 0.77
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 10,
+        "engId": 9,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.8,
+          "2026-02": 0.8,
+          "2026-03": 0.8,
+          "2026-04": 0.8,
+          "2026-05": 0.8,
+          "2026-06": 0.8,
+          "2026-07": 0.8,
+          "2026-08": 0.8,
+          "2026-09": 0.8,
+          "2026-10": 0.8,
+          "2026-11": 0.8,
+          "2026-12": 0.8
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 11,
+        "engId": 10,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.75,
+          "2026-02": 0.75,
+          "2026-03": 0.75,
+          "2026-04": 0.75,
+          "2026-05": 0.75,
+          "2026-06": 0.75,
+          "2026-07": 0.75,
+          "2026-08": 0.75,
+          "2026-09": 0.75,
+          "2026-10": 0.75,
+          "2026-11": 0.75,
+          "2026-12": 0.75
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 12,
+        "engId": 11,
+        "projectId": 5,
+        "allocs": {
+          "2026-01": 0.73,
+          "2026-02": 0.73,
+          "2026-03": 0.73,
+          "2026-04": 0.73,
+          "2026-05": 0.73,
+          "2026-06": 0.73,
+          "2026-07": 0.73,
+          "2026-08": 0.73,
+          "2026-09": 0.73,
+          "2026-10": 0.73,
+          "2026-11": 0.73,
+          "2026-12": 0.73
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 13,
+        "engId": 12,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.93,
+          "2026-02": 0.93,
+          "2026-03": 0.93,
+          "2026-04": 0.93,
+          "2026-05": 0.93,
+          "2026-06": 0.93,
+          "2026-07": 0.93,
+          "2026-08": 0.93,
+          "2026-09": 0.93,
+          "2026-10": 0.93,
+          "2026-11": 0.93,
+          "2026-12": 0.93
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 14,
+        "engId": 13,
+        "projectId": 2,
+        "allocs": {
+          "2026-01": 0.95,
+          "2026-02": 0.95,
+          "2026-03": 0.95,
+          "2026-04": 0.95,
+          "2026-05": 0.95,
+          "2026-06": 0.95,
+          "2026-07": 0.95,
+          "2026-08": 0.95,
+          "2026-09": 0.95,
+          "2026-10": 0.95,
+          "2026-11": 0.95,
+          "2026-12": 0.95
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 15,
+        "engId": 14,
+        "projectId": 2,
+        "allocs": {
+          "2026-01": 0.91,
+          "2026-02": 0.91,
+          "2026-03": 0.91,
+          "2026-04": 0.91,
+          "2026-05": 0.91,
+          "2026-06": 0.91,
+          "2026-07": 0.91,
+          "2026-08": 0.91,
+          "2026-09": 0.91,
+          "2026-10": 0.91,
+          "2026-11": 0.91,
+          "2026-12": 0.91
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 16,
+        "engId": 15,
+        "projectId": 2,
+        "allocs": {
+          "2026-01": 0.65,
+          "2026-02": 0.65,
+          "2026-03": 0.65,
+          "2026-04": 0.65,
+          "2026-05": 0.65,
+          "2026-06": 0.65,
+          "2026-07": 0.65,
+          "2026-08": 0.65,
+          "2026-09": 0.65,
+          "2026-10": 0.65,
+          "2026-11": 0.65,
+          "2026-12": 0.65
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 17,
+        "engId": 15,
+        "projectId": 3,
+        "allocs": {
+          "2026-01": 0.55,
+          "2026-02": 0.55,
+          "2026-03": 0.55,
+          "2026-04": 0.55,
+          "2026-05": 0.55,
+          "2026-06": 0.55,
+          "2026-07": 0.55,
+          "2026-08": 0.55,
+          "2026-09": 0.55,
+          "2026-10": 0.55,
+          "2026-11": 0.55,
+          "2026-12": 0.55
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 18,
+        "engId": 16,
+        "projectId": 3,
+        "allocs": {
+          "2026-01": 1,
+          "2026-02": 1,
+          "2026-03": 1,
+          "2026-04": 1,
+          "2026-05": 1,
+          "2026-06": 1,
+          "2026-07": 1,
+          "2026-08": "p",
+          "2026-09": 1,
+          "2026-10": 1,
+          "2026-11": 1,
+          "2026-12": 1
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 19,
+        "engId": 17,
+        "projectId": 3,
+        "allocs": {
+          "2026-01": 0.96,
+          "2026-02": 0.96,
+          "2026-03": 0.96,
+          "2026-04": 0.96,
+          "2026-05": 0.96,
+          "2026-06": 0.96,
+          "2026-07": 0.96,
+          "2026-08": 0.96,
+          "2026-09": 0.96,
+          "2026-10": 0.96,
+          "2026-11": 0.96,
+          "2026-12": 0.96
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 20,
+        "engId": 18,
+        "projectId": 2,
+        "allocs": {
+          "2026-01": 0.63,
+          "2026-02": 0.63,
+          "2026-03": 0.63,
+          "2026-04": 0.63,
+          "2026-05": 0.63,
+          "2026-06": 0.63,
+          "2026-07": 0.63,
+          "2026-08": 0.63,
+          "2026-09": 0.63,
+          "2026-10": 0.63,
+          "2026-11": 0.63,
+          "2026-12": 0.63
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 21,
+        "engId": 19,
+        "projectId": 3,
+        "allocs": {
+          "2026-01": 0.69,
+          "2026-02": 0.69,
+          "2026-03": 0.69,
+          "2026-04": 0.69,
+          "2026-05": 0.69,
+          "2026-06": 0.69,
+          "2026-07": 0.69,
+          "2026-08": 0.69,
+          "2026-09": 0.69,
+          "2026-10": 0.69,
+          "2026-11": 0.69,
+          "2026-12": 0.69
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 22,
+        "engId": 20,
+        "projectId": 3,
+        "allocs": {
+          "2026-01": 0.82,
+          "2026-02": 0.82,
+          "2026-03": 0.82,
+          "2026-04": 0.82,
+          "2026-05": 0.82,
+          "2026-06": 0.82,
+          "2026-07": 0.82,
+          "2026-08": 0.82,
+          "2026-09": 0.82,
+          "2026-10": 0.82,
+          "2026-11": 0.82,
+          "2026-12": 0.82
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 23,
+        "engId": 21,
+        "projectId": 2,
+        "allocs": {
+          "2026-01": 1,
+          "2026-02": 1,
+          "2026-03": 1,
+          "2026-04": 1,
+          "2026-05": 1,
+          "2026-06": 1,
+          "2026-07": 1,
+          "2026-08": 1,
+          "2026-09": 1,
+          "2026-10": 1,
+          "2026-11": 1,
+          "2026-12": 1
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 24,
+        "engId": 22,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.6,
+          "2026-02": 0.6,
+          "2026-03": 0.6,
+          "2026-04": 0.6,
+          "2026-05": 0.6,
+          "2026-06": 0.6,
+          "2026-07": 0.6,
+          "2026-08": 0.6,
+          "2026-09": 0.6,
+          "2026-10": 0.6,
+          "2026-11": 0.6,
+          "2026-12": 0.6
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 25,
+        "engId": 23,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.8,
+          "2026-02": 0.8,
+          "2026-03": 0.8,
+          "2026-04": 0.8,
+          "2026-05": 0.8,
+          "2026-06": 0.8,
+          "2026-07": 0.8,
+          "2026-08": 0.8,
+          "2026-09": 0.8,
+          "2026-10": 0.8,
+          "2026-11": 0.8,
+          "2026-12": 0.8
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 26,
+        "engId": 24,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.91,
+          "2026-02": 0.91,
+          "2026-03": 0.91,
+          "2026-04": 0.91,
+          "2026-05": 0.91,
+          "2026-06": 0.91,
+          "2026-07": 0.91,
+          "2026-08": 0.91,
+          "2026-09": 0.91,
+          "2026-10": 0.91,
+          "2026-11": 0.91,
+          "2026-12": 0.91
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 27,
+        "engId": 25,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.05,
+          "2026-02": 0.05,
+          "2026-03": 0.05,
+          "2026-04": 0.05,
+          "2026-05": 0.05,
+          "2026-06": 0.05,
+          "2026-07": 0.05,
+          "2026-08": 0.05,
+          "2026-09": 0.05,
+          "2026-10": 0.05,
+          "2026-11": 0.05,
+          "2026-12": 0.05
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 28,
+        "engId": 26,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.74,
+          "2026-02": 0.74,
+          "2026-03": 0.74,
+          "2026-04": 0.74,
+          "2026-05": 0.74,
+          "2026-06": 0.74,
+          "2026-07": 0.74,
+          "2026-08": 0.74,
+          "2026-09": 0.74,
+          "2026-10": 0.74,
+          "2026-11": 0.74,
+          "2026-12": 0.74
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 29,
+        "engId": 27,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.83,
+          "2026-02": 0.83,
+          "2026-03": 0.83,
+          "2026-04": 0.83,
+          "2026-05": 0.83,
+          "2026-06": 0.83,
+          "2026-07": 0.83,
+          "2026-08": 0.83,
+          "2026-09": 0.83,
+          "2026-10": 0.83,
+          "2026-11": 0.83,
+          "2026-12": 0.83
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 30,
+        "engId": 28,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.9,
+          "2026-02": 0.9,
+          "2026-03": 0.9,
+          "2026-04": 0.9,
+          "2026-05": 0.9,
+          "2026-06": 0.9,
+          "2026-07": 0.9,
+          "2026-08": 0.9,
+          "2026-09": 0.9,
+          "2026-10": 0.9,
+          "2026-11": 0.9,
+          "2026-12": 0.9
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 31,
+        "engId": 29,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.73,
+          "2026-02": 0.73,
+          "2026-03": 0.73,
+          "2026-04": 0.73,
+          "2026-05": 0.73,
+          "2026-06": 0.73,
+          "2026-07": 0.73,
+          "2026-08": 0.73,
+          "2026-09": 0.73,
+          "2026-10": 0.73,
+          "2026-11": 0.73,
+          "2026-12": 0.73
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 32,
+        "engId": 30,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 0.75,
+          "2026-02": 0.75,
+          "2026-03": 0.75,
+          "2026-04": 0.75,
+          "2026-05": 0.75,
+          "2026-06": 0.75,
+          "2026-07": 0.75,
+          "2026-08": 0.75,
+          "2026-09": 0.75,
+          "2026-10": 0.75,
+          "2026-11": 0.75,
+          "2026-12": 0.75
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 33,
+        "engId": 32,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 0.65,
+          "2026-02": 0.65,
+          "2026-03": 0.65,
+          "2026-04": 0.65,
+          "2026-05": 0.65,
+          "2026-06": 0.65,
+          "2026-07": 0.65,
+          "2026-08": 0.65,
+          "2026-09": 0.65,
+          "2026-10": 0.65,
+          "2026-11": 0.65,
+          "2026-12": 0.65
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 34,
+        "engId": 32,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.55,
+          "2026-02": 0.55,
+          "2026-03": 0.55,
+          "2026-04": 0.55,
+          "2026-05": 0.55,
+          "2026-06": 0.55,
+          "2026-07": 0.55,
+          "2026-08": 0.55,
+          "2026-09": 0.55,
+          "2026-10": 0.55,
+          "2026-11": 0.55,
+          "2026-12": 0.55
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 35,
+        "engId": 33,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 0.81,
+          "2026-02": 0.81,
+          "2026-03": 0.81,
+          "2026-04": 0.81,
+          "2026-05": 0.81,
+          "2026-06": 0.81,
+          "2026-07": 0.81,
+          "2026-08": 0.81,
+          "2026-09": 0.81,
+          "2026-10": 0.81,
+          "2026-11": 0.81,
+          "2026-12": 0.81
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 36,
+        "engId": 34,
+        "projectId": 1,
+        "allocs": {
+          "2026-01": 0.88,
+          "2026-02": 0.88,
+          "2026-03": 0.88,
+          "2026-04": 0.88,
+          "2026-05": 0.88,
+          "2026-06": 0.88,
+          "2026-07": 0.88,
+          "2026-08": 0.88,
+          "2026-09": 0.88,
+          "2026-10": 0.88,
+          "2026-11": 0.88,
+          "2026-12": 0.88
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 37,
+        "engId": 35,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 0.6,
+          "2026-02": 0.6,
+          "2026-03": 0.6,
+          "2026-04": 0.6,
+          "2026-05": 0.6,
+          "2026-06": 0.6,
+          "2026-07": 0.6,
+          "2026-08": 0.6,
+          "2026-09": 0.6,
+          "2026-10": 0.6,
+          "2026-11": 0.6,
+          "2026-12": 0.6
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 38,
+        "engId": 36,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 1,
+          "2026-02": 1,
+          "2026-03": 1,
+          "2026-04": 1,
+          "2026-05": 1,
+          "2026-06": 1,
+          "2026-07": 1,
+          "2026-08": 1,
+          "2026-09": 1,
+          "2026-10": 1,
+          "2026-11": 1,
+          "2026-12": 1
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 39,
+        "engId": 37,
+        "projectId": 4,
+        "allocs": {
+          "2026-01": 0.68,
+          "2026-02": 0.68,
+          "2026-03": 0.68,
+          "2026-04": 0.68,
+          "2026-05": 0.68,
+          "2026-06": 0.68,
+          "2026-07": 0.68,
+          "2026-08": 0.68,
+          "2026-09": 0.68,
+          "2026-10": 0.68,
+          "2026-11": 0.68,
+          "2026-12": 0.68
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 40,
+        "engId": 38,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.86,
+          "2026-02": 0.86,
+          "2026-03": 0.86,
+          "2026-04": 0.86,
+          "2026-05": 0.86,
+          "2026-06": 0.86,
+          "2026-07": 0.86,
+          "2026-08": 0.86,
+          "2026-09": 0.86,
+          "2026-10": 0.86,
+          "2026-11": 0.86,
+          "2026-12": 0.86
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 41,
+        "engId": 39,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.05,
+          "2026-02": 0.05,
+          "2026-03": 0.05,
+          "2026-04": 0.05,
+          "2026-05": 0.05,
+          "2026-06": 0.05,
+          "2026-07": 0.05,
+          "2026-08": 0.05,
+          "2026-09": 0.05,
+          "2026-10": 0.05,
+          "2026-11": 0.05,
+          "2026-12": 0.05
+        },
+        "budgetLine": ""
+      },
+      {
+        "id": 42,
+        "engId": 40,
+        "projectId": 6,
+        "allocs": {
+          "2026-01": 0.59,
+          "2026-02": 0.59,
+          "2026-03": 0.59,
+          "2026-04": 0.59,
+          "2026-05": 0.59,
+          "2026-06": 0.59,
+          "2026-07": 0.59,
+          "2026-08": 0.59,
+          "2026-09": 0.59,
+          "2026-10": "r",
+          "2026-11": "r",
+          "2026-12": "r"
+        },
+        "budgetLine": ""
+      }
+    ],
+    "nextId": 7,
+    "nextTodoId": 1,
+    "nextRiskId": 1,
+    "nextMsId": 1,
+    "nextSectionId": 1,
+    "nextAnnotId": 1,
+    "nextActionId": 1,
+    "nextEngId": 41,
+    "nextEngGroupId": 6,
+    "nextAllocId": 43,
+    "sepX": 5,
+    "sepY": 5,
+    "scaleX": "lin",
+    "scaleY": "lin",
+    "yMode": "impact",
+    "annotations": [],
+    "zoom": {
+      "scaleX": 1,
+      "scaleY": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "engDashGroupBy": "group",
+    "skillDomains": [
+      "Software",
+      "Electronics",
+      "Mechanical",
+      "Thermal",
+      "Systems",
+      "Project Management",
+      "Leadership",
+      "Domain Expert"
+    ],
+    "ktPlans": {
+      "kt_BACnet Stack": [
+        {
+          "id": 1781835300527,
+          "learnerEngId": "5",
+          "targetLevel": 4,
+          "deadline": "2026-12",
+          "status": "Planned",
+          "notes": "De-risk SPOF: BACnet Stack"
+        }
+      ],
+      "kt_RF Calibration": [
+        {
+          "id": 1781834952041,
+          "learnerEngId": "14",
+          "targetLevel": 4,
+          "deadline": "2026-12",
+          "status": "Planned",
+          "notes": "De-risk SPOF: RF Calibration"
+        }
+      ],
+      "kt_Thermal CFD": [
+        {
+          "id": 1781835789204,
+          "learnerEngId": "25",
+          "targetLevel": 4,
+          "deadline": "2026-12",
+          "status": "Planned",
+          "notes": "De-risk SPOF: Thermal CFD"
+        }
+      ]
+    },
+    "orgAnnotations": [],
+    "orgLevelH": {},
+    "orgLevelNames": {},
+    "orgPositions": {},
+    "orgCollapsed": {},
+    "orgScale": 1,
+    "orgPanX": 0,
+    "orgPanY": 0,
+    "nineBoxPlacements": {
+      "1": "2-3",
+      "2": "3-3",
+      "3": "2-1",
+      "4": "2-2",
+      "5": "1-2",
+      "6": "1-2",
+      "7": "2-2",
+      "8": "1-1",
+      "9": "2-2",
+      "10": "2-3",
+      "11": "1-2",
+      "12": "3-2",
+      "13": "3-3",
+      "14": "3-3",
+      "15": "2-2",
+      "16": "1-2",
+      "17": "3-2",
+      "18": "3-2",
+      "19": "1-2",
+      "20": "2-1",
+      "21": "2-2",
+      "22": "3-3",
+      "23": "3-3",
+      "24": "2-3",
+      "25": "1-2",
+      "26": "2-2",
+      "27": "2-1",
+      "28": "3-2",
+      "29": "1-2",
+      "30": "3-3",
+      "31": "2-2",
+      "32": "2-2",
+      "33": "2-1",
+      "34": "2-2",
+      "35": "2-2",
+      "36": "3-1",
+      "37": "2-3",
+      "38": "2-2",
+      "39": "2-2",
+      "40": "2-2"
+    },
+    "discPlacements": {
+      "1": "I",
+      "2": "C",
+      "3": "S",
+      "4": "D",
+      "5": "C",
+      "6": "S",
+      "7": "I",
+      "8": "I",
+      "9": "C",
+      "10": "C",
+      "11": "C",
+      "12": "C",
+      "13": "S",
+      "14": "C",
+      "15": "S",
+      "16": "S",
+      "17": "D",
+      "18": "I",
+      "19": "S",
+      "20": "S",
+      "21": "C",
+      "22": "I",
+      "23": "S",
+      "24": "S",
+      "25": "I",
+      "26": "C",
+      "27": "I",
+      "28": "C",
+      "29": "D",
+      "30": "C",
+      "31": "S",
+      "32": "S",
+      "33": "C",
+      "34": "I",
+      "35": "I",
+      "36": "S",
+      "37": "S",
+      "38": "S",
+      "39": "C",
+      "40": "S"
+    },
+    "nbSwapAxes": false,
+    "planFilterEng": [],
+    "planFilterProj": [],
+    "engDashFilterEng": [],
+    "engDashFilterProj": [],
+    "resTitle": "Demo — Engineering Org",
+    "resStart": "2026-01",
+    "resEnd": "2026-12",
+    "axis": {
+      "xName": "Effort",
+      "xMin": 0,
+      "xMax": 10,
+      "yMin": 0,
+      "yMax": 10,
+      "grid": 5
+    }
+  },
+  "_photos": {}
+}

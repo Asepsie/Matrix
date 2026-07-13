@@ -82,8 +82,10 @@ var RAIL_DOMAINS = [
     {id:'disc',        label:'DISC'},
     {id:'profiles',    label:t('Team profiles')},
     {id:'development', label:t('Development')},
+    {id:'engagement', label:t('Engagement')},
   ]},
   { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
+    {id:'exec',        label:t('Executive summary')},
     {id:'portfolio',   label:t('Portfolio analytics')},
     {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
@@ -109,6 +111,8 @@ var railHoverMode=true;      // hover-drawer: open on pointer-over, auto-hide on
 var railHoverOpen=false;     // transient hover expansion (not pinned)
 var railLanding=null;        // stored default landing view id; null = first run (persisted)
 var railRouting=false;       // true while railGo/railRoute is switching surfaces
+var railNavStack=[];         // view-id history; panels close via ← Back (railBack)
+var railBackNav=false;       // true while railBack is navigating (suppress re-push)
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
@@ -244,7 +248,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,engagement:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -302,12 +306,41 @@ function railGo(ev,viewId){
   var dom=railDomainFor(viewId); if(!dom) return;
   var view=dom.views.find(function(x){return x.id===viewId;});
   if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
+  if(!railBackNav && activeView && activeView!==viewId){ railNavStack.push(activeView); if(railNavStack.length>60) railNavStack.shift(); }
   activeView=viewId;
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
   railRouting=true;             // suppress the overlay-close→'matrix' sync during nav
   try{ railRoute(viewId); }
   finally{ railRouting=false; railRender(); railUpdateCrumb(); }  // never leave the guard stuck
+}
+
+/* ← Back: dismiss the current rail VIEW panel by navigating to the previous view
+   (the router closes whatever overlay is open). Replaces the old ✕-closes-to-matrix
+   on every view panel so drilling into a tab and coming back is one consistent move.
+   Falls back to the Settings landing page, else the matrix, when history is empty. */
+function railBack(){
+  var cur=activeView, prev=null;
+  while(railNavStack.length){ var c=railNavStack.pop(); if(c && c!==cur){ prev=c; break; } }
+  if(!prev) prev=(railLanding && railLanding!==cur) ? railLanding : 'matrix';
+  railBackNav=true;
+  try{ railGo(null,prev); } finally{ railBackNav=false; }
+}
+// Esc mirrors the ← Back button, but ONLY when a rail view overlay is the visible
+// surface (so Esc on the bare matrix, or over a modal, doesn't teleport you).
+var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','compare-overlay','summary-overlay',
+  'cht-overlay','dec-overlay','chthub-overlay','dtc-overlay','chan-overlay','brief-overlay'];
+function railEscMaybeBack(){
+  var open=RAIL_VIEW_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
+  if(open) railBack();
+}
+// Modal/popup overlays that can sit ON TOP of a view — Esc must dismiss these
+// first (and NOT navigate back) so e.g. closing an ID card keeps you on the roster.
+var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
+  'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
+  'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel'];
+function railAnyModalOpen(){
+  return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
 
 // Fire an action (does NOT change activeView). Targets verified against source.

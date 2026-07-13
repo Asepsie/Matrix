@@ -27,6 +27,8 @@ area.
 | Design-to-cost (cascade / waterfall / guidelines) | src/sections/dtc.js (+ ARCHITECTURE.md) |
 | Channel mix / go-to-market synoptic | src/sections/channels.js (+ ARCHITECTURE.md) |
 | Portfolio economics (cross-layer analytics) | src/sections/econ.js (+ ARCHITECTURE.md) |
+| Executive summary (one-page cockpit) | src/sections/exec.js (+ ARCHITECTURE.md) |
+| Talent engagement planner (cadence/touchpoints) | src/sections/engagement.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
 | Fix ID card modal (engineer) | src/sections/idcard.js |

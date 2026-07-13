@@ -646,6 +646,119 @@ and reuse its `pfSection`/`pfSectionShell`/`pfEmpty`/`pfEur` helpers.
   `#ec-traj-body`. Snapshot data isn't sanitised, so every helper it calls must tolerate missing fields
   (they do). This is the portfolio "trajectory over snapshots" that was previously deferred.
 
+## Executive summary — one-page cockpit
+
+`INSIGHTS › Executive summary` ([src/sections/exec.js](src/sections/exec.js), all
+`xs`-prefixed) — a **read-only** cross-domain one-pager, built exactly like
+[econ.js](src/sections/econ.js): a Resources tab (`renderExecTab`) rendered into
+`#res-body`, sharing the global FROM/TO period, wired via `JS_FILES` (build.js) +
+`showResTab` case & highlight array (nav.js) + an `insights` view in `RAIL_DOMAINS`
+& `RAIL_RES_TABS` (railnav.js). No new CSS, no new persistence, **nothing mutates
+state**.
+
+It is deliberately distinct from the older **`Summary`** overlay ([overlays.js](src/sections/overlays.js),
+`renderSummary`), which stays as-is: Summary is *execution* detail (risks/actions/
+todos/milestones + team workload); this is *portfolio-strategy* altitude.
+
+### Key facts (non-obvious)
+
+- **Every tile reuses an existing dataset — no new metric is invented.** Value/decision
+  from `ecDataset()` (NPV / risk-adj NPV / PI / revenue / blended margin / conflicts);
+  cost & spend map from `pfBuildDataset()` + `pfTreemapSvg()`; capacity (FTE this month,
+  bench) from `_buildEngUtil()` clamped via a local `xsCurInRange` (same clamp the cost
+  dashboard uses, so numbers reconcile); people from `buildAnalyticsDataset()` (headcount,
+  comparatio, `riskScore`); SPOF from `buildSkillMap()` (unique-skill holders); channel
+  concentration from `chanConcentration()`. The only new SVG primitive is **`xsBubbleSvg`**
+  (value × risk × cost — x=NPV with a dashed zero-NPV divider so it handles negative NPV,
+  y=Σ RPN, r∝cost).
+- **Drill-down onclicks MUST pass `event` as the first arg** — `railGo(ev, viewId)` is
+  **two-arg** (the rail markup calls `railGo(event,'roster')`). Calling `railGo('analytics')`
+  silently no-ops (`ev='analytics'`, `viewId=undefined` → `railDomainFor(undefined)` is null →
+  early return). KPI cards and attention rows use `onclick="railGo(event,'…')"` to jump to the
+  source tab; the target ids are all in `RAIL_RES_TABS`, so the router switches the tab in the
+  already-open Resources overlay.
+- **Honest empties.** A talent-only dataset (no charter financials/channels) shows Portfolio
+  NPV `0€` / PI `—` / revenue `0€` / conflicts `0` — correct, not a bug. Cost/capacity/talent
+  tiles still populate.
+- **Spend map reuses the Portfolio-analytics treemap** with its own UI state (`_xsSpend
+  {by:'cost'|'revenue', group:'none'|'intent'}`, `xsSpendSet` re-renders only `#xs-sec-spend`)
+  — deliberately separate from `_pfState` so the two tabs don't fight over toggle state.
+- **Cost burn is a dual-axis chart** (`xsBurnSvg`, `xsMonthlySeries`): bars = loaded team cost
+  on a €-gridded left axis, line = resource utilisation (Σ monthAllocs ÷ headcount) on a right
+  `%` axis with a dashed period-average line, month ticks thinned to ≤8 labels, a "now" marker.
+  The utilisation line is drawn as a dark-halo path (a `--bg` stroke under the `--warn` stroke)
+  so it reads over the bars; a colour legend sits below (rotated axis captions were dropped —
+  they collided with the right-axis labels).
+- **`--warn` was undefined app-wide** (base.css `:root` had accent/accent2/danger but no `--warn`,
+  despite CLAUDE.md documenting `#f1a435`). Every `var(--warn)` — dashboard KPIs, econ, this chart,
+  the attention icons — silently rendered **black** in SVG fills/strokes. Fixed by adding
+  `--warn:#f1a435` to [base.css](src/styles/base.css); if you see amber appear where it used to be
+  invisible, that's why. `--dim` lives in nav.css's `:root`, not base.css.
+- **Engagement widget (`xsEngagementWidget` / `xsEngToggle`)** shows this week's touchpoints;
+  its check-off re-renders ONLY `#xs-sec-engage` (never `renderEngagement`, which would clobber
+  the exec tab). Full planner is TALENT › Engagement (below).
+- **Axes auto-scale to the data** via `xsNiceMax4` (smallest nice ceiling ≥ max that divides
+  cleanly into 4 gridlines) — no fixed 100% cap on the utilisation axis, and round € labels on
+  the cost axis.
+- **"My week" pinned items (`xsPlannerPins` / `xsPinnedItems`).** Any todo / risk / action can be
+  flagged `execPin` via the 📌 on its Backlog-&-planner row (`blTogglePin`, sets the field through
+  `projSetItemField` — no whitelist, so it persists on the item and rides save/backup; no model
+  change). The exec section lists every pinned item across projects with a done checkbox
+  (`xsPinToggleDone`) and an unpin ✕ (`xsPinRemove`), re-rendering only `#xs-sec-pins`. This is the
+  "help me plan the week" surface, paired with the engagement widget.
+
+## Navigation — ← Back replaces the per-panel ✕
+
+Every rail **VIEW** panel's old "✕ CLOSE" (which reset `activeView='matrix'`) is now a **← BACK**
+button (`railBack()` in [railnav.js](src/sections/railnav.js)) so drilling into a tab and returning
+is one consistent move (e.g. Exec summary → click a KPI → analytics → ← back to Exec). True
+**modals** (Settings, AI, ID card, deck, synopsis, first-run, snapshots, help) keep a real ✕.
+
+- **`railNavStack`** records the previous `activeView` on every `railGo` (guarded by `railBackNav`
+  so a back-navigation doesn't re-push). `railBack` pops to the first entry ≠ current; empty →
+  Settings landing (`railLanding`), else `matrix`. Closing the current overlay is automatic —
+  `railGo`→`railRoute` already tears down whatever overlay is open when it routes.
+- **Esc mirrors ← Back but only for views:** boot.js checks `railAnyModalOpen()` (a hardcoded
+  `RAIL_MODAL_OVERLAYS` list) BEFORE the closers run — if a modal is up, Esc dismisses just that;
+  otherwise `railEscMaybeBack()` fires when a `RAIL_VIEW_OVERLAYS` overlay is showing. This keeps
+  "Esc closes the ID card but stays on the roster" working.
+- **The `railGo(ev, viewId)` two-arg gotcha still applies** — the buttons call `railBack()` (no
+  args) but any drill-down onclick must pass `railGo(event,'id')`.
+
+## Talent engagement planner
+
+`TALENT › Engagement` ([src/sections/engagement.js](src/sections/engagement.js), all `teg`-prefixed)
+— the **action layer** for retention: the app already diagnoses WHO needs attention (Talent Risk
+Radar, Development priority); this plans WHAT touchpoint and WHEN, and records completion. Two
+surfaces over one dataset: a **This-week board** (talents due this week + check-off action list)
+and a **Cadence planner** (weeks × talents grid; assign a retention TIER, Auto-generate a tiered
+rotation, hand-edit any cell). A compact this-week widget also sits on the Executive summary.
+
+### Key facts (non-obvious)
+
+- **Data rides the engineer.** `eng.idcard.engagement = { tier, touchpoints:[{type,week,done,note,
+  ts}] }` (`makeEngagement` in [model.js](src/data/model.js)) — so it flows through save / backup /
+  snapshot with the person, **no new top-level state**. `week` is a **Monday date key** `'YYYY-MM-DD'`
+  (`tegMonday`/`tegWeekKey`), deliberately NOT an ISO week number (avoids year-boundary edge cases).
+- **Fresh-per-engineer on load (a real trap).** `sanitiseEngineer`'s flat idcard merge assigns the
+  SAME `idcDefaults` object to every engineer missing a key — fine for scalars, a shared-mutation
+  bug for `engagement`. So [persist.js](src/core/persist.js) has an **explicit** engagement block
+  that replaces the shared ref (`=== idcDefaults.engagement`) with a fresh `{tier,touchpoints:[]}`.
+  `tegEng(eng)` is also a defensive accessor (lazily creates the object) so un-sanitised snapshot
+  data never throws.
+- **Manual tiers + auto-spread cadence** (the two choices reconciled): the user assigns each key
+  person a tier by hand (`tegSetTier`, sorted by Talent Risk as a hint); `tegAutoGenerate` then
+  spreads touchpoints across the horizon by per-tier frequency (`_tegState.freq`, UI-only), every
+  cell then editable. Grid cell click is a 3-state cycle: schedule (●) → done (✓) → remove.
+- **Two planner views (`_tegState.view`, toggle in the section header):** `grid` = the compact
+  weeks × talents rhythm table (`tegGridBody`); `calendar` = one rich card per week
+  (`tegCalendarBody`) with an initials avatar, role, tier, live Talent-Risk score, an editable
+  action select + note, and the done checkbox. `tegSet` only numifies `weeks` — `view` is a
+  string, so don't route it through the numeric coercion.
+- **Note edits use `onchange` (blur), not `oninput`, and DON'T re-render** (`tegSetNote` only saves)
+  so the field keeps focus — the same in-place pattern as DTC/charter. Structural changes (tier,
+  cell, auto-gen) do a full `renderEngagement`.
+
 ## Localization (i18n)
 
 Runtime translation layer in [src/core/i18n.js](src/core/i18n.js) (loaded **first** in

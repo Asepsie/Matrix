@@ -36,6 +36,15 @@ export function sanitiseEngineer(e) {
     if (e.idcard.nextMove[key] === undefined)
       e.idcard.nextMove[key] = nmDefaults[key];
   }
+  // Ensure engagement exists as a FRESH per-engineer object (the flat idcard merge
+  // above would otherwise share one defaults ref across everyone — a mutation hazard).
+  if (!e.idcard.engagement || typeof e.idcard.engagement !== 'object'
+      || e.idcard.engagement === idcDefaults.engagement) {
+    e.idcard.engagement = { tier: null, touchpoints: [] };
+  }
+  if (e.idcard.engagement.tier === undefined) e.idcard.engagement.tier = null;
+  if (!Array.isArray(e.idcard.engagement.touchpoints)) e.idcard.engagement.touchpoints = [];
+
   // Sanitise skill entries
   e.skills.forEach(function(s) {
     var sd = makeSkill();

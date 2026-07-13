@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-:root{--bg:#0f0f11;--surface:#18181c;--border:#2a2a32;--accent:#c8f135;--accent2:#5be5c8;--text:#e8e8ea;--muted:#6b6b78;--danger:#f14335;}
+:root{--bg:#0f0f11;--surface:#18181c;--border:#2a2a32;--accent:#c8f135;--accent2:#5be5c8;--text:#e8e8ea;--muted:#6b6b78;--danger:#f14335;--warn:#f1a435;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* CJK fallbacks: no webfont is bundled (keeps the file tiny/offline), so
    Chinese resolves to a system font. Named here for the body/prose stack;

@@ -14,7 +14,13 @@ document.addEventListener('input',e=>{
 document.addEventListener('keydown',e=>{
   const tag=document.activeElement.tagName;
   const inInput=(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
-  if(e.key==='Escape'){closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeCompare();closeSummary();closeRes();closeSnap();closeSkillsPdfDlg();closeOrgChart();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();}
+  if(e.key==='Escape'){
+    // A modal/popup on top of a view? Dismiss just that (don't navigate back).
+    var modalWasOpen=(typeof railAnyModalOpen==='function')&&railAnyModalOpen();
+    closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeSnap();closeSkillsPdfDlg();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();
+    // Otherwise Esc mirrors the ← Back button on the open view panel.
+    if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
+  }
   if(e.key==='Enter'&&G('add-overlay').classList.contains('show'))confirmAdd();
   if(e.key==='Enter'&&document.activeElement.id==='todo-new')addItem();
   if(e.key==='Delete'&&selId&&!inInput)deleteSelected();

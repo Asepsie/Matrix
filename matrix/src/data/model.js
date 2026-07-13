@@ -40,7 +40,20 @@ export function makeIdCard(overrides = {}) {
     cops:          [],
     reviews:       [],
     succession:    makeSuccessionPlan(),
+    engagement:    makeEngagement(),      // talent-engagement cadence (tier + weekly touchpoints)
     _isDictionary: false,
+    ...overrides,
+  };
+}
+
+// Talent-engagement plan for one person: a retention tier (null = not in the plan)
+// plus scheduled/completed touchpoints. Rides save/backup with the engineer's idcard.
+// A touchpoint = { type, week, done, note, ts } where `week` is a Monday date key
+// 'YYYY-MM-DD' and `type` is an ENGAGEMENT_ACTIONS id.
+export function makeEngagement(overrides = {}) {
+  return {
+    tier:        null,   // null = not in plan · 1 = closest cadence · 2 · 3
+    touchpoints: [],
     ...overrides,
   };
 }

@@ -90,6 +90,7 @@ function _blRowHTML(r){
     +'<input type="checkbox" class="bl-check" '+(r.done?'checked':'')+' onchange="blToggleDone('+r.pid+',\''+r.kind+'\','+r.id+')">'
     +_blChip(t(m.label),m.color)
     +'<button class="todo-prio '+(r.priority==='High'?'p-high':r.priority==='Medium'?'p-medium':r.priority==='Low'?'p-low':'p-none')+'" title="'+prTitle+'" onclick="blCyclePrio('+r.pid+',\''+r.kind+'\','+r.id+')"></button>'
+    +'<button class="bl-pin" title="'+(raw.execPin?t('Pinned to Executive summary — click to unpin'):t('Pin to Executive summary (plan your week)'))+'" onclick="blTogglePin('+r.pid+',\''+r.kind+'\','+r.id+')" style="background:none;border:none;cursor:pointer;font-size:12px;line-height:1;padding:0 2px;opacity:'+(raw.execPin?'1':'.3')+';filter:'+(raw.execPin?'none':'grayscale(1)')+'">📌</button>'
     +(isTask
        ?'<input class="bl-text" value="'+escH(r.text)+'" onchange="blSetText('+r.pid+',\'todo\','+r.id+',this.value)">'
        :'<span class="bl-text-ro'+(r.done?' bl-strike':'')+'">'+escH(r.text||t('(empty)'))+'</span>')
@@ -231,6 +232,7 @@ function blQuickAdd(){
 }
 // inline edits ---------------------------------------------------------------
 function blToggleDone(pid,type,id){ var p=_blProj(pid); if(!p)return; projToggleItemDone(p,type,id); saveState(); renderBacklogTab(); }
+function blTogglePin(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; r.execPin=!r.execPin; saveState(); renderBacklogTab(); }
 function blCyclePrio(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; var i=ITEM_PRIOS.indexOf(r.priority||''); projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]); saveState(); renderBacklogTab(); }
 function blSetText(pid,type,id,v){ var p=_blProj(pid); if(!p)return; projSetItemText(p,type,id,v); saveState(); }
 function blSetAssignee(pid,type,id,v){ var p=_blProj(pid); if(!p)return; var raw=projItemRaw(p,type,id); if(!raw)return; applyAssigneeSelect(raw,type==='action'?'member':'owner',v); saveState(); renderBacklogTab(); }
