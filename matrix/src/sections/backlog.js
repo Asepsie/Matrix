@@ -23,6 +23,7 @@ var _blTypes    = { todo:true, risk:true, action:true };
 var _blGroupBy  = 'project';
 // Project scope: null = all projects; else a project id (set by the panel ⤢ button).
 var _blProjFilter = null;
+var _blPrioFilter = null;   // unset shows all; else 'High' | 'Medium' | 'Low'
 
 // Type presentation: label + accent colour used for badges/toggles.
 var _BL_TYPE_META = {
@@ -120,6 +121,7 @@ export function renderBacklogTab(){
   });
 
   var rows=_blItems();
+  if(_blPrioFilter) rows=rows.filter(function(r){return (r.priority||'')===_blPrioFilter;});
   var total=rows.length;
   var doneCount=rows.filter(function(r){return r.done;}).length;
   var openCount=total-doneCount;
@@ -145,6 +147,12 @@ export function renderBacklogTab(){
   [['project',t('PROJECT')],['assignee',t('ASSIGNEE')],['type',t('TYPE')],['priority',t('PRIORITY')]].forEach(function(g){
     h+='<button class="sm'+(_blGroupBy===g[0]?' active':'')+'" onclick="blSetGroup(\''+g[0]+'\')" '
       +'style="font-size:10px;padding:3px 9px'+(_blGroupBy===g[0]?';border-color:var(--accent);color:var(--accent)':'')+'">'+g[1]+'</button>';
+  });
+  h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-left:8px">'+t('PRIORITY:')+'</span>';
+  [['','ALL','var(--muted)'],['High',t('HIGH'),'#f14335'],['Medium',t('MED'),'#f1a435'],['Low',t('LOW'),'#5be5c8']].forEach(function(pr){
+    var on=(_blPrioFilter||'')===pr[0];
+    h+='<button class="sm'+(on?' active':'')+'" onclick="blSetPrioFilter(\''+pr[0]+'\')" '
+      +'style="font-size:10px;padding:3px 9px'+(on?';border-color:'+pr[2]+';color:'+pr[2]:'')+'">'+pr[1]+'</button>';
   });
   h+='</div>';
 
@@ -223,6 +231,7 @@ export function blSetGroup(g){ _blGroupBy=g; renderBacklogTab(); }
 export function _blSetProjectFilter(pid){ _blProjFilter=(pid==null?null:pid); }
 // Set the project scope from the dropdown.
 function blSetProjectFilter(v){ _blProjFilter=(v===''?null:+v); renderBacklogTab(); }
+function blSetPrioFilter(v){ _blPrioFilter=(v===''?null:v); renderBacklogTab(); }
 // Quick-add a task to the chosen project.
 function blQuickAdd(){
   var psel=G('bl-add-proj'); var pid=psel?+psel.value:_blProjFilter;

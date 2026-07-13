@@ -703,9 +703,22 @@ todos/milestones + team workload); this is *portfolio-strategy* altitude.
 - **"My week" pinned items (`xsPlannerPins` / `xsPinnedItems`).** Any todo / risk / action can be
   flagged `execPin` via the 📌 on its Backlog-&-planner row (`blTogglePin`, sets the field through
   `projSetItemField` — no whitelist, so it persists on the item and rides save/backup; no model
-  change). The exec section lists every pinned item across projects with a done checkbox
-  (`xsPinToggleDone`) and an unpin ✕ (`xsPinRemove`), re-rendering only `#xs-sec-pins`. This is the
-  "help me plan the week" surface, paired with the engagement widget.
+  change). The exec section lists every pinned item across projects with a done checkbox and an
+  unpin ✕ (`xsPinRemove`).
+- **WEEK PLANNER — drag & drop (`xsScheduleSection`).** A Mon–Sun day grid plus an **Unscheduled
+  pool**; the user **drags** engagement meetings and pinned to-dos/actions onto the day they plan to
+  do them (NOT auto-placed by due date). Two ad-hoc optional fields carry the assignment and ride
+  save/backup on their existing objects — **`tp.day`** on an engagement touchpoint, **`execDay`** on
+  a pinned project item (both ISO `YYYY-MM-DD`; unset ⇒ pool; a value outside the current week falls
+  back to the pool, so the plan resets each week). HTML5 DnD via `xsDragStart`/`xsDragOver`/`xsDrop`
+  with a `'m|engId'` / `'t|pid|kind|id'` token in `dataTransfer`; drop zones are the pool (empty
+  dayKey ⇒ clear) and each day. Checkboxes inside a draggable chip use `onmousedown=stopPropagation`
+  so ticking never starts a drag. Check-offs from here OR the pins list route through **`xsRefreshWeek`**
+  (re-renders `#xs-sec-sched` + `#xs-sec-pins`) so the surfaces never diverge.
+- **Side-by-side cards align via `.xs-eqrow`/`.xs-col`** ([base.css](src/styles/base.css)): a flex
+  row where the column stretches AND its `pfSection` card child is `flex:1`, so both panels' bottom
+  borders line up (a plain flex row stretches the columns but not the cards inside them — that was
+  the misalignment). Both burn axes auto-scale via `xsNiceMax4` (no forced 100% util cap).
 
 ## Navigation — ← Back replaces the per-panel ✕
 

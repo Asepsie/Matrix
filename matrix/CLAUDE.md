@@ -47,7 +47,10 @@ node --test tests/*.test.js → run unit tests
 4. h+= chains: no semicolons until the last line of a chain
 5. No duplicate top-level declarations across bundled files — declare each
    identifier in one file only (the flat bundle is one shared scope; a
-   duplicate let/const is a load-time SyntaxError the browser throws on)
+   duplicate let/const is a load-time SyntaxError the browser throws on).
+   GOTCHA: the checker is line-based and does NOT strip comments — a comment
+   containing `word =` (e.g. `// null = all`) is read as declaring `word`, so
+   the same phrase in two files trips this. Avoid `word =` in comments.
 6. The emitted bundle must parse as a classic <script> (sloppy mode) —
    build.js compiles it with vm.Script (no execution) to catch this
 

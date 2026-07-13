@@ -7,6 +7,11 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
 :root{--bg:#0f0f11;--surface:#18181c;--border:#2a2a32;--accent:#c8f135;--accent2:#5be5c8;--text:#e8e8ea;--muted:#6b6b78;--danger:#f14335;--warn:#f1a435;}
+/* Equal-height side-by-side cards: the column stretches (flex row) AND its card
+   child fills that height, so the two panels' bottom borders always align. */
+.xs-eqrow{display:flex;gap:16px;flex-wrap:wrap;align-items:stretch;}
+.xs-eqrow>.xs-col{flex:1 1 340px;min-width:340px;display:flex;}
+.xs-eqrow>.xs-col>div{flex:1;min-width:0;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* CJK fallbacks: no webfont is bundled (keeps the file tiny/offline), so
    Chinese resolves to a system font. Named here for the body/prose stack;
@@ -17908,6 +17913,7 @@ var _blTypes    = { todo:true, risk:true, action:true };
 var _blGroupBy  = 'project';
 // Project scope: null = all projects; else a project id (set by the panel ⤢ button).
 var _blProjFilter = null;
+var _blPrioFilter = null;   // unset shows all; else 'High' | 'Medium' | 'Low'
 
 // Type presentation: label + accent colour used for badges/toggles.
 var _BL_TYPE_META = {
@@ -18005,6 +18011,7 @@ function renderBacklogTab(){
   });
 
   var rows=_blItems();
+  if(_blPrioFilter) rows=rows.filter(function(r){return (r.priority||'')===_blPrioFilter;});
   var total=rows.length;
   var doneCount=rows.filter(function(r){return r.done;}).length;
   var openCount=total-doneCount;
@@ -18030,6 +18037,12 @@ function renderBacklogTab(){
   [['project',t('PROJECT')],['assignee',t('ASSIGNEE')],['type',t('TYPE')],['priority',t('PRIORITY')]].forEach(function(g){
     h+='<button class="sm'+(_blGroupBy===g[0]?' active':'')+'" onclick="blSetGroup(\''+g[0]+'\')" '
       +'style="font-size:10px;padding:3px 9px'+(_blGroupBy===g[0]?';border-color:var(--accent);color:var(--accent)':'')+'">'+g[1]+'</button>';
+  });
+  h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-left:8px">'+t('PRIORITY:')+'</span>';
+  [['','ALL','var(--muted)'],['High',t('HIGH'),'#f14335'],['Medium',t('MED'),'#f1a435'],['Low',t('LOW'),'#5be5c8']].forEach(function(pr){
+    var on=(_blPrioFilter||'')===pr[0];
+    h+='<button class="sm'+(on?' active':'')+'" onclick="blSetPrioFilter(\''+pr[0]+'\')" '
+      +'style="font-size:10px;padding:3px 9px'+(on?';border-color:'+pr[2]+';color:'+pr[2]:'')+'">'+pr[1]+'</button>';
   });
   h+='</div>';
 
@@ -18108,6 +18121,7 @@ function blSetGroup(g){ _blGroupBy=g; renderBacklogTab(); }
 function _blSetProjectFilter(pid){ _blProjFilter=(pid==null?null:pid); }
 // Set the project scope from the dropdown.
 function blSetProjectFilter(v){ _blProjFilter=(v===''?null:+v); renderBacklogTab(); }
+function blSetPrioFilter(v){ _blPrioFilter=(v===''?null:v); renderBacklogTab(); }
 // Quick-add a task to the chosen project.
 function blQuickAdd(){
   var psel=G('bl-add-proj'); var pid=psel?+psel.value:_blProjFilter;
@@ -22292,23 +22306,123 @@ function renderExecTab(){
 
   h+=xsScorecard(months);
 
-  // Two headline visuals side by side (stack on narrow).
+  // Two headline visuals side by side (equal height; stack on narrow).
   const eco=ecDataset();
-  h+='<div style="display:flex;gap:16px;flex-wrap:wrap">'
-    +'<div id="xs-sec-spend" style="flex:1;min-width:340px">'+xsSpendSection()+'</div>'
-    +'<div style="flex:1;min-width:340px">'+pfSection(t('VALUE vs RISK'), t('Each project by NPV (value) and total risk exposure (Σ RPN). Bubble size = team cost. Top-right = valuable AND risky — your watch list.'), xsBubbleSvg(eco))+'</div>'
+  h+='<div class="xs-eqrow">'
+    +'<div class="xs-col" id="xs-sec-spend">'+xsSpendSection()+'</div>'
+    +'<div class="xs-col">'+pfSection(t('VALUE vs RISK'), t('Each project by NPV (value) and total risk exposure (Σ RPN). Bubble size = team cost. Top-right = valuable AND risky — your watch list.'), xsBubbleSvg(eco))+'</div>'
     +'</div>';
 
   h+='<div id="xs-sec-burn">'+pfSection(t('COST BURN'), t('Loaded team cost per month (bars, left €) with resource utilisation (line, right %) and the period average. Marker = current month.'), xsBurnSvg(months))+'</div>';
 
   h+=pfSection(t('NEEDS ATTENTION'), t('The few things worth a decision this week — pulled from talent risk, delivery, and channel concentration.'), xsAttention(months));
 
-  h+='<div id="xs-sec-pins">'+xsPlannerPins()+'</div>';
+  h+='<div id="xs-sec-sched">'+xsScheduleSection()+'</div>';
 
-  h+='<div id="xs-sec-engage">'+xsEngagementWidget()+'</div>';
+  h+='<div id="xs-sec-pins">'+xsPlannerPins()+'</div>';
 
   h+='</div>';
   body.innerHTML=h;
+}
+
+// Re-render the "my week" surfaces in place after a check-off (no scroll jump).
+function xsRefreshWeek(){
+  const s=G('xs-sec-sched'); if(s) s.innerHTML=xsScheduleSection();
+  const p=G('xs-sec-pins');  if(p) p.innerHTML=xsPlannerPins();
+}
+
+// ── WEEK PLANNER — drag meetings & pinned tasks onto a day ────────────────────
+// Meetings carry a per-week `tp.day`; pinned tasks/actions carry an `execDay`
+// (both optional ISO 'YYYY-MM-DD'; when unset the item stays in the Unscheduled
+// pool). Nothing is placed by due date — the user drags what they plan that day.
+function xsScheduleSection(){
+  const monday=(typeof tegMonday==='function')?tegMonday(new Date()):new Date();
+  const iso=function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  const days=[]; for(let i=0;i<7;i++){ const d=new Date(monday); d.setDate(monday.getDate()+i); days.push(d); }
+  const dayKeys=days.map(iso), todayISO=iso(new Date());
+  const dayNames=[t('Mon'),t('Tue'),t('Wed'),t('Thu'),t('Fri'),t('Sat'),t('Sun')];
+  const inWeek=function(k){ return !!k && dayKeys.indexOf(k)>=0; };
+
+  const meetings=(typeof tegThisWeekList==='function')?tegThisWeekList():[];
+  const tasks=xsPinnedItems().filter(function(it){return it.kind!=='risk';});  // to-dos + actions
+  const open='<button class="sm" onclick="railGo(event,\'engagement\')" style="border-color:var(--accent);color:var(--accent)">'+t('Engagement planner →')+'</button>';
+
+  if(!meetings.length && !tasks.length){
+    return pfSectionShell(t('WEEK PLANNER'), t('Drag meetings and pinned tasks onto a day.'), open,
+      pfEmpty(t('Nothing to plan yet — pin tasks/actions (📌) in Backlog & planner and add touchpoints in the Engagement planner.')));
+  }
+
+  // Draggable chips (checkbox = done; onmousedown stopPropagation so ticking never starts a drag).
+  const meetChip=function(x){
+    const tcol=TEG_TIER_COLOR[x.en.tier]||'var(--muted)', m=tegActionMeta(x.tp.type);
+    return '<div draggable="true" ondragstart="xsDragStart(event,\'m|'+x.eng.id+'\')" title="'+escH((x.eng.name||'')+' — '+t(m.label))+'" '
+      +'style="display:flex;align-items:center;gap:6px;border:1px solid '+tcol+';border-radius:13px;padding:3px 8px;background:'+tcol+'14;cursor:grab;font-size:11px'+(x.tp.done?';opacity:.55':'')+'">'
+      +'<input type="checkbox"'+(x.tp.done?' checked':'')+' onmousedown="event.stopPropagation()" onchange="xsSchedToggleMeeting('+x.eng.id+')" style="width:13px;height:13px;cursor:pointer">'
+      +'<span style="color:'+tcol+';font-weight:600'+(x.tp.done?';text-decoration:line-through':'')+'">'+m.icon+' '+escH((x.eng.name||'').split(' ')[0])+'</span></div>';
+  };
+  const taskChip=function(it){
+    const col=it.kind==='action'?'#a78bfa':'var(--accent)';
+    return '<div draggable="true" ondragstart="xsDragStart(event,\'t|'+it.p.id+'|'+it.kind+'|'+it.id+'\')" title="'+escH((it.text||'')+' · '+(it.p.name||''))+'" '
+      +'style="display:flex;align-items:flex-start;gap:5px;border:1px solid '+col+'55;border-left:3px solid '+col+';border-radius:5px;padding:4px 7px;background:var(--surface);cursor:grab;font-size:10px'+(it.done?';opacity:.55':'')+'">'
+      +'<input type="checkbox"'+(it.done?' checked':'')+' onmousedown="event.stopPropagation()" onchange="xsPinToggleDone('+it.p.id+',\''+it.kind+'\','+it.id+')" style="width:12px;height:12px;margin-top:1px;cursor:pointer;flex-shrink:0">'
+      +'<span style="color:var(--text);line-height:1.25'+(it.done?';text-decoration:line-through':'')+'">'+escH((it.text||t('(empty)')).slice(0,40))+'</span></div>';
+  };
+
+  // Unscheduled pool (droppable → clears the day).
+  const poolMeet=meetings.filter(function(x){return !inWeek(x.tp.day);});
+  const poolTask=tasks.filter(function(it){return !inWeek(it.execDay);});
+  let inner='<div ondragover="xsDragOver(event)" ondrop="xsDrop(event,\'\')" '
+    +'style="border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px">'
+    +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:6px">'+t('UNSCHEDULED — drag onto a day')+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;min-height:26px">';
+  poolMeet.forEach(function(x){ inner+=meetChip(x); });
+  poolTask.forEach(function(it){ inner+=taskChip(it); });
+  if(!poolMeet.length && !poolTask.length) inner+='<span style="font-size:10px;color:var(--accent2)">'+t('all scheduled ✓')+'</span>';
+  inner+='</div></div>';
+
+  // Day columns (droppable → sets the day).
+  inner+='<div style="display:flex;gap:6px;overflow-x:auto">';
+  days.forEach(function(d,i){
+    const key=iso(d), isToday=key===todayISO;
+    const dMeet=meetings.filter(function(x){return x.tp.day===key;});
+    const dTask=tasks.filter(function(it){return it.execDay===key;});
+    inner+='<div ondragover="xsDragOver(event)" ondrop="xsDrop(event,\''+key+'\')" '
+      +'style="flex:1;min-width:106px;border:1px '+(isToday?'solid var(--accent2)':'dashed var(--border)')+';border-radius:7px;background:'+(isToday?'rgba(91,229,200,.06)':'var(--bg)')+';display:flex;flex-direction:column">'
+      +'<div style="padding:4px 7px;border-bottom:1px solid var(--border);font-family:IBM Plex Mono,monospace;font-size:9px;color:'+(isToday?'var(--accent2)':'var(--muted)')+'">'+escH(dayNames[i])+' '+d.getDate()+(isToday?' • '+t('today'):'')+'</div>'
+      +'<div style="padding:5px;display:flex;flex-direction:column;gap:5px;min-height:64px;flex:1">';
+    dMeet.forEach(function(x){ inner+=meetChip(x); });
+    dTask.forEach(function(it){ inner+=taskChip(it); });
+    if(!dMeet.length && !dTask.length) inner+='<span style="font-size:9px;color:var(--dim)">·</span>';
+    inner+='</div></div>';
+  });
+  inner+='</div>';
+  inner+='<div style="font-size:9px;color:var(--dim);margin-top:6px;font-family:IBM Plex Mono,monospace">'+t('drag a chip onto a day · drag back to Unscheduled to remove · checkbox marks it done')+'</div>';
+
+  return pfSectionShell(t('WEEK PLANNER'), t('Week of {w} · drag engagement meetings and pinned tasks onto the day you plan to do them.',{w:(typeof tegWeekLabel==='function'?tegWeekLabel(iso(monday)):'')}), open, inner);
+}
+function xsSchedToggleMeeting(engId){
+  const eng=engineers.find(function(e){return e.id===engId;}); if(!eng) return;
+  const tp=(typeof tegTp==='function')?tegTp(tegEng(eng),tegCurWeek()):null;
+  if(tp){ tp.done=!tp.done; saveState(); }
+  xsRefreshWeek();
+}
+// Drag-and-drop day planner. Token: 'm|engId' (meeting) or 't|pid|kind|id' (task).
+function xsDragStart(ev,token){ if(ev.dataTransfer){ ev.dataTransfer.setData('text/plain',token); ev.dataTransfer.effectAllowed='move'; } }
+function xsDragOver(ev){ ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect='move'; }
+function xsDrop(ev,dayKey){
+  ev.preventDefault();
+  const tok=ev.dataTransfer?ev.dataTransfer.getData('text/plain'):''; if(!tok) return;
+  const parts=tok.split('|');
+  if(parts[0]==='m'){
+    const eng=engineers.find(function(e){return e.id==parts[1];}); if(!eng) return;   // loose: token is string
+    const tp=(typeof tegTp==='function')?tegTp(tegEng(eng),tegCurWeek()):null;
+    if(tp){ tp.day=dayKey||null; saveState(); }
+  } else if(parts[0]==='t'){
+    const p=projects.find(function(x){return x.id==parts[1];}); if(!p) return;
+    const r=(typeof projItemRaw==='function')?projItemRaw(p,parts[2],+parts[3]):null;
+    if(r){ r.execDay=dayKey||null; saveState(); }
+  }
+  xsRefreshWeek();
 }
 
 // ── "My week" — todos/risks/actions pinned (📌) from Backlog & planner ────────
@@ -22316,9 +22430,9 @@ function xsPinnedItems(){
   const out=[], today=new Date();
   const asg=function(o){ return (typeof resolveAssignee==='function')?resolveAssignee(o):(o.owner||o.member||''); };
   projects.forEach(function(p){
-    (p.todos||[]).forEach(function(td){ if(td.execPin) out.push({p:p,kind:'todo',id:td.id,text:td.text||'',done:!!td.done,priority:td.priority||'',due:td.due||'',assignee:asg(td),overdue:!!td.due&&!td.done&&new Date(td.due)<today}); });
-    (p.risks||[]).forEach(function(r){ if(r.execPin){ const st=r.status||'open', closed=/closed|done|resolved|mitigated/i.test(st); out.push({p:p,kind:'risk',id:r.id,text:r.desc||'',done:closed,priority:r.priority||'',due:'',assignee:asg(r),overdue:false}); } });
-    (p.actions||[]).forEach(function(a){ if(a.execPin){ const st=a.status||'Open', done=/done|complete|closed/i.test(st); const due=a.due||a.end||''; out.push({p:p,kind:'action',id:a.id,text:a.desc||'',done:done,priority:a.priority||'',due:due,assignee:asg(a),overdue:!!due&&!done&&new Date(due)<today}); } });
+    (p.todos||[]).forEach(function(td){ if(td.execPin) out.push({p:p,kind:'todo',id:td.id,text:td.text||'',done:!!td.done,priority:td.priority||'',due:td.due||'',execDay:td.execDay||null,assignee:asg(td),overdue:!!td.due&&!td.done&&new Date(td.due)<today}); });
+    (p.risks||[]).forEach(function(r){ if(r.execPin){ const st=r.status||'open', closed=/closed|done|resolved|mitigated/i.test(st); out.push({p:p,kind:'risk',id:r.id,text:r.desc||'',done:closed,priority:r.priority||'',due:'',execDay:r.execDay||null,assignee:asg(r),overdue:false}); } });
+    (p.actions||[]).forEach(function(a){ if(a.execPin){ const st=a.status||'Open', done=/done|complete|closed/i.test(st); const due=a.due||a.end||''; out.push({p:p,kind:'action',id:a.id,text:a.desc||'',done:done,priority:a.priority||'',due:due,execDay:a.execDay||null,assignee:asg(a),overdue:!!due&&!done&&new Date(due)<today}); } });
   });
   return out;
 }
@@ -22353,47 +22467,13 @@ function xsPinToggleDone(pid,kind,id){
   const p=projects.find(function(x){return x.id===pid;}); if(!p) return;
   if(typeof projToggleItemDone==='function') projToggleItemDone(p,kind,id);
   saveState();
-  const el=G('xs-sec-pins'); if(el) el.innerHTML=xsPlannerPins();
+  xsRefreshWeek();
 }
 function xsPinRemove(pid,kind,id){
   const p=projects.find(function(x){return x.id===pid;}); if(!p) return;
   const r=(typeof projItemRaw==='function')?projItemRaw(p,kind,id):null; if(r) r.execPin=false;
   saveState();
-  const el=G('xs-sec-pins'); if(el) el.innerHTML=xsPlannerPins();
-}
-
-// ── talent-engagement widget (this week's touchpoints; full planner is TALENT ›
-//    Engagement, engagement.js). Its check-off re-renders only this block so it
-//    never clobbers the exec tab. ──────────────────────────────────────────────
-function xsEngagementWidget(){
-  if(typeof tegThisWeekList!=='function') return pfSection(t('TALENT ENGAGEMENT — this week'), '', pfEmpty(t('Engagement planner unavailable.')));
-  const list=tegThisWeekList();
-  const wk=tegCurWeek();
-  const open='<button class="sm" onclick="railGo(event,\'engagement\')" style="border-color:var(--accent);color:var(--accent)">'+t('Open planner →')+'</button>';
-  let inner;
-  if(!list.length){
-    inner=pfEmpty(t('No talents scheduled this week — open the planner to set up a cadence.'));
-  } else {
-    inner='<div style="display:flex;flex-direction:column;gap:6px">';
-    list.forEach(function(x){
-      const tcol=TEG_TIER_COLOR[x.en.tier]||'var(--muted)';
-      const m=tegActionMeta(x.tp.type);
-      inner+='<div style="display:flex;align-items:center;gap:9px;font-size:12px;padding:5px 4px;border-bottom:1px solid var(--border)">'
-        +'<input type="checkbox"'+(x.tp.done?' checked':'')+' onchange="xsEngToggle('+x.eng.id+')" style="width:15px;height:15px;cursor:pointer">'
-        +'<span style="min-width:150px;color:'+tcol+';font-weight:600'+(x.tp.done?';text-decoration:line-through;opacity:.6':'')+'">'+escH(x.eng.name||'')+'</span>'
-        +'<span style="color:var(--muted)">'+m.icon+' '+escH(t(m.label))+'</span></div>';
-    });
-    inner+='</div>';
-  }
-  const done=list.filter(function(x){return x.tp.done;}).length;
-  return pfSectionShell(t('TALENT ENGAGEMENT — this week'), t('Week of {w} · {d}/{n} done · your key-talent touchpoints.',{w:tegWeekLabel(wk),d:done,n:list.length}), open, inner);
-}
-// Check off a touchpoint from the exec widget — updates just this block (staying on exec).
-function xsEngToggle(id){
-  const eng=engineers.find(function(e){return e.id===id;}); if(!eng) return;
-  const tp=tegTp(tegEng(eng), tegCurWeek());
-  if(tp){ tp.done=!tp.done; saveState(); }
-  const el=G('xs-sec-engage'); if(el) el.innerHTML=xsEngagementWidget();
+  xsRefreshWeek();
 }
 
 // ── KPI strip — the whole app in one row ─────────────────────────────────────
