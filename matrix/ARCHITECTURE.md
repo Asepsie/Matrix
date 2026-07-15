@@ -720,6 +720,135 @@ todos/milestones + team workload); this is *portfolio-strategy* altitude.
   borders line up (a plain flex row stretches the columns but not the cards inside them — that was
   the misalignment). Both burn axes auto-scale via `xsNiceMax4` (no forced 100% util cap).
 
+## Gate & PI — configurable stage-gate + PI planning
+
+`INSIGHTS › Gate & PI` ([src/sections/gate.js](src/sections/gate.js), all `gt`-prefixed) —
+a **governance** tab: an editable stage-gate methodology crossed with a PI/increment time
+axis, with **hybrid** readiness (manual checks + auto checks bound to the tool's existing
+computed signals). Built like the other read-mostly tabs (`renderGateTab` into `#res-body`,
+wired via `JS_FILES` + `showResTab` case & highlight array + `insights` view in
+`RAIL_DOMAINS`/`RAIL_RES_TABS`), but it also **edits config**, so it writes state.
+
+**Phased build — ALL FOUR phases are done.** Phase 1 = methodology editor + template library;
+Phase 2 = per-project gate detail + the hybrid *resolver* (auto criteria evaluate live); Phase 3
+= the Kanban **pipeline** (maturity axis, the default sub-view); Phase 4 = the **PI board** (time
+axis — increments + a gate-overview matrix + a per-PI milestones/objectives plan).
+
+The tab has a four-way sub-view toggle (`_gtView`): **PIPELINE** (default) → **PI BOARD** →
+**PROJECTS** (detail) → **METHODOLOGY** (editor). `gtSetView` validates to these four. The **PI
+BOARD** itself has an **inner toggle** (`_gtPiTab` = `'overview'｜'plan'`, `gtSetPiTab`) — see
+Phase 4.
+
+### Phase 3 — the Kanban pipeline
+
+`gtPipelineView` renders one column per stage (horizontal-scroll board), each project a card in
+its current stage (`gtCurStageIdx` — unset defaults to stage 0, same rule as the detail). A card
+shows the project name, a readiness bar (amber when blocked), a blocker count, and a ▸ advance
+button; clicking the title opens the Phase-2 detail (`gtOpenDetail` sets `_gtProjId` +
+`_gtView='projects'`). The ▸ button reuses **`gtAdvance`** (confirm-override when blocked), so the
+card just re-renders into the next column. A summary line tallies projects / stages / blocked.
+Read-only over project data — only `gatePlan.stageId` moves.
+
+### Phase 4 — the PI board (two inner tabs)
+
+`gtPiBoardView` = a shared **increments editor** (CRUD + reorder over `gateConfig.increments`, each a
+named time box with `start`/`end` `YYYY-MM`; `gtAddQuarters` seeds Q1–Q4 of the current year) on top,
+then an **inner toggle** (`_gtPiTab`) between two matrices that share the same increment columns:
+
+- **GATE OVERVIEW** (`gtOverviewGrid`, default) — the projects × increments **gate matrix** (each cell
+  a stage `<select>` → `gatePlan.roadmap[incId] = stageId`, `● now: <current stage>` per row), but with
+  three additions: a **✓ checkbox** per row toggles PI-planning **selection** (`gtPiToggleSelect`); only
+  **selected** projects render as full matrix rows; **unselected** projects collapse into one
+  `gtUnselectedPanel` at the bottom (a foldable chip list, `_gtUnselOpen`; a chip re-selects the project).
+  Each row is `draggable` and reorders the planning order via HTML5 DnD (`gtDragStart/Over/Drop/End` →
+  `gtPiReorder`, which moves the dragged id before the drop target in the full order list).
+- **PI PLAN** (`gtPiPlanGrid`) — rows = **selected** projects (same order), columns = increments; each
+  cell (`gtPiCell`) edits that (project, PI)'s **milestones** (text + `YYYY-MM` date + done toggle) and
+  **major objectives** (text bullets), stored in `gatePlan.piItems[incId] = {milestones[], objectives[]}`.
+
+**Selection + order are PLANNING-ONLY**, on `gateConfig.piSelected` / `gateConfig.piOrder` (arrays of
+project ids) — deliberately NOT the global `projects[]` order, so reordering here has zero side effects
+elsewhere. `gtProjOrder()` reconciles `piOrder` against the live `projects[]` each render (existing ids
+first, new projects appended), so stale/missing ids are harmless. **`gtDelIncrement` sweeps orphaned
+commitments** — it deletes that increment's key from every project's `roadmap` (not `piItems`, which is
+keyed the same way but left to `sanitiseGatePlan`). Both matrices' first column is `position:sticky;left:0`.
+`gatePlan.roadmap` + `gatePlan.piItems` are the Phase-4 model additions (back-filled by `sanitiseGatePlan`);
+`targetIncrementId` remains in the factory unused (superseded by the per-increment `roadmap` map).
+**Re-render discipline:** structural edits (add/delete milestone or objective, done-toggle, select, reorder)
+re-render; free-text milestone/objective edits use `onchange` + save-only (no re-render) to keep focus.
+
+### Phase 2 — the hybrid resolver + per-project detail
+
+A sub-view toggle (`_gtView`, module-local) splits the tab into **PROJECTS** (default: gate
+detail) and **METHODOLOGY** (the Phase-1 editor). The Projects view picks one project
+(`_gtProjId`) and shows its current stage, a stage-progress strip, the weighted readiness of
+the current stage, blockers, and Advance/Back.
+
+- **`gtBuildSignalMap()` assembles `{projId -> {signal: value|null}}` once per render**, pulling
+  from the SAME memoised datasets the analytics tabs use so numbers agree: value/cost/decision
+  from `ecDataset()` (npv, riskAdjNpv, pi, blended, unitMargin, conflicts, cost, alignMin;
+  `dtcGap = dtcCurrent − dtcTarget`), `chanConcentration([p]).channel.hhi` for `chanHHI`, and
+  **project-level talent signals from `buildAnalyticsDataset()` joined to `allocRows`** — `riskScore`
+  = the WORST (max) team member's score, `spof` = count of allocated engineers with unique skills
+  and no KT plan. Everything is null-tolerant (a project with no charter/team simply yields nulls).
+- **`gtEvalAuto` → pass/fail/na; a null signal is `na` (no data), never a false fail.** Manual
+  criteria store `{status:'pass'|'fail'|'na', note}` on `gatePlan.criteria[critId]`. Clicking the
+  active status chip again clears it back to `pending`.
+- **Readiness = weighted pass ratio** (`gtStageReadiness`): `na` **waives** a criterion (drops it
+  from the denominator); `pending`/`fail` count against. A **mandatory** criterion that isn't
+  `pass` and isn't waived **blocks advancement** — `gtAdvance` then requires a confirm-override.
+  Clean advances don't prompt. Every hop is appended to `gatePlan.history` (`{from,to,ts}`).
+- **Re-render rules (same focus-preservation discipline as the editor):** manual status buttons,
+  stage jump, advance/regress, project pick, and view toggle all re-render (they change readiness);
+  the per-criterion **note field uses `onchange` and does NOT re-render** (notes don't affect score).
+
+### Data model — one global config + per-project state (non-obvious)
+
+- **`project.gatePlan`, NOT `project.gate`.** `project.gate` is a pre-existing **string label**;
+  the per-project gate state is a separate object `gatePlan = { stageId, criteria:{[critId]:
+  {status,note}}, targetIncrementId, roadmap{}, piItems{}, history[] }` (`makeGatePlan` in
+  [model.js](src/data/model.js), back-filled by `sanitiseGatePlan`). Clobbering `gate` would corrupt
+  the old label. `piItems[incId] = { milestones:[{id,text,date,done}], objectives:[{id,text}] }`
+  (factories `makeGatePiItems` / `makeGateMilestone` / `makeGateObjective`; `sanitiseGatePlan`
+  regenerates missing ids and coerces shapes).
+- **The methodology is GLOBAL, in one object `gateConfig`** (`makeGateConfig`) = `{ model,
+  templates[], increments[], piOrder[], piSelected[] }`. `model` = the active methodology (`{name,
+  stages[]}`); each `makeGateStage` = `{id,name,desc,color,criteria[]}`; each `makeGateCriterion` =
+  `{id,text,mandatory,weight, kind:'manual'|'auto', dimension,op,threshold}`; `gatePlan` =
+  `{stageId, criteria{}, targetIncrementId, roadmap{[incId]:stageId}, piItems{}, history[]}`.
+  `piOrder`/`piSelected` are the **planning-only** project order + PI-board selection (arrays of
+  project ids, reconciled with live `projects[]` at render — see Phase 4). `templates[]` is
+  the reusable library, **capped at `GATE_TEMPLATE_MAX`=5** (globals.js). Ships seeded with the
+  default `defaultGateStages()` = OPEN→SELECT→DO→IMPLEMENT→PRODUCE→SELL, fully editable.
+- **`gateConfig` rides save/backup/snapshot via FIVE wiring sites** (it's a top-level `let`
+  in [globals.js](src/core/globals.js), reassigned on load like `projects`): the `saveState`
+  payload, `loadState`, `captureScope` (full), `restoreSnap` (full/projects branch), and
+  full-backup export/import ([backup.js](src/sections/backup.js)). Miss one and the config
+  silently doesn't travel. `sanitiseGateConfig()` (persist.js, **wrapped in try/catch** at every
+  call site — same "one bad object must not abort load" rule as `sanitiseCharter`) repairs
+  structure, **generates any missing ids** (stages/criteria/templates/increments need stable
+  unique ids so per-project overrides key correctly), and enforces the 5-template cap.
+
+### Editor conventions (bit-avoidance)
+
+- **Text/select/color edits use `onchange` and do NOT re-render** — the setter mutates
+  `gateConfig` + `saveState()` and returns; the input already shows the value, so focus/scroll
+  survive (same hazard the DTC/charter editors solved, solved here by simply not re-rendering).
+  **Only structural changes re-render** `renderGateTab()`: add/remove/move stage or criterion,
+  fold toggle, `kind` flip (must show/hide the auto-binding fields), and template apply/save/
+  rename/delete/reset.
+- **`saveState()` is debounced 800ms** — reading `localStorage` synchronously right after an edit
+  shows the *old* value; use `saveNow()` to force a flush (this tripped up verification).
+- **`GATE_SIGNALS`** is the bindable-signal list for auto criteria (npv / riskAdjNpv / pi /
+  blended / unitMargin / conflicts / cost / dtcGap / alignMin / riskScore / spof / chanHHI). It
+  populates the editor dropdown AND is the contract the Phase-2 resolver (`gtBuildSignalMap`)
+  fills — an id here MUST be produced there or the auto criterion is permanently `na`.
+
+**Verify note:** `screenshot` timed out repeatedly this build (flaky, as the charter section
+also warns) — verified via `javascript_tool` DOM/state assertions instead. Also: a native
+`alert()` (e.g. the template-library-full path) **blocks the whole preview pane** including
+`navigate`; when scripting the editor, stub `window.alert`/`prompt`/`confirm` or you'll hang it.
+
 ## Navigation — ← Back replaces the per-panel ✕
 
 Every rail **VIEW** panel's old "✕ CLOSE" (which reset `activeView='matrix'`) is now a **← BACK**

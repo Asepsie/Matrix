@@ -186,3 +186,10 @@ export let _srfSearch='';
 
 /* ── KT (knowledge transfer) plans ── */
 export let _ktPlans={};
+
+/* ── Gate & PI (configurable stage-gate + increment planning) ──
+   Portfolio-level governance config (active methodology + template library +
+   increments). One global so it rides save/backup/snapshot; per-project state
+   lives on project.gatePlan. See gate.js + ARCHITECTURE.md › Gate & PI. */
+export let gateConfig=makeGateConfig();
+export const GATE_TEMPLATE_MAX=5;   // max saved methodologies in the template library

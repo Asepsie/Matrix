@@ -61,6 +61,7 @@ const JS_FILES = [
   'sections/channels.js',
   'sections/econ.js',
   'sections/exec.js',
+  'sections/gate.js',
   'sections/engagement.js',
   'sections/boot.js',
 ];

@@ -145,6 +145,8 @@ export function _doSave(){
       // Skills
       skillDomains,skillCats,ktPlans:_ktPlans,
       finExclude:[..._finExclude],
+      // Gate & PI governance config (active methodology + templates + increments)
+      gateConfig,
       // Org chart
       orgAnnotations:_orgAnnotations,orgLevelH:_orgLevelH,orgLevelNames:_orgLevelNames,
       orgPositions:_orgPositions,orgCollapsed:_orgCollapsed,
@@ -245,6 +247,7 @@ export function loadState(){
     if(d.orgLevelH&&typeof d.orgLevelH==='object')_orgLevelH=d.orgLevelH;
     if(d.orgLevelNames&&typeof d.orgLevelNames==='object')_orgLevelNames=d.orgLevelNames;
     if(d.ktPlans&&typeof d.ktPlans==='object')_ktPlans=d.ktPlans;
+    if(d.gateConfig&&typeof d.gateConfig==='object')gateConfig=d.gateConfig;
     if(d.orgPositions&&typeof d.orgPositions==='object')_orgPositions=d.orgPositions;
     if(d.orgCollapsed&&typeof d.orgCollapsed==='object')_orgCollapsed=d.orgCollapsed;
     if(d.orgScale)_orgScale=d.orgScale;
@@ -289,6 +292,7 @@ export function loadState(){
       }
     }
     sanitiseProjects();
+    try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); }
     return true;
   }catch(e){return false;}
 }
@@ -342,6 +346,7 @@ export function sanitiseProjects(){
     });
     // A malformed charter must never block the rest of the project data / list.
     try{ sanitiseCharter(p); }catch(e){ p.charter=makeCharter(); }
+    try{ sanitiseGatePlan(p); }catch(e){ p.gatePlan=makeGatePlan(); }
   });
 }
 // Fills in any missing charter/sub-object fields against the factory defaults so
@@ -420,6 +425,100 @@ export function sanitiseCharter(p){
     if(!s.stances||typeof s.stances!=='object') s.stances={};
     for(const dim of DIM4) if(!s.stances[dim]) s.stances[dim]='balance';
   });
+}
+// Back-fills a project's per-project gate state against makeGatePlan(). Called
+// from sanitiseProjects (wrapped so a bad plan never blocks the rest of load).
+export function sanitiseGatePlan(p){
+  const def=makeGatePlan();
+  if(!p.gatePlan||typeof p.gatePlan!=='object'){ p.gatePlan=def; return; }
+  const g=p.gatePlan;
+  if(typeof g.stageId!=='string') g.stageId='';
+  if(!g.criteria||typeof g.criteria!=='object') g.criteria={};
+  if(typeof g.targetIncrementId!=='string') g.targetIncrementId='';
+  if(!g.roadmap||typeof g.roadmap!=='object') g.roadmap={};
+  if(!Array.isArray(g.history)) g.history=[];
+  // PI-plan content: { [incId]: { milestones:[{id,text,date,done}], objectives:[{id,text}] } }
+  if(!g.piItems||typeof g.piItems!=='object') g.piItems={};
+  const genId=pfx=>pfx+Math.random().toString(36).slice(2,8);
+  Object.keys(g.piItems).forEach(k=>{
+    const it=g.piItems[k];
+    if(!it||typeof it!=='object'){ delete g.piItems[k]; return; }
+    if(!Array.isArray(it.milestones)) it.milestones=[];
+    it.milestones=it.milestones.filter(m=>m&&typeof m==='object').map(m=>{
+      if(typeof m.id!=='string'||!m.id) m.id=genId('ms-');
+      if(typeof m.text!=='string') m.text='';
+      if(typeof m.date!=='string') m.date='';
+      m.done=!!m.done;
+      return m;
+    });
+    if(!Array.isArray(it.objectives)) it.objectives=[];
+    it.objectives=it.objectives.filter(o=>o&&typeof o==='object').map(o=>{
+      if(typeof o.id!=='string'||!o.id) o.id=genId('ob-');
+      if(typeof o.text!=='string') o.text='';
+      return o;
+    });
+  });
+}
+// Repairs the GLOBAL gate config (active methodology + template library +
+// increments) against the factory defaults. Defensive: a malformed config must
+// never block loadState — the caller wraps this in try/catch and resets on throw.
+// Also generates any missing ids (stages/criteria/templates/increments must have
+// stable unique ids so per-project overrides key correctly) and caps the library.
+export function sanitiseGateConfig(){
+  if(!gateConfig||typeof gateConfig!=='object') gateConfig=makeGateConfig();
+  const gc=gateConfig;
+  const genId=pfx=>pfx+Math.random().toString(36).slice(2,8);
+  const fixStage=(s,i)=>{
+    if(!s||typeof s!=='object') return makeGateStage({id:genId('stg-')});
+    if(typeof s.id!=='string'||!s.id) s.id=genId('stg-');
+    if(typeof s.name!=='string') s.name='Stage '+(i+1);
+    if(typeof s.desc!=='string') s.desc='';
+    if(typeof s.color!=='string') s.color='';
+    if(!Array.isArray(s.criteria)) s.criteria=[];
+    s.criteria=s.criteria.map(c=>{
+      if(!c||typeof c!=='object') c=makeGateCriterion();
+      if(typeof c.id!=='string'||!c.id) c.id=genId('crt-');
+      if(typeof c.text!=='string') c.text='';
+      c.mandatory=!!c.mandatory;
+      if(!Number.isFinite(+c.weight)) c.weight=1;
+      if(c.kind!=='auto') c.kind='manual';
+      if(typeof c.dimension!=='string') c.dimension='';
+      if(!['>','>=','<','<=','=='].includes(c.op)) c.op='>=';
+      if(!Number.isFinite(+c.threshold)) c.threshold=0;
+      return c;
+    });
+    return s;
+  };
+  const fixModel=m=>{
+    if(!m||typeof m!=='object') m=makeGateModel();
+    if(typeof m.name!=='string') m.name='Stage-Gate';
+    if(!Array.isArray(m.stages)) m.stages=[];
+    m.stages=m.stages.map(fixStage);
+    return m;
+  };
+  gc.model=fixModel(gc.model);
+  if(!Array.isArray(gc.templates)) gc.templates=[];
+  gc.templates=gc.templates.filter(tpl=>tpl&&typeof tpl==='object').slice(0,GATE_TEMPLATE_MAX).map((tpl,i)=>{
+    if(typeof tpl.id!=='string'||!tpl.id) tpl.id=genId('tpl-');
+    if(typeof tpl.name!=='string') tpl.name='Template '+(i+1);
+    if(!Array.isArray(tpl.stages)) tpl.stages=[];
+    tpl.stages=tpl.stages.map(fixStage);
+    return tpl;
+  });
+  if(!Array.isArray(gc.increments)) gc.increments=[];
+  gc.increments=gc.increments.filter(iv=>iv&&typeof iv==='object').map((iv,i)=>{
+    if(typeof iv.id!=='string'||!iv.id) iv.id=genId('inc-');
+    if(typeof iv.name!=='string') iv.name='PI '+(i+1);
+    if(typeof iv.start!=='string') iv.start='';
+    if(typeof iv.end!=='string') iv.end='';
+    return iv;
+  });
+  // PI-planning display order + selection (planning-only; reconciled with the live
+  // projects[] at render time, so stale ids here are harmless).
+  if(!Array.isArray(gc.piOrder)) gc.piOrder=[];
+  gc.piOrder=gc.piOrder.filter(id=>id!=null);
+  if(!Array.isArray(gc.piSelected)) gc.piSelected=[];
+  gc.piSelected=gc.piSelected.filter(id=>id!=null);
 }
 export function flashSaved(){
   const el=G('save-indicator');if(!el)return;
@@ -572,6 +671,7 @@ function captureScope(scope){
     allocRows,nextAllocId,engDashGroupBy,
     skillDomains,
     ktPlans:_ktPlans,
+    gateConfig,
     orgAnnotations:_orgAnnotations,
     orgPositions:_orgPositions,
     orgCollapsed:_orgCollapsed,
@@ -705,6 +805,7 @@ function restoreSnap(id){
       });
       if(d.sepX!=null) sepX=d.sepX;
       if(d.sepY!=null) sepY=d.sepY;
+      if(d.gateConfig){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
       sanitiseProjects();
     }
     if(scope==='full'||scope==='roster'||scope==='resources'){

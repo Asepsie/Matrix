@@ -46,7 +46,7 @@ export function exportFullBackup(){
     allocRows,nextEngId,nextAllocId,nextId,nextTodoId,nextRiskId,
     nextMsId,nextSectionId,nextAnnotId,nextActionId,
     sepX,sepY,scaleX,scaleY,yMode,quadrantsByMode,annotations,zoom,
-    engDashGroupBy,skillDomains,ktPlans:_ktPlans,
+    engDashGroupBy,skillDomains,ktPlans:_ktPlans,gateConfig,
     orgAnnotations:_orgAnnotations,orgLevelH:_orgLevelH,
     orgLevelNames:_orgLevelNames,orgPositions:_orgPositions,
     orgCollapsed:_orgCollapsed,orgScale:_orgScale,
@@ -156,6 +156,7 @@ export function importFullBackup(){
         if(d.allocRows)      allocRows=d.allocRows;
         if(d.skillDomains)   skillDomains=d.skillDomains;
         if(d.ktPlans)        _ktPlans=d.ktPlans;
+        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
         if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
         if(d.orgPositions)   _orgPositions=d.orgPositions;
         if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;
