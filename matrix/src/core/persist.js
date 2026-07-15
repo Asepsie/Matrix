@@ -669,7 +669,8 @@ function captureScope(scope){
     annotations,zoom,
     engineers,engGroups,nextEngGroupId,nextEngId,
     allocRows,nextAllocId,engDashGroupBy,
-    skillDomains,
+    skillDomains,skillCats,
+    finExclude:[..._finExclude],
     ktPlans:_ktPlans,
     gateConfig,
     orgAnnotations:_orgAnnotations,
@@ -811,14 +812,7 @@ function restoreSnap(id){
     if(scope==='full'||scope==='roster'||scope==='resources'){
       if(d.engineers){
         engineers=d.engineers;
-        engineers.forEach(function(e){
-          if(!e.role)e.role='';
-          if(!e.location)e.location='';
-          if(e.groupId===undefined)e.groupId=null;
-          if(!e.skills)e.skills=[];
-          if(!e.idcard)e.idcard={};
-          if(e.includeTalent===undefined)e.includeTalent=true;
-        });
+        engineers.forEach(function(e){ sanitiseEngineer(e); });
       }
       if(d.engGroups)      engGroups=d.engGroups;
       if(d.nextEngId)      nextEngId=d.nextEngId;
@@ -849,6 +843,15 @@ function restoreSnap(id){
       if(d.resTitle&&G('res-title-input'))G('res-title-input').value=d.resTitle;
       if(d.engDashGroupBy)engDashGroupBy=d.engDashGroupBy;
       if(d.skillDomains&&Array.isArray(d.skillDomains))skillDomains=d.skillDomains;
+      if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
+      // Snapshots are intra-dataset (same eng.ids), so only overwrite finExclude
+      // when the snapshot actually carried it — never clear a live set for an
+      // older snapshot that predates the field.
+      if(d.finExclude&&Array.isArray(d.finExclude))_finExclude=new Set(d.finExclude);
+      if(d.planFilterEng&&Array.isArray(d.planFilterEng))planFilterEng=new Set(d.planFilterEng);
+      if(d.planFilterProj&&Array.isArray(d.planFilterProj))planFilterProj=new Set(d.planFilterProj);
+      if(d.engDashFilterEng&&Array.isArray(d.engDashFilterEng))engDashFilterEng=new Set(d.engDashFilterEng);
+      if(d.engDashFilterProj&&Array.isArray(d.engDashFilterProj))engDashFilterProj=new Set(d.engDashFilterProj);
       if(d.ktPlans&&typeof d.ktPlans==='object')_ktPlans=d.ktPlans;
       if(d.orgAnnotations&&Array.isArray(d.orgAnnotations))_orgAnnotations=d.orgAnnotations;
       if(d.orgPositions&&typeof d.orgPositions==='object')_orgPositions=d.orgPositions;

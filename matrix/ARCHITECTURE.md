@@ -49,6 +49,38 @@ dataset's. Merge = "wrong face on the wrong person".
 - `idbSavePhoto` is merge-only (PUT one key) — correct for normal editing, wrong for
   restore.
 
+### Capture-surface parity & the sanitise contract
+
+User data is written by **three separate capture surfaces** and they must stay in sync,
+or a field saved in one is silently dropped by another on restore:
+
+| Surface | Function | File |
+|---------|----------|------|
+| localStorage | `_doSave` (`JSON.stringify({…})`) | persist.js |
+| Full backup | `exportFullBackup` (`state={…}`) | backup.js |
+| Snapshot | `captureScope` (`full={…}`) | persist.js |
+
+- **`finExclude` and `skillCats` were being lost** — present in `_doSave` only. Now in all
+  three. **build.js has a static `MUST_PERSIST` parity guard** (check 4b) that fails the
+  build if a load-bearing field is missing from any of the three blocks — add new
+  user-data fields to all three (it greps the object literals by marker, so keep the
+  `localStorage.setItem(SK,JSON.stringify({` / `const state={` / `const full={` markers).
+- **`finExclude` reset semantics differ by path** (it's keyed by the per-dataset `eng.id`):
+  full-backup restore is a dataset *swap* so `importFullBackup` **always** resets it
+  (`new Set(d.finExclude||[])`) — a stale set must not bleed onto colliding new ids;
+  snapshot restore is intra-dataset so `restoreSnap` overwrites **only if present**.
+- **Sanitise contract: every engineer-restoring path calls `sanitiseEngineer(e)`** —
+  `loadState`, `importFullBackup`, and `restoreSnap`. They previously used lighter inline
+  fixups that skipped `idcard.succession/engagement/nextMove`, so an older backup could
+  load engineers missing sub-objects that newer code dereferences. `sanitiseProjects`
+  already covered the project side; engineers now match.
+- **Roster import** (`handleRosterImport`) also runs `sanitiseEngineer` now, but carries no
+  photos/placements — its confirm dialog warns they're kept by id and may not line up if the
+  roster is from a different dataset (no auto-clear, by design).
+- **The pre-restore safety snapshot does NOT protect photos** (snapshots share the live
+  `EIM_Photos`, and restore wipes it). `importFullBackup`'s confirm says so and points the
+  user at exporting a full backup first.
+
 ### Known remaining risk (not yet fixed)
 
 The root cause — sequential `eng.id` instead of a globally unique `uid` — is still
@@ -252,9 +284,31 @@ canvas is no longer the front door — it's one view under OFFER MNGT (the renam
   `railRouting` flag so rail-driven navigation doesn't self-reset.
 - **Hover-drawer + prefs.** Collapsed rail expands on hover and auto-collapses on leave
   (toggle in Settings); the pin button locks it open; `railIsOpen()`=pinned‖hoverOpen.
-  UI-only prefs — `{hoverMode, landing, railWidth}` — persist in **`localStorage
-  'eim_rail_prefs'`**, deliberately separate from app state (`SK='eim_v4'`) and **not** part
-  of the data model or backups. First run shows `#landing-firstrun` to pick the default view.
+  UI-only prefs — `{hoverMode, landing, railWidth, chartPicker, badgeScope, scrollbar, viewOrder}` —
+  persist in **`localStorage 'eim_rail_prefs'`**, deliberately separate from app state (`SK='eim_v4'`)
+  and **not** part of the data model or backups. First run shows `#landing-firstrun` to pick the default view.
+- **Page drag-reorder (within a domain).** Each `.rn-sub` is `draggable`; native HTML5 DnD reorders
+  pages inside their own domain and persists the id order in `railViewOrder` (`{domId:[viewId,…]}`).
+  Cross-domain drops are rejected (the `dragover`/`drop` guard checks `railDragDom===domId`). A plain
+  click still navigates (no drag movement → no `dragstart`). `railApplyOrder()` (called in `railInit`)
+  re-sorts `RAIL_DOMAINS[].views` by the saved id order with a **stable sort where unknown ids fall to
+  the end** — so a build that adds/removes a view reconciles cleanly (same idea as `sanitise*`), no
+  migration. Re-render happens **only on drop** (a mid-drag `railRender` wipes `innerHTML` → kills the
+  drag); the rail `mouseleave` auto-collapse is suppressed while `railDragging`.
+- **Short-viewport compact mode (the real fix for "tiny scrollbar on small screens").** The open rail
+  (6 domain rows + an expanded domain's pages + the 7-row utility foot) overflows a short screen and
+  forces the scrollbar. `@media (max-height:780px){#railnav.open …}` in nav.css tightens the domain
+  rows and **folds the labeled foot into a compact wrapped icon strip** (labels off, `title` tooltips
+  kept), reclaiming ~200px — enough that even the tallest domain (INSIGHTS, 8 pages) fits with **zero
+  overflow** at 620px tall. Only the OPEN state on short viewports is touched; collapsed strip and tall
+  screens are unchanged. The scrollbar width is now a Settings preset (`railScrollbar` thin|medium|wide →
+  `--rail-sb` px via `railApplyScrollbar`; `--rail-sb-ff` drives Firefox's `scrollbar-width`, `auto` only
+  for wide) as a grabbable safety net for the residual overflow on very short screens.
+- **Verify gotcha — throttled transitions.** `#railnav` has `transition:width .18s`; the automation
+  browser throttles CSS transitions when frames aren't painting, so a just-opened rail reads
+  `offsetWidth:58` (the collapsed start value) forever, and the foot then wraps 1-per-row. When
+  measuring the OPEN rail via DOM geometry, set `railnav.style.transition='none'` first, else every
+  width/foot measurement is wrong. (Not a runtime bug — real browsers settle the transition.)
 
 ### Files
 

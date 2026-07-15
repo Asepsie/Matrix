@@ -117,6 +117,10 @@ var railBackNav=false;       // true while railBack is navigating (suppress re-p
 var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
+var railViewOrder={};        // domId -> [viewId,...] custom page order within a domain (persisted)
+var railScrollbar='thin';    // rail scrollbar width preset: thin|medium|wide (persisted)
+var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
+var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
 var railFlyDom=null, railFlyTimer=null;
 var railEl=null, railScrollEl=null, railFootEl=null, railFlyoutEl=null, railScrimEl=null, railPinBtn=null;
@@ -129,11 +133,28 @@ function railLoadPrefs(){
               if(typeof p.landing==='string')  railLanding=p.landing;
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
+              if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
+              if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder})); }catch(e){}
+}
+// scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
+function railApplyScrollbar(){
+  var de=document.documentElement.style;
+  de.setProperty('--rail-sb',(RAIL_SB[railScrollbar]||RAIL_SB.thin)+'px');
+  de.setProperty('--rail-sb-ff',railScrollbar==='wide'?'auto':'thin');   // Firefox: 'thin' caps ~11px
+}
+// apply the saved per-domain page order onto RAIL_DOMAINS (stable; unknown ids fall to the end)
+function railApplyOrder(){
+  RAIL_DOMAINS.forEach(function(d){
+    var ord=railViewOrder[d.id];
+    if(!ord||!ord.length) return;
+    var rank=function(id){ var i=ord.indexOf(id); return i<0?9999:i; };
+    d.views.sort(function(a,b){ return rank(a.id)-rank(b.id); });
+  });
 }
 // Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
 function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
@@ -175,6 +196,8 @@ function railInit(){
   if(!railEl) return;                       // rail markup missing → bail quietly
   railLoadPrefs();
   railApplyWidth();                         // apply the saved collapsed width up front
+  railApplyScrollbar();                     // apply the saved scrollbar-width preset
+  railApplyOrder();                         // apply the saved per-domain page order
   if(railPinBtn) railPinBtn.innerHTML=RAIL_I.pin;
   railRender();
   // Hover-drawer: pointer over the always-visible rail expands it; leaving
@@ -183,6 +206,7 @@ function railInit(){
     if(railHoverMode&&!railPinned&&!railHoverOpen){ railHoverOpen=true; railHideFly(); railApplyOpen(); railRender(); }
   });
   railEl.addEventListener('mouseleave',function(){
+    if(railDragging) return;                 // keep the rail open while a page is being dragged
     if(railHoverOpen&&!railPinned){ railHoverOpen=false; railApplyOpen(); railRender(); }
   });
   // Flyout hover keep-alive + dismiss-on-outside-click
@@ -225,8 +249,14 @@ function railRender(){
     var holds=d.id===activeDomId, exp=railIsOpen()&&holds;
     var subs=d.views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
-      return '<div class="rn-sub'+(on?' active':'')+'" onclick="railGo(event,\''+v.id+'\')">'
-           + v.label+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>';
+      return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" onclick="railGo(event,\''+v.id+'\')"'
+           + ' ondragstart="railSubDragStart(event,\''+d.id+'\',\''+v.id+'\')"'
+           + ' ondragover="railSubDragOver(event,\''+d.id+'\')"'
+           + ' ondragleave="railSubDragLeave(event)"'
+           + ' ondrop="railSubDrop(event,\''+d.id+'\',\''+v.id+'\')"'
+           + ' ondragend="railSubDragEnd(event)">'
+           + '<span class="rn-grip" aria-hidden="true">⠿</span>'
+           + '<span class="rn-sub-lbl">'+v.label+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>';
     }).join('');
     return '<div class="rn-dom'+(holds?' active-dom':'')+(exp?' exp':'')+'" data-dom="'+d.id+'"'
          + ' onmouseenter="railFlyEnter(\''+d.id+'\',this)" onmouseleave="railFlyLeave()">'
@@ -366,6 +396,56 @@ function railDomClick(ev,domId,el){
 // domain lookup by domain id (distinct from railDomainFor which takes a view id)
 function railDomainFor2(domId){ return RAIL_DOMAINS.find(function(d){return d.id===domId;})||null; }
 
+/* ══ PAGE DRAG-REORDER (within a domain only) ══════════════════════════
+   Native HTML5 DnD on the .rn-sub rows. A plain click still navigates (a
+   click has no drag movement); dragging reorders the pages inside the same
+   domain and persists the id order in railViewOrder. Cross-domain drops are
+   rejected — a page never leaves its domain. Re-render happens ONLY on drop
+   (mid-drag re-render would kill the drag). */
+function railClearDropMarks(){
+  if(!railScrollEl) return;
+  var m=railScrollEl.querySelectorAll('.rn-drop-before,.rn-drop-after,.rn-dragging');
+  for(var i=0;i<m.length;i++) m[i].classList.remove('rn-drop-before','rn-drop-after','rn-dragging');
+}
+function railSubDragStart(ev,domId,viewId){
+  railDragDom=domId; railDragView=viewId; railDragging=true;
+  try{ ev.dataTransfer.effectAllowed='move'; ev.dataTransfer.setData('text/plain',viewId); }catch(e){}
+  if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rn-dragging');
+}
+function railSubDragOver(ev,domId){
+  if(railDragDom!==domId) return;             // only allow drops within the same domain
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  var el=ev.currentTarget; if(!el||el===railScrollEl) return;
+  var r=el.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+  railClearDropMarks();
+  el.classList.add(after?'rn-drop-after':'rn-drop-before');
+}
+function railSubDragLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rn-drop-before','rn-drop-after'); }
+function railSubDrop(ev,domId,targetId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(railDragDom===domId && railDragView && railDragView!==targetId){
+    var r=ev.currentTarget.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+    railReorderView(domId,railDragView,targetId,after);
+  }
+  railClearDropMarks();
+}
+function railSubDragEnd(){ railDragging=false; railDragDom=null; railDragView=null; railClearDropMarks(); }
+// splice the dragged page next to the target, persist the new id order, re-render
+function railReorderView(domId,dragId,targetId,after){
+  var dom=railDomainFor2(domId); if(!dom) return;
+  var views=dom.views;
+  var from=views.findIndex(function(v){return v.id===dragId;});
+  if(from<0) return;
+  var moved=views.splice(from,1)[0];
+  var to=views.findIndex(function(v){return v.id===targetId;});
+  if(to<0){ views.splice(from,0,moved); return; }   // target vanished — undo
+  views.splice(after?to+1:to,0,moved);
+  railViewOrder[domId]=views.map(function(v){return v.id;});
+  railSavePrefs();
+  railRender();
+}
+
 // pin (open, labelled accordion) / collapse (icon strip)
 function railTogglePin(){
   railPinned=!railPinned;
@@ -431,6 +511,7 @@ function railOpenSettings(){
   var bs=G('set-badgescope'); if(bs) bs.value=railBadgeScopeGet();
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
+  var sbz=G('set-scrollbar'); if(sbz) sbz.value=railScrollbar;
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
 }
 
@@ -441,8 +522,10 @@ function railSaveSettings(){
   if(ah) railHoverMode=ah.checked;
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
+  var sbz=G('set-scrollbar'); if(sbz&&RAIL_SB[sbz.value]) railScrollbar=sbz.value;
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
+  railApplyScrollbar();
   railSavePrefs();
   var ov=G('settings-overlay'); if(ov) ov.classList.remove('show');
   railRender();   // reflect the auto-hide change on the foot toggle

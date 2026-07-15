@@ -41,9 +41,13 @@ body{padding-left:var(--rail);}
 #railnav.open .rn-brand{opacity:1;}
 .rn-brand .lime{color:var(--accent);}
 
-.rn-scroll{flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 0;}
-.rn-scroll::-webkit-scrollbar{width:6px;}
-.rn-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+.rn-scroll{flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 0; scrollbar-width:thin; scrollbar-color:var(--dim) transparent;}
+.rn-scroll::-webkit-scrollbar{width:var(--rail-sb,6px);}
+.rn-scroll::-webkit-scrollbar-thumb{background:var(--dim); border-radius:6px; border:2px solid transparent; background-clip:padding-box;}
+.rn-scroll::-webkit-scrollbar-thumb:hover{background:var(--muted); background-clip:padding-box;}
+/* Wide preset: opt into the thicker Firefox scrollbar too (thin caps at ~11px there) */
+:root{ --rail-sb-ff:thin; }
+.rn-scroll{ scrollbar-width:var(--rail-sb-ff,thin); }
 
 .rn-dom{position:relative;}
 .rn-dom-head{
@@ -82,6 +86,18 @@ body{padding-left:var(--rail);}
 .rn-sub.active{color:var(--accent);}
 .rn-sub.active::before{content:""; position:absolute; left:42px; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:var(--accent);}
 .rn-bdg{font-size:8px; color:var(--dim); margin-left:7px; letter-spacing:.04em;}
+/* Drag-to-reorder pages within a domain */
+.rn-sub-lbl{flex:1; overflow:hidden; text-overflow:ellipsis;}
+.rn-grip{width:14px; margin-left:-8px; margin-right:4px; color:var(--dim); opacity:0; cursor:grab;
+  font-size:11px; line-height:1; text-align:center; flex:none; transition:opacity .1s;}
+.rn-sub:hover .rn-grip{opacity:.75;}
+.rn-sub.rn-dragging{opacity:.4;}
+.rn-sub.rn-drop-before::after,.rn-sub.rn-drop-after::after{
+  content:""; position:absolute; left:52px; right:10px; height:2px; background:var(--accent);
+  border-radius:2px; box-shadow:0 0 4px var(--accent);
+}
+.rn-sub.rn-drop-before::after{top:-1px;}
+.rn-sub.rn-drop-after::after{bottom:-1px;}
 
 .rn-foot{border-top:1px solid var(--border); padding:8px 0;}
 .rn-util{
@@ -129,6 +145,29 @@ body{padding-left:var(--rail);}
 
 @media (max-width:640px){
   #railnav.open{box-shadow:0 0 40px rgba(0,0,0,.6);}
+}
+
+/* ── SHORT-VIEWPORT COMPACT MODE ─────────────────────────────────────
+   On a short screen the expanded rail (6 domain rows + an open domain's pages
+   + the 7-row utility foot) overflows and forces the scrollbar. So when open on
+   a short viewport, tighten the domain rows and FOLD the labeled foot into a
+   compact icon strip (labels off, tooltips kept) — reclaiming ~200px exactly
+   when a domain is open. Only affects the OPEN state; collapsed strip is intact. */
+@media (max-height:780px){
+  #railnav.open .rn-dom-head{height:40px;}
+  #railnav.open .rn-dom-ico{width:30px; height:30px;}
+  #railnav.open .rn-dom-ico svg{width:17px; height:17px;}
+  #railnav.open .rn-sub{padding-top:6px; padding-bottom:6px;}
+  #railnav.open .rn-dom.exp .rn-subs{max-height:60vh;}
+  #railnav.open .rn-foot{display:flex; flex-wrap:wrap; justify-content:center; gap:2px; padding:6px 6px 8px;}
+  #railnav.open .rn-util{width:40px; height:34px; padding:0; gap:0; justify-content:center;}
+  #railnav.open .rn-util-ico{width:auto;}
+  #railnav.open .rn-util-name{display:none;}
+  #railnav.open .rn-mode-sep{display:none;}
+}
+@media (max-height:620px){
+  #railnav.open .rn-dom-head{height:36px;}
+  #railnav.open .rn-top{height:40px;}
 }
 
 /* ── TOP BAR + MATRIX TOOLBAR (replace the old header) ── */

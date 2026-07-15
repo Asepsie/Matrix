@@ -137,6 +137,40 @@ function validateOutput(outputPath) {
       dups.map(([id, fs]) => `  ${id}  ->  ${fs.join(', ')}`).join('\n')
     );
 
+  // 4b. Persistence field-parity guard. User data is written by three separate
+  //     capture surfaces — _doSave (localStorage), exportFullBackup's `state`,
+  //     and captureScope's `full` snapshot. A field present in one but missing
+  //     from another is silently dropped on backup/snapshot restore (this is how
+  //     finExclude/skillCats were being lost). Assert the load-bearing fields
+  //     appear in all three blocks so the surfaces can't drift again.
+  const persistSrc = readFileSync(join(SRC, 'core/persist.js'), 'utf8');
+  const backupSrc  = readFileSync(join(SRC, 'sections/backup.js'), 'utf8');
+  const between = (s, a, b) => {
+    const i = s.indexOf(a); if (i < 0) return '';
+    const j = s.indexOf(b, i + a.length); return j < 0 ? s.slice(i) : s.slice(i, j);
+  };
+  const MUST_PERSIST = [
+    'projects', 'sections', 'engineers', 'engGroups', 'allocRows',
+    'skillDomains', 'skillCats', 'ktPlans', 'finExclude', 'gateConfig',
+    'nineBoxPlacements', 'discPlacements',
+  ];
+  const surfaces = {
+    '_doSave (localStorage)':  between(persistSrc, 'localStorage.setItem(SK,JSON.stringify({', '}));'),
+    'exportFullBackup state':  between(backupSrc,  'const state={', 'const photos={'),
+    'captureScope full':       between(persistSrc, 'const full={', 'if(scope==='),
+  };
+  const hasKey = (block, k) => new RegExp('(?:^|[{,\\s])' + k + '\\s*[:,]').test(block);
+  const parityMiss = [];
+  for (const [name, block] of Object.entries(surfaces)) {
+    if (!block) { parityMiss.push(`  ${name}  — block not found (marker changed?)`); continue; }
+    for (const k of MUST_PERSIST) if (!hasKey(block, k)) parityMiss.push(`  ${name}  missing  ${k}`);
+  }
+  if (parityMiss.length)
+    throw new Error(
+      'Persistence field-parity check failed — a capture surface drops user data:\n' +
+      parityMiss.join('\n')
+    );
+
   // 5. The bundle must parse as a classic <script> (sloppy mode). vm.Script
   //    compiles without executing — identical syntax rules to a browser <script>,
   //    so it catches duplicate let/const, top-level return, etc. that checks

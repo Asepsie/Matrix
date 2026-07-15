@@ -392,6 +392,15 @@
       <input type="range" id="set-railwidth" min="48" max="96" step="2" value="58" oninput="railPreviewWidth(this.value)" style="width:100%;accent-color:var(--accent)">
       <span data-i18n="Width of the always-visible icon strip. Clamped to keep the layout intact." style="font-size:10px;color:var(--muted)">Width of the always-visible icon strip. Clamped to keep the layout intact.</span>
     </div>
+    <div class="field">
+      <label data-i18n="RAIL SCROLLBAR">RAIL SCROLLBAR</label>
+      <select id="set-scrollbar">
+        <option value="thin" data-i18n="Thin">Thin</option>
+        <option value="medium" data-i18n="Medium">Medium</option>
+        <option value="wide" data-i18n="Wide — easiest to grab">Wide — easiest to grab</option>
+      </select>
+      <span data-i18n="Width of the nav rail's scrollbar. Wider is easier to grab on small screens." style="font-size:10px;color:var(--muted)">Width of the nav rail's scrollbar. Wider is easier to grab on small screens.</span>
+    </div>
     <div class="modal-actions">
       <button class="primary" data-i18n="SAVE" onclick="railSaveSettings()">SAVE</button>
       <button data-i18n="CANCEL" onclick="railCancelSettings()">CANCEL</button>

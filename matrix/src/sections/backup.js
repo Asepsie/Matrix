@@ -26,9 +26,9 @@ export function handleRosterImport(e){
       const d=JSON.parse(ev.target.result);
       if(d._type!=='roster_v1')throw new Error(t('Not a roster file. Export a roster first.'));
       if(!d.engineers||!Array.isArray(d.engineers))throw new Error(t('No engineers array found.'));
-      if(!confirm(t('Replace current roster with imported one? Allocation rows will keep their engineer references by ID.')))return;
+      if(!confirm(t('Replace current roster with imported one? Allocation rows will keep their engineer references by ID.\n\nNote: photos and nine-box/DISC placements are matched by engineer ID and are kept as-is — if this roster comes from a different dataset they may not line up.')))return;
       engineers=d.engineers;
-      engineers.forEach(e=>{if(e.groupId===undefined)e.groupId=null;if(!e.role)e.role='';if(!e.location)e.location='';});
+      engineers.forEach(function(e){ sanitiseEngineer(e); });
       if(d.engGroups&&Array.isArray(d.engGroups))engGroups=d.engGroups;
       if(d.nextEngId)nextEngId=d.nextEngId;
       if(d.nextEngGroupId)nextEngGroupId=d.nextEngGroupId;
@@ -46,7 +46,7 @@ export function exportFullBackup(){
     allocRows,nextEngId,nextAllocId,nextId,nextTodoId,nextRiskId,
     nextMsId,nextSectionId,nextAnnotId,nextActionId,
     sepX,sepY,scaleX,scaleY,yMode,quadrantsByMode,annotations,zoom,
-    engDashGroupBy,skillDomains,ktPlans:_ktPlans,gateConfig,
+    engDashGroupBy,skillDomains,skillCats,finExclude:[..._finExclude],ktPlans:_ktPlans,gateConfig,
     orgAnnotations:_orgAnnotations,orgLevelH:_orgLevelH,
     orgLevelNames:_orgLevelNames,orgPositions:_orgPositions,
     orgCollapsed:_orgCollapsed,orgScale:_orgScale,
@@ -109,6 +109,8 @@ export function importFullBackup(){
       try{
         const backup=JSON.parse(ev.target.result);
 
+        if(backup._version>1&&!confirm(t('This backup was created by a newer version of Matrix (format v{v}). Some data may not import correctly.\n\nContinue anyway?',{v:backup._version})))return;
+
         if(backup._type!=='full_backup'||!backup.state){
           if(backup.projects){
             if(confirm(t('This is an older export format (not a full backup).\n\nImport projects only?'))){
@@ -116,7 +118,13 @@ export function importFullBackup(){
               projects=backup.projects;
               if(backup.sections&&Array.isArray(backup.sections))sections=backup.sections;
               sanitiseProjects();
-              ['nextId','nextTodoId','nextRiskId','nextMsId','nextSectionId','nextAnnotId','nextActionId'].forEach(function(k){if(backup[k])eval(k+'=backup[k]');});
+              if(backup.nextId)        nextId=backup.nextId;
+              if(backup.nextTodoId)    nextTodoId=backup.nextTodoId;
+              if(backup.nextRiskId)    nextRiskId=backup.nextRiskId;
+              if(backup.nextMsId)      nextMsId=backup.nextMsId;
+              if(backup.nextSectionId) nextSectionId=backup.nextSectionId;
+              if(backup.nextAnnotId)   nextAnnotId=backup.nextAnnotId;
+              if(backup.nextActionId)  nextActionId=backup.nextActionId;
               if(backup.sepX!=null)sepX=backup.sepX; if(backup.sepY!=null)sepY=backup.sepY;
               onAxisChange();renderList();render();saveState();updateSnapBadge();
               alert(t('Projects imported successfully.'));
@@ -137,7 +145,7 @@ export function importFullBackup(){
           +'  '+t('Projects:')+'   '+(backup._projectCount||'?')+'\n'
           +'  '+t('Engineers:')+'  '+(backup._engineerCount||'?')+'\n'
           +'  '+t('Photos:')+'     '+nPhotos+'\n\n'
-          +t('This will REPLACE all current data.\nA safety snapshot will be taken first.')
+          +t('This will REPLACE all current data.\nA safety snapshot of your data (excluding photos) will be taken first — export a full backup now if you want to be able to restore your current photos.')
         ))return;
 
         takeSnap('Auto: before full backup restore','full','',true);
@@ -146,15 +154,15 @@ export function importFullBackup(){
         if(d.sections)       sections=d.sections;
         if(d.engineers)      {
           engineers=d.engineers;
-          engineers.forEach(function(e){
-            if(!e.idcard)e.idcard={};
-            if(!e.skills)e.skills=[];
-            if(e.groupId===undefined)e.groupId=null;
-          });
+          engineers.forEach(function(e){ sanitiseEngineer(e); });
         }
         if(d.engGroups)      engGroups=d.engGroups;
         if(d.allocRows)      allocRows=d.allocRows;
         if(d.skillDomains)   skillDomains=d.skillDomains;
+        if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
+        // Full backup is a dataset SWAP — always reset finExclude (keyed by the
+        // per-dataset eng.id) so a stale set can't bleed onto colliding new ids.
+        _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
         if(d.ktPlans)        _ktPlans=d.ktPlans;
         if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
         if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
