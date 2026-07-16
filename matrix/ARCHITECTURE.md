@@ -434,6 +434,33 @@ which silently reported *everyone on bench / 0 FTE*. The cost chart keeps the re
 views: the monthly chart's FTE overlay uses `filteredRows` (like the cost bars), not the raw
 `allocRows`, so filter + overlay stay in sync.
 
+### Dashboard redesign — the `db-*` class layer ([dashboard.css](src/styles/dashboard.css))
+
+`renderResDashboard` used to emit ~800 lines of per-element inline styles. It now emits
+**class-based markup** styled by [src/styles/dashboard.css](src/styles/dashboard.css) (registered
+in `build.js` `CSS_FILES`). Non-obvious points:
+
+- **All classes are `db-*` prefixed** so they never collide with the shared `.kpi-card` /
+  `.alloc-kpi-grid` / `.sum-section-title` / `.alloc-proj-table` used by *other* tabs (exec,
+  portfolio, org). Those shared classes are untouched — the dashboard no longer uses them.
+- **One shared sparkline** — `_dbSparkBars(values, opts)` (top of dashboard.js) replaced four
+  near-identical inline bar loops (cost-by-project, project-detail, per-engineer util spark).
+  `opts.overMax`/`overColor` colour over-threshold bars (the util spark's red over-allocated
+  months); `opts.curIdx` highlights the current month.
+- **"Budget consumed" was removed.** It was calendar-driven (planned-cost-in-past-months ÷
+  total-planned) — meaningless for a resource portfolio with no budget. The hero now leads with
+  **allocation efficiency** (`_allocPct` = allocated ÷ team cost) + a cost hero, and the health
+  strip's ON BENCH tile shows **bench € (`_unallocCost`)**. The team-cost/allocated/unallocated
+  totals are **hoisted to the top** of `renderResDashboard` and reused by both the hero and the
+  Financial Analysis identity block, so headline and detail never diverge. A real budget-vs-plan
+  view is deferred to the **charter financials** (`charter.financials`), the app's financial-model
+  home — do NOT add a parallel `project.budget`.
+- **PDF export (`_doExportDashboardPDF`) uses a print stylesheet, not regex.** It pulls the live
+  `.db-*` rules from `document.styleSheets` and defines print-tuned `:root` tokens (light ground,
+  lime→dark-green), so every `var(--…)` reference (inline styles, SVG fills, classes) resolves for
+  paper. Interactive controls are hidden via CSS. The old approach string-replaced `var()`→hex on
+  the markup and missed colours.
+
 ---
 
 ## Cross-functional project charter

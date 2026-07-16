@@ -42,6 +42,26 @@ function _computeCostMaps(months,filterEng,filterProj){
   return {projCost:projCost,totalCost:totalCost,unassignedCost:unassignedCost,filteredRows:filtered};
 }
 
+/* Shared mini bar-sparkline used by cost-by-project, project-detail and the
+   per-engineer utilisation cards (replaces four near-identical inline loops).
+   opts: {w,h,gap,color,curIdx,curColor,opacity,round,min,minBar}. */
+export function _dbSparkBars(values, opts){
+  opts=opts||{};
+  var w=opts.w||110, h=opts.h||16, gap=opts.gap==null?1:opts.gap;
+  var n=values.length||1, bw=Math.max(1,Math.floor(w/n)-gap);
+  var max=Math.max.apply(null, values.concat([opts.min||1]));
+  var color=opts.color||'var(--accent2)', curColor=opts.curColor||'var(--accent)';
+  var round=opts.round==null?1:opts.round, op=opts.opacity==null?0.7:opts.opacity;
+  var out='';
+  values.forEach(function(v,i){
+    var bh=Math.max(opts.minBar||0, Math.round(v/max*h)), x=i*(bw+gap);
+    // over-threshold bars (e.g. >1 FTE) win over the current-month highlight
+    var c=(opts.overMax!=null&&v>opts.overMax)?(opts.overColor||'var(--danger)'):(opts.curIdx===i?curColor:color);
+    out+='<rect x="'+x+'" y="'+(h-bh)+'" width="'+bw+'" height="'+bh+'" rx="'+round+'" fill="'+c+'" opacity="'+op+'"/>';
+  });
+  return '<svg width="'+w+'" height="'+h+'" style="display:block">'+out+'</svg>';
+}
+
 // Renders the full resource dashboard: KPI cards, monthly cost/FTE chart, cost by project, utilisation grid, financial analysis.
 export function renderResDashboard(){
   var body=G('res-body');if(!body)return;
@@ -62,37 +82,68 @@ export function renderResDashboard(){
   var engUtil=_buildEngUtil(months);
   var engById=_engByIdMap();
 
-  // FTE calcs
+  // "Counted" engineers — the canonical cost-inclusion set (ARCHITECTURE.md ›
+  // Cost model) applied to engUtil. engUtil already drops vacancies and
+  // planning-only-without-includeInCost; _costCounts additionally drops
+  // excludeFromCalc. Every headline KPI below is computed over this set so the
+  // numbers agree with the utilisation grid (which skips excludeFromCalc) and
+  // with the cost figures (which gate on _costCounts) — otherwise an excluded
+  // engineer inflates OVERALLOCATED / ON BENCH / AVG-UTIL while hidden from the grid.
+  var countedUtil=Object.values(engUtil).filter(function(eu){return _costCounts(eu.eng);});
+
+  // FTE calcs — gate on _costCounts so FTE demand counts the same population as
+  // the cost bars (vacancies count as planned demand; excludeFromCalc never does).
   var fteByEng={};
   filteredRows.forEach(function(r){
     if(!r.engId)return;
+    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
     var v=r.allocs&&r.allocs[curInRange]!=null?_allocNum(r.allocs[curInRange]):0;
     fteByEng[r.engId]=(fteByEng[r.engId]||0)+v;
   });
   var fteCur=Object.values(fteByEng).reduce(function(s,v){return s+Math.min(v,1);},0);
   var fteRaw=Object.values(fteByEng).reduce(function(s,v){return s+v;},0);
 
-  var overCount=Object.values(engUtil).filter(function(eu){return eu.overMonths.length>0;}).length;
+  var overCount=countedUtil.filter(function(eu){return eu.overMonths.length>0;}).length;
   var allocatedEngCount=Object.keys(fteByEng).length;
   var projStaffedCount=Object.keys(projCost).length;
-  var totalActiveEngs=engineers.filter(function(e){return !e.vacant&&!e.planningOnly&&!e.excludeFromCalc;}).length;
+  var totalActiveEngs=countedUtil.length;
 
-  // Bench = engineers with zero allocation in the current (in-range) month
-  var benchEngs=Object.values(engUtil).filter(function(eu){return (eu.monthAllocs[curInRange]||0)===0;});
+  // Bench = counted engineers with zero allocation in the current (in-range) month
+  var benchEngs=countedUtil.filter(function(eu){return (eu.monthAllocs[curInRange]||0)===0;});
   var benchCount=benchEngs.length;
 
-  // Avg team utilisation over full period
+  // Avg team utilisation over full period (same counted population as the denominator)
   var avgUtil=totalActiveEngs>0
-    ?(Object.values(engUtil).reduce(function(s,eu){return s+eu.utilizationRate;},0)/totalActiveEngs*100).toFixed(0)
+    ?(countedUtil.reduce(function(s,eu){return s+eu.utilizationRate;},0)/totalActiveEngs*100).toFixed(0)
     :0;
 
-  // Budget burn: cost spent so far (months <= cur)
-  var pastMonths=months.filter(function(m){return m<=cur;});
-  var burnCost=filteredRows.reduce(function(s,r){
-    var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return s;
-    return s+pastMonths.reduce(function(ss,m){return ss+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
-  },0);
-  var burnPct=totalCost>0?Math.round(burnCost/totalCost*100):0;
+  // ── Financial totals: TEAM COST = ALLOCATED + UNALLOCATED ──────
+  // Hoisted so the header can lead with allocation efficiency (the meaningful
+  // "how much of what we pay is reaching projects" number) instead of the old
+  // calendar-driven "budget consumed". The Financial Analysis section below
+  // reuses these exact values — single source, so headline and detail never diverge.
+  var _finMonths=months, _nMonths=months.length;
+  // A month drops out of salary/period cost only when the engineer is fully
+  // medical/resigned that month (status m/r AND no working allocation) — a single
+  // 'm' row on one project must not zero a real allocation on another.
+  function _monthInactive(eu,m){
+    var s=eu.monthStatus&&eu.monthStatus[m];
+    return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0;
+  }
+  var _teamCostIncl=0, _allocCostTotal=0, _noCostWarnings=[];
+  Object.values(engUtil).forEach(function(eu){
+    var mc=eu.eng.monthlyCost||0;
+    if(_finExclude.has(eu.eng.id)||(eu.eng.planningOnly&&!eu.eng.includeInCost)||eu.eng.excludeFromCalc)return;
+    if(!mc)_noCostWarnings.push(eu.eng.name);
+    _finMonths.forEach(function(m){
+      if(_monthInactive(eu,m))return;
+      _teamCostIncl+=mc;
+      _allocCostTotal+=Math.min(eu.monthAllocs[m]||0,1)*mc;
+    });
+  });
+  var _unallocCost=Math.max(0,_teamCostIncl-_allocCostTotal);
+  var _allocPct=_teamCostIncl>0?Math.round(_allocCostTotal/_teamCostIncl*100):0;
+  var _unallocPct=100-_allocPct;
 
   // Monthly peaks
   var moCosts=months.map(function(m){return filteredRows.reduce(function(s,r){
@@ -109,133 +160,116 @@ export function renderResDashboard(){
 
   var h='';
 
-  // ── Filter bar ─────────────────────────────────────────────────
-  var allEngNames=[...new Set(allocRows.map(function(r){var e=engineers.find(function(e){return e.id===r.engId;});return e?e.name:null;}).filter(Boolean))].sort();
-  var allProjNames=[...new Set(allocRows.map(function(r){var p=projects.find(function(p){return p.id===r.projectId;});return p?p.name:null;}).filter(Boolean))].sort();
-  var sel1Style='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none';
+  // ── Filter / action toolbar ────────────────────────────────────
+  var _projMap=_projByIdMap();
+  var allEngNames=[...new Set(allocRows.map(function(r){var e=engById.get(r.engId);return e?e.name:null;}).filter(Boolean))].sort();
+  var allProjNames=[...new Set(allocRows.map(function(r){var p=_projMap.get(r.projectId);return p?p.name:null;}).filter(Boolean))].sort();
   var clearBtn=(engDashFilterEng.size||engDashFilterProj.size)?'<button class="sm" onclick="engDashFilterEng=new Set();engDashFilterProj=new Set();renderResDashboard()">&#215; '+t('CLEAR')+'</button>':'';
-  h+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">'
-   +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">'+t('FILTER:')+'</span>'
+  h+='<div class="db-toolbar">'
+   +'<span class="db-tb-label">'+t('FILTER:')+'</span>'
    +multiSelectHTML('dash-eng',allEngNames,engDashFilterEng,'onDashFilterEngChange',t('Engineers'))
    +multiSelectHTML('dash-proj',allProjNames,engDashFilterProj,'onDashFilterProjChange',t('Projects'))
    +clearBtn
-   +'<div style="margin-left:auto;display:flex;gap:6px">'
+   +'<div class="db-tb-actions">'
    +'<button class="sm" onclick="showResTab(\'timeline\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
    +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
 
-  // ── KPI cards row 1: financial ─────────────────────────────────
-  h+='<div class="alloc-kpi-grid" style="margin-bottom:10px">'
-   // Total plan cost
-   +'<div class="kpi-card"'+(unassignedCost>0?' style="border-color:var(--accent2)"':'')+'>'
-   +'<div class="kpi-val">'+Math.round(totalCost/1000)+'k€</div>'
-   +'<div class="kpi-label">'+t('TOTAL PLAN COST')+'</div>'
-   +'<div class="kpi-sub">'+t('{n} months',{n:months.length})+(unassignedCost>0?'<br><span style="color:var(--accent2)">&#9888; '+Math.round(unassignedCost/1000)+'k€ '+t('unassigned')+'</span>':'')+'</div>'
+  // ── Hero band: total plan cost + allocation efficiency ─────────
+  var _dbEur=function(v){v=v||0;return v>=1e6?(v/1e6).toFixed(2)+'M€':Math.round(v/1000)+'k€';};
+  var _peakCost=moCosts[peakCostIdx]||0;
+  // hero cost area-sparkline over the monthly cost series
+  var _hsMax=Math.max.apply(null,moCosts.concat([1])),_hsW=600,_hsH=50;
+  var _hsPts=moCosts.map(function(v,i){return [(moCosts.length>1?i/(moCosts.length-1):0)*_hsW,(_hsH-(v/_hsMax)*(_hsH-6)-2)];});
+  var _hsArea='M0,'+_hsH+' '+_hsPts.map(function(p){return 'L'+p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+' L'+_hsW+','+_hsH+' Z';
+  var _hsLine='M'+_hsPts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L');
+  h+='<div class="db-hero">'
+   +'<div class="db-card db-hero-cost">'
+   +'<div>'
+   +'<div class="db-eyebrow">'+t('TOTAL PLAN COST')+' · '+t('{n} months',{n:months.length})+'</div>'
+   +'<div class="db-hero-big">'+_dbEur(totalCost)+'</div>'
+   +'<div class="db-hero-sub">'+t('Peak')+' <b>'+_dbEur(_peakCost)+'</b> · '+peakMonth+' · <b>'+projStaffedCount+'/'+projects.length+'</b> '+t('projects staffed')+'</div>'
+   +(unassignedCost>0?'<div class="db-warnpill">&#9888; '+_dbEur(unassignedCost)+' '+t('unassigned to a project')+'</div>':'')
    +'</div>'
-   // Budget burn
-   +'<div class="kpi-card" style="'+(burnPct>90?'border-color:var(--danger)':burnPct>60?'border-color:var(--accent2)':'')+'">'
-   +'<div class="kpi-val" style="color:'+(burnPct>90?'var(--danger)':burnPct>60?'var(--accent2)':'var(--accent)')+'">'+burnPct+'%</div>'
-   +'<div class="kpi-label">'+t('BUDGET CONSUMED')+'</div>'
-   +'<div class="kpi-sub">'+Math.round(burnCost/1000)+'k€ '+t('of')+' '+Math.round(totalCost/1000)+'k€ · '+t('past months')+'</div>'
+   +'<svg class="db-hero-spark" viewBox="0 0 '+_hsW+' '+_hsH+'" preserveAspectRatio="none" aria-hidden="true"><path d="'+_hsArea+'" fill="var(--accent)" opacity="0.16"/><path d="'+_hsLine+'" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.6"/></svg>'
    +'</div>'
-   // Peak month
-   +'<div class="kpi-card">'
-   +'<div class="kpi-val" style="font-size:16px">'+Math.round(Math.max(...moCosts)/1000)+'k€</div>'
-   +'<div class="kpi-label">'+t('PEAK MONTH COST')+'</div>'
-   +'<div class="kpi-sub">'+peakMonth+'</div>'
-   +'</div>'
-   // Projects staffed
-   +'<div class="kpi-card">'
-   +'<div class="kpi-val">'+projStaffedCount+'</div>'
-   +'<div class="kpi-label">'+t('PROJECTS STAFFED')+'</div>'
-   +'<div class="kpi-sub">'+t('of {n} total projects',{n:projects.length})+'</div>'
+   +'<div class="db-card db-gauge">'
+   +'<div class="db-gauge-head"><span class="db-eyebrow">'+t('ALLOCATED TO PROJECTS')+'</span><span class="db-gauge-pct">'+_allocPct+'%</span></div>'
+   +'<div class="db-gauge-track"><div class="db-gauge-fill" style="width:'+_allocPct+'%"></div><div class="db-gauge-rest"></div></div>'
+   +'<div class="db-gauge-legend"><span><b>'+_dbEur(_allocCostTotal)+'</b> '+t('on projects')+'</span><span>'+t('of')+' <b>'+_dbEur(_teamCostIncl)+'</b> '+t('team cost')+'</span></div>'
+   +'<div class="db-gauge-legend" style="margin-top:-4px"><span class="db-muted">'+t('the rest is bench / overhead')+'</span></div>'
    +'</div>'
    +'</div>';
 
-  // ── KPI cards row 2: people ────────────────────────────────────
-  h+='<div class="alloc-kpi-grid" style="margin-bottom:14px">'
-   // FTE this month
-   +'<div class="kpi-card">'
-   +'<div class="kpi-val">'+fteCur.toFixed(1)+'</div>'
-   +'<div class="kpi-label">'+t('FTE THIS MONTH')+'</div>'
-   +'<div class="kpi-sub">'+curInRange+(curInRange!==cur?' · '+t('nearest planned month'):'')+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div>'
-   +'</div>'
-   // Team avg utilisation
-   +'<div class="kpi-card" style="cursor:pointer" onclick="_availPanel.open=!_availPanel.open;renderResDashboard()" title="'+t('Click to show availability panel')+'">'
-   +'<div class="kpi-val" style="color:'+(+avgUtil<50?'var(--accent2)':+avgUtil>90?'var(--danger)':'var(--accent)')+'">'+avgUtil+'%</div>'
-   +'<div class="kpi-label">'+t('AVG UTILISATION')+' '+((_availPanel.open)?'▼':'▶')+'</div>'
-   +'<div class="kpi-sub">'+t('across full plan period')+' · '+t('{n} engineers',{n:totalActiveEngs})+'</div>'
-   +'</div>'
-   // Overallocated
-   +'<div class="kpi-card" style="'+(overCount?'border-color:var(--danger)':'')+'">'
-   +'<div class="kpi-val" style="color:'+(overCount?'var(--danger)':'var(--accent)')+'">'+overCount+'</div>'
-   +'<div class="kpi-label">'+t('OVERALLOCATED')+'</div>'
-   +'<div class="kpi-sub">'+(overCount?t('Engineers &gt;100% in some months'):t('All within capacity'))+'</div>'
-   +'</div>'
-   // Bench (unallocated this month)
-   +'<div class="kpi-card" style="'+(benchCount>0?'border-color:var(--accent2)':'')+';cursor:pointer" onclick="_availPanel.open=true;_availPanel.threshold=1;renderResDashboard()" title="'+t('Click to show bench resources')+'">'
-   +'<div class="kpi-val" style="color:'+(benchCount>0?'var(--accent2)':'var(--accent)')+'">'+benchCount+'</div>'
-   +'<div class="kpi-label">'+t('ON BENCH')+'</div>'
-   +'<div class="kpi-sub">'+t('Unallocated this month')+(benchCount>0?' · '+benchEngs.map(function(eu){return eu.name.split(' ')[0];}).slice(0,3).join(', ')+(benchCount>3?'…':''):'')+'</div>'
-   +'</div>'
-   // SPOF
-   +'<div class="kpi-card" style="'+(spofSkills.length?'border-color:#f1a435':'')+'">'
-   +'<div class="kpi-val" style="color:'+(spofSkills.length?'#f1a435':'var(--accent)')+'">'+spofSkills.length+'</div>'
-   +'<div class="kpi-label">'+t('CRITICAL SPOF SKILLS')+'</div>'
-   +'<div class="kpi-sub">'+t('Single-person critical skills')+' · <a onclick="showResTab(\'skillrisk\')" style="color:var(--accent);cursor:pointer;text-decoration:underline">'+t('view risk tab')+'</a></div>'
-   +'</div>'
+  // ── Health strip: capacity + risk state ────────────────────────
+  h+='<div class="db-strip">'
+   +'<div class="db-stat"><span class="db-sev"></span>'
+   +'<div class="db-stat-v">'+fteCur.toFixed(1)+'</div><div class="db-stat-k">'+t('FTE THIS MONTH')+'</div>'
+   +'<div class="db-stat-d">'+curInRange+(curInRange!==cur?' · '+t('nearest planned month'):'')+(fteRaw>fteCur?' · '+t('demand')+' '+fteRaw.toFixed(1):'')+'</div></div>'
+   +'<div class="db-stat db-stat--click'+(+avgUtil>90?' db-stat--alert':+avgUtil<50?' db-stat--info':'')+'" onclick="_availPanel.open=!_availPanel.open;renderResDashboard()" title="'+t('Click to show availability panel')+'"><span class="db-sev"></span>'
+   +'<div class="db-stat-v"'+(+avgUtil>=50&&+avgUtil<=90?' style="color:var(--accent)"':'')+'>'+avgUtil+'%</div><div class="db-stat-k">'+t('AVG UTILISATION')+' '+(_availPanel.open?'▼':'▶')+'</div>'
+   +'<div class="db-stat-d">'+t('across full plan period')+' · '+t('{n} engineers',{n:totalActiveEngs})+'</div></div>'
+   +'<div class="db-stat'+(overCount?' db-stat--alert':'')+'"><span class="db-sev"></span>'
+   +'<div class="db-stat-v"'+(overCount?'':' style="color:var(--accent)"')+'>'+overCount+'</div><div class="db-stat-k">'+t('OVERALLOCATED')+'</div>'
+   +'<div class="db-stat-d">'+(overCount?t('Engineers &gt;100% in some months'):t('All within capacity'))+'</div>'
+   +(overCount?'<span class="db-chip db-chip--alert">'+t('needs rebalancing')+'</span>':'')+'</div>'
+   +'<div class="db-stat db-stat--click'+(benchCount>0?' db-stat--info':'')+'" onclick="_availPanel.open=true;_availPanel.threshold=1;renderResDashboard()" title="'+t('Click to show bench resources')+'"><span class="db-sev"></span>'
+   +'<div class="db-stat-v"'+(benchCount>0?'':' style="color:var(--accent)"')+'>'+benchCount+'</div><div class="db-stat-k">'+t('ON BENCH')+'</div>'
+   +'<div class="db-stat-d">'+t('Unallocated this month')+(_unallocCost>0?' · '+_dbEur(_unallocCost)+' '+t('idle'):'')+'</div>'
+   +(benchCount>0?'<span class="db-chip db-chip--info">'+benchEngs.map(function(eu){return escH(eu.name.split(' ')[0]);}).slice(0,3).join(', ')+(benchCount>3?'…':'')+'</span>':'')+'</div>'
+   +'<div class="db-stat'+(spofSkills.length?' db-stat--warn':'')+'"><span class="db-sev"></span>'
+   +'<div class="db-stat-v"'+(spofSkills.length?'':' style="color:var(--accent)"')+'>'+spofSkills.length+'</div><div class="db-stat-k">'+t('CRITICAL SPOF SKILLS')+'</div>'
+   +'<div class="db-stat-d">'+t('Single-person critical skills')+'</div>'
+   +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="showResTab(\'skillrisk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
    +'</div>';
 
-  // ── Monthly cost chart (improved) ─────────────────────────────
-  h+='<div class="sum-section-title">'+t('MONTHLY COST &amp; FTE')+'</div>';
+  // ── Monthly cost & FTE chart ───────────────────────────────────
   var maxMoCost=Math.max(...moCosts,1);
-  // Monthly FTE demand
+  // Monthly FTE demand (same counted population as the cost bars)
   var moFte=months.map(function(m){
     var byE={};
     filteredRows.forEach(function(r){
       if(!r.engId)return;
+      var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
       var v=r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0;
       byE[r.engId]=(byE[r.engId]||0)+v;
     });
     return Object.values(byE).reduce(function(s,v){return s+Math.min(v,1);},0);
   });
   var maxFte=Math.max(...moFte,1);
-  var cW=Math.max(400,months.length*34+80),cH=90;
-  var cbw=Math.max(5,Math.floor((cW-80)/months.length)-3);
-  var bars='';
+  var curIdx=months.indexOf(cur);
+  // geometry — faint grid, cost bars (past/current/future), single FTE line
+  var _pL=44,_pR=16,_pT=14,_pB=26,_chH=130;
+  var _slot=Math.max(26,Math.min(64,Math.floor((880-_pL-_pR)/months.length)));
+  var _chW=_pL+_pR+_slot*months.length,_bw=Math.round(_slot*0.5);
+  var _innerH=_chH-_pT-_pB,_baseY=_chH-_pB;
+  var svg='';
+  for(var _g=0;_g<=3;_g++){
+    var _gy=_pT+_innerH*_g/3, _gv=Math.round(maxMoCost*(1-_g/3)/1000);
+    svg+='<line x1="'+_pL+'" y1="'+_gy.toFixed(1)+'" x2="'+(_chW-_pR)+'" y2="'+_gy.toFixed(1)+'" stroke="var(--border)" stroke-width="'+(_g===3?1:0.6)+'" opacity="'+(_g===3?1:0.5)+'"/>'
+      +'<text x="'+(_pL-8)+'" y="'+(_gy+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--dim)" font-family="IBM Plex Mono,monospace">'+_gv+'k</text>';
+  }
   moCosts.forEach(function(v,i){
-    var bh=Math.round(v/maxMoCost*(cH-18));
-    var x=60+i*(cbw+3);
-    var isCur=months[i]===cur;
-    var isPast=months[i]<cur;
-    bars+='<rect x="'+x+'" y="'+(cH-bh-2)+'" width="'+cbw+'" height="'+bh+'" fill="'+(isCur?'var(--accent)':isPast?'#5be5c844':'#5be5c822')+'" rx="2"/>';
-    // FTE dot
-    var fy=cH-2-Math.round(moFte[i]/maxFte*(cH-18));
-    if(i>0){
-      var px=60+(i-1)*(cbw+3)+cbw/2;
-      var pfy=cH-2-Math.round(moFte[i-1]/maxFte*(cH-18));
-      bars+='<line x1="'+px+'" y1="'+pfy+'" x2="'+(x+cbw/2)+'" y2="'+fy+'" stroke="var(--accent2)" stroke-width="1.5" opacity="0.7"/>';
-    }
-    bars+='<circle cx="'+(x+cbw/2)+'" cy="'+fy+'" r="2.5" fill="var(--accent2)" opacity="0.8"/>';
-    if(months[i].endsWith('-01')||i===0)
-      bars+='<text x="'+(x+cbw/2)+'" y="'+(cH+12)+'" text-anchor="middle" font-size="8" fill="#6b6b78" font-family="IBM Plex Mono,monospace">'+months[i].slice(0,4)+'</text>';
-    if(isCur)
-      bars+='<line x1="'+(x+cbw/2)+'" y1="0" x2="'+(x+cbw/2)+'" y2="'+cH+'" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>';
+    var bh=Math.round(v/maxMoCost*_innerH), x=_pL+_slot*i+(_slot-_bw)/2, y=_baseY-bh;
+    var isCur=i===curIdx, isPast=curIdx>=0&&i<curIdx;
+    svg+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+_bw+'" height="'+bh+'" rx="2" fill="'+(isCur?'var(--accent)':'var(--accent2)')+'" opacity="'+(isCur?0.95:isPast?0.55:0.28)+'"/>';
+    if(months[i].endsWith('-01')||i===0||months.length<=12)
+      svg+='<text x="'+(_pL+_slot*i+_slot/2).toFixed(1)+'" y="'+(_chH-9)+'" text-anchor="middle" font-size="8.5" fill="'+(isCur?'var(--accent)':'var(--dim)')+'" font-family="IBM Plex Mono,monospace">'+(months.length<=12?months[i].slice(5):months[i].slice(0,4))+'</text>';
   });
-  bars+='<text x="4" y="'+(cH-2)+'" font-size="8" fill="#6b6b78" font-family="IBM Plex Mono,monospace">'+Math.round(maxMoCost/1000)+'k</text>';
-  bars+='<text x="4" y="'+(cH/2)+'" font-size="8" fill="#6b6b78" font-family="IBM Plex Mono,monospace">'+Math.round(maxMoCost/2000)+'k</text>';
-  h+='<div style="display:flex;gap:16px;align-items:center;margin-bottom:4px">'
-   +'<span style="font-size:9px;color:#5be5c8;font-family:IBM Plex Mono,monospace">'+t('▬ FTE (right scale)')+'</span>'
-   +'<span style="font-size:9px;color:var(--accent);font-family:IBM Plex Mono,monospace">'+t('█ Cost · darker = past · solid = current')+'</span>'
-   +'</div>';
-  h+='<div class="bar-chart-wrap" style="overflow-x:auto;margin-bottom:16px"><svg width="'+cW+'" height="'+(cH+20)+'" style="display:block">'
-   +'<line x1="58" y1="0" x2="58" y2="'+cH+'" stroke="var(--border)" stroke-width="1"/>'
-   +'<line x1="58" y1="'+cH+'" x2="'+cW+'" y2="'+cH+'" stroke="var(--border)" stroke-width="1"/>'
-   +bars+'</svg></div>';
+  var _fpts=moFte.map(function(v,i){return [_pL+_slot*i+_slot/2, _baseY-(v/maxFte)*_innerH];});
+  svg+='<path d="M'+_fpts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L')+'" fill="none" stroke="var(--warn)" stroke-width="1.8" opacity="0.85" stroke-linejoin="round"/>';
+  _fpts.forEach(function(p,i){ svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(i===curIdx?3.6:2)+'" fill="'+(i===curIdx?'var(--warn)':'var(--bg)')+'" stroke="var(--warn)" stroke-width="1.4"/>'; });
+  h+='<div class="db-sec"><div class="db-sec-title">'+t('MONTHLY COST &amp; FTE')
+   +'<span class="db-spacer"></span><span class="db-legend">'
+   +'<i><span class="db-swatch" style="background:var(--accent2)"></span>'+t('Cost')+'</i>'
+   +'<i><span class="db-swatch" style="background:var(--accent)"></span>'+t('Current month')+'</i>'
+   +'<i><span class="db-swatch" style="background:var(--warn)"></span>'+t('FTE demand')+'</i>'
+   +'</span></div>'
+   +'<div class="db-card db-chart-card" style="overflow-x:auto"><svg class="db-chart" viewBox="0 0 '+_chW+' '+_chH+'" width="'+_chW+'" height="'+_chH+'" role="img" aria-label="'+t('Monthly cost bars with FTE demand line')+'">'+svg+'</svg></div></div>';
 
   // ── Cost by project ────────────────────────────────────────────
-  h+='<div class="sum-section-title">'+t('COST BY PROJECT')+' <span style="font-weight:300;color:var(--muted)">'+t('(by section)')+'</span></div>';
+  h+='<div class="db-sec"><div class="db-sec-title">'+t('COST BY PROJECT')+' <span class="db-hint">'+t('(by section)')+'</span></div>';
   var secGrouped={};
   Object.entries(projCost).forEach(function(kv){
     var pid=kv[0],cost=kv[1];
@@ -252,19 +286,19 @@ export function renderResDashboard(){
     var grpTotal=g.rows.reduce(function(s,r){return s+r.cost;},0);
     var isOpen=!!_dashSectorOpen[grpName];
     var safeId='dsec_'+grpName.replace(/[^a-zA-Z0-9]/g,'_');
-    h+='<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:7px;overflow:hidden">';
-    h+='<div style="display:flex;align-items:center;gap:7px;padding:8px 12px;cursor:pointer;background:var(--surface)'+(isOpen?';border-bottom:1px solid var(--border)':'')
+    h+='<div class="db-group">';
+    h+='<div class="db-group-head'+(isOpen?' db-open':'')
       +'" onclick="toggleDashSector(this.dataset.grp,this.dataset.sid)" data-grp="'+escH(grpName)+'" data-sid="'+safeId+'">'
-      +'<span id="dsec-arrow-'+safeId+'" style="font-size:9px;color:var(--muted);width:10px">'+(isOpen?'▼':'▶')+'</span>'
-      +'<div style="width:8px;height:8px;border-radius:50%;background:'+g.color+';flex-shrink:0"></div>'
-      +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">'+escH(grpName==='Unsectioned'?t('Unsectioned'):grpName)+'</span>'
-      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">'+t('{n} project(s)',{n:g.rows.length})+'</span>'
-      +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);margin-left:auto">'+Math.round(grpTotal/1000)+'k€</span>'
+      +'<span class="db-group-arrow" id="dsec-arrow-'+safeId+'">'+(isOpen?'▼':'▶')+'</span>'
+      +'<span class="db-dot" style="background:'+g.color+'"></span>'
+      +'<span class="db-group-name">'+escH(grpName==='Unsectioned'?t('Unsectioned'):grpName)+'</span>'
+      +'<span class="db-group-meta">'+t('{n} project(s)',{n:g.rows.length})+'</span>'
+      +'<span class="db-group-total">'+Math.round(grpTotal/1000)+'k€</span>'
       +'</div>';
     h+='<div id="'+safeId+'" style="display:'+(isOpen?'block':'none')+'">'
-      +'<table class="alloc-proj-table"><thead><tr>'
-      +'<th>'+t('PROJECT')+'</th><th style="text-align:right">'+t('COST')+'</th><th style="text-align:right">%</th>'
-      +'<th style="text-align:right">'+t('FTE PEAK')+'</th><th style="min-width:120px">'+t('MONTHLY')+'</th>'
+      +'<table class="db-table"><thead><tr>'
+      +'<th>'+t('PROJECT')+'</th><th>'+t('COST')+'</th><th>%</th>'
+      +'<th>'+t('FTE PEAK')+'</th><th>'+t('MONTHLY')+'</th>'
       +'</tr></thead><tbody>';
     g.rows.sort(function(a,b){return b.cost-a.cost;}).forEach(function(row){
       var p=row.p,cost=row.cost;
@@ -276,28 +310,22 @@ export function renderResDashboard(){
         var eng=engById.get(r.engId);
         return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
       },0);});
-      var maxMo=Math.max.apply(null,monthCosts.concat([1]));
-      var sparkW=110,sparkH=16,bw=Math.max(1,Math.floor(sparkW/months.length)-1);
-      var bars2='';
-      monthCosts.forEach(function(v,i){
-        var bh=Math.round(v/maxMo*sparkH);
-        bars2+='<rect x="'+i*(bw+1)+'" y="'+(sparkH-bh)+'" width="'+bw+'" height="'+bh
-          +'" fill="'+(months[i]===cur?'var(--accent)':'var(--accent2)')+'" opacity="0.7"/>';
-      });
+      var spark=_dbSparkBars(monthCosts,{w:110,h:16,curIdx:curIdx});
       var statusBadge='';
       if(p.currentGate)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(120,120,140,.12);color:var(--muted)">'+escH(p.currentGate)+'</span><span style="font-size:8px;color:var(--muted)"> →</span>';
       if(p.gate)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.gate)+'</span>';
       if(p.status)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.status)+'</span>';
       h+='<tr>'
-       +'<td style="color:'+p.color+'">'+escH(p.name)+statusBadge+'</td>'
-       +'<td style="text-align:right;font-family:IBM Plex Mono,monospace;font-weight:600">'+Math.round(cost/1000)+'k€</td>'
-       +'<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'
-       +'<td style="text-align:right;font-family:IBM Plex Mono,monospace;color:var(--accent2)">'+peakFte.toFixed(1)+' FTE</td>'
-       +'<td><svg width="'+sparkW+'" height="'+sparkH+'">'+bars2+'</svg></td>'
+       +'<td><span class="db-pname"><span class="db-dot" style="background:'+(p.color||'var(--muted)')+'"></span><span style="color:'+p.color+'">'+escH(p.name)+'</span></span>'+statusBadge+'</td>'
+       +'<td class="db-money">'+Math.round(cost/1000)+'k€</td>'
+       +'<td class="db-muted">'+pct+'%</td>'
+       +'<td class="db-num" style="color:var(--accent2)">'+peakFte.toFixed(1)+'</td>'
+       +'<td>'+spark+'</td>'
        +'</tr>';
     });
     h+='</tbody></table></div></div>';
   });
+  h+='</div>';
 
 
   // ── Availability panel ──────────────────────────────────────────
@@ -312,20 +340,20 @@ export function renderResDashboard(){
     }).sort(function(a,b){ return a.utilizationRate - b.utilizationRate; });
 
     // Panel header
-    h+='<div id="avail-panel" style="background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:8px;padding:14px 16px;margin:10px 0;flex-shrink:0">'
-     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:.07em">'+t('◉ AVAILABILITY')+'</span>'
+    h+='<div id="avail-panel" class="db-avail">'
+     +'<div class="db-avail-head">'
+     +'<span class="db-avail-title">'+t('◉ AVAILABILITY')+'</span>'
      // threshold slider
-     +'<div style="display:flex;align-items:center;gap:6px">'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('SHOW &lt;')+'</span>'
+     +'<div class="db-avail-ctl">'
+     +'<span>'+t('SHOW &lt;')+'</span>'
      +'<input type="range" min="1" max="100" step="5" value="'+_avThresh+'"'
      +' style="width:80px;accent-color:var(--accent)" title="'+t('Show engineers with utilisation below this %')+'"'
      +' oninput="this.nextElementSibling.textContent=this.value+\'%\';_availPanel.threshold=+this.value;renderResDashboard()">'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent);min-width:30px">'+_avThresh+'%</span>'
+     +'<span style="font-family:var(--db-mono);font-size:9px;color:var(--accent);min-width:30px">'+_avThresh+'%</span>'
      +'</div>'
      // group by selector
-     +'<div style="display:flex;align-items:center;gap:4px">'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('GROUP:')+'</span>'
+     +'<div class="db-avail-ctl">'
+     +'<span>'+t('GROUP:')+'</span>'
      +(function(){var _lbl={availability:t('AVAILABILITY'),project:t('PROJECT'),function:t('FUNCTION'),location:t('LOCATION')};return ['availability','project','function','location'].map(function(g){
        return '<button class="sm'+(g===_avGroup?' active':'')+'" '
          +'style="font-size:9px;padding:2px 7px'+(g===_avGroup?';border-color:var(--accent);color:var(--accent)':'')+'" '
@@ -363,32 +391,30 @@ export function renderResDashboard(){
     });
 
     if(_avEngs.length===0){
-      h+='<div style="text-align:center;padding:20px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted)">'+t('No engineers below {n}% utilisation in this period',{n:_avThresh})+'</div>';
+      h+='<div style="text-align:center;padding:20px;font-family:var(--db-mono);font-size:11px;color:var(--muted)">'+t('No engineers below {n}% utilisation in this period',{n:_avThresh})+'</div>';
     } else {
       Object.keys(_avGroups).sort().forEach(function(gkey){
         var gEngs = _avGroups[gkey];
         h+='<div style="margin-bottom:10px">'
-         +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid var(--border)">'+escH(gkey)+' <span style="color:var(--dim)">('+gEngs.length+')</span></div>'
-         +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">';
+         +'<div class="db-avail-gkey">'+escH(gkey)+' <span style="color:var(--dim)">('+gEngs.length+')</span></div>'
+         +'<div class="db-avail-grid">';
         gEngs.forEach(function(eu){
           var pct=Math.round(eu.utilizationRate*100);
           var col=pct===0?'var(--accent2)':pct<25?'var(--accent2)':pct<50?'var(--accent)':'var(--muted)';
           var sel=_avSel.has(eu.eng.id);
           var topSkills=(eu.eng.skills||[]).slice(0,3).map(function(s){return escH(s.name);}).join(', ');
-          h+='<div style="background:var(--bg);border:1px solid '+(sel?'var(--accent)':'var(--border)')+';border-left:3px solid '+eu.grpColor+';border-radius:5px;padding:7px 10px;cursor:pointer;transition:.1s"'
-           +' onclick="availToggle('+eu.eng.id+')" title="Click to select/deselect">'
-           +'<div style="display:flex;align-items:center;gap:6px">'
+          h+='<div class="db-acard'+(sel?' db-sel':'')+'" style="border-left-color:'+eu.grpColor+'"'
+           +' onclick="availToggle('+eu.eng.id+')" title="'+t('Click to select/deselect')+'">'
+           +'<div class="db-acard-row">'
            +'<input type="checkbox" '+(sel?'checked':'')+' style="accent-color:var(--accent);pointer-events:none" tabindex="-1">'
            +'<div style="flex:1">'
-           +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(eu.name)+'</div>'
+           +'<div class="db-acard-name">'+escH(eu.name)+'</div>'
            +(eu.role?'<div style="font-size:9px;color:var(--muted)">'+escH(eu.role)+'</div>':'')
            +'</div>'
-           +'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;color:'+col+'">'+pct+'%</div>'
+           +'<div class="db-acard-pct" style="color:'+col+'">'+pct+'%</div>'
            +'</div>'
            +(topSkills?'<div style="font-size:9px;color:var(--dim);margin-top:4px">'+topSkills+'</div>':'')
-           +'<div style="height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden">'
-           +'<div style="height:3px;width:'+pct+'%;background:'+col+';border-radius:2px"></div>'
-           +'</div>'
+           +'<div class="db-ubar" style="margin-top:6px"><i style="width:'+pct+'%;background:'+col+'"></i></div>'
            +'</div>';
         });
         h+='</div></div>';
@@ -408,31 +434,31 @@ export function renderResDashboard(){
         });
       });
       var _topSkills=Object.entries(_skillMap).sort(function(a,b){return b[1].count-a[1].count||b[1].maxLevel-a[1].maxLevel;}).slice(0,12);
-      h+='<div id="avail-capability" style="margin-top:12px;padding:12px 14px;background:rgba(200,241,53,.05);border:1px solid rgba(200,241,53,.2);border-radius:6px">'
-       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-       +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:.06em">⚡ '+t('TEAM CAPABILITY')+' — '+t('{n} selected',{n:_selEngs.length})+'</span>'
-       +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">~'+_totalAvailFTE.toFixed(1)+' '+t('available FTE')+'</span>'
+      h+='<div id="avail-capability" class="db-cap">'
+       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
+       +'<span class="db-cap-title">⚡ '+t('TEAM CAPABILITY')+' — '+t('{n} selected',{n:_selEngs.length})+'</span>'
+       +'<span style="font-family:var(--db-mono);font-size:9px;color:var(--muted)">~'+_totalAvailFTE.toFixed(1)+' '+t('available FTE')+'</span>'
        +'</div>'
        +'<div style="display:flex;gap:16px;flex-wrap:wrap">'
        // Engineers list
        +'<div style="flex:1;min-width:160px">'
-       +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px">'+t('ENGINEERS')+'</div>'
+       +'<div style="font-family:var(--db-mono);font-size:9px;color:var(--muted);margin-bottom:5px">'+t('ENGINEERS')+'</div>'
        +_selEngs.map(function(eu){
          var avail=Math.round((1-eu.utilizationRate)*100);
          return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
-           +'<div style="width:6px;height:6px;border-radius:50%;background:'+eu.grpColor+'"></div>'
+           +'<div class="db-dot" style="width:6px;height:6px;background:'+eu.grpColor+'"></div>'
            +'<span style="font-size:11px;color:var(--text)">'+escH(eu.name)+'</span>'
-           +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--accent);margin-left:auto">~'+avail+'% '+t('free')+'</span>'
+           +'<span style="font-family:var(--db-mono);font-size:9px;color:var(--accent);margin-left:auto">~'+avail+'% '+t('free')+'</span>'
            +'</div>';
        }).join('')
        +'</div>'
        // Skills
        +(_topSkills.length?
          '<div style="flex:2;min-width:200px">'
-         +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px">'+t('KEY SKILLS')+'</div>'
+         +'<div style="font-family:var(--db-mono);font-size:9px;color:var(--muted);margin-bottom:5px">'+t('KEY SKILLS')+'</div>'
          +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
          +_topSkills.map(function(kv){
-           return '<span style="font-size:9px;padding:2px 7px;border-radius:3px;background:rgba(200,241,53,.1);border:1px solid rgba(200,241,53,.2);color:var(--accent)">'
+           return '<span class="db-skillchip">'
              +escH(kv[0])
              +(kv[1].count>1?'<span style="opacity:.6"> ×'+kv[1].count+'</span>':'')
              +'</span>';
@@ -447,9 +473,9 @@ export function renderResDashboard(){
   }
 
   // ── Engineer utilisation ───────────────────────────────────────
-  h+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:8px">'
-   +'<span class="sum-section-title" style="margin:0;border:none;padding:0">'+t('ENGINEER UTILISATION')+'</span>'
-   +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('GROUP BY:')+'</span>'
+  h+='<div class="db-sec"><div class="db-sec-title">'+t('ENGINEER UTILISATION')+' <span class="db-hint">'+t('counted resources only')+'</span>'
+   +'<span class="db-spacer"></span>'
+   +'<span class="db-legend"><i>'+t('GROUP BY:')+'</i></span>'
    +'<button class="sm'+(engDashGroupBy==='group'?' active':'')+'" onclick="setEngDashGroup(\'group\')">'+t('FUNCTION')+'</button>'
    +'<button class="sm'+(engDashGroupBy==='project'?' active':'')+'" onclick="setEngDashGroup(\'project\')">'+t('PROJECT')+'</button>'
    +'<button class="sm'+(engDashGroupBy==='location'?' active':'')+'" onclick="setEngDashGroup(\'location\')">'+t('LOCATION')+'</button>'
@@ -458,6 +484,7 @@ export function renderResDashboard(){
   // Build grouping
   var utilByKey={};
   Object.values(engUtil).forEach(function(eu){
+    if(!_costCounts(eu.eng))return; // excluded from calc — keep group counts and cards in sync
     if(engDashFilterEng&&engDashFilterEng.size&&!engDashFilterEng.has(eu.name))return;
     var key,color;
     if(engDashGroupBy==='group'){key=eu.grp||t('Ungrouped');color=eu.grpColor;}
@@ -490,71 +517,55 @@ export function renderResDashboard(){
 
   for(var gk in utilByKey){
     var ug=utilByKey[gk];
-    h+='<div style="margin-bottom:14px">'
-     +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)">'
-     +'<div style="width:8px;height:8px;border-radius:50%;background:'+ug.color+';flex-shrink:0"></div>'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">'+escH(gk)+'</span>'
-     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:auto">'+t('{n} engineer(s)',{n:ug.members.length})+'</span>'
+    h+='<div class="db-ugroup">'
+     +'<div class="db-ugroup-head">'
+     +'<span class="db-dot" style="background:'+ug.color+'"></span>'
+     +'<span class="db-ugroup-name">'+escH(gk)+'</span>'
+     +'<span class="db-ugroup-count">'+t('{n} engineer(s)',{n:ug.members.length})+'</span>'
      +'</div>'
-     +'<div class="alloc-kpi-grid" style="margin-bottom:0">';
+     +'<div class="db-util-grid">';
     ug.members.forEach(function(eu){
-      if(eu.eng.excludeFromCalc)return; // excluded from calculations
+      // excludeFromCalc already filtered when building utilByKey (count stays in sync)
       var pct=Math.round(eu.avgAlloc*100);
       var utilPct=Math.round(eu.utilizationRate*100);
       var isOver=eu.overMonths&&eu.overMonths.length>0;
       var isBench=(eu.monthAllocs[curInRange]||0)===0;
       var isSpof=spofEngIds.has(eu.eng.id);
       var col=isOver?'var(--danger)':isBench?'var(--accent2)':pct>80?'var(--accent)':'var(--accent2)';
-      // Spark for this engineer
-      var eSpark='';
+      var cls=isOver?' db-ucard--over':isBench?' db-ucard--bench':isSpof?' db-ucard--spof':'';
       var emv=months.map(function(m){return eu.monthAllocs&&eu.monthAllocs[m]?eu.monthAllocs[m]:0;});
-      var emMax=Math.max(...emv,1);
-      var esW=80,esH=18,ebw=Math.max(2,Math.floor(esW/months.length)-1);
-      emv.forEach(function(v,i){
-        var bh=Math.round(v/emMax*esH);
-        var bc=v>1.005?'var(--danger)':months[i]===cur?'var(--accent)':'var(--accent2)';
-        eSpark+='<rect x="'+i*(ebw+1)+'" y="'+(esH-bh)+'" width="'+ebw+'" height="'+bh+'" fill="'+bc+'" opacity="0.7" rx="1"/>';
-      });
+      var eSpark=_dbSparkBars(emv,{w:88,h:18,curIdx:curIdx,overMax:1.005,overColor:'var(--danger)'});
       var totalCostEng=eu.totAlloc*(eu.cost||0);
-      h+='<div class="kpi-card" style="'+(isOver?'border-color:var(--danger);background:rgba(241,67,53,.04)':isBench?'border-color:var(--accent2);background:rgba(200,241,53,.02)':'')+'">'
-       +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">'
-       +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent2)">'+escH(eu.name)+'</div>'
-       +(isOver?'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;background:rgba(241,67,53,.15);color:var(--danger);padding:1px 4px;border-radius:3px">&#9888; '+t('OVER')+'</span>':'')
-       +(isBench?'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;background:rgba(200,241,53,.1);color:var(--accent2);padding:1px 4px;border-radius:3px">'+t('BENCH')+'</span>':'')
-       +(isSpof?'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;background:rgba(241,164,53,.1);color:#f1a435;padding:1px 4px;border-radius:3px">SPOF</span>':'')
+      h+='<div class="db-ucard'+cls+'">'
+       +'<div class="db-uname">'+escH(eu.name)
+       +(isOver?'<span class="db-tag db-tag--over">&#9888; '+t('OVER')+'</span>':'')
+       +(isBench?'<span class="db-tag db-tag--bench">'+t('BENCH')+'</span>':'')
+       +(isSpof?'<span class="db-tag db-tag--spof">SPOF</span>':'')
        +'</div>'
-       +'<div style="font-size:9px;color:var(--muted);margin-bottom:5px">'+(eu.role?escH(eu.role):'')+(eu.role&&eu.loc?' · ':'')+escH(eu.loc||'')+'</div>'
-       +'<div style="font-size:22px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace;line-height:1">'+pct+'%</div>'
-       +'<div style="font-size:9px;color:var(--muted);margin-top:1px">'+t('avg active')+' · '+utilPct+'% '+t('full period')+'</div>'
-       +'<svg width="'+esW+'" height="'+esH+'" style="margin-top:5px;display:block">'+eSpark+'</svg>'
-       +(isOver?'<div style="font-size:9px;color:var(--danger);margin-top:3px">&#9888; '+t('Over:')+' '+eu.overMonths.slice(0,3).map(function(m){return m.slice(0,7);}).join(', ')+(eu.overMonths.length>3?'…':'')+'</div>':'')
-       +'<div style="font-size:9px;color:var(--muted);margin-top:3px">'+Math.round(totalCostEng/1000)+'k€ '+t('total')+' · '+eu.activeMonths+'/'+eu.months+' '+t('mo')+'</div>'
-       +(isOver
-         ?'<button onclick="showDashReplacements('+eu.eng.id+',this)" '
-          +'style="margin-top:7px;width:100%;font-family:IBM Plex Mono,monospace;font-size:9px;'
-          +'background:none;border:1px solid var(--danger);color:var(--danger);border-radius:4px;'
-          +'padding:3px 0;cursor:pointer;letter-spacing:.04em" '
-          +'onmouseenter="this.style.background=\'rgba(241,67,53,.12)\'" '
-          +'onmouseleave="this.style.background=\'none\'">'
-          +'&#128270; '+t('FIND REPLACEMENTS')+'</button>'
-         :'')
+       +'<div class="db-urole">'+(eu.role?escH(eu.role):'')+(eu.role&&eu.loc?' · ':'')+escH(eu.loc||'')+'</div>'
+       +'<div class="db-upct" style="color:'+col+'">'+pct+'%</div>'
+       +'<div class="db-umeta">'+t('avg active')+' · '+utilPct+'% '+t('full period')+'</div>'
+       +'<div style="margin-top:6px">'+eSpark+'</div>'
+       +(isOver?'<div class="db-umeta" style="color:var(--danger)">&#9888; '+t('Over:')+' '+eu.overMonths.slice(0,3).map(function(m){return m.slice(0,7);}).join(', ')+(eu.overMonths.length>3?'…':'')+'</div>':'')
+       +'<div class="db-umeta">'+Math.round(totalCostEng/1000)+'k€ '+t('total')+' · '+eu.activeMonths+'/'+eu.months+' '+t('mo')+'</div>'
+       +(isOver?'<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+t('FIND REPLACEMENTS')+'</button>':'')
        +'</div>';
     });
     h+='</div></div>';
   }
+  h+='</div>';
 
 
   // ── Project spending detail (collapsible) ─────────────────────────
   var _pdOpen = _dashProjDetailOpen;
-  h += '<div style="margin-top:18px">'
-    + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 0;border-top:1px solid var(--border)"'
+  h += '<div class="db-sec">'
+    + '<div class="db-sec-title" style="cursor:pointer"'
     + ' onclick="(function(el){_dashProjDetailOpen=!_dashProjDetailOpen;'
     + 'var s=document.getElementById(\'dash-proj-detail\');'
     + 'if(s){s.style.display=_dashProjDetailOpen?\'block\':\'none\';}'
     + 'el.querySelector(\'.dash-pd-arrow\').textContent=_dashProjDetailOpen?\'▼\':\'▶\';})(this)">'
-    + '<span class="dash-pd-arrow" style="font-size:10px;color:var(--muted)">' + (_pdOpen ? '▼' : '▶') + '</span>'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">'+t('PROJECT SPENDING DETAIL')+'</span>'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">— '+t('cost &amp; resources per project')+' · ' + t('{n} months',{n:months.length}) + '</span>'
+    + '<span class="dash-pd-arrow">' + (_pdOpen ? '▼' : '▶') + '</span> '+t('PROJECT SPENDING DETAIL')
+    + ' <span class="db-hint">— '+t('cost &amp; resources per project')+' · ' + t('{n} months',{n:months.length}) + '</span>'
     + '</div>'
     + '<div id="dash-proj-detail" style="display:' + (_pdOpen ? 'block' : 'none') + '">';
 
@@ -584,7 +595,7 @@ export function renderResDashboard(){
     .sort(function(a, b){ return b.cost - a.cost; });
 
   if (!_projDetail.length) {
-    h += '<div style="padding:16px;text-align:center;color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px">'+t('No project allocation data in selected period.')+'</div>';
+    h += '<div style="padding:16px;text-align:center;color:var(--muted);font-family:var(--db-mono);font-size:11px">'+t('No project allocation data in selected period.')+'</div>';
   }
 
   _projDetail.forEach(function(pd) {
@@ -592,62 +603,43 @@ export function renderResDashboard(){
     var _moCosts = months.map(function(m) {
       return pd.resources.reduce(function(s, r){ return s + (r.fte[m] || 0) * (r.eng.monthlyCost || 0); }, 0);
     });
-    var _maxMo = Math.max.apply(null, _moCosts.concat([1]));
-    var _sw = 160, _sh = 20, _bw = Math.max(1, Math.floor(_sw / Math.max(months.length, 1)) - 1);
-    var _bars = '';
-    _moCosts.forEach(function(v, i) {
-      var bh = Math.max(1, Math.round(v / _maxMo * _sh));
-      _bars += '<rect x="' + i*(_bw+1) + '" y="' + (_sh-bh) + '" width="' + _bw + '" height="' + bh
-        + '" fill="' + (months[i]===cur ? 'var(--accent)' : 'var(--accent2)') + '" opacity="0.7"/>';
-    });
+    var spark = _dbSparkBars(_moCosts, {w:160,h:20,curIdx:curIdx,minBar:1});
 
-    h += '<div style="margin-bottom:10px;border:1px solid var(--border);border-left:3px solid '
-      + (p.color || 'var(--muted)') + ';border-radius:6px;overflow:hidden">';
+    h += '<div class="db-group" style="border-left:3px solid ' + (p.color || 'var(--muted)') + '">';
 
-    h += '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);flex-wrap:wrap">'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">' + escH(p.name) + '</div>'
-      + (p.currentGate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(120,120,140,.12);color:var(--muted);font-family:IBM Plex Mono,monospace">' + escH(p.currentGate) + ' →</span>' : '')
-      + (p.gate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(200,241,53,.08);color:var(--accent);font-family:IBM Plex Mono,monospace">' + escH(p.gate) + '</span>' : '')
-      + '<div style="flex:1"></div>'
-      + '<span style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:700;color:var(--accent)">' + Math.round(pd.cost/1000) + 'k€</span>'
-      + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">' + pct + '% '+t('of total')+'</span>'
-      + '<svg width="' + _sw + '" height="' + _sh + '" title="'+t('Monthly cost')+'">' + _bars + '</svg>'
+    h += '<div class="db-group-head" style="cursor:default;flex-wrap:wrap">'
+      + '<span class="db-group-name" style="color:var(--text);font-weight:600;font-size:11px">' + escH(p.name) + '</span>'
+      + (p.currentGate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(120,120,140,.12);color:var(--muted);font-family:var(--db-mono)">' + escH(p.currentGate) + ' →</span>' : '')
+      + (p.gate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(200,241,53,.08);color:var(--accent);font-family:var(--db-mono)">' + escH(p.gate) + '</span>' : '')
+      + '<span style="flex:1"></span>'
+      + '<span class="db-group-total">' + Math.round(pd.cost/1000) + 'k€</span>'
+      + '<span class="db-group-meta">' + pct + '% '+t('of total')+'</span>'
+      + spark
       + '</div>';
 
     if (pd.resources.length) {
-      h += '<table style="width:100%;border-collapse:collapse;font-size:10px">'
-        + '<thead><tr style="background:var(--bg)">'
-        + '<th style="text-align:left;padding:5px 12px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.06em">'+t('RESOURCE')+'</th>'
-        + '<th style="text-align:left;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('GROUP')+'</th>'
-        + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('PEAK FTE')+'</th>'
-        + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('FTE·MO')+'</th>'
-        + '<th style="text-align:right;padding:5px 12px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('COST')+'</th>'
-        + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('SHARE')+'</th>'
+      h += '<table class="db-table"><thead><tr>'
+        + '<th>'+t('RESOURCE')+'</th><th style="text-align:left">'+t('GROUP')+'</th><th>'+t('PEAK FTE')+'</th>'
+        + '<th>'+t('FTE·MO')+'</th><th>'+t('COST')+'</th><th>'+t('SHARE')+'</th>'
         + '</tr></thead><tbody>';
 
       pd.resources.forEach(function(r, i) {
         var share = pd.cost ? Math.round(r.cost / pd.cost * 100) : 0;
         var eg = engGroups.find(function(g){ return g.id === r.eng.groupId; });
-        h += '<tr style="border-top:1px solid var(--border)' + (i%2===1?';background:rgba(255,255,255,.01)':'') + '">'
-          + '<td style="padding:5px 12px;color:var(--text);font-weight:600">' + escH(r.eng.name)
+        h += '<tr>'
+          + '<td style="font-weight:600">' + escH(r.eng.name)
           + (r.eng.role ? '<span style="font-weight:400;color:var(--muted);font-size:9px"> · ' + escH(r.eng.role) + '</span>' : '')
           + '</td>'
-          + '<td style="padding:5px 8px"><span style="font-size:9px;color:' + r.grpColor + '">' + escH(eg ? eg.name : '—') + '</span></td>'
-          + '<td style="padding:5px 8px;text-align:right;font-family:IBM Plex Mono,monospace;color:var(--accent2)">' + r.peakFte.toFixed(1) + '</td>'
-          + '<td style="padding:5px 8px;text-align:right;font-family:IBM Plex Mono,monospace;color:var(--muted)">' + r.totalFte.toFixed(1) + '</td>'
-          + '<td style="padding:5px 12px;text-align:right;font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--text)">' + Math.round(r.cost/1000) + 'k€</td>'
-          + '<td style="padding:5px 8px;text-align:right">'
-          + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">'
-          + '<div style="width:40px;height:5px;background:var(--border);border-radius:2px;overflow:hidden">'
-          + '<div style="height:5px;width:' + share + '%;background:' + (p.color||'var(--accent)') + ';border-radius:2px"></div>'
-          + '</div>'
-          + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:26px;text-align:right">' + share + '%</span>'
-          + '</div></td>'
+          + '<td style="text-align:left"><span style="font-size:9px;color:' + r.grpColor + '">' + escH(eg ? eg.name : '—') + '</span></td>'
+          + '<td class="db-num" style="color:var(--accent2)">' + r.peakFte.toFixed(1) + '</td>'
+          + '<td class="db-num db-muted">' + r.totalFte.toFixed(1) + '</td>'
+          + '<td class="db-num" style="font-weight:600">' + Math.round(r.cost/1000) + 'k€</td>'
+          + '<td><div class="db-share-cell"><div class="db-share-bar"><i style="width:' + share + '%;background:' + (p.color||'var(--accent)') + '"></i></div><span class="db-muted" style="min-width:26px">' + share + '%</span></div></td>'
           + '</tr>';
       });
       h += '</tbody></table>';
     } else {
-      h += '<div style="padding:8px 12px;font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+t('No named resources in selected period.')+'</div>';
+      h += '<div style="padding:8px 12px;font-size:9px;color:var(--muted);font-family:var(--db-mono)">'+t('No named resources in selected period.')+'</div>';
     }
     h += '</div>';
   });
@@ -656,7 +648,7 @@ export function renderResDashboard(){
 
 
   // ── Overworked resources + conflict summary ───────────────────────
-  var _overEngs = Object.values(engUtil).filter(function(eu){ return eu.overMonths.length > 0; });
+  var _overEngs = countedUtil.filter(function(eu){ return eu.overMonths.length > 0; });
   var _conflictData = _overEngs.map(function(eu){
     var conflictProjs = {};
     eu.overMonths.forEach(function(m){
@@ -672,8 +664,7 @@ export function renderResDashboard(){
   });
 
   if(_conflictData.length){
-    h+='<div style="margin-top:18px">'
-      +'<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em;margin-bottom:8px;padding-top:14px;border-top:1px solid var(--border)">'+t('⚠ OVERLOADED RESOURCES &amp; CONFLICTS')+'</div>'
+    h+='<div class="db-sec"><div class="db-sec-title">'+t('⚠ OVERLOADED RESOURCES &amp; CONFLICTS')+'</div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">';
 
     _conflictData.forEach(function(cd){
@@ -685,38 +676,32 @@ export function renderResDashboard(){
           .reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
       }).concat([0]))*100);
 
-      h+='<div style="border:1px solid rgba(241,67,53,.3);border-left:3px solid var(--danger);border-radius:6px;padding:8px 12px;background:rgba(241,67,53,.04)">';
-      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(eu.eng.name)+'</span>'
+      h+='<div class="db-conflict">';
+      h+='<div class="db-conflict-head">'
+        +'<span class="db-conflict-name">'+escH(eu.eng.name)+'</span>'
         +(eu.eng.role?'<span style="font-size:9px;color:var(--muted)">'+escH(eu.eng.role)+'</span>':'')
         +'<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(120,120,140,.15);color:'+grpColor+'">'+escH(eg?eg.name:'')+'</span>'
         +'<div style="flex:1"></div>'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--danger)">'+overPct+'% '+t('peak')+'</span>'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{n} month(s)',{n:eu.overMonths.length})+'</span>'
+        +'<span class="db-conflict-peak">'+overPct+'% '+t('peak')+'</span>'
+        +'<span style="font-family:var(--db-mono);font-size:9px;color:var(--muted)">'+t('{n} month(s)',{n:eu.overMonths.length})+'</span>'
         +'</div>';
-      // Over months mini bar
-      h+='<div style="display:flex;gap:3px;margin-bottom:6px;flex-wrap:wrap">';
+      // Over months mini chips
+      h+='<div class="db-cflex" style="margin-bottom:6px">';
       eu.overMonths.slice(0,8).forEach(function(m){
-        h+='<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(241,67,53,.15);color:var(--danger)">'+m.slice(0,7)+'</span>';
+        h+='<span class="db-mchip">'+m.slice(0,7)+'</span>';
       });
       if(eu.overMonths.length>8) h+='<span style="font-size:8px;color:var(--muted)">+'+( eu.overMonths.length-8)+'</span>';
       h+='</div>';
       // Conflicting projects
       if(cd.conflictProjs.length){
-        h+='<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px;letter-spacing:.04em">'+t('CONFLICTS ACROSS:')+'</div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:4px">';
+        h+='<div style="font-family:var(--db-mono);font-size:8px;color:var(--muted);margin-bottom:4px;letter-spacing:.04em">'+t('CONFLICTS ACROSS:')+'</div>'
+          +'<div class="db-cflex">';
         cd.conflictProjs.forEach(function(cp){
           h+='<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+(cp.p.color||'var(--muted)')+'22;border:1px solid '+(cp.p.color||'var(--muted)')+'44;color:'+(cp.p.color||'var(--text)')+'">'+escH(cp.p.name)+'<span style="color:var(--muted);margin-left:4px">'+cp.months.length+t('mo')+'</span></span>';
         });
         h+='</div>';
       }
-      // Find replacement button
-      h+='<button onclick="showDashReplacements('+eu.eng.id+',this)" '
-        +'style="margin-top:7px;width:100%;font-family:IBM Plex Mono,monospace;font-size:9px;'
-        +'background:none;border:1px solid var(--danger);color:var(--danger);border-radius:4px;'
-        +'padding:3px 0;cursor:pointer;letter-spacing:.04em" '
-        +'onmouseenter="this.style.background=\'rgba(241,67,53,.12)\'" '
-        +'onmouseleave="this.style.background=\'none\'">🔍 '+t('FIND REPLACEMENTS')+'</button>';
+      h+='<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>';
       h+='</div>';
     });
     h+='</div></div>';
@@ -724,48 +709,14 @@ export function renderResDashboard(){
 
 
   // ── Financial analysis: team cost vs project allocation ─────────
+  // Totals (_teamCostIncl / _allocCostTotal / _unallocCost / _allocPct /
+  // _unallocPct / _noCostWarnings / _monthInactive) are computed once up top and
+  // reused here, so this section and the header hero never diverge.
 
-  // Build financial data
-  var _finMonths = months; // use same period as dashboard
-  var _nMonths   = _finMonths.length;
-
-  // Total team cost for the period (all active, non-excluded engineers × monthlyCost × months)
-  var _teamCostAll  = 0, _teamCostIncl = 0;
-  var _noCostWarnings = [];
-  var _allocCostTotal = 0;  // cost attributed to projects
-
-  Object.values(engUtil).forEach(function(eu) {
-    var mc = eu.eng.monthlyCost || 0;
-    _teamCostAll += mc * _nMonths;
-    if (_finExclude.has(eu.eng.id)||(eu.eng.planningOnly&&!eu.eng.includeInCost)||eu.eng.excludeFromCalc) return;
-    if (!mc) _noCostWarnings.push(eu.eng.name);
-    var activeMo = _finMonths.filter(function(m){
-      var s = eu.monthStatus && eu.monthStatus[m];
-      return s!=='m' && s!=='r';
-    }).length;
-    _teamCostIncl += mc * activeMo;
-    // Allocated cost = FTE × monthlyCost per month
-    _finMonths.forEach(function(m) {
-      var status = eu.monthStatus && eu.monthStatus[m];
-      if(status==='m'||status==='r') return; // medical/resigned: no cost this month
-      var fte = Math.min(eu.monthAllocs[m] || 0, 1);
-      _allocCostTotal += fte * mc;
-    });
-  });
-
-
-  var _unallocCost   = Math.max(0, _teamCostIncl - _allocCostTotal);
-  var _allocPct      = _teamCostIncl > 0 ? Math.round(_allocCostTotal / _teamCostIncl * 100) : 0;
-  var _unallocPct    = 100 - _allocPct;
-
-  h += '<div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">';
-  h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">'+t('FINANCIAL ANALYSIS')+'</span>'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'
-    + t('{n} months',{n:_nMonths}) + ' · ' + t('{n} engineers',{n:Object.values(engUtil).length})
-    + (_finExclude.size ? ' · ' + t('{n} excluded',{n:_finExclude.size}) : '')
-    + '</span>'
-    + '</div>';
+  h += '<div class="db-sec"><div class="db-sec-title">'+t('FINANCIAL ANALYSIS')
+    + ' <span class="db-hint">— '+t('{n} months',{n:_nMonths})+' · '+t('{n} engineers',{n:Object.values(engUtil).length})
+    + (_finExclude.size ? ' · '+t('{n} excluded',{n:_finExclude.size}) : '')
+    + '</span></div>';
 
   // Warnings
   if (_noCostWarnings.length) {
@@ -784,86 +735,65 @@ export function renderResDashboard(){
   // (The uncapped per-project attribution total is the top "TOTAL PLAN COST" card;
   // it is NOT repeated here because, unlike ALLOCATED, it is not capped at 1 FTE and
   // so would not satisfy this identity. See ARCHITECTURE.md › Cost model.)
-  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">';
+  h += '<div class="db-ident">';
   [
-    { val: Math.round(_teamCostIncl/1000) + 'k€', label: t('TEAM COST PERIOD'), sub: t('{n} mo × salaries',{n:_nMonths}), col: 'var(--accent2)' },
-    { val: Math.round(_allocCostTotal/1000)    + 'k€', label: t('ALLOCATED TO PROJ'), sub: _allocPct + '% '+t('of team cost'),  col: 'var(--accent)' },
-    { val: Math.round(_unallocCost/1000)  + 'k€', label: t('UNALLOCATED'),       sub: _unallocPct + '% '+t('bench / overhead'), col: _unallocPct > 30 ? 'var(--warn)' : 'var(--muted)' },
+    { val: _dbEur(_teamCostIncl),   label: t('TEAM COST PERIOD'), sub: t('{n} mo × salaries',{n:_nMonths}),   col: 'var(--accent2)' },
+    { val: _dbEur(_allocCostTotal), label: t('ALLOCATED TO PROJ'), sub: _allocPct + '% '+t('of team cost'),     col: 'var(--accent)' },
+    { val: _dbEur(_unallocCost),    label: t('UNALLOCATED'),       sub: _unallocPct + '% '+t('bench / overhead'), col: _unallocPct > 30 ? 'var(--warn)' : 'var(--muted)' },
   ].forEach(function(k) {
-    h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px">'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:20px;font-weight:700;color:' + k.col + '">' + k.val + '</div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.06em;margin-top:3px">' + k.label + '</div>'
-      + '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + k.sub + '</div>'
+    h += '<div class="db-ident-box">'
+      + '<div class="db-ib-v" style="color:' + k.col + '">' + k.val + '</div>'
+      + '<div class="db-ib-k">' + k.label + '</div>'
+      + '<div class="db-ib-d">' + k.sub + '</div>'
       + '</div>';
   });
   h += '</div>';
 
-  // Allocation bar
-  h += '<div style="margin-bottom:12px">'
-    + '<div style="display:flex;justify-content:space-between;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:4px">'
-    + '<span>'+t('Allocated to projects:')+' ' + _allocPct + '%</span>'
-    + '<span>'+t('Unallocated:')+' ' + _unallocPct + '%</span>'
-    + '</div>'
-    + '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;display:flex">'
-    + '<div style="width:' + _allocPct + '%;background:var(--accent);border-radius:5px 0 0 5px"></div>'
-    + '<div style="flex:1;background:' + (_unallocPct > 30 ? 'rgba(241,164,53,.3)' : 'var(--surface)') + '"></div>'
-    + '</div>'
+  // Allocation bar (TEAM COST = ALLOCATED + UNALLOCATED)
+  h += '<div style="margin-bottom:14px">'
+    + '<div class="db-identbar-legend"><span>'+t('Allocated to projects:')+' <b>' + _allocPct + '%</b></span><span>'+t('Unallocated:')+' <b>' + _unallocPct + '%</b></span></div>'
+    + '<div class="db-identbar"><div class="db-ib-a" style="width:' + _allocPct + '%"></div><div class="db-ib-b"></div></div>'
     + '</div>';
 
   // Per-engineer breakdown
   var _finRows = Object.values(engUtil)
     .sort(function(a, b) { return (b.eng.monthlyCost||0) - (a.eng.monthlyCost||0); });
 
-  h += '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px">'
-    + '<thead><tr style="background:var(--surface)">'
-    + '<th style="text-align:left;padding:5px 10px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em">'+t('ENGINEER')+'</th>'
-    + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('MONTHLY')+'</th>'
-    + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('PERIOD COST')+'</th>'
-    + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('ALLOC COST')+'</th>'
-    + '<th style="text-align:right;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('% ALLOC')+'</th>'
-    + '<th style="text-align:center;padding:5px 8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'+t('EXCLUDE')+'</th>'
+  h += '<div class="db-table-card"><table class="db-table">'
+    + '<thead><tr>'
+    + '<th>'+t('ENGINEER')+'</th><th>'+t('MONTHLY')+'</th><th>'+t('PERIOD COST')+'</th>'
+    + '<th>'+t('ALLOC COST')+'</th><th>'+t('% ALLOC')+'</th><th style="text-align:center">'+t('EXCLUDE')+'</th>'
     + '</tr></thead><tbody>';
 
   _finRows.forEach(function(eu, i) {
     var mc = eu.eng.monthlyCost || 0;
     var excl = _finExclude.has(eu.eng.id);
     var engExcluded = eu.eng.excludeFromCalc;
-    var _activeMoEng = _finMonths.filter(function(m){
-      var s=eu.monthStatus&&eu.monthStatus[m]; return s!=='m'&&s!=='r';
-    }).length;
+    var _activeMoEng = _finMonths.filter(function(m){ return !_monthInactive(eu,m); }).length;
     var periodCost = mc * _activeMoEng;
     var allocCostEng = _finMonths.reduce(function(s, m) {
       return s + Math.min(eu.monthAllocs[m] || 0, 1) * mc;
     }, 0);
     var allocPctEng = periodCost > 0 ? Math.round(allocCostEng / periodCost * 100) : 0;
-    var rowBg = (excl||engExcluded) ? 'background:rgba(90,99,128,.08);' : (i%2===1 ? 'background:rgba(255,255,255,.01);' : '');
     var eg = engGroups.find(function(g){ return g.id === eu.eng.groupId; });
-    h += '<tr style="border-top:1px solid var(--border);' + rowBg + ((excl||engExcluded) ? 'opacity:.4;' : '') + '">'
-      + '<td style="padding:5px 10px">'
-      + '<span style="font-weight:600;color:' + (engExcluded?'var(--muted)':'var(--text)') + '">' + escH(eu.eng.name) + '</span>'
+    h += '<tr style="' + ((excl||engExcluded) ? 'opacity:.4' : '') + '">'
+      + '<td><span style="font-weight:600;color:' + (engExcluded?'var(--muted)':'var(--text)') + '">' + escH(eu.eng.name) + '</span>'
       + (engExcluded ? '<span style="font-size:9px;color:var(--warn);margin-left:6px">⊘ '+t('excluded')+'</span>' : '')
       + (eg ? '<span style="font-size:9px;color:' + eg.color + ';margin-left:6px">' + escH(eg.name) + '</span>' : '')
       + (!mc ? '<span style="font-size:9px;color:var(--warn);margin-left:6px">⚠ '+t('no cost')+'</span>' : '')
       + '</td>'
-      + '<td style="padding:5px 8px;text-align:right;font-family:IBM Plex Mono,monospace;color:var(--muted)">' + (mc ? mc.toLocaleString() + '€' : '—') + '</td>'
-      + '<td style="padding:5px 8px;text-align:right;font-family:IBM Plex Mono,monospace;color:var(--text);font-weight:600">' + (periodCost ? Math.round(periodCost/1000) + 'k€' : '—') + '</td>'
-      + '<td style="padding:5px 8px;text-align:right;font-family:IBM Plex Mono,monospace;color:var(--accent)">' + (allocCostEng ? Math.round(allocCostEng/1000) + 'k€' : '—') + '</td>'
-      + '<td style="padding:5px 8px;text-align:right">'
-      + (mc ? '<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">'
-        + '<div style="width:40px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">'
-        + '<div style="height:4px;width:' + Math.min(allocPctEng,100) + '%;background:' + (allocPctEng < 50 ? 'var(--warn)' : 'var(--accent)') + ';border-radius:2px"></div>'
-        + '</div>'
-        + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);min-width:28px;text-align:right">' + allocPctEng + '%</span>'
-        + '</div>' : '—')
-      + '</td>'
-      + '<td style="padding:5px 8px;text-align:center">'
+      + '<td class="db-num db-muted">' + (mc ? mc.toLocaleString() + '€' : '—') + '</td>'
+      + '<td class="db-num" style="font-weight:600">' + (periodCost ? Math.round(periodCost/1000) + 'k€' : '—') + '</td>'
+      + '<td class="db-num" style="color:var(--accent)">' + (allocCostEng ? Math.round(allocCostEng/1000) + 'k€' : '—') + '</td>'
+      + '<td>' + (mc ? '<div class="db-share-cell"><div class="db-share-bar"><i style="width:' + Math.min(allocPctEng,100) + '%;background:' + (allocPctEng < 50 ? 'var(--warn)' : 'var(--accent)') + '"></i></div><span class="db-muted" style="min-width:28px">' + allocPctEng + '%</span></div>' : '—') + '</td>'
+      + '<td style="text-align:center">'
       + '<input type="checkbox" ' + (excl ? 'checked' : '') + ' '
       + 'onchange="(function(id,cb){if(cb.checked)_finExclude.add(id);else _finExclude.delete(id);saveState();clearTimeout(window._finDebounce);window._finDebounce=setTimeout(renderResDashboard,200);})('+eu.eng.id+',this)" '
       + 'style="accent-color:var(--muted);cursor:pointer" title="'+t('Exclude from financial totals')+'">'
       + '</td>'
       + '</tr>';
   });
-  h += '</tbody></table>';
+  h += '</tbody></table></div>';
   h += '</div>';
 
   // ── Transfer costs + actions ───────────────────────────────────
@@ -902,74 +832,55 @@ export function _doExportDashboardPDF(){
   var title=(G('res-title-input')?G('res-title-input').value:'Resource Plan')+' — Dashboard';
   var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
 
-  var resolved=content
-    .replace(/var\(--bg\)/g,'#f8f9fa')
-    .replace(/var\(--surface\)/g,'#ffffff')
-    .replace(/var\(--border\)/g,'#dee2e6')
-    .replace(/var\(--text\)/g,'#1a1a2e')
-    .replace(/var\(--muted\)/g,'#6b7280')
-    .replace(/var\(--accent\)/g,'#2d6a1f')
-    .replace(/var\(--accent2\)/g,'#1e6b5e')
-    .replace(/var\(--danger\)/g,'#dc2626')
-    .replace(/fill="var\(--accent\)"/g,'fill="#2d6a1f"')
-    .replace(/fill="var\(--accent2\)"/g,'fill="#1e6b5e"')
-    .replace(/fill="var\(--border\)"/g,'fill="#dee2e6"')
-    .replace(/fill="var\(--danger\)"/g,'fill="#dc2626"')
-    .replace(/fill="#5be5c866"/g,'fill="#1e6b5e66"')
-    .replace(/stroke="var\(--border\)"/g,'stroke="#dee2e6"')
-    .replace(/stroke="var\(--accent\)"/g,'stroke="#2d6a1f"')
-    .replace(/rgba\(200,241,53,\.04\)/g,'rgba(45,106,31,.04)')
-    .replace(/rgba\(200,241,53,\.1\)/g,'rgba(45,106,31,.08)')
-    .replace(/rgba\(241,67,53,\.04\)/g,'rgba(220,38,38,.04)')
-    .replace(/rgba\(241,67,53,\.15\)/g,'rgba(220,38,38,.12)')
-    .replace(/<select[^>]*>[\s\S]*?<\/select>/g,'<span style="color:#6b7280;font-size:10px">[filtered]</span>')
-    .replace(/<button[^>]*onclick="renderResDashboard\(\)"[^>]*>[\s\S]*?<\/button>/g,'')
-    .replace(/<button[^>]*onclick="setEngDashGroup[^>]*>[\s\S]*?<\/button>/g,'')
-    .replace(/<button[^>]*onclick="engDash[^>]*>[\s\S]*?<\/button>/g,'')
-    .replace(/<button[^>]*onclick="transferPlanCosts[^>]*>[\s\S]*?<\/button>/g,'');
+  // Pull the live db-* class rules from the page so the print window renders the
+  // real design. With print-tuned :root tokens below, every var(--…) reference
+  // (inline styles, SVG fills AND these classes) resolves to a print-legible
+  // colour — no more brittle regex colour-swapping of the markup.
+  var dbRules='';
+  try{
+    [].forEach.call(document.styleSheets,function(ss){
+      var rules; try{ rules=ss.cssRules; }catch(e){ return; }
+      if(!rules) return;
+      [].forEach.call(rules,function(r){
+        if(r.selectorText && r.selectorText.indexOf('.db-')>=0) dbRules+=r.cssText+'\n';
+      });
+    });
+  }catch(e){}
 
   var win=window.open('','_blank');
   if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
 
+  // Print-tuned token overrides (light ground; lime→dark-green so it reads on paper).
+  var css=':root{'
+    +'--bg:#ffffff;--surface:#ffffff;--surface2:#f4f6f8;--border:#dee2e6;'
+    +'--text:#1a1a2e;--muted:#5f6b7a;--dim:#9aa3ad;'
+    +'--accent:#2d6a1f;--accent2:#1e6b5e;--danger:#c0271b;--warn:#b45309;'
+    +'--db-mono:\'IBM Plex Mono\',ui-monospace,Menlo,monospace;--db-r:9px;--db-track:#e6e9ec;}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff;padding:20px;font-size:12px;font-variant-numeric:tabular-nums}'
+    +dbRules
+    // static print: drop interactive controls, un-clip the scrollable chart
+    +'.db-toolbar,button,select,input[type=range],input[type=checkbox]{display:none!important}'
+    +'.db-chart-card{overflow:visible!important}'
+    +'.report-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #2d6a1f}'
+    +'.report-title{font-size:20px;font-weight:700;color:#1a1a2e}'
+    +'.report-date{font-size:10px;color:#5f6b7a;margin-top:3px}'
+    +'.report-footer{margin-top:20px;padding-top:10px;border-top:1px solid #dee2e6;font-size:9px;color:#9aa3ad;display:flex;justify-content:space-between}'
+    +'@media print{@page{size:A3 landscape;margin:8mm}body{padding:6px}}';
+
   win.document.write('<!DOCTYPE html><html><head>'
     +'<meta charset="UTF-8">'
     +'<title>'+escH(title)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:20px;font-size:12px;}'
-    +'.report-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:3px solid #2d6a1f;}'
-    +'.report-title{font-size:20px;font-weight:700;color:#1a1a2e;}'
-    +'.report-date{font-size:10px;color:#6b7280;margin-top:3px;}'
-    +'.alloc-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;}'
-    +'.kpi-card{background:#f8f9fa;border:1px solid #dee2e6;border-radius:7px;padding:12px 14px;}'
-    +'.kpi-val{font-size:22px;font-weight:700;color:#2d6a1f;font-family:monospace;line-height:1;}'
-    +'.kpi-label{font-size:9px;font-weight:700;color:#6b7280;letter-spacing:.06em;margin-top:4px;text-transform:uppercase;font-family:monospace;}'
-    +'.kpi-sub{font-size:10px;color:#9ca3af;margin-top:2px;}'
-    +'.sum-section-title{font-family:monospace;font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #dee2e6;}'
-    +'.alloc-proj-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}'
-    +'.alloc-proj-table th{text-align:left;padding:4px 8px;font-family:monospace;font-size:9px;color:#6b7280;border-bottom:1px solid #dee2e6;text-transform:uppercase;letter-spacing:.04em;background:#f8f9fa;}'
-    +'.alloc-proj-table td{padding:5px 8px;border-bottom:1px solid #f0f0f0;}'
-    +'.progress-bar-wrap{background:#dee2e6;border-radius:2px;height:4px;}'
-    +'.progress-bar{height:4px;border-radius:2px;background:#2d6a1f;}'
-    +'.bar-chart-wrap{margin:4px 0 12px;overflow-x:visible;}'
-    +'.dash-filter-bar{display:none!important;}'
-    +'.kpi-card .kpi-val{font-size:18px;}'
-    +'.report-footer{margin-top:20px;padding-top:10px;border-top:1px solid #dee2e6;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between;}'
-    +'@media print{'
-    +'@page{size:A3 landscape;margin:8mm;}'
-    +'body{padding:6px;}'
-    +'.alloc-kpi-grid{grid-template-columns:repeat(5,1fr);}'
-    +'}'
-    +'</style></head><body>'
+    +'<style>'+css+'</style></head><body>'
     +'<div class="report-header">'
     +'<div><div class="report-title">'+escH(title)+'</div>'
     +'<div class="report-date">Generated '+dateStr
     +(engDashFilterEng&&engDashFilterEng.size?' · Engineer: '+escH([...engDashFilterEng].join(', ')):'')
     +(engDashFilterProj&&engDashFilterProj.size?' · Project: '+escH([...engDashFilterProj].join(', ')):'')
     +'</div></div>'
-    +'<div style="font-size:9px;color:#9ca3af;text-align:right;font-family:monospace">Project Matrix</div>'
+    +'<div style="font-size:9px;color:#9aa3ad;text-align:right;font-family:monospace">Project Matrix</div>'
     +'</div>'
-    +resolved
+    +content
     +'<div class="report-footer">'
     +'<span>'+escH(title)+'</span>'
     +'<span>Project Matrix · '+dateStr+'</span>'
@@ -1167,7 +1078,7 @@ export function showDashReplacements(engId, btn) {
   h += '</div>';
 
   // Insert panel after the button's parent card
-  var card = btn.closest('.kpi-card') || btn.parentElement;
+  var card = btn.closest('.db-ucard') || btn.closest('.kpi-card') || btn.parentElement;
   card.insertAdjacentHTML('afterend', h);
 
   // Store skill filter on the button for re-renders
@@ -1268,9 +1179,9 @@ export function openAddResourceModal(fromEngId) {
     +'<select id="nar-reportsto" style="background:var(--bg);border:1px solid var(--border);color:var(--text);'
     +'font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;width:100%">'
     +'<option value="">'+t('— Not set —')+'</option>'
-    +(fromEng&&fromEng.idcard&&fromEng.idcard.reportsto
+    +(fromEng&&fromEng.idcard&&fromEng.idcard.reportsTo
       ? engineers.filter(function(e){ return !e.vacant; }).map(function(e){
-          var sel = String(e.id)===String(fromEng.idcard.reportsto)?' selected':'';
+          var sel = String(e.id)===String(fromEng.idcard.reportsTo)?' selected':'';
           return '<option value="'+e.id+'"'+sel+'>'+escH(e.name)+'</option>';
         }).join('')
       : engineers.filter(function(e){ return !e.vacant; }).map(function(e){
@@ -1320,12 +1231,16 @@ export function confirmAddResource(fromEngId) {
     skills = JSON.parse(JSON.stringify(fromEng.skills || []));
   }
 
-  // Build idcard with reportsto for org chart
-  var idcard = {};
-  if (reportsTo) idcard.reportsto = reportsTo;
+  // Build idcard with reportsTo for org chart (canonical camelCase key + manager name).
+  var mgrEng = reportsTo ? engineers.find(function(e){ return String(e.id)===String(reportsTo); }) : null;
+  var idcard = makeIdCard();
+  if (reportsTo) { idcard.reportsTo = String(reportsTo); idcard.manager = mgrEng ? mgrEng.name : ''; }
 
-  // Create the engineer
-  var newEng = {
+  // Create the engineer via the factory so every flag + idcard sub-object stays
+  // in sync (see CLAUDE.md › Adding a field to Engineer). A raw literal here would
+  // silently omit planningOnly/includeInCost/excludeFromCalc/includeTalent and the
+  // idcard sub-objects newer code dereferences.
+  var newEng = makeEngineer({
     id:           nextEngId++,
     name:         name,
     monthlyCost:  cost,
@@ -1335,7 +1250,7 @@ export function confirmAddResource(fromEngId) {
     vacant:       vacant,
     skills:       skills,
     idcard:       idcard,
-  };
+  });
 
   engineers.push(newEng);
 

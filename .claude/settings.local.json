@@ -91,7 +91,9 @@
       "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); console.log\\('top keys:',Object.keys\\(d\\)\\); const s=d.state||d; console.log\\('state keys:',Object.keys\\(s\\).slice\\(0,40\\)\\); console.log\\('engineers:',\\(s.engineers||[]\\).length\\); const e=\\(s.engineers||[]\\)[0]; console.log\\('sample idcard keys:', e&&e.idcard?Object.keys\\(e.idcard\\):null\\);\")",
       "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); require\\('fs'\\).writeFileSync\\('./dist/_demo_state.json', JSON.stringify\\(d.state\\)\\);\")",
       "Bash(node -e \"const http=require\\('http'\\),fs=require\\('fs'\\),p=require\\('path'\\);http.createServer\\(\\(q,r\\)=>{let f=q.url==='/'?'/matrix.html':q.url;f=p.join\\(process.cwd\\(\\),decodeURIComponent\\(f.split\\('?'\\)[0]\\)\\);fs.readFile\\(f,\\(e,d\\)=>{if\\(e\\){r.writeHead\\(404\\);r.end\\('nf'\\);return;}r.writeHead\\(200,{'Content-Type':f.endsWith\\('.html'\\)?'text/html':'application/octet-stream'}\\);r.end\\(d\\);}\\);}\\).listen\\(8791,\\(\\)=>console.log\\('serving on 8791'\\)\\);\")",
-      "PowerShell($c = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue; \"stopped $\\($c.OwningProcess\\)\" } else { \"no listener on 8791\" })"
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue; \"stopped $\\($c.OwningProcess\\)\" } else { \"no listener on 8791\" })",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)"
     ]
   }
 }

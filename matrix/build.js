@@ -14,6 +14,7 @@ const CSS_FILES = [
   'styles/print.css',
   'styles/nav.css',
   'styles/charter.css',
+  'styles/dashboard.css',
 ];
 const css = CSS_FILES
   .map(f => readFileSync(join(SRC, f), 'utf8').trim())
