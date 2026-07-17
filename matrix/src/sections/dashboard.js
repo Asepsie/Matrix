@@ -133,7 +133,7 @@ export function renderResDashboard(){
   var _teamCostIncl=0, _allocCostTotal=0, _noCostWarnings=[];
   Object.values(engUtil).forEach(function(eu){
     var mc=eu.eng.monthlyCost||0;
-    if(_finExclude.has(eu.eng.id)||(eu.eng.planningOnly&&!eu.eng.includeInCost)||eu.eng.excludeFromCalc)return;
+    if(_finExclude.has(eu.eng.uid)||(eu.eng.planningOnly&&!eu.eng.includeInCost)||eu.eng.excludeFromCalc)return;
     if(!mc)_noCostWarnings.push(eu.eng.name);
     _finMonths.forEach(function(m){
       if(_monthInactive(eu,m))return;
@@ -767,7 +767,7 @@ export function renderResDashboard(){
 
   _finRows.forEach(function(eu, i) {
     var mc = eu.eng.monthlyCost || 0;
-    var excl = _finExclude.has(eu.eng.id);
+    var excl = _finExclude.has(eu.eng.uid);
     var engExcluded = eu.eng.excludeFromCalc;
     var _activeMoEng = _finMonths.filter(function(m){ return !_monthInactive(eu,m); }).length;
     var periodCost = mc * _activeMoEng;
@@ -788,7 +788,7 @@ export function renderResDashboard(){
       + '<td>' + (mc ? '<div class="db-share-cell"><div class="db-share-bar"><i style="width:' + Math.min(allocPctEng,100) + '%;background:' + (allocPctEng < 50 ? 'var(--warn)' : 'var(--accent)') + '"></i></div><span class="db-muted" style="min-width:28px">' + allocPctEng + '%</span></div>' : '—') + '</td>'
       + '<td style="text-align:center">'
       + '<input type="checkbox" ' + (excl ? 'checked' : '') + ' '
-      + 'onchange="(function(id,cb){if(cb.checked)_finExclude.add(id);else _finExclude.delete(id);saveState();clearTimeout(window._finDebounce);window._finDebounce=setTimeout(renderResDashboard,200);})('+eu.eng.id+',this)" '
+      + 'onchange="(function(id,cb){if(cb.checked)_finExclude.add(id);else _finExclude.delete(id);saveState();clearTimeout(window._finDebounce);window._finDebounce=setTimeout(renderResDashboard,200);})(\''+eu.eng.uid+'\',this)" '
       + 'style="accent-color:var(--muted);cursor:pointer" title="'+t('Exclude from financial totals')+'">'
       + '</td>'
       + '</tr>';
@@ -976,7 +976,7 @@ export function showDashReplacements(engId, btn) {
 
   // ── Build panel HTML ─────────────────────────────────────────────
   function perfSym(e) {
-    var key = _nineBoxPlacements[e.id];
+    var key = _nineBoxPlacements[e.uid];
     if (!key) return '';
     var p = parseInt(key.split('-')[0], 10);
     return p===3 ? '<span style="color:#c8f135">▲</span>'

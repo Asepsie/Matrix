@@ -525,7 +525,7 @@ export function saveRoster(){
 /** Adds a new engineer to the selected group and re-renders. */
 export function addEngineer(){
   const gid=selectedEngGroupId;
-  engineers.push({id:nextEngId++,name:'New Engineer',monthlyCost:8000,groupId:gid,role:'',location:'',skills:[],idcard:{},excludeFromCalc:false});
+  engineers.push({uid:newUid(),id:nextEngId++,name:'New Engineer',monthlyCost:8000,groupId:gid,role:'',location:'',skills:[],idcard:{},excludeFromCalc:false});
   if(gid){const g=engGroups.find(g=>g.id===gid);if(g)g.collapsed=false;}
   saveState(); // persist before render so reload can't lose the new engineer
   renderResActiveTab();
@@ -541,7 +541,7 @@ export function deleteEngineer(id){
 /* alloc row ops */
 /** Inserts a new empty alloc row after the given index (or at end if index is out of range). */
 export function addAllocRowAfter(idx){
-  const row={id:nextAllocId++,engId:null,projectId:null,allocs:{},budgetLine:''};
+  const row={uid:newUid(),id:nextAllocId++,engId:null,projectId:null,allocs:{},budgetLine:''};
   if(idx<0||idx>=allocRows.length) allocRows.push(row);
   else allocRows.splice(idx+1,0,row);
   renderResPlan();
@@ -1086,13 +1086,13 @@ export function setPlanView(mode){planViewMode=mode;renderResPlan();}
 
 /** Adds a new empty alloc row pre-assigned to an engineer. */
 export function addRowForEng(engId){
-  const row={id:nextAllocId++,engId,projectId:null,allocs:{}};
+  const row={uid:newUid(),id:nextAllocId++,engId,projectId:null,allocs:{}};
   allocRows.push(row);
   renderResPlan();
 }
 /** Adds a new empty alloc row pre-assigned to a project. */
 export function addRowForProj(projId){
-  const row={id:nextAllocId++,engId:null,projectId:projId,allocs:{}};
+  const row={uid:newUid(),id:nextAllocId++,engId:null,projectId:projId,allocs:{}};
   allocRows.push(row);
   renderResPlan();
 }

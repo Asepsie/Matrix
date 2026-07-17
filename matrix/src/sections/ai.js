@@ -384,11 +384,11 @@ function aiCellLabel(key){
   return _aiCellMap[key]||key;
 }
 
-function aiNineBoxTrajectory(engId){
+function aiNineBoxTrajectory(engUid){
   if(typeof _nineBoxHistory!=='object'||!_nineBoxHistory)return '';
   var parts=[];
   Object.keys(_nineBoxHistory).sort().forEach(function(y){
-    var k=_nineBoxHistory[y]&&_nineBoxHistory[y][engId];
+    var k=_nineBoxHistory[y]&&_nineBoxHistory[y][engUid];
     if(k)parts.push(y+'→'+aiCellLabel(k));
   });
   return parts.join(', ');
@@ -424,12 +424,12 @@ function aiPersonDeep(e){
   var tal=[];
   if(ic.potential)tal.push('potential: '+ic.potential);
   if(ic.mobility)tal.push('mobility: '+ic.mobility);
-  var nb=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
+  var nb=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;
   if(nb)tal.push('nine-box: '+aiCellLabel(nb));
-  var disc=(typeof _discPlacements!=='undefined'&&_discPlacements)?_discPlacements[e.id]:null;
+  var disc=(typeof _discPlacements!=='undefined'&&_discPlacements)?_discPlacements[e.uid]:null;
   if(disc)tal.push('DISC: '+(typeof disc==='object'?JSON.stringify(disc):disc));
   if(tal.length)L.push(tal.join(' · '));
-  var traj=aiNineBoxTrajectory(e.id);
+  var traj=aiNineBoxTrajectory(e.uid);
   if(traj)L.push('nine-box history: '+traj);
   if(ic.strengths)L.push('strengths: '+ic.strengths);
   if(ic.devarea)L.push('development areas: '+ic.devarea);
@@ -495,7 +495,7 @@ function aiOverview(){
   lines.push('PEOPLE:');
   active.slice(0,60).forEach(function(e){
     var ic=e.idcard||{};
-    var nb=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
+    var nb=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;
     var head=['- '+(e.name||'?')];
     if(e.role)head.push(e.role);
     if(ic.seniority&&ic.seniority!==e.role)head.push(ic.seniority);

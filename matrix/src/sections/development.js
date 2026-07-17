@@ -46,8 +46,8 @@ function renderDevelopment(){
   function priorityScore(eng){
     var score=0;
     var al=engAlloc[eng.id]||{};
-    var nbKey=_nineBoxPlacements[eng.id];
-    var discKey=_discPlacements[eng.id];
+    var nbKey=_nineBoxPlacements[eng.uid];
+    var discKey=_discPlacements[eng.uid];
     if((spofByEng[eng.id]||[]).length>0)score+=30;
     if(al.overMonths&&al.overMonths.length>0)score+=25;
     if(nbKey==='1-1')score+=20; // Risk
@@ -105,9 +105,9 @@ function renderDevelopment(){
     var score=priorityScore(eng);
     var al=engAlloc[eng.id]||{};
     var c=eng.idcard||{};
-    var nbKey=_nineBoxPlacements[eng.id];
+    var nbKey=_nineBoxPlacements[eng.uid];
     var nbCell=nbKey?nbByKey[nbKey]:null;
-    var discKey=_discPlacements[eng.id];
+    var discKey=_discPlacements[eng.uid];
     var discQ2=discKey?discByKey[discKey]:null;
     var spofs=spofByEng[eng.id]||[];
     var photo=_photoCache&&_photoCache.get(eng.id);

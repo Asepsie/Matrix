@@ -215,11 +215,22 @@ export function importFullBackup(){
           SV('ax-y-min',a.yMin??0);SV('ax-y-max',a.yMax??10);SV('ax-grid',a.grid??5);
         }
 
-        // Dataset swap: photos + talent placements are keyed by per-dataset
-        // engIds, so replace them wholesale from the backup rather than merging
-        // (a merge leaves the previous dataset's photos attached to colliding
-        // ids — the classic "wrong face on the wrong person" mixup).
-        idbReplaceAllPhotos(photos).then(function(){
+        // uid identity pass over the swapped-in dataset. An OLD backup has no uids
+        // and id-keyed side-stores; a NEW (post-migration) backup already carries
+        // uids and uid-keyed stores. uidMigrate backfills/keeps uids and re-keys the
+        // in-memory placements (nine-box/DISC/KT/finExclude) accordingly, returning
+        // the id→uid map. We remap the photo map with the SAME map so an old backup's
+        // id-keyed photos realign to the freshly-assigned uids (a new backup's uid
+        // keys pass straight through).
+        var _idToUid={};
+        try{ _idToUid=uidMigrate()||{}; }catch(e){ console.warn('[EIM] uid migration (backup restore) failed:',e); }
+        var photosU=uidRemapObj(photos,_idToUid);
+
+        // Dataset swap: photos + talent placements are keyed by uid (per-dataset
+        // engIds for legacy backups, remapped above), so replace them wholesale
+        // from the backup rather than merging (a merge leaves the previous dataset's
+        // photos attached to colliding ids — the "wrong face on the wrong person" mixup).
+        idbReplaceAllPhotos(photosU).then(function(){
           idbUpdateStatus();
           saveState();
           talentIdbSave();   // make EIM_TalentData match the restored dataset

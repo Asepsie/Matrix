@@ -44,13 +44,13 @@ function _discQuadrants(){
 
 // builds the people-chip HTML for one quadrant
 function _discPeopleHTML(key,placements,engList,photoCache,forExport){
-  var placed=engList.filter(function(e){return placements[e.id]===key;});
+  var placed=engList.filter(function(e){return placements[e.uid]===key;});
   if(!placed.length){
     if(forExport)return '';
     return '<div style="min-height:28px;color:var(--muted);font-size:10px;font-family:IBM Plex Mono,monospace;opacity:.5;padding:4px">Drop here</div>';
   }
   var chips=placed.map(function(e){
-    var photo=photoCache&&photoCache.get&&photoCache.get(e.id);
+    var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
     var avSz=forExport?26:28;
     var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
@@ -83,9 +83,9 @@ export function renderDiscMatrix(){
   var body=G('res-body');if(!body)return;
   if(!_discPlacements)_discPlacements={};
   var QUADRANTS=_discQuadrants();
-  var placedSet=new Set(Object.keys(_discPlacements).map(function(k){return parseInt(k);}));
+  var placedSet=new Set(Object.keys(_discPlacements));   // keys are uids
   var talentEngsD=engineers.filter(function(e){return !e.vacant&&e.includeTalent!==false;});
-  var unplaced=talentEngsD.filter(function(e){return !placedSet.has(e.id)||!QUADRANTS.find(function(q){return q.key===_discPlacements[e.id];});});
+  var unplaced=talentEngsD.filter(function(e){return !placedSet.has(e.uid)||!QUADRANTS.find(function(q){return q.key===_discPlacements[e.uid];});});
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
@@ -104,7 +104,7 @@ export function renderDiscMatrix(){
       +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:.06em">UNASSIGNED &#8212; drag to a DISC quadrant</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:5px;padding:7px;background:var(--surface);border:1px solid var(--border);border-radius:8px">'
       +unplaced.map(function(e){
-        var photo=_photoCache&&_photoCache.get(e.id);
+        var photo=_photoCache&&_photoCache.get(e.uid);
         var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
         var av=photo
           ?('<img src="'+photo+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">')
@@ -246,11 +246,12 @@ export function discDrop(event,quadKey){
   event.preventDefault();
   var engId=parseInt(event.dataTransfer.getData('text/plain'));
   if(isNaN(engId))return;
-  _discPlacements[engId]=quadKey;
+  var uid=engKey(engId); if(!uid)return;   // placements are keyed by uid, not id
+  _discPlacements[uid]=quadKey;
   saveState();talentIdbSave();renderDiscMatrix();
 }
-// removes an engineer from the DISC matrix
+// removes an engineer from the DISC matrix. Accepts an id or a uid.
 export function discRemove(engId){
-  delete _discPlacements[engId];
+  delete _discPlacements[engKey(engId)||engId];
   saveState();talentIdbSave();renderDiscMatrix();
 }

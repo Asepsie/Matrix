@@ -62,7 +62,7 @@ function closeModal(){G('add-overlay').classList.remove('show');}
 function confirmAdd(){
   const name=V('m-name').trim();if(!name){G('m-name').focus();return;}
   const sid=V('m-section');
-  const p={id:nextId++,name,x:+V('m-x')||5,y:+V('m-y')||5,vis:5,ena:5,
+  const p={uid:newUid(),id:nextId++,name,x:+V('m-x')||5,y:+V('m-y')||5,vis:5,ena:5,
     note:V('m-note'),color:V('m-color'),gate:'',eta:'',todos:[],risks:[],milestones:[],actions:[],
     vis:+V('m-vis')||5,ena:+V('m-ena')||5,costSource:'manual',planCost:null,
     sectionId:sid?+sid:null,visible:true};

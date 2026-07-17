@@ -407,7 +407,7 @@ function renderOrgChart(){
 
       if(isPerm){
         // Permanent contract: keep the nine-box rating (or NOT RATED)
-        var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
+        var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;
         var nbCell=(_nbByKey&&nbKey)?_nbByKey[nbKey]:null;
         var ratFill=nbCell?nbCell.colorSolid:notRatedFill;
         var ratCol=nbCell?nbCell.badge:'#6b6b78';
@@ -1173,7 +1173,7 @@ function orgAddDirectReport(managerId){
   var name=prompt(t('New direct report name')+(mgr?' ('+t('reporting to')+' '+mgr.name+')':'')+':\n'+t('(Leave blank to cancel)'));
   if(!name||!name.trim())return;
   var newEng={
-    id:nextEngId++, name:name.trim(), monthlyCost:8000,
+    uid:newUid(), id:nextEngId++, name:name.trim(), monthlyCost:8000,
     groupId:mgr?mgr.groupId:null, role:'', location:'',
     skills:[], idcard:{
       reportsTo:String(managerId), manager:mgr?mgr.name:'',
@@ -1190,7 +1190,7 @@ function orgAddRoot(){
   var name=prompt(t('New person name:')+'\n'+t('(Leave blank to cancel)'));
   if(!name||!name.trim())return;
   var newEng={
-    id:nextEngId++, name:name.trim(), monthlyCost:8000,
+    uid:newUid(), id:nextEngId++, name:name.trim(), monthlyCost:8000,
     groupId:null, role:'', location:'',
     skills:[], idcard:{
       reportsTo:'', manager:'', photo:'', contract:'', seniority:'',
@@ -1236,7 +1236,7 @@ function orgCtxMakeRoot(){
 function orgAddVacancyRoot(){
   var role=prompt(t('Open position title (e.g. "Senior Engineer"):'),'Open Position');
   if(!role||!role.trim())return;
-  var newEng={id:nextEngId++,name:role.trim(),monthlyCost:0,
+  var newEng={uid:newUid(),id:nextEngId++,name:role.trim(),monthlyCost:0,
     groupId:null,role:'Open Position',location:'',
     skills:[],vacant:true,
     idcard:{reportsTo:'',manager:'',photo:'',contract:'',seniority:'',
@@ -1249,7 +1249,7 @@ function orgCtxAddVacancy(){
   orgCtxClose();
   var role=prompt(t('Open position title:'),'Open Position');
   if(!role||!role.trim())return;
-  var newEng={id:nextEngId++,name:role.trim(),monthlyCost:0,
+  var newEng={uid:newUid(),id:nextEngId++,name:role.trim(),monthlyCost:0,
     groupId:null,role:'Open Position',location:'',
     skills:[],vacant:true,
     idcard:{reportsTo:_orgCtxId?String(_orgCtxId):'',manager:'',photo:'',contract:'',
@@ -1521,7 +1521,7 @@ function orgBuildExportSVG(){
 
     // Detailed mode: nine-box rating chip + recommended next move (matches on-screen view)
     if(_orgDetailMode&&!isVacant){
-      var nbKeyE=_nineBoxPlacements?_nineBoxPlacements[e.id]:null;
+      var nbKeyE=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;
       var nbCellE=(_nbByKeyE&&nbKeyE)?_nbByKeyE[nbKeyE]:null;
       var ratFillE=nbCellE?nbCellE.colorSolid:eNotRated;
       var ratColE=nbCellE?nbCellE.badge:'#6b6b78';

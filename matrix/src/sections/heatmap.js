@@ -43,7 +43,7 @@ function _hmImportance(p) {
 
 // returns an engineer's nine-box performance score (1-3) or null
 function _hmPerfScore(eng) {
-  var key = _nineBoxPlacements[eng.id];
+  var key = _nineBoxPlacements[eng.uid];
   if (!key) return null;
   return parseInt(key.split('-')[0], 10) || null;
 }

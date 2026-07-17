@@ -61,7 +61,7 @@ function _nbOrderedCells(CELLS,swap){
 
 // builds the people-chip HTML for one cell
 function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
-  var placed=engList.filter(function(e){return placements[e.id]===key;});
+  var placed=engList.filter(function(e){return placements[e.uid]===key;});
   if(!placed.length){
     if(forExport)return '';
     return '<div style="min-height:28px;color:var(--muted);font-size:10px;font-family:IBM Plex Mono,monospace;opacity:.5">Drop here</div>';
@@ -70,14 +70,14 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
   var chips=placed.map(function(e){
     var moveBadge='';
     if(prevMap){
-      var mv=nbMove(key,prevMap[e.id]);
+      var mv=nbMove(key,prevMap[e.uid]);
       if(mv!=='same'&&mv!=='none'){
         var mc=({up:'#c8f135',down:'#f14335','new':'#5be5c8'})[mv]||'var(--muted)';
         var ms=({up:'▲',down:'▼','new':'✦'})[mv]||'';
-        moveBadge='<span title="'+escH(mv+(prevMap[e.id]?(' — was '+prevMap[e.id]):'')+' vs '+_nbCompareYear)+'" style="color:'+mc+';font-size:9px;font-weight:700;margin-left:3px;flex-shrink:0">'+ms+'</span>';
+        moveBadge='<span title="'+escH(mv+(prevMap[e.uid]?(' — was '+prevMap[e.uid]):'')+' vs '+_nbCompareYear)+'" style="color:'+mc+';font-size:9px;font-weight:700;margin-left:3px;flex-shrink:0">'+ms+'</span>';
       }
     }
-    var photo=photoCache&&photoCache.get&&photoCache.get(e.id);
+    var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
     var avSz=forExport?26:28;
     var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
@@ -110,9 +110,9 @@ export function renderNineBox(){
   var body=G('res-body');if(!body)return;
   if(!_nineBoxPlacements)_nineBoxPlacements={};
   var CELLS=_nbCells();
-  var placed=new Set(Object.keys(_nineBoxPlacements).map(function(k){return parseInt(k);}));
+  var placed=new Set(Object.keys(_nineBoxPlacements));   // keys are uids
   var talentEngs=engineers.filter(function(e){return !e.vacant&&e.includeTalent!==false;});
-  var unplaced=talentEngs.filter(function(e){return !placed.has(e.id)||!CELLS.find(function(c){return c.key===_nineBoxPlacements[e.id];});});
+  var unplaced=talentEngs.filter(function(e){return !placed.has(e.uid)||!CELLS.find(function(c){return c.key===_nineBoxPlacements[e.uid];});});
   var xAxisLabel=_nbSwapAxes?'POTENTIAL':'PERFORMANCE';
   var yAxisLabel=_nbSwapAxes?'PERFORMANCE':'POTENTIAL';
   var xTickLabels=['LOW','MEDIUM','HIGH'];
@@ -123,7 +123,7 @@ export function renderNineBox(){
   var moveSummary='';
   if(_nbCompareYear&&_nineBoxHistory[_nbCompareYear]){
     var prevY=_nineBoxHistory[_nbCompareYear];var up=0,dn=0,nw=0;
-    talentEngs.forEach(function(e){var k=_nineBoxPlacements[e.id];if(!k)return;var mv=nbMove(k,prevY[e.id]);if(mv==='up')up++;else if(mv==='down')dn++;else if(mv==='new')nw++;});
+    talentEngs.forEach(function(e){var k=_nineBoxPlacements[e.uid];if(!k)return;var mv=nbMove(k,prevY[e.uid]);if(mv==='up')up++;else if(mv==='down')dn++;else if(mv==='new')nw++;});
     moveSummary=' · <span style="font-family:IBM Plex Mono,monospace;font-size:9px">since '+escH(_nbCompareYear)+': <span style="color:#c8f135">▲'+up+'</span> <span style="color:#f14335">▼'+dn+'</span> <span style="color:#5be5c8">✦'+nw+'</span></span>';
   }
   var yearsList=nbYears();
@@ -166,7 +166,7 @@ export function renderNineBox(){
       +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:.06em">UNPLACED &#8212; drag onto the grid</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:5px;padding:7px;background:var(--surface);border:1px solid var(--border);border-radius:8px">'
       +unplaced.map(function(e){
-        var photo=_photoCache&&_photoCache.get(e.id);
+        var photo=_photoCache&&_photoCache.get(e.uid);
         var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
         var av=photo
           ?('<img src="'+photo+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">')
@@ -333,12 +333,13 @@ export function nbDrop(event,cellKey){
   event.preventDefault();
   var engId=parseInt(event.dataTransfer.getData('text/plain'));
   if(isNaN(engId))return;
-  _nineBoxPlacements[engId]=cellKey;
+  var uid=engKey(engId); if(!uid)return;   // placements are keyed by uid, not id
+  _nineBoxPlacements[uid]=cellKey;
   saveState();talentIdbSave();renderNineBox();
 }
-// removes an engineer from the nine-box (active year)
+// removes an engineer from the nine-box (active year). Accepts an id or a uid.
 export function nbRemove(engId){
-  delete _nineBoxPlacements[engId];
+  delete _nineBoxPlacements[engKey(engId)||engId];
   saveState();talentIdbSave();renderNineBox();
 }
 

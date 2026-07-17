@@ -86,8 +86,8 @@ function _computeAnalyticsDataset(months) {
     .filter(e => !e.vacant && !e.planningOnly && !e.excludeFromCalc)
     .map(e => {
       const c = e.idcard || {};
-      const nb = _nineBoxPlacements[e.id] || null;
-      const disc = _discPlacements[e.id] || null;
+      const nb = _nineBoxPlacements[e.uid] || null;
+      const disc = _discPlacements[e.uid] || null;
 
       // Tenure
       const startMs = c.startdate ? new Date(c.startdate).getTime() : null;
@@ -146,7 +146,7 @@ function _computeAnalyticsDataset(months) {
 
       return {
         // Identity
-        id:e.id, name:e.name, role:e.role || '',
+        id:e.id, uid:e.uid, name:e.name, role:e.role || '',
         group: group ? group.name : 'Ungrouped',
         groupColor: group ? group.color : '#888',
         location: e.location || 'Unknown',
@@ -182,8 +182,8 @@ function _computeAnalyticsDataset(months) {
         // Talent
         nineBoxKey: nb, nineBoxPerf: nbParts[0], nineBoxPot: nbParts[1],
         nineBoxYear: _nbYear,
-        nineBoxPrevKey: prevPlace ? (prevPlace[e.id] || null) : null,
-        nineBoxMove: prevPlace ? nbMove(nb, prevPlace[e.id] || null) : null,
+        nineBoxPrevKey: prevPlace ? (prevPlace[e.uid] || null) : null,
+        nineBoxMove: prevPlace ? nbMove(nb, prevPlace[e.uid] || null) : null,
         discProfile: disc,
         // Performance
         latestRating, latestRatingNum, ratingTrend,
@@ -715,7 +715,7 @@ function anInsights(data){
     const cur = _nbYear, prev = _nbCompareYear || years[years.indexOf(cur) - 1] || years[0];
     if (prev && prev !== cur) {
       const cm = _nineBoxHistory[cur] || {}, pm = _nineBoxHistory[prev] || {};
-      let up = 0, dn = 0; data.forEach(d => { const k = cm[d.id]; if (!k) return; const mv = nbMove(k, pm[d.id]); if (mv === 'up') up++; else if (mv === 'down') dn++; });
+      let up = 0, dn = 0; data.forEach(d => { const k = cm[d.uid]; if (!k) return; const mv = nbMove(k, pm[d.uid]); if (mv === 'up') up++; else if (mv === 'down') dn++; });
       if (up || dn) out.push({ sev: dn > up ? 'warn' : 'info', icon:'📈', text: t('{up} rising · {dn} declining in talent since {year}',{up:up,dn:dn,year:prev}), story:'talent_trajectory' });
     }
   }
@@ -1140,7 +1140,7 @@ function anStoryTrajectory(data){
   const curMap = _nineBoxHistory[cur] || {}, prevMap = _nineBoxHistory[prev] || {};
   const NBL = { '1-3':t('Enigma'),'2-3':t('Future Star'),'3-3':t('Star'),'1-2':t('Under-perf'),'2-2':t('Core'),'3-2':t('High Perf'),'1-1':t('Risk'),'2-1':t('Effective'),'3-1':t('Expert') };
   const groups = { up:[], down:[], 'new':[], same:[] };
-  data.forEach(d => { const k = curMap[d.id]; if (!k) return; const mv = nbMove(k, prevMap[d.id]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.id] || null, to: k }); });
+  data.forEach(d => { const k = curMap[d.uid]; if (!k) return; const mv = nbMove(k, prevMap[d.uid]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.uid] || null, to: k }); });
   const order = [
     { key:'up',   label:t('RISING ▲'),    color:'#c8f135' },
     { key:'down', label:t('DECLINING ▼'), color:'#f14335' },

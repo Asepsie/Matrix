@@ -87,6 +87,7 @@ export function renderRosterTab(){
 export function addPlanningResource(){
   var gid = selectedEngGroupId;
   engineers.push({
+    uid: newUid(),
     id: nextEngId++,
     name: 'Planning Resource',
     monthlyCost: 0,

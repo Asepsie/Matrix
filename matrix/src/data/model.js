@@ -1,5 +1,55 @@
+/* ══ Identity: `uid` vs `id` ═══════════════════════════════════════════
+   `id` is a per-dataset sequential counter (nextEngId/nextId/nextAllocId).
+   It is NOT unique across datasets — two backups both number their people
+   1,2,3…, referring to different humans. Anything that outlives one dataset
+   (an id-keyed side-store, a merge of two edits) must key off `uid` instead.
+   Every entity therefore carries BOTH: `id` for the in-session wiring that
+   already depends on it (allocRow.engId, reportsTo, DOM dataset attrs), and
+   `uid` as the durable identity. Entities predating this get one back-filled
+   on load — see uidMigrate() in core/persist.js. */
+export function newUid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for any context where randomUUID is unavailable (non-secure origin).
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40;              // version 4
+  b[8] = (b[8] & 0x3f) | 0x80;              // variant 10x
+  const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+}
+
+/* A uid is always a uuid; a legacy key is always a bare integer. That makes
+   "has this key been migrated?" answerable from the key alone — so the id→uid
+   pass is idempotent and needs no version flag. */
+export function isLegacyKey(k) { return /^\d+$/.test(String(k)); }
+
+/* Re-key an id-keyed plain object by uid. Keys already migrated (or with no
+   matching entity — orphans from a deleted person) are passed through
+   untouched, so running this twice is a no-op. */
+export function uidRemapObj(obj, idToUid) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const out = {};
+  for (const k of Object.keys(obj)) {
+    const mapped = (isLegacyKey(k) && idToUid[k]) ? idToUid[k] : k;
+    out[mapped] = obj[k];
+  }
+  return out;
+}
+
+/* Same, for an id-keyed list/Set of ids (finExclude). Orphans are DROPPED —
+   a stale id would otherwise collide with a live uid-less entity later. */
+export function uidRemapIds(ids, idToUid) {
+  const out = [];
+  for (const k of (ids || [])) {
+    if (!isLegacyKey(k)) { out.push(k); continue; }   // already a uid
+    if (idToUid[k]) out.push(idToUid[k]);
+  }
+  return out;
+}
+
 export function makeEngineer(overrides = {}) {
   return {
+    uid:             newUid(),
     id:              null,
     name:            'New Engineer',
     monthlyCost:     8000,
@@ -79,6 +129,7 @@ export function makeSuccessionPlan(overrides = {}) {
 
 export function makeProject(overrides = {}) {
   return {
+    uid:         newUid(),
     id:          null,
     name:        '',
     x:           5,
@@ -362,6 +413,7 @@ export function makeScenario(overrides = {}) {
 
 export function makeAllocRow(overrides = {}) {
   return {
+    uid:        newUid(),
     id:         null,
     engId:      null,
     projectId:  null,

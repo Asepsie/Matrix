@@ -13,16 +13,18 @@ source of most data bugs.
 | Layer | Where | Keyed by | Holds |
 |-------|-------|----------|-------|
 | Main state | localStorage `eim_v4` (`SK`) | — (whole arrays/objects) | `engineers[]`, `projects[]`, `allocRows[]`, placements, axis/UI |
-| Photos | IndexedDB `EIM_Photos` + in-memory `_photoCache` | `String(eng.id)` | compressed JPEG dataURLs |
-| Talent | IndexedDB `EIM_TalentData` | inner keys = `eng.id` | nine-box / disc placements, nbYear |
+| Photos | IndexedDB `EIM_Photos` + in-memory `_photoCache` | `eng.uid` (was `eng.id`) | compressed JPEG dataURLs |
+| Talent | IndexedDB `EIM_TalentData` | inner keys = `eng.uid` (was `eng.id`) | nine-box / disc placements, nbYear |
 | Snapshots | IndexedDB `eim_snaps` (index + data stores) | snapshot `id` (Date.now) | time-travel copies of main state |
 
 ### Key facts (non-obvious)
 
 - **`eng.id` is a per-dataset sequential counter** (`nextEngId`), **not** globally
   unique. Two different backups both have engineers `1,2,3…` referring to different
-  people. IndexedDB is per-origin and dataset-independent, so id-keyed blobs
-  (photos, placements) collide across datasets unless restore replaces them.
+  people. Every entity therefore also carries a durable **`uid`** (see *The `uid`
+  identity model* below) — photos and talent placements are keyed by it, so they no
+  longer collide across datasets. `id` is still used for intra-dataset references
+  (`allocRow.engId`, `reportsTo`) and DOM wiring.
 - **Photos live only in IndexedDB**, not in main state. On save, `idcard.photo` is
   stripped to `''` and the dataURL is pushed to `EIM_Photos`. `idbGetPhoto(id)` is a
   sync cache read (safe during render); `idbFetchPhoto` is the async fallback.
@@ -81,15 +83,66 @@ or a field saved in one is silently dropped by another on restore:
   `EIM_Photos`, and restore wipes it). `importFullBackup`'s confirm says so and points the
   user at exporting a full backup first.
 
-### Known remaining risk (not yet fixed)
+### The `uid` identity model (Phase 0 of multi-user — DONE)
 
-The root cause — sequential `eng.id` instead of a globally unique `uid` — is still
-present. Tier-1 fix makes restore authoritative but depends on every restore path
-getting replace-semantics right. Notably `handleSnapImport`
-([src/core/persist.js](src/core/persist.js)) can import a *full project JSON* as a
-snapshot, which then restores via `restoreSnap` (no photo replace) — still
-vulnerable. Durable fix (Tier 2): add per-engineer `uid`, key photos/placements by
-it, migrate `id → uid`.
+Every engineer / project / allocRow now carries a globally-unique **`uid`**
+(`newUid()` = `crypto.randomUUID`, in [model.js](src/data/model.js)) alongside the
+per-dataset `id`. `id` still drives the in-session wiring that already depends on it
+(`allocRow.engId`, `idcard.reportsTo`, DOM `dataset` attrs, drag payloads); `uid` is
+the **durable** identity for anything that outlives one dataset or gets merged across
+two — this is the prerequisite for CRDT sync (relay repo, `../matrix-relay`).
+
+- **What is keyed by `uid`** (both in-memory AND at rest): the photo store
+  (`EIM_Photos` + `_photoCache`), nine-box (`_nineBoxPlacements` / `_nineBoxHistory`
+  inner keys), DISC (`_discPlacements`), and the cost-exclusion set (`_finExclude`).
+  These are the identity-critical side-stores that previously collided across
+  datasets ("wrong face on the wrong person").
+- **What stays keyed by `id`** (deliberately, for v1 entity-level sync): `_ktPlans`
+  (keyed by **skill name**, not engineer — its inner `learnerEngId` is an
+  intra-dataset ref like `engId`/`reportsTo`) and the org-chart layout
+  (`_orgPositions` / `_orgCollapsed`, cosmetic; its DnD does numeric-key coercion).
+- **`engKey(engOrId)`** ([persist.js](src/core/persist.js)) resolves an id **or** a
+  uid **or** an engineer object to the durable uid — the one helper the drag/DOM
+  code (which only has the numeric id) calls before writing a placement. Photo CRUD
+  resolves via `_photoKey()` ([photo.js](src/core/photo.js)), so no photo call site
+  changed.
+
+**The migration (`uidMigrate()` in [persist.js](src/core/persist.js)) is idempotent
+by construction:** a uid is always a uuid, a legacy key is always a bare integer
+(`isLegacyKey`), so a second pass finds nothing to do — no version flag. It runs in
+**every** restoring path:
+
+- **`loadState`** — backfills entity uids + re-keys the localStorage-sourced stores;
+  persists (debounced) so the next load reuses the uids.
+- **`idbBoot`** ([photo.js](src/core/photo.js)) — now **awaits** `talentIdbLoad`
+  (was fire-and-forget) so the IDB-sourced nine-box/DISC are present, then re-keys
+  them + the photo store (`idbMigrateToUid`) with the SAME id→uid map, and
+  `saveNow`s (DOM-gated, so it can't clobber the restored res period). **Entity uids
+  must persist in the same lifecycle the IDB stores are re-keyed** or a session that
+  regenerated different uids would strand the placements — this is why the boot
+  flush is not optional.
+- **`restoreSnap`** — snapshots are intra-dataset, so it captures the pre-restore
+  `id→uid` map and **reuses** the live dataset's uid for each restored id (a fresh
+  random uid would orphan the already-migrated photo/nine-box). Only a genuinely new
+  id gets a new uid.
+- **`importFullBackup`** ([backup.js](src/sections/backup.js)) — dataset *swap*:
+  `uidMigrate()` backfills/keeps uids and re-keys placements; the photo map is
+  remapped with the same id→uid map **before** `idbReplaceAllPhotos`, so an old
+  (id-keyed) backup's photos realign to the freshly-assigned uids while a new
+  (uid-keyed) backup passes straight through.
+
+Exports are already uid-consistent (the cache + live placements are uid-keyed, and
+`exportFullBackup` just dumps them). Tests: [tests/uid.test.js](tests/uid.test.js)
+(helpers + migration + cross-dataset merge safety). Verified end-to-end against the
+40-person demo backup: legacy id-keyed data → all uid-keyed on load, identity
+preserved (nine-box cells intact), uids byte-stable across reloads.
+
+### Still open (by design)
+
+`handleSnapImport` ([src/core/persist.js](src/core/persist.js)) can import a *foreign*
+full-project JSON as a snapshot; its photos are saved by uid when the export carried
+one (post-migration round-trips) but a truly old cross-dataset import is still
+best-effort — full cross-dataset snapshot-import linkage is out of Phase 0 scope.
 
 ### Files
 

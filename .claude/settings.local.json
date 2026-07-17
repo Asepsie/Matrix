@@ -93,7 +93,21 @@
       "Bash(node -e \"const http=require\\('http'\\),fs=require\\('fs'\\),p=require\\('path'\\);http.createServer\\(\\(q,r\\)=>{let f=q.url==='/'?'/matrix.html':q.url;f=p.join\\(process.cwd\\(\\),decodeURIComponent\\(f.split\\('?'\\)[0]\\)\\);fs.readFile\\(f,\\(e,d\\)=>{if\\(e\\){r.writeHead\\(404\\);r.end\\('nf'\\);return;}r.writeHead\\(200,{'Content-Type':f.endsWith\\('.html'\\)?'text/html':'application/octet-stream'}\\);r.end\\(d\\);}\\);}\\).listen\\(8791,\\(\\)=>console.log\\('serving on 8791'\\)\\);\")",
       "PowerShell($c = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue; \"stopped $\\($c.OwningProcess\\)\" } else { \"no listener on 8791\" })",
       "Skill(artifact-design)",
-      "Skill(artifact-design:*)"
+      "Skill(artifact-design:*)",
+      "PowerShell($paths = @\\(\"$env:ProgramFiles\\\\heroku\",\"${env:ProgramFiles\\(x86\\)}\\\\heroku\",\"$env:LOCALAPPDATA\\\\heroku\",\"$env:LOCALAPPDATA\\\\Programs\\\\heroku\",\"$env:APPDATA\\\\npm\"\\); foreach\\($p in $paths\\){ if\\(Test-Path $p\\){ Write-Output \"FOUND DIR: $p\"; Get-ChildItem -Path $p -Recurse -Include \"heroku.cmd\",\"heroku.exe\",\"heroku\" -ErrorAction SilentlyContinue | ForEach-Object { Write-Output \\(\"  -> \" + $_.FullName\\) } } })",
+      "Bash(heroku --version)",
+      "Bash(sed -i 's/var key = _nineBoxPlacements\\\\[e\\\\.id\\\\];/var key = _nineBoxPlacements[e.uid];/' src/sections/dashboard.js)",
+      "Bash(sed -i 's/var nbKey=_nineBoxPlacements\\\\[eng\\\\.id\\\\];/var nbKey=_nineBoxPlacements[eng.uid];/g; s/var discKey=_discPlacements\\\\[eng\\\\.id\\\\];/var discKey=_discPlacements[eng.uid];/g' src/sections/development.js)",
+      "Bash(sed -i 's/var key = _nineBoxPlacements\\\\[eng\\\\.id\\\\];/var key = _nineBoxPlacements[eng.uid];/' src/sections/heatmap.js)",
+      "Bash(sed -i 's/var nbKey=_nineBoxPlacements?_nineBoxPlacements\\\\[e\\\\.id\\\\]:null;/var nbKey=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;/; s/var nbKeyE=_nineBoxPlacements?_nineBoxPlacements\\\\[e\\\\.id\\\\]:null;/var nbKeyE=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;/' src/sections/org.js)",
+      "Bash(sed -i '432s/aiNineBoxTrajectory\\(e\\\\.id\\)/aiNineBoxTrajectory\\(e.uid\\)/' src/sections/ai.js)",
+      "Bash(sed -i 's/var nb=_nineBoxPlacements?_nineBoxPlacements\\\\[e\\\\.id\\\\]:null;/var nb=_nineBoxPlacements?_nineBoxPlacements[e.uid]:null;/g; s/var disc=\\(typeof _discPlacements!=='\"'\"'undefined'\"'\"'\\\\&\\\\&_discPlacements\\)?_discPlacements\\\\[e\\\\.id\\\\]:null;/var disc=\\(typeof _discPlacements!=='\"'\"'undefined'\"'\"'\\\\&\\\\&_discPlacements\\)?_discPlacements[e.uid]:null;/g' src/sections/ai.js)",
+      "Bash(echo \"exit $?\")",
+      "Bash(echo \"sweep exit $?\")",
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state||d; console.log\\('top keys:',Object.keys\\(d\\).slice\\(0,8\\)\\); console.log\\('engineers:',\\(s.engineers||[]\\).length,'| has uid?',\\(s.engineers||[]\\)[0]?.uid!==undefined\\); console.log\\('projects:',\\(s.projects||[]\\).length\\); console.log\\('nineBoxHistory years:',Object.keys\\(s.nineBoxHistory||{}\\)\\); console.log\\('discPlacements keys:',Object.keys\\(s.discPlacements||{}\\).slice\\(0,5\\)\\); console.log\\('photos:',Object.keys\\(d._photos||{}\\).length,'sample keys:',Object.keys\\(d._photos||{}\\).slice\\(0,3\\)\\);\")",
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state; console.log\\('nineBoxPlacements keys:',Object.keys\\(s.nineBoxPlacements||{}\\).slice\\(0,8\\)\\); console.log\\('finExclude:',s.finExclude\\); console.log\\('eng[0]:',JSON.stringify\\({id:s.engineers[0].id,name:s.engineers[0].name}\\)\\); console.log\\('eng ids sample:',s.engineers.slice\\(0,5\\).map\\(e=>e.id\\)\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8791/)",
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state; const payload={engineers:s.engineers,projects:s.projects,allocRows:s.allocRows,nineBoxPlacements:s.nineBoxPlacements,discPlacements:s.discPlacements,nextEngId:s.nextEngId,nextId:s.nextId,nextAllocId:s.nextAllocId}; const str=JSON.stringify\\(payload\\); console.log\\('payload bytes:',str.length\\); require\\('fs'\\).writeFileSync\\('dist/_testseed.json',str\\);\")"
     ]
   }
 }

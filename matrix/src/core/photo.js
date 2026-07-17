@@ -71,9 +71,21 @@ export function idbOpen(){
   });
 }
 
+// The photo store is keyed by the durable `uid`, not the per-dataset `id` (see
+// the uid identity model in data/model.js). Callers still pass an engineer id or
+// an engineer object — resolve it to the uid here so no call site has to change.
+// Falls back to the raw value only when the person can't be resolved (orphan /
+// pre-load), which degrades to the old id-keyed behaviour rather than dropping data.
+export function _photoKey(engOrId){
+  if(engOrId==null) return '';
+  if(typeof engOrId==='object') return engOrId.uid||(engOrId.id!=null?String(engOrId.id):'');
+  if(typeof engKey==='function'){ var k=engKey(engOrId); if(k) return k; }
+  return String(engOrId);
+}
+
 // ── CRUD ─────────────────────────────────────────────────────────
 export function idbSavePhoto(engId,dataURL){
-  var key=String(engId);
+  var key=_photoKey(engId);
   _photoCache.set(key,dataURL);
   return idbOpen().then(function(db){
     return new Promise(function(resolve,reject){
@@ -86,7 +98,7 @@ export function idbSavePhoto(engId,dataURL){
 }
 
 export function idbDeletePhoto(engId){
-  var key=String(engId);
+  var key=_photoKey(engId);
   _photoCache.delete(key);
   return idbOpen().then(function(db){
     return new Promise(function(resolve,reject){
@@ -100,13 +112,13 @@ export function idbDeletePhoto(engId){
 
 // Sync read from cache — safe to call during render
 export function idbGetPhoto(engId){
-  var key=String(engId);
+  var key=_photoKey(engId);
   return _photoCache.get(key)||'';
 }
 
 // Session 2: async fetch with cache-miss fallback
 export function idbFetchPhoto(engId){
-  var key=String(engId);
+  var key=_photoKey(engId);
   if(_photoCache.has(key))return Promise.resolve(_photoCache.get(key));
   return idbOpen().then(function(db){
     return new Promise(function(resolve,reject){
@@ -170,6 +182,36 @@ export function idbReplaceAllPhotos(photos){
   });
 }
 
+// ── Re-key the photo store id → uid (one-time, idempotent) ────────
+// Photos were historically keyed by String(eng.id) (a per-dataset counter).
+// This walks the preloaded cache + store, and for any key that is still a bare
+// integer with a known uid, moves the photo to the uid key. A uid key (uuid) is
+// never a bare integer, so a second run finds nothing — safe to call every boot.
+// `idToUid` is the SAME map uidMigrate() uses, so photos and nine-box/DISC all
+// land on the same uids. Resolves to whether anything moved (→ persist if so).
+export function idbMigrateToUid(idToUid){
+  idToUid=idToUid||{};
+  var moves=[];   // [oldKey,newKey,dataURL]
+  _photoCache.forEach(function(v,k){
+    if(isLegacyKey(k) && idToUid[k] && idToUid[k]!==k) moves.push([k,idToUid[k],v]);
+  });
+  if(!moves.length) return Promise.resolve(false);
+  // Cache first (sync, so a render between here and the IDB commit reads the new key).
+  moves.forEach(function(m){ _photoCache.delete(m[0]); _photoCache.set(m[1],m[2]); });
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(IDB_STORE,'readwrite');
+      var st=tx.objectStore(IDB_STORE);
+      moves.forEach(function(m){ st.delete(m[0]); st.put(m[2],m[1]); });
+      tx.oncomplete=function(){resolve(true);};
+      tx.onerror=function(e){reject(e.target.error);};
+    });
+  }).then(function(){
+    console.log('[EIM] Re-keyed '+moves.length+' photo(s) id→uid');
+    return true;
+  }).catch(function(e){ console.warn('[EIM] photo uid re-key failed:',e); return false; });
+}
+
 // ── Storage info ─────────────────────────────────────────────────
 export function idbStorageInfo(){
   var totalBytes=0;
@@ -191,7 +233,7 @@ export function idbMigrateFromLocalStorage(){
       var photo=(eng.idcard||{}).photo||'';
       if(photo&&photo.startsWith('data:')){
         promises.push(
-          idbSavePhoto(eng.id,photo).then(function(){
+          idbSavePhoto(eng,photo).then(function(){   // eng (object) → keyed by uid
             eng.idcard.photo='';
             migrated++;
           })
@@ -208,27 +250,36 @@ export function idbMigrateFromLocalStorage(){
 }
 
 // ── Boot ─────────────────────────────────────────────────────────
+// talentIdbLoad is now AWAITED (was fire-and-forget) so the nine-box/DISC it
+// loads from EIM_TalentData are present before the uid re-key runs — otherwise
+// the re-key would race the load and miss them.
 export function idbBoot(){
-  talentIdbLoad(); // load nine-box/disc placements from IDB
-  return idbOpen()
+  return talentIdbLoad()                 // load nine-box/disc placements from IDB
+    .then(function(){ return idbOpen(); })
     .then(idbMigrateFromLocalStorage)
     .then(idbPreloadAll)
     .then(function(){
+      // uid identity pass over the IDB-sourced stores. Entities already carry uids
+      // (loadState ran synchronously before this async chain). uidMigrate re-keys
+      // the nine-box/DISC just loaded from IDB; idbMigrateToUid re-keys the photos
+      // just preloaded — both with the SAME id→uid map, so they stay in lockstep.
+      var idToUid={};
+      try{ idToUid=uidMigrate(); }catch(e){ console.warn('[EIM] uid migration (idb) failed:',e); }
+      return idbMigrateToUid(idToUid).then(function(photosMoved){
+        if(photosMoved||uidMigrate._changed){
+          talentIdbSave();               // persist re-keyed nine-box/DISC to EIM_TalentData
+          // Persist entity uids + re-keyed localStorage stores. DOM-gated so it runs
+          // after ensureResPeriod has restored the res period (never clobbers it).
+          var flush=function(){ saveNow(); };
+          if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',flush,{once:true});
+          else flush();
+        }
+      });
+    })
+    .then(function(){
       _photoDBReady=true;
       idbUpdateStatus();
-      var n=_photoCache.size;
-      console.log('[EIM] Photo DB ready. '+n+' photo(s) cached.');
-      // Check: engineers have photos expected but IDB is empty
-      var engWithPhotos=engineers.filter(function(e){
-        return (e.idcard&&e.idcard.photo&&e.idcard.photo.startsWith('data:'));
-      }).length;
-      if(n===0&&engWithPhotos===0){
-        // Count engineers who previously had photos stripped (idcard.photo='')
-        var stripCount=engineers.filter(function(e){
-          return e.idcard&&e.idcard._hadPhoto;
-        }).length;
-        // Just silently continue — photos may simply not have been uploaded yet
-      }
+      console.log('[EIM] Photo DB ready. '+_photoCache.size+' photo(s) cached.');
     })
     .catch(function(err){
       _photoDBReady=false;
@@ -298,7 +349,7 @@ export function idbShowManagement(){
 
   var rows='';
   _photoCache.forEach(function(dataURL,key){
-    var eng=engineers.find(function(e){return String(e.id)===key;});
+    var eng=engineers.find(function(e){return String(e.uid)===key||String(e.id)===key;});
     var name=eng?eng.name:'Unknown (id:'+key+')';
     var kb=Math.round((dataURL||'').length/1024);
     rows+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
@@ -337,8 +388,8 @@ export function idbShowManagement(){
 
 export function idbDeleteAndRefresh(key){
   idbDeletePhoto(key).then(function(){
-    // Update engineer state
-    var eng=engineers.find(function(e){return String(e.id)===key;});
+    // Update engineer state ('key' is the cache key = a uid post-migration)
+    var eng=engineers.find(function(e){return String(e.uid)===key||String(e.id)===key;});
     if(eng&&eng.idcard)eng.idcard.photo='';
     saveNow();
     idbShowManagement(); // refresh dialog

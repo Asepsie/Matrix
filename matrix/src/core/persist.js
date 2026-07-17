@@ -7,8 +7,80 @@ export let _dirty=false;
 export let _saveTimer=null;
 export let _saveFailedAlerted=false; // prevent alert storm on repeated save failures
 
+/* ══ uid migration — the id→uid pass ══════════════════════════════════
+   `id` is a per-dataset counter, so every id-keyed side-store (photos,
+   nine-box, DISC, KT, finExclude) breaks the moment two datasets meet:
+   engineer 3 here is not engineer 3 there → wrong face on the wrong person.
+   `uid` (see newUid() in data/model.js) is the durable identity; this pass
+   back-fills it onto old data and re-keys the side-stores to match.
+
+   Idempotent by construction: a migrated key is a uuid, a legacy key is a
+   bare integer (isLegacyKey), so a second run finds nothing to do and needs
+   no version flag. Runs inside every restoring path — loadState,
+   importFullBackup, restoreSnap — and persists on the next save.
+
+   Photos live in IndexedDB (async) and are re-keyed separately by
+   idbMigrateToUid() in core/photo.js, which is handed the same map. */
+export function uidMigrate() {
+  var changed = false;
+  // 1. Every entity gets a uid. Do the engineers first — the map below needs them.
+  engineers.forEach(function(e){ if(!e.uid){ e.uid = newUid(); changed = true; } });
+  projects.forEach(function(p){ if(!p.uid){ p.uid = newUid(); changed = true; } });
+  allocRows.forEach(function(r){ if(!r.uid){ r.uid = newUid(); changed = true; } });
+
+  // 2. id → uid, for re-keying the stores that were keyed by the old counter.
+  var idToUid = uidEngMap();
+  // Does any side-store still hold a legacy (bare-integer) key we can map?
+  var hadLegacy = function(obj){
+    return obj && Object.keys(obj).some(function(k){ return isLegacyKey(k) && idToUid[k]; });
+  };
+
+  // 3. Re-key the identity-critical side-stores. Nine-box's live view is the
+  //    SAME object as _nineBoxHistory[_nbYear] (see nbEnsureHistory) — remap
+  //    the history, then re-point the view, or the two silently diverge.
+  Object.keys(_nineBoxHistory).forEach(function(y){
+    if (hadLegacy(_nineBoxHistory[y])) changed = true;
+    _nineBoxHistory[y] = uidRemapObj(_nineBoxHistory[y], idToUid);
+  });
+  _nineBoxPlacements = _nineBoxHistory[_nbYear] || _nineBoxPlacements;
+  if (hadLegacy(_discPlacements)) changed = true;
+  _discPlacements = uidRemapObj(_discPlacements, idToUid);
+  // NOTE: _ktPlans is keyed by SKILL NAME (ktKey), not engineer id — its inner
+  // learnerEngId is an intra-dataset id ref like allocRow.engId / reportsTo, kept
+  // id-based for v1 entity-level sync. So it's deliberately NOT re-keyed here.
+  if ([..._finExclude].some(function(k){ return isLegacyKey(k) && idToUid[k]; })) changed = true;
+  _finExclude     = new Set(uidRemapIds([..._finExclude], idToUid));
+
+  uidMigrate._changed = changed;   // last-run flag, read by callers deciding whether to persist
+  return idToUid;
+}
+
+/* { legacyId: uid } for the live roster. The photo IDB migration needs the
+   same map, so it's built in one place. */
+export function uidEngMap() {
+  var m = {};
+  engineers.forEach(function(e){ if(e.id!=null && e.uid) m[String(e.id)] = e.uid; });
+  return m;
+}
+
+/* The durable key for anything stored ABOUT an engineer (photo, nine-box cell,
+   DISC quadrant, KT plan, cost exclusion). Accepts an engineer or a bare id,
+   because call sites have one or the other (drag/drop and DOM dataset attrs
+   only carry the id). Returns '' when the person can't be resolved, which
+   reads as "no entry" everywhere rather than writing under a junk key. */
+export function engKey(engOrId) {
+  if (engOrId == null) return '';
+  if (typeof engOrId === 'object') return engOrId.uid || '';
+  if (!isLegacyKey(engOrId)) return String(engOrId);   // already a uid
+  var e = _engByIdMap().get(+engOrId);
+  return e ? (e.uid || '') : '';
+}
+
 /* ── Loop-based sanitise (replaces the long if-chain from loadState) ── */
 export function sanitiseEngineer(e) {
+  // Before the defaults merge: the merge would otherwise hand this engineer the
+  // throwaway uid off the `defaults` object below.
+  if (!e.uid) e.uid = newUid();
   var defaults = makeEngineer();
   var idcDefaults = makeIdCard();
   var succDefaults = makeSuccessionPlan();
@@ -293,6 +365,17 @@ export function loadState(){
     }
     sanitiseProjects();
     try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); }
+    // uid identity pass over the localStorage-sourced state (entities + the
+    // localStorage-persisted side-stores). The IDB-sourced stores (photos,
+    // nine-box/DISC loaded async from IndexedDB) are re-keyed later in idbBoot
+    // with the SAME map, once they've loaded. Idempotent, so running twice is safe.
+    try{
+      uidMigrate();
+      // Persist freshly-assigned uids so the next load reuses them (a session that
+      // regenerated different uids would strand id-keyed side-store data). Debounced
+      // — flushes after the DOM is ready, so it can't clobber the restored res period.
+      if(uidMigrate._changed) saveState();
+    }catch(e){ console.warn('[EIM] uid migration (load) failed:',e); }
     return true;
   }catch(e){return false;}
 }
@@ -789,6 +872,12 @@ function restoreSnap(id){
 
     var d=data;
     var scope=meta.scope;
+    // Snapshots are INTRA-dataset (same eng.ids). An old snapshot predating uid
+    // carries no uids and id-keyed side-stores; the live photo/nine-box stores are
+    // already keyed by THIS session's uids. So a restored id=3 must reuse the uid
+    // the live dataset already gave id=3 — not a fresh random one — or its photo /
+    // nine-box cell is orphaned. Capture that id→uid map BEFORE swapping in the snap.
+    var _preRestoreUidByEngId = uidEngMap();
 
     if(scope==='full'||scope==='projects'){
       if(d.projects)      projects=d.projects;
@@ -870,12 +959,22 @@ function restoreSnap(id){
       if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
     }
 
+    // uid identity pass over the restored state. Reuse the pre-restore uid for any
+    // engineer whose id the live dataset already knew (intra-dataset invariant);
+    // only a genuinely new id gets a fresh uid. Then uidMigrate re-keys whatever
+    // id-keyed side-stores the snapshot carried (nine-box/DISC/KT) onto those uids.
+    engineers.forEach(function(e){
+      if(!e.uid) e.uid = (e.id!=null && _preRestoreUidByEngId[String(e.id)])
+        ? _preRestoreUidByEngId[String(e.id)] : newUid();
+    });
+    try{ uidMigrate(); }catch(e){ console.warn('[EIM] uid migration (restore) failed:',e); }
+
     var photoPromises=[];
     engineers.forEach(function(eng){
       var ph=(eng.idcard||{}).photo||'';
       if(ph&&ph.startsWith('data:')){
         photoPromises.push(
-          idbSavePhoto(eng.id,ph).then(function(){
+          idbSavePhoto(eng,ph).then(function(){   // eng (object) → keyed by uid
             eng.idcard.photo='';
           })
         );
@@ -1005,7 +1104,7 @@ function handleSnapImport(ev){
             snap.engineers.forEach(function(eng){
               var ph=(eng.idcard||{}).photo||'';
               if(ph&&ph.startsWith('data:')){
-                importPhotos.push(idbSavePhoto(eng.id,ph));
+                importPhotos.push(idbSavePhoto(eng,ph));   // uid if the export carried one, else id
               }
             });
           }
