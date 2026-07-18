@@ -69,7 +69,8 @@ export function makeEngineer(overrides = {}) {
 
 export function makeIdCard(overrides = {}) {
   return {
-    reportsTo:     '',
+    reportsTo:     '',      // local manager id (in-session wiring) — mirrors reportsToUid
+    reportsToUid:  '',      // DURABLE manager ref — survives a cross-dataset merge
     manager:       '',
     seniority:     '',
     potential:     '',              // Level of potential (GTP): Low / Medium / High
@@ -119,7 +120,8 @@ export function makeNextMove(overrides = {}) {
 
 export function makeSuccessionPlan(overrides = {}) {
   return {
-    successorId:       '',
+    successorId:       '',   // local successor engineer id — mirrors successorUid
+    successorUid:      '',   // DURABLE successor ref — survives a cross-dataset merge
     successorFreeText: '',
     timeframe:         '',
     gaps:              '',
@@ -415,8 +417,10 @@ export function makeAllocRow(overrides = {}) {
   return {
     uid:        newUid(),
     id:         null,
-    engId:      null,
-    projectId:  null,
+    engId:      null,       // local engineer id (in-session wiring) — mirrors engUid
+    projectId:  null,       // local project id  (in-session wiring) — mirrors projectUid
+    engUid:     null,       // DURABLE engineer ref — survives a cross-dataset merge (see persist.js refs*)
+    projectUid: null,       // DURABLE project ref
     allocs:     {},
     budgetLine: '',
     ...overrides,

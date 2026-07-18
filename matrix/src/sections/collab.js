@@ -19,8 +19,8 @@
  *     keeps yours, only-they-changed takes theirs, BOTH-changed is a conflict
  *     (yours stays live, theirs is preserved in the change log). This is what lets
  *     edits made while fully offline merge in on reconnect instead of being lost.
- *   - CHANGE / CONFLICT LOG (collabLog*): an append-only, per-actor log of creates,
- *     deletes, and conflicts. It lives in the Y.Doc (a Y.Array, so it syncs to every
+ *   - CHANGE / CONFLICT LOG (collabLog*): an append-only, per-actor audit log of creates,
+ *     per-field UPDATES (before→after), deletes, and conflicts. It lives in the Y.Doc (a Y.Array, so it syncs to every
  *     peer and merges without conflict — unique ids) AND mirrors to a local store
  *     (eim_collab_log) so it survives offline/reload. This is the seed of the future
  *     multi-user AUDIT LOG: entries already carry actor/ts/before/after; swapping the
@@ -30,16 +30,26 @@
  *   - Security: random 128-bit room id (#1), token as a connection param (#2),
  *     secrets in the URL #fragment never the query (#3) — the patterns proven in
  *     ../matrix-relay/test/sync-test.html.
+ *   - E2E ENCRYPTION (Phase B): every value written to the Y.Doc (entities, meta,
+ *     log, awareness) is AES-256-GCM encrypted client-side with a 32-byte room key
+ *     that rides ONLY in the link #fragment (never sent to the relay). The relay sees
+ *     ciphertext + structural metadata (random uids, counts, timing) only — never
+ *     content. Crypto is synchronous (@noble/ciphers) so Yjs transactions stay atomic.
+ *     A room with no key runs in plaintext (back-compat); the panel shows which mode.
+ *
+ * UID-ANCHORED REFS (concurrent-creation safe): the numeric `id` and every numeric
+ *   intra-dataset id-ref (allocRow.engId/projectId, idcard.reportsTo, succession.
+ *   successorId) are LOCAL wiring only and are STRIPPED from the synced form
+ *   (collabCanonical). Identity travels as durable uid mirrors (engUid/projectUid/
+ *   reportsToUid/successorUid); each client materialises its own local ids on adopt
+ *   (collabMaterialize + persist.js refsRelink), so two people creating new entities
+ *   offline can never collide on an id. refsBackfill() keeps the uid mirrors current
+ *   before a push. The ~270 numeric-id read-sites are untouched.
  *
  * KNOWN v1 LIMITATIONS (documented, deliberate):
- *   - Intra-dataset references (allocRow.engId, idcard.reportsTo) are still keyed
- *     by the per-dataset `id`, not `uid`. Safe for keeping your OWN computers in
- *     sync and mostly-sequential collaboration; two users creating brand-new
- *     people at the same time offline can produce id-ref ambiguity. uid-refs +
- *     field-level CRDT are the next phase.
- *   - Only CREATE / DELETE / CONFLICT are logged (not every field edit). Full
- *     per-update audit is the next increment on top of this same log.
- *   - Photos are NOT synced (out-of-band in IndexedDB). No E2E yet (Phase B).
+ *   - engineer.groupId / project.sectionId / _ktPlans.learnerEngId stay id-based
+ *     (LWW meta blobs, low-churn) — extending the uid-ref pattern to them is additive.
+ *   - Whole-object LWW per entity (not field-level CRDT). Photos NOT synced (IndexedDB).
  */
 
 /* ── CDN modules (import(VAR) so build.js doesn't strip it; ?external=yjs makes
@@ -51,9 +61,12 @@ const COLLAB_EXT='?external'+'=yjs';
 const COLLAB_YJS_URL='https://esm.sh/yjs@13.6.10';
 const COLLAB_WS_URL='https://esm.sh/y-websocket@1.5.4'+COLLAB_EXT;
 const COLLAB_IDB_URL='https://esm.sh/y-indexeddb@9.0.12'+COLLAB_EXT;
-const COLLAB_KEY='eim_collab';             // localStorage: relay/token/room/actor/auto prefs
+const COLLAB_AES_URL='https://esm.sh/@noble/ciphers@2.2.0/aes';  // E2E: synchronous AES-256-GCM (unrelated to yjs, no external pin)
+const COLLAB_NONCE_BYTES=12;               // AES-GCM IV length (standard, 96-bit)
+const COLLAB_KEY='eim_collab';             // localStorage: relay/token/room/key/actor/auto prefs
 const COLLAB_LOG_KEY='eim_collab_log';     // localStorage: the change/conflict log (audit seed)
-const COLLAB_LOG_CAP=1000;                 // local log cap (a real audit log offloads to the server)
+const COLLAB_LOG_CAP=1000;                 // local mirror cap (a real audit log offloads to the server)
+const COLLAB_LOG_YCAP=3000;                // synced Y.Array cap — bounds the doc (per-field updates are frequent)
 const COLLAB_DEFAULT_RELAY='wss://shrouded-peak-70323-cec8c0279fd8.herokuapp.com';
 
 /* ── Module state ── */
@@ -70,10 +83,14 @@ let _collabDirtyView=false;      // a remote change arrived while a field was fo
 let _collabFlushTimer=null;      // polls to flush a deferred re-render when no field is focused
 let _collabConnectWatch=null;    // watchdog: flags a stalled relay connection (bad URL/token/relay down)
 let _collabBase=null;            // last-synced snapshot {eng,proj,alloc,meta} captured before the relay syncs
+let _collabAes=null;             // cached noble AES-GCM module (E2E)
+let _collabKeyBytes=null;        // 32-byte room key derived from _collabCfg.key
+let _collabEncOn=false;          // true once a room key is present AND libs are loaded → encrypt synced content
+let _collabDecFails=0;           // values we could not decrypt this session (wrong/missing key in the link)
 let _collabLog=[];               // local mirror of the append-only change/conflict log
 const _collabLogSeen={};         // entry id -> 1 (dedupe; kept even after local trim so trimmed entries don't re-add)
 const _collabLastJson={};        // uid -> last-pushed JSON, so unchanged entities aren't re-sent
-let _collabCfg={relay:'',token:'',room:'',actor:'',auto:false};
+let _collabCfg={relay:'',token:'',room:'',key:'',actor:'',auto:false};
 
 /* Meta keys = everything in the saved payload that isn't an entity array. Synced
    whole-value per key (LWW). Each maps a Y.Map key to the real global (some are
@@ -115,7 +132,7 @@ const COLLAB_META_LOGGABLE={ sections:1, engGroups:1, skillDomains:1, skillCats:
 function collabLoadCfg(){
   try{ var p=JSON.parse(localStorage.getItem(COLLAB_KEY)||'null');
        if(p&&typeof p==='object'){ _collabCfg.relay=p.relay||''; _collabCfg.token=p.token||''; _collabCfg.room=p.room||'';
-         _collabCfg.actor=p.actor||''; _collabCfg.auto=!!p.auto; } }catch(e){}
+         _collabCfg.key=p.key||''; _collabCfg.actor=p.actor||''; _collabCfg.auto=!!p.auto; } }catch(e){}
   if(!_collabCfg.relay) _collabCfg.relay=COLLAB_DEFAULT_RELAY;
   if(!_collabCfg.actor) _collabCfg.actor='User-'+collabRndHex(2);   // self-declared identity (audit attribution)
 }
@@ -130,6 +147,7 @@ function collabRndHex(n){
 }
 function collabShareLink(){
   var q=new URLSearchParams({relay:_collabCfg.relay,room:_collabCfg.room||'',token:_collabCfg.token||''});
+  if(_collabCfg.key) q.set('key',_collabCfg.key);     // E2E key rides the fragment (base64url is URL-safe)
   return location.origin+location.pathname+'#collab&'+q.toString();
 }
 // Parse a share-link fragment (#collab&relay=…&room=…&token=…) into cfg. Returns
@@ -140,7 +158,74 @@ function collabReadHash(){
   if(p.get('relay')) _collabCfg.relay=p.get('relay');
   if(p.get('room'))  _collabCfg.room=p.get('room');
   if(p.get('token'))_collabCfg.token=p.get('token');
+  if(p.get('key'))  _collabCfg.key=p.get('key');   // E2E room key — fragment only, never the query
   return !!p.get('room');
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   E2E ENCRYPTION (Phase B) — AES-256-GCM, key in the URL #fragment
+   ══════════════════════════════════════════════════════════════════════
+   The room key is 32 random bytes, base64url-encoded, carried ONLY in the link
+   fragment (never the query → never sent to the relay, never in server/proxy logs).
+   Every value written to the shared Y.Doc — entities, meta, log, awareness — is
+   wrapped as a self-describing {c: base64(nonce‖ciphertext‖tag)} envelope. The relay
+   therefore only ever sees ciphertext plus structural metadata (random uids, entity
+   counts, edit timing) — never readable content. Crypto is SYNCHRONOUS (noble) so Yjs
+   transactions stay atomic (no async inside doc.transact). A room with no key operates
+   in plaintext (back-compat with pre-Phase-B rooms); the panel shows which mode is live. */
+function collabRndKey(){ var b=new Uint8Array(32); crypto.getRandomValues(b); return collabB64url(b); }
+function collabB64url(bytes){
+  var s=''; for(var i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function collabB64urlDec(str){
+  str=String(str||'').replace(/-/g,'+').replace(/_/g,'/'); while(str.length%4) str+='=';
+  var bin=atob(str), b=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+  return b;
+}
+// Derive the working key bytes from cfg.key and flip encryption on. Call ONLY after the
+// libs (incl. _collabAes) are loaded, so _collabEncOn never turns on before we can encrypt.
+function collabSetKeyFromCfg(){
+  _collabEncOn=false; _collabKeyBytes=null; _collabDecFails=0;
+  var k=(_collabCfg.key||'').trim();
+  if(!k||!_collabAes) return;                       // no key → plaintext room (legacy/back-compat)
+  try{ var kb=collabB64urlDec(k); if(kb.length===32){ _collabKeyBytes=kb; _collabEncOn=true; } }
+  catch(e){ console.warn('[EIM] collab: bad room key',e); }
+}
+// Encrypt a JSON-able value → {c:base64} envelope. Passthrough (deep clone) when enc off.
+function collabEnc(v){
+  if(!_collabEncOn||!_collabAes||!_collabKeyBytes) return collabClone(v);
+  var pt=new TextEncoder().encode(JSON.stringify(v===undefined?null:v));
+  var nonce=new Uint8Array(COLLAB_NONCE_BYTES); crypto.getRandomValues(nonce);
+  var ct=_collabAes.gcm(_collabKeyBytes,nonce).encrypt(pt);
+  var packed=new Uint8Array(nonce.length+ct.length); packed.set(nonce,0); packed.set(ct,nonce.length);
+  return { c: collabB64url(packed) };
+}
+// Decrypt a value read from the doc. Returns null on failure (wrong/missing key) — read
+// paths drop nulls. Plaintext values (no .c) pass through: back-compat + mixed-room guard.
+function collabDec(v){
+  if(v&&typeof v==='object'&&typeof v.c==='string'){
+    if(!_collabAes||!_collabKeyBytes){ _collabDecFails++; return null; }
+    try{
+      var packed=collabB64urlDec(v.c);
+      var nonce=packed.slice(0,COLLAB_NONCE_BYTES), ct=packed.slice(COLLAB_NONCE_BYTES);
+      var pt=_collabAes.gcm(_collabKeyBytes,nonce).decrypt(ct);
+      return JSON.parse(new TextDecoder().decode(pt));
+    }catch(e){ _collabDecFails++; return null; }
+  }
+  return collabClone(v);
+}
+// Log entries keep id + ts in plaintext (dedupe + ordering without decrypting everything);
+// the sensitive payload (actor, labels = person names, before/after values) is encrypted.
+function collabEncEntry(entry){
+  if(!_collabEncOn) return entry;
+  var e=collabEnc(entry); return { id:entry.id, ts:entry.ts, c:e.c };
+}
+function collabDecEntry(raw){
+  if(!raw||typeof raw.c!=='string') return raw;      // plaintext entry (legacy)
+  var full=collabDec({c:raw.c}); if(!full) return null;
+  full.id=raw.id||full.id; return full;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -162,6 +247,56 @@ function collabLabelOf(type,obj){
   if(type==='allocRow') return '(allocation)';
   return type;
 }
+
+/* ── Per-field diff (the UPDATE audit entry) ──────────────────────────────
+   Compares the previous vs current CANONICAL entity and lists changed leaf
+   fields as {f, from, to}. Nested objects recurse to dotted paths (idcard.grade,
+   allocs.2026-03); arrays are compared opaquely (shown as a count) to keep the
+   log readable. uid-ref fields are relabelled + resolved to entity names, so an
+   allocation reassignment reads "engineer: Ann → Bob", not a raw uuid. */
+const COLLAB_REF_FIELDS={ engUid:'engineer', projectUid:'project', reportsToUid:'manager', successorUid:'successor' };
+const COLLAB_DIFF_CAP=14;                   // max field-changes per update entry (rest summarised)
+function collabFlatten(o,prefix,out){
+  out=out||{}; prefix=prefix||'';
+  if(o&&typeof o==='object'&&!Array.isArray(o)){
+    for(var k in o){ if(!Object.prototype.hasOwnProperty.call(o,k)) continue;
+      if(k==='uid') continue;                 // internal identity, never a user edit
+      var v=o[k], key=prefix?prefix+'.'+k:k;
+      if(v&&typeof v==='object'&&!Array.isArray(v)) collabFlatten(v,key,out);
+      else out[key]=Array.isArray(v)?('['+v.length+' item'+(v.length===1?'':'s')+']'):v;
+    }
+  }
+  return out;
+}
+function collabValShort(v){
+  if(v===undefined||v===null||v==='') return '∅';
+  var s=(typeof v==='string')?v:JSON.stringify(v);
+  return s.length>60?s.slice(0,60)+'…':s;
+}
+// Resolve a uid-ref value to a friendly entity name for the audit record (captured at
+// log time, so the entry stays readable even after the referenced entity changes).
+function collabRefName(base,uidVal){
+  if(!uidVal) return '∅';
+  var arr=(base==='projectUid')?projects:engineers;
+  var e=arr.find(function(x){return x.uid===uidVal;});
+  return e?(e.name||('('+(base==='projectUid'?'project':'person')+')')):'(removed)';
+}
+function collabChangeList(oldO,newO,type){
+  var a=collabFlatten(oldO), b=collabFlatten(newO), keys={}, changes=[];
+  for(var k in a) keys[k]=1; for(var k in b) keys[k]=1;
+  Object.keys(keys).forEach(function(k){
+    if(JSON.stringify(a[k])===JSON.stringify(b[k])) return;
+    var base=k.split('.').pop();
+    if(COLLAB_REF_FIELDS[base]) changes.push({ f:COLLAB_REF_FIELDS[base], from:collabRefName(base,a[k]), to:collabRefName(base,b[k]) });
+    else changes.push({ f:k, from:collabValShort(a[k]), to:collabValShort(b[k]) });
+  });
+  if(changes.length>COLLAB_DIFF_CAP){
+    var extra=changes.length-COLLAB_DIFF_CAP;
+    changes=changes.slice(0,COLLAB_DIFF_CAP);
+    changes.push({ f:'…', from:'', to:'(+'+extra+' more field'+(extra===1?'':'s')+')' });
+  }
+  return changes;
+}
 function collabLogLoad(){
   try{ var a=JSON.parse(localStorage.getItem(COLLAB_LOG_KEY)||'[]');
        if(Array.isArray(a)){ _collabLog=a; a.forEach(function(en){ if(en&&en.id) _collabLogSeen[en.id]=1; }); } }catch(e){}
@@ -177,14 +312,18 @@ function collabLogAppend(entry){
   _collabLog.push(entry);
   if(_collabLog.length>COLLAB_LOG_CAP) _collabLog.splice(0,_collabLog.length-COLLAB_LOG_CAP);
   collabLogPersist();
-  if(_collabYLog&&_collabDoc){ try{ _collabDoc.transact(function(){ _collabYLog.push([entry]); },'local'); }catch(e){} }
+  if(_collabYLog&&_collabDoc){ try{ _collabDoc.transact(function(){
+    _collabYLog.push([collabEncEntry(entry)]);
+    if(_collabYLog.length>COLLAB_LOG_YCAP) _collabYLog.delete(0,_collabYLog.length-COLLAB_LOG_YCAP);  // bound the synced log
+  },'local'); }catch(e){} }
   collabRefreshHistory();
 }
-// Merge any log entries from the synced Y.Array that we don't have locally.
+// Merge any log entries from the synced Y.Array that we don't have locally (decrypting each).
 function collabLogMergeFromDoc(){
   if(!_collabYLog) return;
   var added=false;
-  _collabYLog.toArray().forEach(function(en){
+  _collabYLog.toArray().forEach(function(raw){
+    var en=collabDecEntry(raw);
     if(en&&en.id&&!_collabLogSeen[en.id]){ _collabLogSeen[en.id]=1; _collabLog.push(collabClone(en)); added=true; }
   });
   if(added){
@@ -198,10 +337,10 @@ function collabConflictCount(){ return _collabLog.filter(function(e){return e.ac
 /* ── Load the CDN libraries once (with a timeout so a blocked/slow CDN fails loudly
    instead of hanging on "loading" forever) ── */
 function collabLoadLibs(){
-  if(_collabYjs&&_collabWS&&_collabIdb) return Promise.resolve();
+  if(_collabYjs&&_collabWS&&_collabIdb&&_collabAes) return Promise.resolve();
   _collabStatus='loading'; collabRefreshPanel();
-  var load=Promise.all([import(COLLAB_YJS_URL),import(COLLAB_WS_URL),import(COLLAB_IDB_URL)])
-    .then(function(mods){ _collabYjs=mods[0]; _collabWS=mods[1]; _collabIdb=mods[2]; });
+  var load=Promise.all([import(COLLAB_YJS_URL),import(COLLAB_WS_URL),import(COLLAB_IDB_URL),import(COLLAB_AES_URL)])
+    .then(function(mods){ _collabYjs=mods[0]; _collabWS=mods[1]; _collabIdb=mods[2]; _collabAes=mods[3]; });
   var timeout=new Promise(function(_,rej){ setTimeout(function(){
     rej(new Error('Timed out loading the collaboration library from the CDN (esm.sh). Are you online? Is esm.sh blocked on this network?'));
   },15000); });
@@ -211,7 +350,8 @@ function collabLoadLibs(){
 /* ── Connect / disconnect ── */
 function collabConnect(){
   if(!_collabCfg.relay){ alert(t('Enter a relay URL first.')); return; }
-  if(!_collabCfg.room)  _collabCfg.room=collabRndHex(16);
+  // Fresh room with no room id yet → also mint an E2E key (new rooms are encrypted by default).
+  if(!_collabCfg.room){ _collabCfg.room=collabRndHex(16); if(!_collabCfg.key) _collabCfg.key=collabRndKey(); }
   _collabCfg.auto=true;                 // remember: auto-rejoin this room on next load
   collabSaveCfg();
   _collabStatus='connecting'; _collabReconciled=false; _collabBase=null; collabRefreshPanel();
@@ -221,6 +361,7 @@ function collabConnect(){
     // failed/slow relay looks like a stuck "loading library" (it isn't).
     _collabStatus='connecting'; collabRefreshPanel();
     collabStartConnectWatch();
+    collabSetKeyFromCfg();          // derive the room key now that _collabAes is loaded → enc on/off
     var Y=_collabYjs;
     _collabDoc=new Y.Doc();
     _collabYEng=_collabDoc.getMap('engineers');
@@ -247,7 +388,7 @@ function collabConnect(){
         if(isSynced){ _collabStatus='synced'; clearTimeout(_collabConnectWatch); collabReconcile(); }
         collabUpdateBadge(); collabRefreshPanel();
       });
-      _collabProvider.awareness.setLocalStateField('user',{ name:_collabCfg.actor||'?', t:Date.now() });
+      _collabProvider.awareness.setLocalStateField('user',collabEnc({ name:_collabCfg.actor||'?', t:Date.now() }));
       _collabProvider.awareness.on('change',function(){
         _collabPeers=_collabProvider.awareness.getStates().size||1;
         collabUpdateBadge(); collabRefreshPanel();
@@ -283,6 +424,7 @@ function collabDisconnect(){
   _collabProvider=null; _collabPersist=null; _collabDoc=null;
   _collabYEng=_collabYProj=_collabYAlloc=_collabYMeta=_collabYLog=null;
   _collabConnected=false; _collabReconciled=false; _collabStatus='idle'; _collabPeers=1; _collabDirtyView=false; _collabBase=null;
+  _collabEncOn=false; _collabKeyBytes=null; _collabDecFails=0;
   Object.keys(_collabLastJson).forEach(function(k){ delete _collabLastJson[k]; });
   _collabCfg.auto=false; collabSaveCfg();   // manual disconnect → don't auto-rejoin
   collabUpdateBadge(); collabRefreshPanel();
@@ -290,9 +432,9 @@ function collabDisconnect(){
 
 /* ── Snapshots / indexing helpers for the 3-way merge ── */
 function collabArrIndex(arr){ var o={}; (arr||[]).forEach(function(x){ if(x&&x.uid) o[x.uid]=x; }); return o; }
-function collabMapSnapshot(ymap){ var o={}; if(ymap) ymap.forEach(function(v,k){ o[k]=collabClone(v); }); return o; }
+function collabMapSnapshot(ymap){ var o={}; if(ymap) ymap.forEach(function(v,k){ var d=collabDec(v); if(d!=null) o[k]=d; }); return o; }
 function collabSnapshot(){
-  var meta={}; COLLAB_META.forEach(function(m){ if(_collabYMeta&&_collabYMeta.has(m.k)) meta[m.k]=collabClone(_collabYMeta.get(m.k)); });
+  var meta={}; COLLAB_META.forEach(function(m){ if(_collabYMeta&&_collabYMeta.has(m.k)){ var d=collabDec(_collabYMeta.get(m.k)); if(d!=null) meta[m.k]=d; } });
   return { eng:collabMapSnapshot(_collabYEng), proj:collabMapSnapshot(_collabYProj),
            alloc:collabMapSnapshot(_collabYAlloc), meta:meta };
 }
@@ -323,15 +465,20 @@ function collabReconcile(){
     } else {
       // RETURNING to a room I've synced before → 3-way merge (this is what makes
       // edits made while fully offline merge in, and where conflicts get logged).
+      // Compare/merge on the CANONICAL form (no local id) so id churn isn't a conflict;
+      // capture prev ids first so known entities keep their local id after materialise.
+      refsBackfill();
+      var prev=collabCapturePrev();
       _collabDoc.transact(function(){
-        var mEng=collab3way(base.eng, collabArrIndex(engineers), collabMapSnapshot(_collabYEng), 'engineer', _collabYEng);
-        var mProj=collab3way(base.proj, collabArrIndex(projects), collabMapSnapshot(_collabYProj), 'project', _collabYProj);
-        var mAlloc=collab3way(base.alloc, collabArrIndex(allocRows), collabMapSnapshot(_collabYAlloc), 'allocRow', _collabYAlloc);
+        var mEng=collab3way(base.eng, collabCanonIndex(engineers,'engineer'), collabMapSnapshot(_collabYEng), 'engineer', _collabYEng);
+        var mProj=collab3way(base.proj, collabCanonIndex(projects,'project'), collabMapSnapshot(_collabYProj), 'project', _collabYProj);
+        var mAlloc=collab3way(base.alloc, collabCanonIndex(allocRows,'allocRow'), collabMapSnapshot(_collabYAlloc), 'allocRow', _collabYAlloc);
         engineers=Object.keys(mEng).map(function(k){return mEng[k];});
         projects=Object.keys(mProj).map(function(k){return mProj[k];});
         allocRows=Object.keys(mAlloc).map(function(k){return mAlloc[k];});
         collabMetaReconcile(base.meta);
       },'local');
+      collabMaterialize(prev);          // id ← uid: assign local ids + rebuild numeric refs
       collabAdoptLocalAfterMerge();
     }
   }catch(e){ console.error('[EIM] collabReconcile failed:',e); }
@@ -349,9 +496,9 @@ function collab3way(base,local,remote,type,ymap){
     if(lj===rj){ if(r) out[uid]=r; }                                   // agree (or both deleted)
     else if(lj===bj){ if(r) out[uid]=r; else ymap.delete(uid); }        // only THEY changed → take theirs (incl. their delete)
     else if(rj===bj){                                                   // only I changed → keep mine, push
-      if(l){ out[uid]=l; ymap.set(uid,collabClone(l)); } else { ymap.delete(uid); }
+      if(l){ out[uid]=l; ymap.set(uid,collabEnc(l)); } else { ymap.delete(uid); }
     } else {                                                            // BOTH changed → conflict
-      if(l){ out[uid]=l; ymap.set(uid,collabClone(l));
+      if(l){ out[uid]=l; ymap.set(uid,collabEnc(l));
              collabLogAppend(collabMkEntry('conflict',type,uid,collabLabelOf(type,l),{conflict:{kept:collabClone(l),overwritten:collabClone(r)}})); }
       else { out[uid]=r;                                                // I deleted, they edited → keep theirs (don't lose data)
              collabLogAppend(collabMkEntry('conflict',type,uid,collabLabelOf(type,r),{conflict:{kept:collabClone(r),overwritten:'(deleted locally)'}})); }
@@ -364,13 +511,14 @@ function collab3way(base,local,remote,type,ymap){
 // global and pushes mine when I win; logs conflicts for the data-bearing keys.
 function collabMetaReconcile(baseMeta){
   COLLAB_META.forEach(function(m){
-    var b=baseMeta[m.k], l=m.get(), r=(_collabYMeta.has(m.k))?_collabYMeta.get(m.k):undefined;
+    var rr=(_collabYMeta.has(m.k))?collabDec(_collabYMeta.get(m.k)):undefined;   // decrypted remote
+    var b=baseMeta[m.k], l=m.get(), r=(rr==null)?undefined:rr;
     var bj=JSON.stringify(b), lj=JSON.stringify(l), rj=(r!==undefined)?JSON.stringify(r):undefined;
     if(lj===rj){ if(r!==undefined) m.set(collabClone(r)); }
     else if(lj===bj){ if(r!==undefined) m.set(collabClone(r)); }        // only they changed → theirs
-    else if(rj===bj){ _collabYMeta.set(m.k,collabClone(l)); }           // only I changed → mine, push
+    else if(rj===bj){ _collabYMeta.set(m.k,collabEnc(l)); }             // only I changed → mine, push
     else {                                                              // both changed
-      _collabYMeta.set(m.k,collabClone(l));                            // keep mine live + push
+      _collabYMeta.set(m.k,collabEnc(l));                              // keep mine live + push
       if(COLLAB_META_LOGGABLE[m.k])
         collabLogAppend(collabMkEntry('conflict','meta',m.k,m.k,{conflict:{kept:'(kept your version)',overwritten:'(the other version was overwritten)'}}));
     }
@@ -396,24 +544,26 @@ function collabPush(){
   // with no relay (y-indexeddb persists; y-websocket syncs on reconnect). Gated on
   // _collabReconciled so we don't push before the join/merge decision is made.
   if(!_collabReconciled||_collabApplying||!_collabDoc) return;
+  refsBackfill();                 // uid ← id: durable refs current before we serialise
   try{
     _collabDoc.transact(function(){
       collabSyncArray(engineers,_collabYEng,'engineer',true);
       collabSyncArray(projects,_collabYProj,'project',true);
       collabSyncArray(allocRows,_collabYAlloc,'allocRow',true);
-      COLLAB_META.forEach(function(m){ _collabYMeta.set(m.k,collabClone(m.get())); });
+      COLLAB_META.forEach(function(m){ _collabYMeta.set(m.k,collabEnc(m.get())); });
     },'local');
   }catch(e){ console.warn('[EIM] collabPush failed:',e); }
 }
 // collabSeed: the initial push into a fresh/kept-local room. logChanges=false so the
 // whole dataset isn't logged as a burst of "creates".
 function collabSeed(){
+  refsBackfill();                 // uid ← id before the initial push
   try{
     _collabDoc.transact(function(){
       collabSyncArray(engineers,_collabYEng,'engineer',false);
       collabSyncArray(projects,_collabYProj,'project',false);
       collabSyncArray(allocRows,_collabYAlloc,'allocRow',false);
-      COLLAB_META.forEach(function(m){ _collabYMeta.set(m.k,collabClone(m.get())); });
+      COLLAB_META.forEach(function(m){ _collabYMeta.set(m.k,collabEnc(m.get())); });
     },'local');
   }catch(e){ console.warn('[EIM] collabSeed failed:',e); }
 }
@@ -423,17 +573,25 @@ function collabSyncArray(arr,ymap,type,logChanges){
   arr.forEach(function(o){
     if(!o.uid) o.uid=newUid();
     seen[o.uid]=1;
-    var js=JSON.stringify(o);
+    var canon=collabCanonical(o,type);           // strip local id + numeric id-refs
+    var js=JSON.stringify(canon);
     if(_collabLastJson[o.uid]!==js){
-      var isNew=!(o.uid in _collabLastJson) && !ymap.has(o.uid);
-      ymap.set(o.uid,JSON.parse(js));
-      if(logChanges&&isNew) collabLogAppend(collabMkEntry('create',type,o.uid,collabLabelOf(type,o)));
+      var had=(o.uid in _collabLastJson);
+      var isNew=!had && !ymap.has(o.uid);
+      ymap.set(o.uid,collabEnc(canon));           // change-detection stays on the canonical `js`
+      if(logChanges){
+        if(isNew){ collabLogAppend(collabMkEntry('create',type,o.uid,collabLabelOf(type,o))); }
+        else if(had){                              // an EDIT to an existing entity → per-field audit
+          var chg=collabChangeList(JSON.parse(_collabLastJson[o.uid]),canon,type);
+          if(chg.length) collabLogAppend(collabMkEntry('update',type,o.uid,collabLabelOf(type,o),{changes:chg}));
+        }
+      }
       _collabLastJson[o.uid]=js;
     }
   });
   [...ymap.keys()].forEach(function(k){
     if(!seen[k]){
-      if(logChanges) collabLogAppend(collabMkEntry('delete',type,k,collabLabelOf(type,ymap.get(k))));
+      if(logChanges) collabLogAppend(collabMkEntry('delete',type,k,collabLabelOf(type,collabDec(ymap.get(k)))));
       ymap.delete(k); delete _collabLastJson[k];
     }
   });
@@ -453,26 +611,65 @@ function collabApplyRemote(){
 }
 // Replace local arrays/meta from the current Y.Doc (used by adopt-on-join and steady-state apply).
 function collabAdoptFromDoc(){
-  engineers=[..._collabYEng.values()].map(collabClone);
+  var prev=collabCapturePrev();                 // keep each known uid's local id stable
+  engineers=[..._collabYEng.values()].map(collabDec).filter(Boolean);
+  projects=[..._collabYProj.values()].map(collabDec).filter(Boolean);
+  allocRows=[..._collabYAlloc.values()].map(collabDec).filter(Boolean);
+  // Meta first — the id counters (nextEngId/nextId/nextAllocId) advance to the room's
+  // high-water mark BEFORE collabMaterialize hands out any fresh local id.
+  COLLAB_META.forEach(function(m){ if(_collabYMeta.has(m.k)){ var d=collabDec(_collabYMeta.get(m.k)); if(d!=null) m.set(d); } });
+  collabMaterialize(prev);                       // id ← uid: local ids + numeric refs
   engineers.forEach(function(e){ sanitiseEngineer(e); });
-  projects=[..._collabYProj.values()].map(collabClone);
-  allocRows=[..._collabYAlloc.values()].map(collabClone);
   allocRows.forEach(function(r){ if(!r.allocs)r.allocs={}; if(r.engId===undefined)r.engId=null; if(r.projectId===undefined)r.projectId=null; if(r.budgetLine===undefined)r.budgetLine=''; });
-  COLLAB_META.forEach(function(m){ if(_collabYMeta.has(m.k)) m.set(collabClone(_collabYMeta.get(m.k))); });
   try{ sanitiseProjects(); }catch(e){}
   try{ sanitiseGateConfig(); }catch(e){}
   nbEnsureHistory(); uidMigrate();
   collabRebuildJsonCache();
   _invalidateMemo(); saveNow(); collabRerender();
 }
-// Refresh the push cache so the next local save doesn't echo everything back.
+// Refresh the push cache so the next local save doesn't echo everything back. Keyed by
+// the CANONICAL form (matches what collabPush compares/serialises).
 function collabRebuildJsonCache(){
   Object.keys(_collabLastJson).forEach(function(k){ delete _collabLastJson[k]; });
-  engineers.concat(projects,allocRows).forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(o); });
+  engineers.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'engineer')); });
+  projects.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'project')); });
+  allocRows.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'allocRow')); });
 }
 
 // Deep-clone a Yjs value into a plain JS object we own (Yjs may hand back the same ref).
 function collabClone(v){ return v==null?v:JSON.parse(JSON.stringify(v)); }
+
+/* ── uid-anchored intra-dataset refs (see persist.js refsBackfill/refsRelink) ──
+   The numeric `id` and the numeric id-refs (engId/projectId/reportsTo/successorId)
+   are LOCAL wiring only — STRIPPED from the synced form. What travels is keyed by
+   `uid` with uid refs (engUid/projectUid/reportsToUid/successorUid). Each client
+   materialises its own local ids from the uids on adopt, so two people creating new
+   entities offline can NEVER collide on an id. Change-detection also runs on the
+   canonical form, so a local id churn doesn't trigger a spurious re-push. */
+function collabCanonical(o,type){
+  var c=collabClone(o);
+  delete c.id;
+  if(type==='allocRow'){ delete c.engId; delete c.projectId; }
+  else if(type==='engineer' && c.idcard){
+    delete c.idcard.reportsTo;
+    if(c.idcard.succession) delete c.idcard.succession.successorId;
+  }
+  return c;
+}
+function collabCanonIndex(arr,type){ var o={}; (arr||[]).forEach(function(x){ if(x&&x.uid) o[x.uid]=collabCanonical(x,type); }); return o; }
+// {uid:id} per array, captured BEFORE arrays are replaced so a known uid keeps its local
+// id across an adopt (no DOM churn); a genuinely new uid gets a fresh id from the counter.
+function collabUidIdMap(arr){ var m={}; (arr||[]).forEach(function(o){ if(o&&o.uid&&o.id!=null) m[o.uid]=o.id; }); return m; }
+function collabCapturePrev(){ return { eng:collabUidIdMap(engineers), proj:collabUidIdMap(projects), alloc:collabUidIdMap(allocRows) }; }
+// Give every entity a local numeric id (reuse prev for a known uid, else fresh), then
+// rebuild the numeric id-refs from the durable uid refs. This is what heals a collision.
+function collabMaterialize(prev){
+  prev=prev||{eng:{},proj:{},alloc:{}};
+  engineers.forEach(function(e){ if(e&&e.uid) e.id=(prev.eng[e.uid]!=null)?prev.eng[e.uid]:nextEngId++; });
+  projects.forEach(function(p){ if(p&&p.uid) p.id=(prev.proj[p.uid]!=null)?prev.proj[p.uid]:nextId++; });
+  allocRows.forEach(function(r){ if(r&&r.uid) r.id=(prev.alloc[r.uid]!=null)?prev.alloc[r.uid]:nextAllocId++; });
+  refsRelink();
+}
 
 // True when a text field / dropdown is focused (mid-edit). collabRerender never
 // paints while this holds, so a remote patch can't steal the caret.
@@ -528,7 +725,13 @@ function collabStatusLine(){
     error:t('Connection error.') };
   var s=m[_collabStatus]||_collabStatus;
   if(_collabConnected&&_collabPeers>1) s+=' · '+t('{n} people in room',{n:_collabPeers});
+  if(_collabDecFails>0) s+=' · ⚠ '+t('Can\'t decrypt room content — this link is missing the key or has the wrong one.');
   return s;
+}
+// Encryption state for the panel badge: encrypted (key present) vs plaintext room.
+function collabEncLabel(){
+  if(_collabCfg.key) return {ic:'🔒',txt:t('End-to-end encrypted — the relay can\'t read this room\'s data.'),col:'var(--accent)'};
+  return {ic:'🔓',txt:t('Not encrypted — this room has no key. Create a New room for an encrypted one.'),col:'var(--warn)'};
 }
 function collabInput(id,label,val,ph,disabled){
   return '<label style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+label
@@ -544,6 +747,7 @@ function collabRefreshPanel(){
     :(_collabStatus==='error'||_collabStatus==='stalled'?'var(--danger)'
     :(_collabStatus==='offline'?'var(--warn)':'var(--muted)'));
   var conflicts=collabConflictCount();
+  var enc=collabEncLabel();
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;'
     +'padding:22px 24px;width:min(540px,95vw);max-height:88vh;overflow:auto;box-shadow:0 18px 54px rgba(0,0,0,.6);'
     +'display:flex;flex-direction:column;gap:13px" onclick="event.stopPropagation()">'
@@ -567,8 +771,10 @@ function collabRefreshPanel(){
       +'style="flex:1;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:10px">'
       +'<button onclick="collabCopyLink()" style="padding:7px 12px;background:var(--accent);border:none;color:#0a0a0a;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">'+t('Copy')+'</button>'
       +'</div>'
-      +'<div style="font-size:9px;color:var(--warn);margin-top:5px">⚠ '+t('Anyone with this link can read and edit the data. Share it only with your team.')+'</div>'
+      +'<div style="font-size:9px;color:var(--warn);margin-top:5px">⚠ '+t('The link contains the room key — anyone with it can read and edit the data. Share it only with your team.')+'</div>'
       +'</div>'):'')
+    +'<div style="display:flex;align-items:center;gap:8px;font-size:10px;font-family:IBM Plex Mono,monospace;color:'+enc.col+'">'
+      +'<span>'+enc.ic+'</span><span>'+escH(enc.txt)+'</span></div>'
     +'<div style="display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);padding-top:12px">'
       +'<span style="flex:1;font-size:11px;font-family:IBM Plex Mono,monospace;color:'+statusColor+'">'+escH(collabStatusLine())+'</span>'
       +'<button onclick="collabHistoryOpen()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px">🕓 '+t('History')
@@ -582,9 +788,9 @@ function collabRefreshPanel(){
 function collabField(k,v){
   _collabCfg[k]=v.trim(); collabSaveCfg();
   if(k==='room'){ var l=document.getElementById('collab-link'); if(l) l.value=collabShareLink(); }
-  if(k==='actor'&&_collabProvider){ try{ _collabProvider.awareness.setLocalStateField('user',{name:_collabCfg.actor||'?',t:Date.now()}); }catch(e){} }
+  if(k==='actor'&&_collabProvider){ try{ _collabProvider.awareness.setLocalStateField('user',collabEnc({name:_collabCfg.actor||'?',t:Date.now()})); }catch(e){} }
 }
-function collabNewRoom(){ _collabCfg.room=collabRndHex(16); collabSaveCfg(); collabRefreshPanel(); }
+function collabNewRoom(){ _collabCfg.room=collabRndHex(16); _collabCfg.key=collabRndKey(); collabSaveCfg(); collabRefreshPanel(); }
 function collabCopyLink(){
   var link=collabShareLink();
   var done=function(){ var b=document.querySelector('#collab-dlg button[onclick="collabCopyLink()"]'); if(b){ var o=b.textContent; b.textContent=t('Copied ✓'); setTimeout(function(){ b.textContent=o; },1400); } };
@@ -610,19 +816,28 @@ function collabHistoryClose(){ var d=document.getElementById('collab-hist-dlg');
 function collabRefreshHistory(){ if(document.getElementById('collab-hist-dlg')) collabRenderHistory(); }
 function collabRenderHistory(){
   var dlg=document.getElementById('collab-hist-dlg'); if(!dlg) return;
-  var ICON={ create:'＋', delete:'🗑', conflict:'⚠' };
-  var COL={ create:'var(--accent)', delete:'var(--muted)', conflict:'var(--danger)' };
+  var ICON={ create:'＋', update:'✎', delete:'🗑', conflict:'⚠' };
+  var COL={ create:'var(--accent)', update:'var(--accent2)', delete:'var(--muted)', conflict:'var(--danger)' };
+  var VERB={ create:'created', update:'edited', delete:'deleted', conflict:'conflict on' };
   var rows=_collabLog.slice().reverse().map(function(e){
     var when=''; try{ when=new Date(e.ts).toLocaleString(); }catch(_){ when=e.ts||''; }
     var head='<div style="display:flex;gap:8px;align-items:baseline">'
       +'<span style="color:'+(COL[e.action]||'var(--text)')+';font-weight:700;width:14px;text-align:center">'+(ICON[e.action]||'•')+'</span>'
       +'<span style="flex:1;font-size:12px;color:var(--text)"><b>'+escH(e.actor||'?')+'</b> '
-        +escH(t(e.action==='create'?'created':e.action==='delete'?'deleted':'conflict on'))+' '
+        +escH(t(VERB[e.action]||e.action))+' '
         +'<span style="color:var(--muted)">'+escH(e.entityType||'')+'</span> '+escH(e.label||'')+'</span>'
       +'<span style="font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace;white-space:nowrap">'+escH(when)+'</span>'
     +'</div>';
     var detail='';
-    if(e.action==='conflict'&&e.conflict){
+    if(e.action==='update'&&e.changes&&e.changes.length){
+      detail='<div style="margin:5px 0 0 22px;font-size:10px;font-family:IBM Plex Mono,monospace;line-height:1.6">'
+        +e.changes.map(function(c){
+          return '<div><span style="color:var(--muted)">'+escH(c.f)+'</span> '
+            +'<span style="color:var(--dim)">'+escH(collabValPreview(c.from))+'</span> → '
+            +'<span style="color:var(--text)">'+escH(collabValPreview(c.to))+'</span></div>';
+        }).join('')
+      +'</div>';
+    } else if(e.action==='conflict'&&e.conflict){
       detail='<div style="margin:5px 0 0 22px;font-size:10px;font-family:IBM Plex Mono,monospace;line-height:1.5">'
         +'<div style="color:var(--accent)">✓ '+escH(t('kept'))+': '+escH(collabValPreview(e.conflict.kept))+'</div>'
         +'<div style="color:var(--warn)">✕ '+escH(t('overwritten'))+': '+escH(collabValPreview(e.conflict.overwritten))+'</div>'

@@ -63,6 +63,61 @@ export function uidEngMap() {
   return m;
 }
 
+/* ══ Intra-dataset reference safety — uid-anchored refs ════════════════
+   allocRow.engId/.projectId, idcard.reportsTo and succession.successorId are
+   per-dataset id refs. Two people creating new entities OFFLINE draw the same
+   `nextEngId`/`nextId` values, so on merge those ids collide → a ref points at
+   the wrong person ("allocation on the wrong engineer"). Fix: mirror each id ref
+   into a DURABLE uid ref that rides the synced payload; the numeric id stays the
+   app's working ref (~270 read-sites + all DOM wiring untouched).
+
+   Two directions, run at the sync boundary (collab.js):
+   · refsBackfill() — uid ← id. Derives the durable uid refs from the (authoritative
+     during normal editing) id refs, just before an entity is serialised for sync.
+   · refsRelink()   — id ← uid. Rebuilds the numeric id refs from the durable uid refs
+     AFTER a merge/adopt, once each entity has been given a fresh unique local id
+     (collabMaterialize). This is what heals a post-merge id collision.
+   The numeric id itself is stripped from the synced form (collabCanonical), so it is
+   purely local per client and can never collide across a merge. */
+export function _refMaps() {
+  var engIdToUid={}, engUidToId={}, projIdToUid={}, projUidToId={};
+  engineers.forEach(function(e){ if(e&&e.uid){ if(e.id!=null) engIdToUid[String(e.id)]=e.uid; engUidToId[e.uid]=e.id; } });
+  projects.forEach(function(p){ if(p&&p.uid){ if(p.id!=null) projIdToUid[String(p.id)]=p.uid; projUidToId[p.uid]=p.id; } });
+  return { engIdToUid:engIdToUid, engUidToId:engUidToId, projIdToUid:projIdToUid, projUidToId:projUidToId };
+}
+// uid ← id: durable refs strictly mirror the current numeric refs. Idempotent.
+export function refsBackfill() {
+  var m=_refMaps();
+  allocRows.forEach(function(r){
+    if(!r) return;
+    r.engUid     = (r.engId!=null     && m.engIdToUid[String(r.engId)])     ? m.engIdToUid[String(r.engId)]     : null;
+    r.projectUid = (r.projectId!=null && m.projIdToUid[String(r.projectId)])? m.projIdToUid[String(r.projectId)]: null;
+  });
+  engineers.forEach(function(e){
+    var ic=e&&e.idcard; if(!ic) return;
+    ic.reportsToUid = (ic.reportsTo && m.engIdToUid[String(ic.reportsTo)]) ? m.engIdToUid[String(ic.reportsTo)] : '';
+    var su=ic.succession;
+    if(su) su.successorUid = (su.successorId && m.engIdToUid[String(su.successorId)]) ? m.engIdToUid[String(su.successorId)] : '';
+  });
+}
+// id ← uid: rebuild the numeric refs from the durable ones. Call AFTER local ids are
+// assigned (collabMaterialize). A uid that no longer resolves (deleted target) clears
+// the numeric ref, matching "the manager/project/successor is gone".
+export function refsRelink() {
+  var m=_refMaps();
+  allocRows.forEach(function(r){
+    if(!r) return;
+    r.engId     = (r.engUid     && m.engUidToId[r.engUid]!=null)      ? m.engUidToId[r.engUid]      : null;
+    r.projectId = (r.projectUid && m.projUidToId[r.projectUid]!=null) ? m.projUidToId[r.projectUid] : null;
+  });
+  engineers.forEach(function(e){
+    var ic=e&&e.idcard; if(!ic) return;
+    ic.reportsTo = (ic.reportsToUid && m.engUidToId[ic.reportsToUid]!=null) ? String(m.engUidToId[ic.reportsToUid]) : '';
+    var su=ic.succession;
+    if(su) su.successorId = (su.successorUid && m.engUidToId[su.successorUid]!=null) ? String(m.engUidToId[su.successorUid]) : '';
+  });
+}
+
 /* The durable key for anything stored ABOUT an engineer (photo, nine-box cell,
    DISC quadrant, KT plan, cost exclusion). Accepts an engineer or a bare id,
    because call sites have one or the other (drag/drop and DOM dataset attrs

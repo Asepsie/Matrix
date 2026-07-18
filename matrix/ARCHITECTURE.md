@@ -47,13 +47,23 @@ Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly 
 - **Auto-reconnect:** `collabConnect` sets `_collabCfg.auto=true`; boot (`collabBootFromHash`)
   auto-rejoins the last room (silent — the 3-way merge reconciles closed-app edits). Manual
   `collabDisconnect` clears `auto`. A share link still prompts.
-- **Change / conflict log (audit-log seed).** Append-only entries `{id,ts,actor,action
-  (create|delete|conflict),entityType,entityUid,label,conflict:{kept,overwritten}}`. Lives in
+- **Change / conflict / audit log.** Append-only entries `{id,ts,actor,action
+  (create|update|delete|conflict),entityType,entityUid,label, changes?, conflict?}`. Lives in
   the Y.Doc as a **Y.Array** (`log`) so it syncs to every peer and merges without conflict
   (unique ids), AND mirrors to a local store (`eim_collab_log`) so it survives offline/reload.
-  `collabLogAppend` writes both; the Y.Array observer (`collabLogMergeFromDoc`) unions remote
-  entries in by id. **Conflicts never lose data** — the overwritten value is kept in the log
-  (future "restore this version"). Viewer = `collabHistoryOpen` (a second modal, z1120).
+  `collabLogAppend` writes both (and trims the synced array to `COLLAB_LOG_YCAP` so per-field
+  updates can't grow the doc unbounded); the Y.Array observer (`collabLogMergeFromDoc`) unions
+  remote entries in by id. **Conflicts never lose data** — the overwritten value is kept in the
+  log (future "restore this version"). Viewer = `collabHistoryOpen` (a second modal, z1120).
+- **Per-field UPDATE audit.** When `collabSyncArray` sees an existing entity change, it diffs the
+  previous vs current **canonical** form (`collabChangeList` → `collabFlatten`) and logs an
+  `update` entry with `changes:[{f,from,to}]`. Nested objects flatten to dotted paths
+  (`idcard.grade`, `allocs.2026-03`); arrays are opaque (a count); uid-ref fields are relabelled
+  and **resolved to entity names at log time** (`engineer: Ann → Bob`, not a raw uuid), so the
+  record stays readable and durable. Diff runs on canonical, so local id churn is never logged;
+  changes cap at `COLLAB_DIFF_CAP` with an overflow marker. One entry per changed entity per push
+  (the save debounce already coalesces mid-typing). Encrypted like every other log entry (id+ts
+  clear, payload E2E). Tests: [tests/collab-audit.test.js](tests/collab-audit.test.js).
 - **Actor identity** = self-declared name (`_collabCfg.actor`, panel field), used for
   `awareness` presence AND as the `actor` on every log entry. Verified identity later is a
   drop-in replacement — the audit seam the relay roadmap describes.
@@ -73,21 +83,74 @@ Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly 
 - **Security:** random 128-bit room id, token as a **connection param** (not in the share
   link's query), secrets in the URL **#fragment** — the three patterns from
   `../matrix-relay/test/sync-test.html`. Config persists in its own `eim_collab`
-  localStorage key (relay/token/room), separate from `SK`.
+  localStorage key (relay/token/room/**key**/actor/auto), separate from `SK`.
+- **E2E encryption (Phase B — DONE).** Every value written to the Y.Doc — entities, meta,
+  the log Y.Array, and awareness — is **AES-256-GCM** encrypted client-side, wrapped as a
+  self-describing `{c: base64url(nonce‖ciphertext‖tag)}` envelope (`collabEnc`/`collabDec`).
+  The relay's stock `setupWSConnection` is **unchanged** — it still holds the room doc, but
+  every value is ciphertext, so it only ever sees random uids, counts, and timing, never
+  content. The 32-byte room **key** rides ONLY in the link `#fragment` (`&key=…`), never the
+  query → never sent to the relay/proxy logs. Crypto is **synchronous** (`@noble/ciphers`,
+  dynamic-imported like Yjs) specifically so Yjs `doc.transact` stays atomic — an async
+  WebCrypto refactor would have had to split every encrypt from its `set` and break the
+  single-'local'-transaction echo guard. **Change-detection stays on plaintext** JSON
+  (`_collabLastJson`), so per-encryption random nonces don't cause spurious re-sends. A room
+  with **no key runs in plaintext** (back-compat with pre-Phase-B rooms + mixed-room guard:
+  `collabDec` passes non-`{c}` values through); the panel shows 🔒/🔓 and warns
+  (`_collabDecFails`) when a link is missing/has the wrong key. New rooms mint a key by
+  default (`collabNewRoom`/auto-room in `collabConnect`). Log entries keep `id`+`ts` in the
+  clear (dedupe + ordering without decrypting the whole log); the payload (actor, labels =
+  person names, before/after values) is encrypted. Verified in-browser: noble loads + `gcm`
+  round-trips; a Yjs wire update carries no plaintext; a peer WITH the key decrypts, a peer
+  WITHOUT it (≡ the relay) gets `null`. Scheme mirrored in [tests/collab-crypto.test.js](tests/collab-crypto.test.js)
+  (round-trip, fresh-nonce, wrong-key + tamper rejection, plaintext passthrough).
 
-### v1 limitations (deliberate — the next phase)
+### Intra-dataset refs are uid-anchored (concurrent-creation safe)
 
-- **Intra-dataset refs are still id-based** (`allocRow.engId`, `idcard.reportsTo`). Safe
-  for keeping your own computers in sync and mostly-sequential collaboration; two users
-  creating brand-new people at the same moment offline can produce id-ref ambiguity.
-  uid-based refs + field-level CRDT (Phase D) are next.
-- **The log records create/delete/conflict, not every field edit.** Full per-update audit
-  (with field-level before/after) is the next increment on the SAME log model — additive.
-  Conflicts are detected at **reconcile** (the offline-divergence case, where data loss was
-  the real risk); live simultaneous edits still resolve by real-time LWW and aren't flagged.
+`allocRow.engId`/`.projectId`, `idcard.reportsTo`, and `succession.successorId` are
+per-dataset id counters — two people creating new entities **offline** both draw the same
+`nextEngId`/`nextId`, so a naïve merge lands an allocation on the wrong engineer. Fixed by
+making the numeric `id` (and every numeric id-ref) **local wiring only, stripped from the
+synced form**; identity travels as durable **uid** mirrors (`engUid`/`projectUid`/
+`reportsToUid`/`successorUid`, on the factories in [model.js](src/data/model.js)).
+
+- **`collabCanonical(o,type)`** ([collab.js](src/sections/collab.js)) strips `id` + numeric
+  id-refs before an entity is written to the Y.Doc (and is the form change-detection compares,
+  so local id churn never triggers a spurious re-push). The relay/doc therefore hold NO numeric
+  ids — id collision across a merge is **structurally impossible**.
+- **`refsBackfill()`** ([persist.js](src/core/persist.js), uid ← id) derives the durable uid
+  refs from the authoritative numeric refs, just before serialising (`collabPush`/`collabSeed`/
+  the returning-merge read local via `collabCanonIndex`).
+- **`collabMaterialize(prev)`** (id ← uid) runs on every adopt/merge: assigns each entity a
+  local numeric id (reusing the pre-adopt id for a known uid via `collabCapturePrev`, so no DOM
+  churn; a genuinely new uid gets a fresh counter id **after** the room's `nextEngId` high-water
+  mark is applied), then **`refsRelink()`** rebuilds the numeric id-refs from the uid refs. A uid
+  that no longer resolves (deleted target) clears the ref — never repoints it at a stranger.
+
+The ~270 id read-sites and all DOM/drag wiring are **untouched** — they keep reading numeric
+`id`, which is now guaranteed consistent post-merge. Verified: [tests/collab-refs.test.js](tests/collab-refs.test.js)
+(colliding-engId heal, reportsTo-follows-uid, no-op round-trip, dangling-ref clear) + in-browser
+against the real `collabCanonical`/`collabMaterialize`/`refs*` (two datasets that both assigned
+id 5/1 to different people merge with each allocation resolving to the correct human).
+
+### Still id-based (deliberate, lower risk)
+
+- `engineer.groupId` → engGroup, `project.sectionId` → section, `_ktPlans[].learnerEngId`,
+  and the org-chart layout keys stay id-based. engGroups/sections are LWW `meta` blobs with no
+  `uid` of their own and are low-churn; concurrent-creation collision there is a far narrower
+  window. Extending the uid-ref pattern to them is additive (give them a uid + a mirror field).
+- **Field-level CRDT + live cursors (Phase D)** — entity values are still whole-object LWW; a
+  same-entity concurrent edit resolves by last-write, not per-field merge.
+- **The log records create/UPDATE/delete/conflict** (per-field before/after for updates — see
+  *Per-field UPDATE audit* above). Conflicts are still detected only at **reconcile** (the
+  offline-divergence case, where data loss was the real risk); live simultaneous edits resolve by
+  real-time LWW and are recorded as ordinary `update` entries, not flagged as conflicts.
 - **No photo sync yet** — photos stay per-machine (out-of-band in IndexedDB).
-- **No E2E yet (Phase B)** — the relay moves Yjs updates over TLS, gated by the shared
-  token. E2E (ciphertext-only relay) is the next security milestone.
+- **Metadata still visible to the relay (accepted).** E2E hides content but not structure:
+  the relay sees room membership, entity counts, edit timing, and the (random) uids. Hiding
+  those too would need a dumb broadcast relay (transport encryption) — rejected for Phase B
+  because it means a relay rewrite and loses server-held late-joiner state. Named access +
+  metadata audit is the deferred Hocuspocus upgrade.
 
 ### Editors MUST `saveState()` or they don't sync (bit us: allocations)
 

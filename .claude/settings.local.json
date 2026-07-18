@@ -132,7 +132,13 @@
       "Bash(curl -s -o /dev/null -w \"relay:%{http_code} 8791:%{http_code} 8792:%{http_code}\\\\n\" http://localhost:1234/ http://localhost:8791/ http://localhost:8792/)",
       "Bash(node --test tests/collab-merge.test.js)",
       "PowerShell(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/a63ee7f1-ab93-44a9-a001-0703ea76b7b4/scratchpad/synctest.js\")",
-      "Bash(curl -s -o /dev/null -w \"relay:%{http_code} app-A:%{http_code} app-B:%{http_code}\\\\n\" http://localhost:1234/ http://localhost:8791/ http://localhost:8792/)"
+      "Bash(curl -s -o /dev/null -w \"relay:%{http_code} app-A:%{http_code} app-B:%{http_code}\\\\n\" http://localhost:1234/ http://localhost:8791/ http://localhost:8792/)",
+      "Read(//c/Users/pyro3/Documents/matrix-relay//**)",
+      "Read(//c/Users/pyro3/Documents/matrix-relay/**)",
+      "WebFetch(domain:esm.sh)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git -C /c/Users/pyro3/Documents/Matrix/matrix status --short)"
     ]
   }
 }
