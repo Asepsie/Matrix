@@ -240,6 +240,9 @@ export function _doSave(){
     _saveFailedAlerted=false;
     flashSaved();
     updateStorageHealth();
+    // Multi-user: mirror this save into the shared Y.Doc (no-op unless connected;
+    // guarded against echo while applying a remote change). See sections/collab.js.
+    if(typeof collabPush==='function') collabPush();
   }catch(e){
     // localStorage full — surface clearly
     const el=G('save-indicator');

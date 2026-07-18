@@ -5,6 +5,102 @@ keep entries short — record what is *non-obvious from the code*, not a full to
 
 ---
 
+## Multi-user collaboration (collab.js)
+
+`OFFER MNGT`-independent — it's a **rail utility action** (`Collaborate`, in `RAIL_UTIL`)
+that opens a panel to create/join a real-time room. All in
+[src/sections/collab.js](src/sections/collab.js) (`collab`/`_collab`-prefixed). This is
+Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly on the
+`uid` identity model above.
+
+### Key facts (non-obvious)
+
+- **Yjs is NOT bundled** — `yjs` + `y-websocket` + `y-indexeddb` are dynamically
+  `import()`-ed from esm.sh the first time the user connects (the ai.js/WebLLM pattern).
+  An **import map in [index.html](src/index.html)** pins one copy of `yjs`; the providers
+  load with `?external=yjs` so they bind to that same instance (the "Yjs loaded twice"
+  gotcha from the relay's DEPLOY.md). **build.js gotcha:** the literal `external=` in a
+  URL trips the line-based duplicate-decl checker (reads it as declaring `external`), so
+  it's built as `'?external'+'=yjs'` (`COLLAB_EXT`) to split the token.
+- **Entity-level sync keyed by `uid`.** Y.Maps `engineers`/`projects`/`allocRows` (keyed
+  by `uid`) + one `meta` Y.Map for the rest of the saved payload (whole-value LWW per
+  key — `COLLAB_META` lists them; excludes transient view state like zoom/filters/axis).
+  Different-entity edits merge; same-entity is last-write-wins.
+- **Join / merge model (`collabReconcile`, runs once on the first relay sync).** The
+  last-synced state is captured from IndexedDB (the **base**) via `_collabPersist.whenSynced`
+  BEFORE the websocket opens — the 3-way merge needs it, so the connect flow now waits for
+  y-indexeddb, snapshots base, THEN creates the `WebsocketProvider`.
+  - **First time in a room** (base empty): empty room → **seed** (`collabSeed`, no log spam);
+    populated room → **adopt** (`collabAdoptFromDoc`) after a confirm.
+  - **Returning to a room you've synced** (base non-empty): **3-way merge** per entity
+    (`collab3way`: base vs local vs remote) — only-you-changed keeps yours (pushed),
+    only-they-changed takes theirs, **both-changed = conflict** (yours stays live, theirs is
+    preserved in the change log). This is what makes edits done while **fully offline/closed**
+    merge in on reconnect instead of being clobbered. `collabMetaReconcile` does the same
+    per meta key.
+- **Offline-first push:** `_doSave`→`collabPush()` is **NOT gated on connectivity** (only on
+  `_collabReconciled`), so offline edits land in the Y.Doc, y-indexeddb persists them, and
+  y-websocket syncs them on reconnect. Gating on `_collabConnected` (the original bug) silently
+  dropped offline edits whenever the other side had also changed something. `collabPush` writes
+  only entities whose JSON changed (`_collabLastJson`) and emits **create/delete** log entries;
+  `collabSeed`/reconcile pass `logChanges=false` so the initial dataset isn't logged as a burst.
+- **Auto-reconnect:** `collabConnect` sets `_collabCfg.auto=true`; boot (`collabBootFromHash`)
+  auto-rejoins the last room (silent — the 3-way merge reconciles closed-app edits). Manual
+  `collabDisconnect` clears `auto`. A share link still prompts.
+- **Change / conflict log (audit-log seed).** Append-only entries `{id,ts,actor,action
+  (create|delete|conflict),entityType,entityUid,label,conflict:{kept,overwritten}}`. Lives in
+  the Y.Doc as a **Y.Array** (`log`) so it syncs to every peer and merges without conflict
+  (unique ids), AND mirrors to a local store (`eim_collab_log`) so it survives offline/reload.
+  `collabLogAppend` writes both; the Y.Array observer (`collabLogMergeFromDoc`) unions remote
+  entries in by id. **Conflicts never lose data** — the overwritten value is kept in the log
+  (future "restore this version"). Viewer = `collabHistoryOpen` (a second modal, z1120).
+- **Actor identity** = self-declared name (`_collabCfg.actor`, panel field), used for
+  `awareness` presence AND as the `actor` on every log entry. Verified identity later is a
+  drop-in replacement — the audit seam the relay roadmap describes.
+- **Echo guard:** remote map/log events with `transaction.origin==='local'` are ignored;
+  `_collabApplying` blocks the push that `collabAdoptFromDoc`'s `saveNow` would otherwise
+  trigger. Both are essential or edits bounce back and duplicate.
+- **Focus-steal guard (bit us — twice).** A remote patch must never re-render while a
+  field is focused. `collabRerender` marks `_collabDirtyView` and bails if a field is
+  focused; a **700ms poll** (`collabFlushDirty`, started on connect) repaints once the
+  field is free. The first design (a per-element `blur` listener + a sticky flag) stranded
+  the flag when the element was removed mid-edit → **all** later re-renders silently
+  froze while data kept syncing. The second (a document `focusout` listener) was fine in
+  real browsers but a single missed event still stuck. The poll is event-quirk-independent
+  — only acts when dirty, so it's cheap.
+- **Presence** via `provider.awareness`; the peer count shows as a badge on the rail
+  Collaborate icon (`rn-collab-badge`, `collabUpdateBadge`).
+- **Security:** random 128-bit room id, token as a **connection param** (not in the share
+  link's query), secrets in the URL **#fragment** — the three patterns from
+  `../matrix-relay/test/sync-test.html`. Config persists in its own `eim_collab`
+  localStorage key (relay/token/room), separate from `SK`.
+
+### v1 limitations (deliberate — the next phase)
+
+- **Intra-dataset refs are still id-based** (`allocRow.engId`, `idcard.reportsTo`). Safe
+  for keeping your own computers in sync and mostly-sequential collaboration; two users
+  creating brand-new people at the same moment offline can produce id-ref ambiguity.
+  uid-based refs + field-level CRDT (Phase D) are next.
+- **The log records create/delete/conflict, not every field edit.** Full per-update audit
+  (with field-level before/after) is the next increment on the SAME log model — additive.
+  Conflicts are detected at **reconcile** (the offline-divergence case, where data loss was
+  the real risk); live simultaneous edits still resolve by real-time LWW and aren't flagged.
+- **No photo sync yet** — photos stay per-machine (out-of-band in IndexedDB).
+- **No E2E yet (Phase B)** — the relay moves Yjs updates over TLS, gated by the shared
+  token. E2E (ciphertext-only relay) is the next security milestone.
+
+Verified: the 3-way merge decision table has deterministic unit tests
+([tests/collab-merge.test.js](tests/collab-merge.test.js): only-mine / only-theirs /
+both-changed→conflict / add-both / delete cases + a full offline-divergence scenario).
+Two-origin browser sync (seed, adopt, live bidirectional edits, echo guard, presence, focus
+guard) verified end-to-end through a local relay. **`COLLAB_DEFAULT_RELAY` note:** Heroku
+migrated app domains to `<app>-<hash>.herokuapp.com`; the default relay URL was updated to
+match (the old bare domain 404s), and the connect UI now distinguishes "loading library" from
+"connecting to relay" with a 12s stall watchdog (a wrong/short token → 401 was the classic
+"stuck connecting").
+
+---
+
 ## Data & persistence
 
 Three persistence layers with **two different identity models**. This split is the

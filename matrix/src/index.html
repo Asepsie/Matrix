@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Matrix</title>
+<!-- Pin ONE copy of Yjs so y-websocket/y-indexeddb (loaded via import(?external=yjs)
+     in sections/collab.js) bind to the same instance — the "Yjs loaded twice"
+     gotcha from the relay's DEPLOY.md. Applies to the runtime dynamic imports. -->
+<script type="importmap">
+{ "imports": { "yjs": "https://esm.sh/yjs@13.6.10" } }
+</script>
 <!-- {{CSS}} -->
 </head>
 <body>

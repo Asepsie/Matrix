@@ -107,7 +107,32 @@
       "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state||d; console.log\\('top keys:',Object.keys\\(d\\).slice\\(0,8\\)\\); console.log\\('engineers:',\\(s.engineers||[]\\).length,'| has uid?',\\(s.engineers||[]\\)[0]?.uid!==undefined\\); console.log\\('projects:',\\(s.projects||[]\\).length\\); console.log\\('nineBoxHistory years:',Object.keys\\(s.nineBoxHistory||{}\\)\\); console.log\\('discPlacements keys:',Object.keys\\(s.discPlacements||{}\\).slice\\(0,5\\)\\); console.log\\('photos:',Object.keys\\(d._photos||{}\\).length,'sample keys:',Object.keys\\(d._photos||{}\\).slice\\(0,3\\)\\);\")",
       "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state; console.log\\('nineBoxPlacements keys:',Object.keys\\(s.nineBoxPlacements||{}\\).slice\\(0,8\\)\\); console.log\\('finExclude:',s.finExclude\\); console.log\\('eng[0]:',JSON.stringify\\({id:s.engineers[0].id,name:s.engineers[0].name}\\)\\); console.log\\('eng ids sample:',s.engineers.slice\\(0,5\\).map\\(e=>e.id\\)\\);\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8791/)",
-      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state; const payload={engineers:s.engineers,projects:s.projects,allocRows:s.allocRows,nineBoxPlacements:s.nineBoxPlacements,discPlacements:s.discPlacements,nextEngId:s.nextEngId,nextId:s.nextId,nextAllocId:s.nextAllocId}; const str=JSON.stringify\\(payload\\); console.log\\('payload bytes:',str.length\\); require\\('fs'\\).writeFileSync\\('dist/_testseed.json',str\\);\")"
+      "Bash(node -e \"const d=require\\('./demo/matrix_demo_backup.json'\\); const s=d.state; const payload={engineers:s.engineers,projects:s.projects,allocRows:s.allocRows,nineBoxPlacements:s.nineBoxPlacements,discPlacements:s.discPlacements,nextEngId:s.nextEngId,nextId:s.nextId,nextAllocId:s.nextAllocId}; const str=JSON.stringify\\(payload\\); console.log\\('payload bytes:',str.length\\); require\\('fs'\\).writeFileSync\\('dist/_testseed.json',str\\);\")",
+      "Bash(grep -E \"# tests|# pass|# fail|tests [0-9]+$|pass [0-9]+$|fail [0-9]+$\")",
+      "Bash(PORT=1234 node server.js)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"relay http %{http_code}\\\\n\" http://localhost:1234/)",
+      "Bash(curl -s -o /dev/null -w \"8791:%{http_code} \" http://localhost:8791/)",
+      "Bash(curl -s -o /dev/null -w \"8792:%{http_code}\\\\n\" http://localhost:8792/)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match '8791|8792|server\\\\.js|PORT=1234|1234' } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force; \"stopped $\\($_.ProcessId\\)\" } catch {} })",
+      "Bash(grep -E \"tests [0-9]+$|pass [0-9]+$|fail [0-9]+$\")",
+      "Bash(node -e \"const h=require\\('http'\\),f=require\\('fs'\\),p=require\\('path'\\);h.createServer\\(\\(req,res\\)=>{let fp=p.join\\('dist',req.url==='/'?'matrix.html':decodeURIComponent\\(req.url.split\\('?'\\)[0]\\)\\);f.readFile\\(fp,\\(e,d\\)=>{if\\(e\\){res.writeHead\\(404\\);res.end\\('nf'\\);}else{res.writeHead\\(200,{'Content-Type':fp.endsWith\\('.html'\\)?'text/html':'application/octet-stream'}\\);res.end\\(d\\);}}\\);}\\).listen\\(8791,\\(\\)=>console.log\\('dist on 8791'\\)\\);\")",
+      "Bash(curl -s -o /dev/null -w \"8791:%{http_code}\\\\n\" http://localhost:8791/)",
+      "Bash(curl -s -o /dev/null -w \"relay:%{http_code}\\\\n\" http://localhost:1234/)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match '8791|server\\\\.js|1234' } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force; \"stopped $\\($_.ProcessId\\)\" } catch {} })",
+      "Bash(curl -s -m 20 -w \"\\\\nHTTP %{http_code} · time %{time_total}s\\\\n\" https://shrouded-peak-70323-cec8c0279fd8.herokuapp.com/)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://shrouded-peak-70323-cec8c0279fd8.herokuapp.com/\" -TimeoutSec 25 -UseBasicParsing; \"HTTP $\\($r.StatusCode\\): $\\($r.Content\\)\" } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/4881905c-3ccf-46f5-b601-61b8db7215aa/scratchpad/wstest.js\" c50221f8fc8548d0a7aa2e99a6f84766d)",
+      "PowerShell(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/4881905c-3ccf-46f5-b601-61b8db7215aa/scratchpad/wstest.js\" \"\")",
+      "PowerShell(heroku config:get RELAY_TOKEN -a shrouded-peak-70323 2>&1)",
+      "PowerShell($tok = \\(heroku config:get RELAY_TOKEN -a shrouded-peak-70323\\).Trim\\(\\); \"length=$\\($tok.Length\\)\"; \"value=[$tok]\"; \"screenshot=[c50221f8fc8548d0a7aa2e99a6f84766d] length=33\")",
+      "PowerShell(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/4881905c-3ccf-46f5-b601-61b8db7215aa/scratchpad/wstest.js\" c50221f8fc8548d0a7aa2e99a6f84766)",
+      "Bash(curl -s -o /dev/null -w \"relay:%{http_code} \" http://localhost:1234/)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match '8791|8792|server\\\\.js|1234' } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force; \"stopped $\\($_.ProcessId\\)\" } catch {} })",
+      "Bash(curl -s -o /dev/null -w \"relay:%{http_code} 8791:%{http_code} 8792:%{http_code}\\\\n\" http://localhost:1234/ http://localhost:8791/ http://localhost:8792/)",
+      "Bash(node --test tests/collab-merge.test.js)",
+      "PowerShell(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/a63ee7f1-ab93-44a9-a001-0703ea76b7b4/scratchpad/synctest.js\")",
+      "Bash(curl -s -o /dev/null -w \"relay:%{http_code} app-A:%{http_code} app-B:%{http_code}\\\\n\" http://localhost:1234/ http://localhost:8791/ http://localhost:8792/)"
     ]
   }
 }

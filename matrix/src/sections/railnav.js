@@ -43,7 +43,8 @@ var RAIL_I = {
   settings:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   pin:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   pinOpen:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
-  chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+  chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  collab:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.6"/><circle cx="17" cy="8" r="2.6"/><path d="M2.6 18c0-2.4 1.9-4 4.4-4 1.2 0 2.3.4 3.1 1.1"/><path d="M13.9 15.1c.8-.7 1.9-1.1 3.1-1.1 2.5 0 4.4 1.6 4.4 4"/><path d="M9.4 12.2a3.2 3.2 0 0 1 5.2 0"/></svg>'
 };
 
 /* ── Domain → view map. Every view id routes through railGo (Phase 2).
@@ -98,6 +99,7 @@ var RAIL_DOMAINS = [
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
+  {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
   {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
   {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
   {id:'restore',  name:t('Restore'),   ico:RAIL_I.restore},
@@ -267,8 +269,9 @@ function railRender(){
          + '</div><div class="rn-subs">'+subs+'</div></div>';
   }).join('');
   railFootEl.innerHTML=RAIL_UTIL.map(function(u){
+    var badge=(u.id==='collab')?'<span id="rn-collab-badge" class="rn-util-badge" style="display:none"></span>':'';
     return '<div class="rn-util" onclick="railAction(\''+u.id+'\')" title="'+u.name+'">'
-         + '<span class="rn-util-ico">'+u.ico+'</span>'
+         + '<span class="rn-util-ico" style="position:relative">'+u.ico+badge+'</span>'
          + '<span class="rn-util-name mono">'+u.name+'</span></div>';
   }).join('')
   + '<div class="rn-mode-sep"></div>'
@@ -378,7 +381,8 @@ function railAnyModalOpen(){
 function railAction(id){
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
-  if(id==='snap')          openSnap();
+  if(id==='collab')        collabOpen();
+  else if(id==='snap')     openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();
   else if(id==='ai')       aiOpenChat();

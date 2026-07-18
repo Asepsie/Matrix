@@ -64,6 +64,7 @@ const JS_FILES = [
   'sections/exec.js',
   'sections/gate.js',
   'sections/engagement.js',
+  'sections/collab.js',
   'sections/boot.js',
 ];
 

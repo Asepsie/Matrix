@@ -94,6 +94,12 @@ else i18nApplyDom(document);
 idbBoot().then(function(){
   if(G('org-overlay')&&G('org-overlay').style.display!=='none')renderOrgChart();
 });
+// Multi-user: if this page was opened from a room share link (#collab&…), offer to
+// join. Deferred to DOMContentLoaded so overlays/G() targets exist (boot-timing rule).
+if(typeof collabBootFromHash==='function'){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',collabBootFromHash);
+  else collabBootFromHash();
+}
 // Boot snapshot IDB: migrate from localStorage + load index
 snapBoot();
 setScale('x',scaleX);setScale('y',scaleY);
