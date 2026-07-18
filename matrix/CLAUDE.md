@@ -18,6 +18,8 @@ area.
 | Add a field to Engineer | src/data/model.js only |
 | Fix allocation/cost bug | src/core/helpers.js (+ ARCHITECTURE.md › Cost model) |
 | Fix save/load/sanitise | src/core/persist.js (+ ARCHITECTURE.md) |
+| Entity identity (`uid`), id→uid migration | src/data/model.js + src/core/persist.js (`uidMigrate`) (+ ARCHITECTURE.md › uid identity model) |
+| Multi-user sync / conflict-merge / change history | src/sections/collab.js (+ ARCHITECTURE.md › Multi-user collaboration; relay repo ../matrix-relay) |
 | Fix photos / backup / restore | src/core/photo.js, src/sections/backup.js (+ ARCHITECTURE.md) |
 | AI advisor / chatbot (WebLLM) | src/sections/ai.js (+ ARCHITECTURE.md) |
 | Navigation / rail / topbar / overlays | src/sections/railnav.js, src/styles/nav.css (+ ARCHITECTURE.md) |

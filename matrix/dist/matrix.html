@@ -8710,10 +8710,17 @@ function setAlloc(rowId,month,val){
   const r=allocRows.find(r=>r.id===rowId);if(!r)return;
   if(!r.allocs)r.allocs={};
   // Status letters stored as-is
-  if(val==='m'||val==='p'||val==='r'){r.allocs[month]=val;return;}
-  const pct=parseFloat(val);
-  if(isNaN(pct)||pct<=0) delete r.allocs[month];
-  else r.allocs[month]=Math.min(1,Math.max(0,pct/100)); // store as 0-1
+  if(val==='m'||val==='p'||val==='r'){r.allocs[month]=val;}
+  else {
+    const pct=parseFloat(val);
+    if(isNaN(pct)||pct<=0) delete r.allocs[month];
+    else r.allocs[month]=Math.min(1,Math.max(0,pct/100)); // store as 0-1
+  }
+  // Persist every allocation edit. The cell's onchange calls only setAlloc, so
+  // without this the edit lived in memory only — never written to localStorage and
+  // (with multi-user) never pushed to the shared doc, so it didn't sync. saveState
+  // is debounced, so bulk callers that loop setAlloc still coalesce to one write.
+  saveState();
 }
 /** Returns true if the alloc value is a status letter (m, p, or r). */
 function _allocIsStatus(v){return v==='m'||v==='p'||v==='r';}

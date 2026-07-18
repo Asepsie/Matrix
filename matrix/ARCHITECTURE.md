@@ -89,6 +89,16 @@ Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly 
 - **No E2E yet (Phase B)** — the relay moves Yjs updates over TLS, gated by the shared
   token. E2E (ciphertext-only relay) is the next security milestone.
 
+### Editors MUST `saveState()` or they don't sync (bit us: allocations)
+
+`collabPush` is hooked into `_doSave`, so **anything that mutates state but skips
+`saveState()` is invisible to sync** (and isn't persisted single-user either). This bit
+the resource-plan allocation cells: `plan.js setAlloc` mutated `allocs[month]` and the
+cell's `onchange="setAlloc(...)"` relied solely on it — so allocation edits lived in memory
+only and "didn't sync." Fixed by making `setAlloc` call `saveState()` (debounced, so bulk
+loop-callers still coalesce to one write). When adding any editor, route it through
+`saveState()`.
+
 Verified: the 3-way merge decision table has deterministic unit tests
 ([tests/collab-merge.test.js](tests/collab-merge.test.js): only-mine / only-theirs /
 both-changed→conflict / add-both / delete cases + a full offline-divergence scenario).
