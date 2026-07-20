@@ -28,6 +28,7 @@ const JS_FILES = [
   'data/model.js',
   'core/globals.js',
   'core/helpers.js',
+  'core/export.js',
   'core/financial.js',
   'core/persist.js',
   'core/photo.js',

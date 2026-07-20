@@ -1,1 +1,11 @@
-/* @media print rules — to be migrated from matrix.html JS-generated styles */
+/* Shared print rules for printing matrix.html itself (Ctrl+P / window.print() on
+   the live app — e.g. the charter deck's body.cht-printing flow). Popup-window
+   exports (exec pack, profiles, brief) write a SEPARATE document, so they carry
+   the equivalent rules as the EXPORT_PRINT_CSS string in src/core/export.js
+   instead — the two are kept in sync by hand; see ARCHITECTURE.md › Export engine. */
+@media print{
+  html,body{background:#fff!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  .export-page{page-break-after:always;break-after:page}
+  .export-page:last-child{page-break-after:avoid;break-after:avoid}
+}

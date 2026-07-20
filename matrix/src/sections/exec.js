@@ -64,11 +64,14 @@ function renderExecTab(){
   const body=G('res-body'); if(!body) return;
   const months=getMonthRange();
   let h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
-  h+='<div style="display:flex;align-items:baseline;gap:10px">'
+  h+='<div style="display:flex;align-items:baseline;gap:10px;justify-content:space-between;flex-wrap:wrap">'
+    +'<div style="display:flex;align-items:baseline;gap:10px">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ EXECUTIVE SUMMARY')+'</span>'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
     +(months.length?t('over {n} month(s) · FROM/TO period · click a tile to drill in',{n:months.length}):t('set a FROM/TO period for cost & capacity'))
-    +'</span></div>';
+    +'</span></div>'
+    +'<button class="sm" onclick="exportExecPack()" style="border-color:var(--accent);color:var(--accent)">'+t('📄 Export')+'</button>'
+    +'</div>';
   if(!projects.length && !engineers.length){ body.innerHTML=h+pfEmpty(t('Nothing to summarise yet — add projects and a team.'))+'</div>'; return; }
 
   h+=xsScorecard(months);
@@ -507,4 +510,44 @@ function xsAttention(months){
   });
   h+='</div>';
   return h;
+}
+
+// ── export: executive PDF, built from a picker (D1 in OUTPUT-LAYER-PLAN.md — the
+//    export engine's first real consumer). Each block below just wraps an EXISTING
+//    on-screen renderer (xsScorecard/xsSpendSection/xsBubbleSvg/xsBurnSvg/
+//    xsAttention) — exportOpenBuilder() lets the user pick which blocks, their
+//    order and the theme before handing them to exportOpen(). Pure function of
+//    the dataset: never mutates state, never calls saveState().
+function xsExportBlocks(){
+  const page=function(title,inner){
+    return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(title)+'</h2>'+inner;
+  };
+  return [
+    {id:'scorecard', label:t('Scorecard'), render:function(ctx){ return page(t('Scorecard'), xsScorecard(ctx.months)); }},
+    {id:'spendmap',  label:t('Spend map'), render:function(){ return xsSpendSection(); }},
+    {id:'valuerisk', label:t('Value vs risk'), render:function(ctx){
+      return pfSection(t('VALUE vs RISK'), t('Each project by NPV (value) and total risk exposure (Σ RPN). Bubble size = team cost.'), xsBubbleSvg(ctx.eco));
+    }},
+    {id:'burn', label:t('Cost burn'), render:function(ctx){
+      return pfSection(t('COST BURN'), t('Loaded team cost per month with resource utilisation and the period average.'), xsBurnSvg(ctx.months));
+    }},
+    {id:'attention', label:t('Needs attention'), render:function(ctx){ return page(t('Needs attention'), xsAttention(ctx.months)); }},
+  ];
+}
+function exportExecPack(){
+  if(!projects.length && !engineers.length){ alert(t('Nothing to export yet — add projects and a team.')); return; }
+  const months=getMonthRange();
+  const eco=ecDataset();
+  const planTitle=G('res-title-input')?G('res-title-input').value:'Resource Plan';
+  exportOpenBuilder({
+    deliverableId: 'exec',
+    title: t('Executive Summary'),
+    subtitleDefault: planTitle+(months.length?' · '+t('over {n} month(s)',{n:months.length}):''),
+    blocks: xsExportBlocks(),
+    ctx: {months:months, eco:eco},
+    builtinTemplates: [
+      {id:'full', name:t('Full'), blocks:['scorecard','spendmap','valuerisk','burn','attention']},
+      {id:'summary', name:t('Summary only'), blocks:['scorecard','attention']},
+    ],
+  });
 }

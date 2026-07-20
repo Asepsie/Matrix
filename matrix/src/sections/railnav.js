@@ -373,7 +373,8 @@ function railEscMaybeBack(){
 // first (and NOT navigate back) so e.g. closing an ID card keeps you on the roster.
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
-  'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel'];
+  'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
+  'export-builder-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -517,6 +518,7 @@ function railOpenSettings(){
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var sbz=G('set-scrollbar'); if(sbz) sbz.value=railScrollbar;
+  var et=G('set-export-theme'); if(et) et.value=exportLoadPrefs().theme;
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
 }
 
@@ -528,6 +530,7 @@ function railSaveSettings(){
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
   var sbz=G('set-scrollbar'); if(sbz&&RAIL_SB[sbz.value]) railScrollbar=sbz.value;
+  var et=G('set-export-theme'); if(et){ var ep=exportLoadPrefs(); ep.theme=(et.value==='light'?'light':'app'); exportSavePrefs(ep); }
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railApplyScrollbar();

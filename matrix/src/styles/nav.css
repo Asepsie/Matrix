@@ -234,10 +234,11 @@ body{padding-left:var(--rail);}
   font-family:IBM Plex Mono,monospace; font-size:11px; padding:3px 7px; border-radius:4px;
 }
 
-/* Rail-spawned modals (Settings, first-run landing) must sit ABOVE the full-screen
-   view overlays (z-index:400) — they open as actions without closing the current
-   view, so at z-index:200 they'd render hidden behind an open Resources/Org panel.
-   Above the rail (z-index:1000) too, and inset so the rail stays visible. */
-#settings-overlay, #landing-firstrun{
+/* Rail-spawned modals (Settings, first-run landing, the export builder) must sit
+   ABOVE the full-screen view overlays (z-index:400) — they open as actions without
+   closing the current view, so at z-index:200 they'd render hidden behind an open
+   Resources/Org panel. Above the rail (z-index:1000) too, and inset so the rail
+   stays visible. */
+#settings-overlay, #landing-firstrun, #export-builder-overlay{
   z-index:1100; left:var(--rail);
 }

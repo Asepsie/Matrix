@@ -146,7 +146,9 @@
       "Bash(grep -nE \"\\(background|fill|stroke|border[^:]*:|color\\)[^;{]*['\\\\\"]?\\\\+?[\\\\w.]*\\(\\\\.color|col\\)\\\\b|\\\\\\\\\\\\$\\\\{[^}]*\\\\.color[^}]*\\\\}\" econ.js)",
       "Bash(grep -nE \"n:[^,}]+|\\\\.n=|g=\\\\{|\\\\{n:\" econ.js)",
       "Bash(grep -nE \"\\(background|fill|stroke|border[^:]*:|color\\)[^;{]*['\\\\\"]\\\\+[\\\\w.]+\\\\.\\(color|col\\)\\\\b|:\\\\\\\\\\\\$\\\\{[^}]*\\\\.color[^}]*\\\\}\" src/sections/portfolio.js)",
-      "Bash(node --test tests/)"
+      "Bash(node --test tests/)",
+      "Bash(ls -la \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/\" 2>/dev/null | sed 's/pyro3/USER/g')",
+      "Bash(node --test tests/export.test.js)"
     ]
   }
 }

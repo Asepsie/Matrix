@@ -298,6 +298,33 @@ match (the old bare domain 404s), and the connect UI now distinguishes "loading 
 "connecting to relay" with a 12s stall watchdog (a wrong/short token → 401 was the classic
 "stuck connecting").
 
+### Collab roadmap — what's left (as of 2026-07-19)
+
+Everything above is **shipped**: Phase 0 (uid identity) · A (Y.Doc sync) · A+ (offline 3-way merge
++ change/conflict log + history) · B (E2E) · uid-anchored refs · per-field UPDATE audit · XSS audit ·
+join-UX/data-loss net · Phase D presence · Phase D patching **A** (live-patch open editor), **B**
+(surgical roster rows), **C** (real-time per-field CRDT merge). Remaining, none in progress:
+
+- **Verified identity + named audit + revoke (Hocuspocus)** — real accounts, server-verified `actor`,
+  per-user revoke; also closes the metadata-privacy gap. HIGH effort. **Gated by the governance
+  question below.**
+- **Photo sync** — photos are still per-machine (out-of-band in IndexedDB, uid-keyed); teammates don't
+  see faces. Needs a uid-keyed out-of-band channel. MEDIUM. Independent of governance — the best
+  standalone "next feature".
+- **Array/list element-level CRDT** — arrays (`skills`/`todos`/`risks`/charter `demands`·`subsystems`·
+  `channels`/`cops`/`reviews`/gate `history`) are ATOMIC LWW; concurrent edits to the *same list* are
+  last-write. Would need a `Y.Array` per list. HIGH effort, LOW value (narrow window).
+- **Same-field text merge** — two people in the *same text box* are still LWW; char-level needs `Y.Text`.
+- **Extend uid-refs to the last id-based fields** — `engineer.groupId`, `project.sectionId`,
+  `_ktPlans.learnerEngId`, org-chart layout (see *Still id-based* above). LOW, additive.
+- **Patching "B-plus"** — surgical patch of the matrix (monolithic SVG, deliberately full-swap) + org
+  chart on remote change. LOW value (canvas, no scroll-jump).
+
+**⚠ Open governance question (unresolved, blocks direction):** does data policy accept
+confidentiality-via-E2E-link (no named access/revoke; metadata visible to the relay), OR require named
+access + audit + revoke? Latter ⇒ Hocuspocus is the priority (subsumes the metadata gap); former ⇒ the
+roadmap is essentially feature-complete and the rest is polish. Resolve before the heavy Hocuspocus work.
+
 ---
 
 ## Data & persistence
@@ -1436,3 +1463,174 @@ Wrap the literal: `t('My label')`. Add its value under `fr` and `zh` in `I18N_DI
 ([i18n.js](src/core/i18n.js)). `node build.js` prints the audit (0 missing = done);
 `node --test tests/i18n.test.js` checks parity. Keys with `{name}` placeholders must keep the
 same placeholders in every translation (the parity test enforces this).
+
+---
+
+## Export engine (src/core/export.js)
+
+The shared pipeline every "deliverable" export goes through — see
+`matrix/OUTPUT-LAYER-PLAN.md` for the original roadmap. **Scope, decided explicitly with the
+user after an app-wide audit found ~40 export functions (not the handful the plan assumed):**
+only the ~22 *visual/print* deliverables (PDF/PNG/SVG/HTML — profiles, dashboard, disc,
+nine-box, org, gantt, skills, charter, exec) migrate onto this engine; the ~15 plain CSV/JSON
+data dumps (roster, full backup, plan CSVs) stay as they are — they're raw data, not themed
+deliverables, and don't need a cover/theme/template. **D1 (exec pack) is the only deliverable
+migrated so far**; the other ~21 (incl. the still-independent charter deck/synopsis, D2/D3)
+remain on their old hand-rolled `document.write`/canvas paths.
+
+Two layers:
+
+1. **The shell** — `exportBrand`/`exportField`/`exportHTML`/`exportOpen`. Produces the actual
+   popup document. Unchanged in spirit from the first pass.
+2. **The builder** — `exportOpenBuilder` + `exportBuilder*`. A drag-and-drop modal
+   (`#export-builder-overlay`) a deliverable opens INSTEAD of calling `exportOpen` directly,
+   so the user picks *which* blocks go in, their order, and the theme before anything is
+   generated. This is what replaced the first pass's "one fixed page order, hardcoded light
+   theme, no control" version after user feedback that that draft ignored the theme entirely
+   and gave no control over content — see [[output-layer-export-engine]] in memory for the
+   full before/after.
+
+### Key facts (non-obvious)
+
+- **Unlike every other section file, `export.js` genuinely `import`/`export`s** (`escH`/
+  `safeColor` from [helpers.js](src/core/helpers.js), `t` from [i18n.js](src/core/i18n.js))
+  instead of relying on bundle-scope bare globals. The `export` keywords are stripped by
+  build.js like everywhere else, but the real imports mean the pure half of this file — unlike
+  exec.js/charter.js/profiles.js — can be `import`ed directly by a Node test (mirrors how
+  [helpers.js](src/core/helpers.js) is tested). See [tests/export.test.js](tests/export.test.js).
+  The builder half (`exportOpenBuilder`/`exportBuilder*`) is UI-only (reads `G()`/`document`)
+  and is NOT exported/tested — same convention as every other section file's DOM code.
+- **Theme is now a real user choice, not a hardcoded default.** Settings has an "EXPORT
+  THEME" field (`#set-export-theme`, wired in `railOpenSettings`/`railSaveSettings`) —
+  `'app'` (matches the live on-screen palette, the default) or `'light'` (the print-friendly
+  paper palette, `EXPORT_PAPER`). Persisted in `exportLoadPrefs().theme` (own localStorage key
+  `eim_export_prefs`, `EXPORT_PREFS_KEY` — UI-only, NOT app state/backups, mirrors the nav
+  rail's `eim_rail_prefs` pattern but deliberately a separate key so export branding isn't
+  coupled to nav layout). Each individual export can override the Settings default via the
+  builder's own THEME select (`exportBrand({theme:'light'})` beats the saved default — see
+  `exportBrand`'s opts.theme precedence). **The first pass of this file shipped with the
+  default silently hardcoded to `'light'` and no way to change it** — that's what triggered
+  the rework; don't reintroduce a hardcoded theme default outside this one Settings field.
+- **`exportPalette()` is defensively wrapped** (`try{getComputedStyle(...)}catch`) so
+  `exportBrand()`'s `'app'` path — which is now the DEFAULT, unlike before — stays callable
+  from a Node test with no DOM; falls back to the same hardcoded dark values `getComputedStyle`
+  would have returned anyway.
+- **Theming trick: pages are NOT re-styled for export.** `exportHTML` writes the brand
+  palette as CSS custom properties (`--bg/--surface/--border/--text/--muted/--dim/--accent/
+  --accent2/--danger/--warn`) on the popup document's `:root`, so any on-screen builder that
+  already renders via `var(--…)` — `pfSection`/`pfKpi`/`pfEmpty`/`pfTreemapSvg`, the `xs*`
+  KPI/chart functions in exec.js — drops into an export page **completely unmodified**,
+  themed either way depending on which palette got written. A couple of the reused exec.js
+  builders (`xsSpendSection`'s toggle buttons, `xsAttention`'s `railGo` click) carry `onclick`
+  handlers that don't exist in the popup document — deliberately left in, they no-op
+  harmlessly since nobody clicks a printed/exported page.
+- **Content control: a per-deliverable block registry + templates, not a fixed page list.**
+  A deliverable (currently only exec.js) builds an array of `{id, label, render(ctx)}` blocks
+  — e.g. `xsExportBlocks()` in [exec.js](src/sections/exec.js) wraps `xsScorecard`/
+  `xsSpendSection`/`xsBubbleSvg`/`xsBurnSvg`/`xsAttention` — plus a couple of **built-in
+  templates** (named, ordered subsets, e.g. `'full'`/`'summary'`). `exportOpenBuilder` merges
+  those built-ins with any **custom templates** the user has saved for that `deliverableId`
+  (`exportLoadCustomTemplates`/`exportSaveCustomTemplates`, own localStorage key
+  `eim_export_templates` = `EXPORT_TEMPLATES_KEY`, `{[deliverableId]: [{id,name,blocks}]}` —
+  malformed entries are dropped defensively on load, not thrown). Built-in templates are
+  never persisted (the caller supplies them fresh every open); only what the user explicitly
+  names via "Save template" is written to storage, and only for that one deliverable.
+- **Drag-and-drop is native HTML5 DnD** (`draggable`+`dragstart`/`dragover`/`drop`, the same
+  idiom as `xsScheduleSection`'s week-planner chips and the rail's page-reorder — see
+  *Navigation shell*), not a library. Available↔Included is `dataTransfer` carrying the block
+  id; reordering **within** Included uses a pointer-Y-vs-sibling-midpoint insertion-index
+  calculation (`exportBuilderDropIndex`) — standard vanilla-JS sortable-list technique,
+  best-effort (not pixel-perfect when a chip is dropped back among its own immediate
+  neighbours). Every drag action has a **non-drag equivalent** (click an Available chip to
+  append it; ✕ button to remove an Included one) so the picker doesn't require successfully
+  completing a drag gesture. `_exportBuilderState`/`_exportDragId` are module-scoped, one
+  builder session at a time (matches the app's other single-open-modal patterns).
+- **`export-builder-overlay` is a rail-spawned modal, z-index tier 1100** — same tier and
+  `left:var(--rail)` inset as `#settings-overlay`/`#landing-firstrun` (nav.css), added to
+  `RAIL_MODAL_OVERLAYS` in railnav.js so Esc closes it first (per the existing modal-vs-view
+  Esc precedence). Defined after `<!-- {{JS}} -->` in index.html like `#cht-deck-overlay`/
+  `#brief-overlay` — safe because it's only ever touched by a user-triggered `exportOpenBuilder`
+  call well after boot, never at boot time (the nav-rail boot-timing trap doesn't apply here).
+- **`print.css` vs `EXPORT_PRINT_CSS` are two different mechanisms for two different
+  documents**, kept in sync by hand (commented cross-reference in both files): `print.css`
+  (bundled into `matrix.html` itself) governs printing the **live app in place**
+  (`window.print()` with no popup — the charter deck's `body.cht-printing` flow in
+  [charter.js](src/sections/charter.js)); `EXPORT_PRINT_CSS` (a JS string in export.js)
+  governs the **popup document** `exportOpen` writes, since that's a separate document that
+  never loads the bundle's stylesheet. Both carry the same rule: `-webkit-print-color-adjust:
+  exact` (+ standard) or backgrounds/badges silently drop out when printed.
+- **XSS-safe by construction, not by a central sanitiser.** `exportField(label,value)`
+  escapes both sides internally (`escH`) — the "safe path is the easy path" per the XSS
+  section above. `exportHTML` itself `escH`s title/subtitle/brand.name/brand.logo and
+  `safeColor`s every palette entry it writes into `:root`. Page *content* is the caller's
+  responsibility, same as the rest of the app's `innerHTML` string-building — there is still
+  no framework-enforced escaping, `exportField`/`escH`/`safeColor` are just the provided
+  choke point. Migrating any of the other ~21 visual exports onto this engine is where their
+  pre-existing XSS sinks (raw fields in old `document.write` builders, e.g. profiles.js) would
+  actually get closed — none of that migration has happened yet.
+- **Verify gotcha — `alert()`/`confirm()` block the WHOLE tab, including automation.**
+  `exportOpen`'s pop-up-blocked alert and `exportBuilderDeleteTemplate`'s confirm both freeze
+  the page (and hang `javascript_tool`/`computer` calls against it) until a real keypress
+  dismisses them; when scripting a browser-driven check of this module, either stub
+  `window.alert`/`window.confirm` before calling, or expect to send a `Return`/`Escape` key
+  press to unstick the tab. Real popups are also blocked by the automation browser by default
+  — `exportOpen`'s `window.open` returns null there — so in-page verification (mocking
+  `window.open` to capture the written HTML, or rendering `exportHTML()`'s output into an
+  `<iframe srcdoc>` on the same page) is the reliable way to inspect an export's output.
+- **Charter deck/synopsis (D2/D3) still don't use this engine** — `chtOpenDeck`/
+  `chtPrintDeck`/`chtOpenSynopsis` in [charter.js](src/sections/charter.js) render into the
+  `cht-deck-overlay`/`cht-syn-overlay` placeholders using the in-place `window.print()` +
+  `body.cht-printing` mechanism, not a popup. Per the scope decision above, migrating them is
+  optional future work, not required — they're a legitimate, working, differently-themed
+  (live app theme, since they print the live DOM) deliverable in their own right.
+
+### Next: migrating another deliverable onto this engine (recipe)
+
+Only `exec.js` uses the engine today. To move another visual export onto it (pick one from
+the ~21 remaining — profiles.js is the biggest single win at 13 functions, but any is a
+self-contained migration):
+
+1. Find its current builder function(s) — the thing that returns/writes the HTML (e.g.
+   `buildSingleProfilePageHTML` for `profileExportPDF`). Identify the distinct visual chunks
+   inside it (a header, a chart, a table) — each chunk becomes one block.
+2. Write a `<prefix>ExportBlocks()` function (mirrors `xsExportBlocks()` in exec.js) returning
+   `[{id, label, render(ctx)}, ...]`. `render` should call the SAME on-screen rendering
+   function the tab already uses wherever possible (per the "theming trick" above, `var(--…)`-
+   based output just works once the palette is on `:root`) rather than re-deriving markup.
+3. Replace the old export function's body with a call to `exportOpenBuilder({deliverableId,
+   title, subtitleDefault, blocks, ctx, builtinTemplates})` — same shape as
+   `exportExecPack()`. Keep the OLD function name so existing `onclick="..."` wiring in
+   index.html/other section files doesn't need to change.
+4. Decide what happens to the sibling PNG/SVG functions for that deliverable (e.g.
+   `profileExportSVG`, `exportProfilesDashboardPNG`) — this engine currently only produces
+   the popup/print path (`exportOpen`), not canvas/PNG. Either leave PNG/SVG on their old
+   code path for now (fine — this is a per-function migration, not all-or-nothing) or extend
+   `exportHTML`'s output to also be canvas-renderable later. Don't block the PDF/HTML
+   migration on solving PNG in the same session.
+5. If the deliverable exposes filters the old function read directly (e.g. `profileExportPDF`
+   read `#prf-fullmode`) — read those into `ctx` at call time, same as exec.js reads
+   `getMonthRange()`/`ecDataset()` into `ctx` before opening the builder.
+6. Add/extend tests in the SAME style as the existing ones (pure block-registry logic isn't
+   really testable — it's mostly DOM wiring — so this is more about not regressing
+   `exportHTML`/`exportBrand`/template CRUD than adding new pure tests).
+7. `node build.js && node --test tests/*.test.js`, then verify in-browser per the "Verify
+   gotcha" note above (mock `window.open`/`alert`/`confirm`, or render `exportHTML()` into an
+   `<iframe srcdoc>` — a real popup is blocked by the automation browser).
+
+**Current state to hand off (2026-07-20):** exec pack (D1) done and verified. Charter
+deck/synopsis (D2/D3) exist but independently, not migrated (optional). Nothing else started.
+Settings theme control and the builder/template system are engine-level infrastructure — done
+once, reused by every future migration for free.
+
+### Files
+
+- [src/core/export.js](src/core/export.js) — shell (`exportOpen`/`exportHTML`/`exportBrand`/
+  `exportField`/`EXPORT_PRINT_CSS`/`EXPORT_PAPER`) + builder (`exportOpenBuilder`/
+  `exportBuilder*`/`exportLoadCustomTemplates`/`exportSaveCustomTemplates`).
+- [src/sections/exec.js](src/sections/exec.js) — `xsExportBlocks()` (the block registry) +
+  `exportExecPack()`, the one deliverable wired up so far.
+- [src/sections/railnav.js](src/sections/railnav.js) — Settings › EXPORT THEME field wiring
+  (`railOpenSettings`/`railSaveSettings`), `export-builder-overlay` in `RAIL_MODAL_OVERLAYS`.
+- [tests/export.test.js](tests/export.test.js) — shell structure, escape helpers
+  (label/value/logo/palette-color breakout), theme resolution/fallback, template CRUD
+  round-trip (with a tiny in-memory `localStorage` stand-in, since Node has none).
