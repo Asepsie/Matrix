@@ -47,8 +47,8 @@ function renderList(){
           style="accent-color:var(--accent2);width:11px;height:11px;cursor:pointer;flex-shrink:0"
           onclick="event.stopPropagation();toggleSectionVisibility(${s.id})">
         <div class="section-color-wrap">
-          <div class="section-color-dot" style="background:${s.color}" id="sdot-${s.id}"></div>
-          <input type="color" value="${s.color}" class="section-color-btn"
+          <div class="section-color-dot" style="background:${safeColor(s.color)}" id="sdot-${s.id}"></div>
+          <input type="color" value="${safeColor(s.color)}" class="section-color-btn"
             style="position:absolute;top:0;left:0;width:14px;height:14px;opacity:0;cursor:pointer"
             onchange="setSectionColor(${s.id},this.value)"
             onclick="event.stopPropagation()" title="${t('Change section color')}">
@@ -75,11 +75,11 @@ function projItemHTML(p){
   const its=projItems(p).filter(i=>scope==='tasks'?i.type==='todo':true);
   const tt=its.length,td=its.filter(i=>i.done).length;
   const meta=[`${p.x},${+(getProjY(p)).toFixed(1)}`,p.gate?'🏁':'',tt?`☑${td}/${tt}`:''].filter(Boolean).join(' ');
-  return `<div class="proj-item${p.id===selId?' sel':''}" draggable="true"
+  return `<div class="proj-item${p.id===selId?' sel':''}" data-pid="${p.id}" draggable="true"
     ondragstart="onProjDragStart(event,${p.id})" ondragend="onProjDragEnd(event)">
     <input type="checkbox" class="proj-vis-cb" ${p.visible?'checked':''}
       onclick="event.stopPropagation();toggleProjVisibility(${p.id})" title="${t('Show on matrix')}">
-    <div class="proj-dot" style="background:${p.color}"></div>
+    <div class="proj-dot" style="background:${safeColor(p.color)}"></div>
     <div class="proj-name" onclick="selectProject(${p.id})">${escH(p.name)}</div>
     <div class="proj-meta">${meta}</div>
   </div>`;

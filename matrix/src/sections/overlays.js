@@ -68,10 +68,10 @@ function renderCompareSVG(svgId,wrapId,mode){
 
   const qx1=PAD.l,qx2=PAD.l+pw,qy1=PAD.t,qy2=PAD.t+ph;
   const sx=clamp(sxPx,qx1,qx2),sy=clamp(syPx,qy1,qy2);
-  h+=`<rect x="${qx1}" y="${qy1}" width="${sx-qx1}"  height="${sy-qy1}"  fill="${q.tl.color}"/>`;
-  h+=`<rect x="${sx}"  y="${qy1}" width="${qx2-sx}"   height="${sy-qy1}"  fill="${q.tr.color}"/>`;
-  h+=`<rect x="${qx1}" y="${sy}"  width="${sx-qx1}"  height="${qy2-sy}"  fill="${q.bl.color}"/>`;
-  h+=`<rect x="${sx}"  y="${sy}"  width="${qx2-sx}"   height="${qy2-sy}"  fill="${q.br.color}"/>`;
+  h+=`<rect x="${qx1}" y="${qy1}" width="${sx-qx1}"  height="${sy-qy1}"  fill="${safeColor(q.tl.color)}"/>`;
+  h+=`<rect x="${sx}"  y="${qy1}" width="${qx2-sx}"   height="${sy-qy1}"  fill="${safeColor(q.tr.color)}"/>`;
+  h+=`<rect x="${qx1}" y="${sy}"  width="${sx-qx1}"  height="${qy2-sy}"  fill="${safeColor(q.bl.color)}"/>`;
+  h+=`<rect x="${sx}"  y="${sy}"  width="${qx2-sx}"   height="${qy2-sy}"  fill="${safeColor(q.br.color)}"/>`;
 
   const ql=(t,x,y)=>`<text font-family="IBM Plex Sans,sans-serif" font-size="9" fill="#6b6b78" text-anchor="middle" x="${x}" y="${y}">${escH(t)}</text>`;
   h+=ql(q.tl.label,qx1+(sx-qx1)/2,qy1+12);h+=ql(q.tr.label,sx+(qx2-sx)/2,qy1+12);
@@ -128,10 +128,11 @@ function renderCompareSVG(svgId,wrapId,mode){
     for(const nd of cl.nodes){
       const {p,cx,cy}=nd;
       const isSel=p.id===selId;
+      const pcol=safeColor(p.color);
       const sec=sections.find(s=>s.id===p.sectionId);
-      const ring=isSel?'#fff':(sec?sec.color:p.color);
-      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${p.color}18" stroke="${ring}" stroke-width="${isSel?2:1.2}"/>`;
-      h+=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${p.color}"/>`;
+      const ring=isSel?'#fff':safeColor(sec?sec.color:p.color);
+      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ring}" stroke-width="${isSel?2:1.2}"/>`;
+      h+=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${pcol}"/>`;
     }
   }
   for(const cl of cls){
@@ -141,15 +142,16 @@ function renderCompareSVG(svgId,wrapId,mode){
     cl.nodes.forEach((nd,i)=>{
       const {p,cx,cy,lbl}=nd;
       const isSel=p.id===selId;
+      const pcol=safeColor(p.color);
       const angle=-Math.PI/2+i*step;
       const r=N===1?(DOT_R+7):fanR;
       const lx=cl.cx+Math.cos(angle)*r,ly=cl.cy+Math.sin(angle)*r;
       const anchor=N===1?'middle':(Math.cos(angle)<-0.3?'end':Math.cos(angle)>0.3?'start':'middle');
       if(N>1){
         const dx=lx-cx,dy=ly-cy,dist=Math.hypot(dx,dy)||1;
-        h+=`<line x1="${(cx+dx/dist*(DOT_R+1)).toFixed(1)}" y1="${(cy+dy/dist*(DOT_R+1)).toFixed(1)}" x2="${lx.toFixed(1)}" y2="${(ly-2).toFixed(1)}" stroke="${p.color}" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.45"/>`;
+        h+=`<line x1="${(cx+dx/dist*(DOT_R+1)).toFixed(1)}" y1="${(cy+dy/dist*(DOT_R+1)).toFixed(1)}" x2="${lx.toFixed(1)}" y2="${(ly-2).toFixed(1)}" stroke="${pcol}" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.45"/>`;
       }
-      h+=`<text font-family="IBM Plex Sans,sans-serif" font-size="9" font-weight="${isSel?700:500}" fill="${p.color}" text-anchor="${anchor}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px;stroke-linejoin:round">${escH(lbl)}</text>`;
+      h+=`<text font-family="IBM Plex Sans,sans-serif" font-size="9" font-weight="${isSel?700:500}" fill="${pcol}" text-anchor="${anchor}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" style="paint-order:stroke;stroke:var(--bg);stroke-width:2.5px;stroke-linejoin:round">${escH(lbl)}</text>`;
     });
   }
   svg.innerHTML=h;
@@ -205,7 +207,7 @@ function renderSummary(){
   for(const grp of allGroups){
     h+=`<div style="margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${grp.color};flex-shrink:0"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(grp.color)};flex-shrink:0"></div>
         <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">${escH(grp.name)}</span>
       </div>`;
     for(const p of grp.projs){
@@ -216,8 +218,8 @@ function renderSummary(){
       const pMs=p.milestones||[];
       const msOvd=pMs.filter(m=>m.end&&!m.done&&new Date(m.end)<new Date()).length;
       h+=`<div class="proj-sum-row">
-        <div style="width:8px;height:8px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
-        <div class="psr-name" style="color:${p.color}">${escH(p.name)}</div>
+        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(p.color)};flex-shrink:0"></div>
+        <div class="psr-name" style="color:${safeColor(p.color)}">${escH(p.name)}</div>
         <div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;white-space:nowrap">
           I:${p.y} V:${p.vis||5} E:${p.ena||5}
         </div>

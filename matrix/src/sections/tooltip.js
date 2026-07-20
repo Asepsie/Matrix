@@ -17,9 +17,9 @@ function showTip(e,id){
   const ax=axX(),ay=axY();
   const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
   const sec=sections.find(s=>s.id===p.sectionId);
-  let html=`<b style="color:${p.color}">${escH(p.name)}</b>`;
-  if(sec)html+=` <span style="color:${sec.color};font-size:9px">[${escH(sec.name)}]</span>`;
-  html+=`<br>${ax.name}: ${p.x} · ${t('Impact:')} ${p.y}`;
+  let html=`<b style="color:${safeColor(p.color)}">${escH(p.name)}</b>`;
+  if(sec)html+=` <span style="color:${safeColor(sec.color)};font-size:9px">[${escH(sec.name)}]</span>`;
+  html+=`<br>${escH(ax.name)}: ${p.x} · ${t('Impact:')} ${p.y}`;
   html+=`<br>${t('Visibility:')} ${p.vis??5} · ${t('Enabler:')} ${p.ena??5}`;
   if(p.note)html+=`<br><span style="color:var(--muted)">${escH(p.note)}</span>`;
   if(p.currentGate)html+=`<br>🏁 <span style="color:var(--muted)">${escH(p.currentGate)}</span> → <span style="color:var(--accent2)">${escH(p.gate||t('Next TBD'))}</span>`;

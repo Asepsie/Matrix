@@ -81,6 +81,7 @@ let _collabPeers=1;              // awareness state count (this tab + others)
 let _collabApplyTimer=null;      // debounce for remote-apply (batches multi-map events)
 let _collabDirtyView=false;      // a remote change arrived while a field was focused → re-render once it's free
 let _collabFlushTimer=null;      // polls to flush a deferred re-render when no field is focused
+let _collabPendingPatch=null;    // roster surgical-patch changeset for the next collabRerender (Phase D inc. B)
 let _collabConnectWatch=null;    // watchdog: flags a stalled relay connection (bad URL/token/relay down)
 let _collabBase=null;            // last-synced snapshot {eng,proj,alloc,meta} captured before the relay syncs
 let _collabAes=null;             // cached noble AES-GCM module (E2E)
@@ -89,7 +90,9 @@ let _collabEncOn=false;          // true once a room key is present AND libs are
 let _collabDecFails=0;           // values we could not decrypt this session (wrong/missing key in the link)
 let _collabLog=[];               // local mirror of the append-only change/conflict log
 const _collabLogSeen={};         // entry id -> 1 (dedupe; kept even after local trim so trimmed entries don't re-add)
-const _collabLastJson={};        // uid -> last-pushed JSON, so unchanged entities aren't re-sent
+const _collabLastJson={};        // uid -> last-pushed canonical JSON (entity-level change gate + audit diff)
+const _collabLastFields={};      // uid -> {path: JSON(value)} last-pushed PER FIELD (inc. C wire diff)
+const COLLAB_KEYSEP=String.fromCharCode(1);  // composite Y.Map key = uid+SEP+dotted.path (SEP never in a uuid/path)
 let _collabCfg={relay:'',token:'',room:'',key:'',actor:'',auto:false};
 
 /* Meta keys = everything in the saved payload that isn't an entity array. Synced
@@ -150,16 +153,36 @@ function collabShareLink(){
   if(_collabCfg.key) q.set('key',_collabCfg.key);     // E2E key rides the fragment (base64url is URL-safe)
   return location.origin+location.pathname+'#collab&'+q.toString();
 }
-// Parse a share-link fragment (#collab&relay=…&room=…&token=…) into cfg. Returns
-// true if it carried collab params. Secrets ride the fragment, never the query.
-function collabReadHash(){
-  var h=location.hash.slice(1); if(h.indexOf('collab')<0) return false;
-  var p=new URLSearchParams(h.replace(/^collab&?/,''));
+// Parse a share-link fragment (#collab&relay=…&room=…&token=…&key=…) into cfg. Accepts
+// a whole link, just the fragment, or the bare `collab&…` — tolerant so a teammate can
+// paste whatever they copied. Returns true if it carried a room. Secrets ride the
+// fragment, never the query.
+function collabApplyLinkStr(str){
+  if(!str) return false;
+  var s=String(str).trim();
+  var hi=s.indexOf('#'); if(hi>=0) s=s.slice(hi+1);   // full URL → keep only the fragment
+  var ci=s.indexOf('collab'); if(ci<0) return false;  // not a room link
+  var p=new URLSearchParams(s.slice(ci).replace(/^collab&?/,''));
   if(p.get('relay')) _collabCfg.relay=p.get('relay');
   if(p.get('room'))  _collabCfg.room=p.get('room');
   if(p.get('token'))_collabCfg.token=p.get('token');
   if(p.get('key'))  _collabCfg.key=p.get('key');   // E2E room key — fragment only, never the query
   return !!p.get('room');
+}
+// Read the current page's #fragment (the join-via-URL path, used at boot).
+function collabReadHash(){ return collabApplyLinkStr(location.hash); }
+// Paste-box join: parse a link the teammate shared, then connect. Path-independent —
+// works when the app lives at a different location on this computer than the sharer's.
+function collabJoinLink(){
+  var el=document.getElementById('collab-joinlink'); if(!el) return;
+  var raw=(el.value||'').trim(); if(!raw) return;
+  if(!collabApplyLinkStr(raw)){
+    alert(t('That doesn\'t look like a room link. Paste the whole link your teammate shared — it contains "#collab&…".'));
+    return;
+  }
+  collabSaveCfg();
+  collabRefreshPanel();          // reflects the parsed relay/room/token/key (incl. the 🔒 key)
+  collabConnect();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -355,6 +378,7 @@ function collabConnect(){
   _collabCfg.auto=true;                 // remember: auto-rejoin this room on next load
   collabSaveCfg();
   _collabStatus='connecting'; _collabReconciled=false; _collabBase=null; collabRefreshPanel();
+  collabHookPresence();            // install document focus listeners once (live cursors)
   if(!_collabFlushTimer) _collabFlushTimer=setInterval(collabFlushDirty,700);
   collabLoadLibs().then(function(){
     // Library loaded — the next wait is the RELAY, not the library. Say so, or a
@@ -388,10 +412,10 @@ function collabConnect(){
         if(isSynced){ _collabStatus='synced'; clearTimeout(_collabConnectWatch); collabReconcile(); }
         collabUpdateBadge(); collabRefreshPanel();
       });
-      _collabProvider.awareness.setLocalStateField('user',collabEnc({ name:_collabCfg.actor||'?', t:Date.now() }));
+      collabPublishPresence();     // publish my name/color/view/focus (encrypted awareness)
       _collabProvider.awareness.on('change',function(){
         _collabPeers=_collabProvider.awareness.getStates().size||1;
-        collabUpdateBadge(); collabRefreshPanel();
+        collabUpdateBadge(); collabRefreshPanel(); collabRenderPresence();
       });
       // Steady-state: remote entity/meta changes → rebuild local; log changes → merge.
       [_collabYEng,_collabYProj,_collabYAlloc,_collabYMeta].forEach(function(m){
@@ -426,13 +450,56 @@ function collabDisconnect(){
   _collabConnected=false; _collabReconciled=false; _collabStatus='idle'; _collabPeers=1; _collabDirtyView=false; _collabBase=null;
   _collabEncOn=false; _collabKeyBytes=null; _collabDecFails=0;
   Object.keys(_collabLastJson).forEach(function(k){ delete _collabLastJson[k]; });
+  Object.keys(_collabLastFields).forEach(function(k){ delete _collabLastFields[k]; });
   _collabCfg.auto=false; collabSaveCfg();   // manual disconnect → don't auto-rejoin
-  collabUpdateBadge(); collabRefreshPanel();
+  clearTimeout(_collabPresenceTimer); _collabPresenceTimer=null;
+  collabUpdateBadge(); collabRefreshPanel(); collabRenderPresence();   // provider gone → clears avatars/cursors
 }
 
 /* ── Snapshots / indexing helpers for the 3-way merge ── */
 function collabArrIndex(arr){ var o={}; (arr||[]).forEach(function(x){ if(x&&x.uid) o[x.uid]=x; }); return o; }
-function collabMapSnapshot(ymap){ var o={}; if(ymap) ymap.forEach(function(v,k){ var d=collabDec(v); if(d!=null) o[k]=d; }); return o; }
+/* Read an entity Y.Map (per-field composite keys, inc. C) back into {uid: canonicalObj}.
+   Groups every `uid‖path` key by uid, decrypts each leaf, and un-flattens per entity. A leaf
+   whose value legitimately decrypts to null is KEPT (grade:null etc.); a leaf that FAILS to
+   decrypt (wrong key — signalled by a bump in _collabDecFails) is dropped. Non-composite keys
+   (a stray/old whole-blob entry) are ignored so a format mismatch degrades, not corrupts. */
+function collabMapSnapshot(ymap){
+  if(!ymap) return {};
+  var byUid={};
+  ymap.forEach(function(v,key){
+    var i=key.indexOf(COLLAB_KEYSEP); if(i<0) return;
+    var uid=key.slice(0,i), path=key.slice(i+1);
+    var before=_collabDecFails, d=collabDec(v);
+    if(_collabDecFails>before) return;                 // decrypt failed → drop this field
+    (byUid[uid]||(byUid[uid]={}))[path]=d;
+  });
+  var out={};
+  Object.keys(byUid).forEach(function(uid){ out[uid]=collabUnflattenEntity(byUid[uid]); });
+  return out;
+}
+// {path: JSON(value)} for a flattened entity — the per-field change-detection cache value.
+function collabFieldJsonMap(flat){ var m={}; Object.keys(flat).forEach(function(p){ m[p]=JSON.stringify(flat[p]===undefined?null:flat[p]); }); return m; }
+// True if the doc holds ANY field of this uid (→ the entity exists; used for create-vs-update).
+function collabHasEntity(ymap,uid){ var pre=uid+COLLAB_KEYSEP, found=false; if(ymap) ymap.forEach(function(_,k){ if(!found&&k.indexOf(pre)===0) found=true; }); return found; }
+// Write ONLY the changed leaf fields of a canonical entity (Yjs then merges each field
+// independently → two people editing different fields both land). Deletes fields that vanished.
+// Must run inside a 'local' doc.transact so our observer ignores the echo.
+function collabWriteEntityDiff(ymap,uid,canon){
+  var flat=collabFlattenEntity(canon), last=_collabLastFields[uid]||{}, next={}, seenP={};
+  Object.keys(flat).forEach(function(path){
+    seenP[path]=1;
+    var vjs=JSON.stringify(flat[path]===undefined?null:flat[path]); next[path]=vjs;
+    if(last[path]!==vjs) ymap.set(uid+COLLAB_KEYSEP+path, collabEnc(flat[path]));
+  });
+  Object.keys(last).forEach(function(path){ if(!seenP[path]) ymap.delete(uid+COLLAB_KEYSEP+path); });
+  _collabLastFields[uid]=next;
+}
+// Remove every field of an entity from the doc + drop its change caches.
+function collabDeleteEntity(ymap,uid){
+  var pre=uid+COLLAB_KEYSEP;
+  [...ymap.keys()].forEach(function(k){ if(k.indexOf(pre)===0) ymap.delete(k); });
+  delete _collabLastFields[uid]; delete _collabLastJson[uid];
+}
 function collabSnapshot(){
   var meta={}; COLLAB_META.forEach(function(m){ if(_collabYMeta&&_collabYMeta.has(m.k)){ var d=collabDec(_collabYMeta.get(m.k)); if(d!=null) meta[m.k]=d; } });
   return { eng:collabMapSnapshot(_collabYEng), proj:collabMapSnapshot(_collabYProj),
@@ -457,9 +524,16 @@ function collabReconcile(){
         collabSeed();                         // empty room ← push my data
       } else {
         var mine=(engineers.length||projects.length||allocRows.length);
-        var msg=t('This room already has data ({e} people, {p} projects). Load it and REPLACE what is currently open?',
-          {e:_collabYEng.size,p:_collabYProj.size});
-        if(!mine || confirm(msg)) collabAdoptFromDoc();   // take the room
+        // Count DISTINCT entities (uids), not composite field keys, for the prompt.
+        var nEng=Object.keys(collabMapSnapshot(_collabYEng)).length, nProj=Object.keys(collabMapSnapshot(_collabYProj)).length;
+        var msg=t('This room already has data ({e} people, {p} projects). Load it and REPLACE what is currently open? Your current data is snapshotted first (restore it any time from Snapshots).',
+          {e:nEng,p:nProj});
+        if(!mine || confirm(msg)){
+          // Safety net: adopting REPLACES the open dataset. Snapshot it first (like a
+          // full-backup restore does) so a wrong-room join is never unrecoverable.
+          if(mine){ try{ takeSnap('Auto: before joining room','full','',true); }catch(_){} }
+          collabAdoptFromDoc();                            // take the room
+        }
         else collabSeed();                                 // keep mine → push into the room
       }
     } else {
@@ -494,11 +568,11 @@ function collab3way(base,local,remote,type,ymap){
     var b=base[uid], l=local[uid], r=remote[uid];
     var bj=b?JSON.stringify(b):undefined, lj=l?JSON.stringify(l):undefined, rj=r?JSON.stringify(r):undefined;
     if(lj===rj){ if(r) out[uid]=r; }                                   // agree (or both deleted)
-    else if(lj===bj){ if(r) out[uid]=r; else ymap.delete(uid); }        // only THEY changed → take theirs (incl. their delete)
+    else if(lj===bj){ if(r) out[uid]=r; else collabDeleteEntity(ymap,uid); }  // only THEY changed → take theirs (incl. their delete)
     else if(rj===bj){                                                   // only I changed → keep mine, push
-      if(l){ out[uid]=l; ymap.set(uid,collabEnc(l)); } else { ymap.delete(uid); }
+      if(l){ out[uid]=l; collabWriteEntityDiff(ymap,uid,l); } else { collabDeleteEntity(ymap,uid); }
     } else {                                                            // BOTH changed → conflict
-      if(l){ out[uid]=l; ymap.set(uid,collabEnc(l));
+      if(l){ out[uid]=l; collabWriteEntityDiff(ymap,uid,l);
              collabLogAppend(collabMkEntry('conflict',type,uid,collabLabelOf(type,l),{conflict:{kept:collabClone(l),overwritten:collabClone(r)}})); }
       else { out[uid]=r;                                                // I deleted, they edited → keep theirs (don't lose data)
              collabLogAppend(collabMkEntry('conflict',type,uid,collabLabelOf(type,r),{conflict:{kept:collabClone(r),overwritten:'(deleted locally)'}})); }
@@ -534,6 +608,7 @@ function collabAdoptLocalAfterMerge(){
   try{ sanitiseGateConfig(); }catch(e){}
   nbEnsureHistory(); uidMigrate();
   collabRebuildJsonCache();
+  _collabPendingPatch=null;                       // a 3-way merge is a bulk change → full renderList
   _invalidateMemo(); saveNow(); collabRerender();
 }
 
@@ -575,10 +650,10 @@ function collabSyncArray(arr,ymap,type,logChanges){
     seen[o.uid]=1;
     var canon=collabCanonical(o,type);           // strip local id + numeric id-refs
     var js=JSON.stringify(canon);
-    if(_collabLastJson[o.uid]!==js){
+    if(_collabLastJson[o.uid]!==js){             // entity-level gate: skip untouched entities
       var had=(o.uid in _collabLastJson);
-      var isNew=!had && !ymap.has(o.uid);
-      ymap.set(o.uid,collabEnc(canon));           // change-detection stays on the canonical `js`
+      var isNew=!had && !collabHasEntity(ymap,o.uid);
+      collabWriteEntityDiff(ymap,o.uid,canon);   // write ONLY changed fields → per-field CRDT merge
       if(logChanges){
         if(isNew){ collabLogAppend(collabMkEntry('create',type,o.uid,collabLabelOf(type,o))); }
         else if(had){                              // an EDIT to an existing entity → per-field audit
@@ -589,11 +664,18 @@ function collabSyncArray(arr,ymap,type,logChanges){
       _collabLastJson[o.uid]=js;
     }
   });
+  // Cleanup: delete every field of any entity no longer present (grouped so we log once/uid).
+  var dead={};
   [...ymap.keys()].forEach(function(k){
-    if(!seen[k]){
-      if(logChanges) collabLogAppend(collabMkEntry('delete',type,k,collabLabelOf(type,collabDec(ymap.get(k)))));
-      ymap.delete(k); delete _collabLastJson[k];
-    }
+    var i=k.indexOf(COLLAB_KEYSEP);
+    if(i<0){ ymap.delete(k); return; }           // stray non-composite key → drop
+    var uid=k.slice(0,i);
+    if(!seen[uid]){ ymap.delete(k); dead[uid]=1; }
+  });
+  Object.keys(dead).forEach(function(uid){
+    if(logChanges){ var lc=_collabLastJson[uid]?JSON.parse(_collabLastJson[uid]):null;
+      collabLogAppend(collabMkEntry('delete',type,uid,lc?collabLabelOf(type,lc):uid)); }
+    delete _collabLastJson[uid]; delete _collabLastFields[uid];
   });
 }
 
@@ -612,9 +694,11 @@ function collabApplyRemote(){
 // Replace local arrays/meta from the current Y.Doc (used by adopt-on-join and steady-state apply).
 function collabAdoptFromDoc(){
   var prev=collabCapturePrev();                 // keep each known uid's local id stable
-  engineers=[..._collabYEng.values()].map(collabDec).filter(Boolean);
-  projects=[..._collabYProj.values()].map(collabDec).filter(Boolean);
-  allocRows=[..._collabYAlloc.values()].map(collabDec).filter(Boolean);
+  var oldRoster=collabRosterSnapshot();          // {id:{sig,sec}} BEFORE replace — for surgical roster patch
+  var oldSecSig=collabSectionsSig();
+  engineers=Object.values(collabMapSnapshot(_collabYEng));   // per-field composite keys → entities
+  projects=Object.values(collabMapSnapshot(_collabYProj));
+  allocRows=Object.values(collabMapSnapshot(_collabYAlloc));
   // Meta first — the id counters (nextEngId/nextId/nextAllocId) advance to the room's
   // high-water mark BEFORE collabMaterialize hands out any fresh local id.
   COLLAB_META.forEach(function(m){ if(_collabYMeta.has(m.k)){ var d=collabDec(_collabYMeta.get(m.k)); if(d!=null) m.set(d); } });
@@ -625,19 +709,77 @@ function collabAdoptFromDoc(){
   try{ sanitiseGateConfig(); }catch(e){}
   nbEnsureHistory(); uidMigrate();
   collabRebuildJsonCache();
+  collabComputeRosterPatch(oldRoster,oldSecSig); // diff → _collabPendingPatch (surgical vs full)
   _invalidateMemo(); saveNow(); collabRerender();
 }
 // Refresh the push cache so the next local save doesn't echo everything back. Keyed by
 // the CANONICAL form (matches what collabPush compares/serialises).
 function collabRebuildJsonCache(){
   Object.keys(_collabLastJson).forEach(function(k){ delete _collabLastJson[k]; });
-  engineers.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'engineer')); });
-  projects.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'project')); });
-  allocRows.forEach(function(o){ if(o.uid) _collabLastJson[o.uid]=JSON.stringify(collabCanonical(o,'allocRow')); });
+  Object.keys(_collabLastFields).forEach(function(k){ delete _collabLastFields[k]; });
+  function cache(arr,type){ (arr||[]).forEach(function(o){ if(o.uid){
+    var canon=collabCanonical(o,type);
+    _collabLastJson[o.uid]=JSON.stringify(canon);
+    _collabLastFields[o.uid]=collabFieldJsonMap(collabFlattenEntity(canon));
+  } }); }
+  cache(engineers,'engineer'); cache(projects,'project'); cache(allocRows,'allocRow');
 }
 
 // Deep-clone a Yjs value into a plain JS object we own (Yjs may hand back the same ref).
 function collabClone(v){ return v==null?v:JSON.parse(JSON.stringify(v)); }
+
+/* ── Surgical roster patch (Phase D increment B) ──
+   On a steady-state remote apply we usually only need to repaint the FEW project rows that
+   actually changed, not rebuild the whole sidebar list (which resets its scroll + flickers).
+   collabAdoptFromDoc snapshots the roster BEFORE replacing arrays, then diffs to a changeset:
+   in-place field changes → patch just those `.proj-item[data-pid]` rows; any STRUCTURAL change
+   (a project added/removed, moved between sections, or any `sections` edit) → full renderList.
+   The matrix stays a full SVG swap (monolithic canvas, global label layout — not node-patchable). */
+function collabRosterSnapshot(){
+  var o={}; (typeof projects!=='undefined'?projects:[]).forEach(function(p){ if(p&&p.id!=null) o[p.id]={sig:JSON.stringify(p), sec:(p.sectionId==null?'':String(p.sectionId))}; }); return o;
+}
+function collabSectionsSig(){ try{ return JSON.stringify(typeof sections!=='undefined'?sections:[]); }catch(e){ return ''; } }
+// Diff old vs new roster → merge a {structural, ids} changeset into _collabPendingPatch.
+function collabComputeRosterPatch(oldRoster,oldSecSig){
+  var pp={structural:false, ids:{}};
+  if(collabSectionsSig()!==oldSecSig){ pp.structural=true; }   // any section header/group change
+  else {
+    var oldIds=Object.keys(oldRoster).map(Number).sort(function(a,b){return a-b;}).join(',');
+    var newIds=projects.map(function(p){return p.id;}).sort(function(a,b){return a-b;}).join(',');
+    if(newIds!==oldIds){ pp.structural=true; }                 // project added/removed
+    else projects.forEach(function(p){
+      var o=oldRoster[p.id];
+      if(!o){ pp.structural=true; return; }
+      if((p.sectionId==null?'':String(p.sectionId))!==o.sec){ pp.structural=true; return; }  // moved group
+      if(JSON.stringify(p)!==o.sig){ pp.ids[p.id]=1; }         // in-place row content change
+    });
+  }
+  // Merge with any patch still pending from an apply that was deferred (focused field).
+  if(!_collabPendingPatch){ _collabPendingPatch=pp; }
+  else if(_collabPendingPatch.structural||pp.structural){ _collabPendingPatch={structural:true, ids:{}}; }
+  else { Object.keys(pp.ids).forEach(function(id){ _collabPendingPatch.ids[id]=1; }); }
+}
+// Apply the pending roster changeset. Surgical when possible; full renderList on structural
+// change or if any changed row isn't currently in the DOM (e.g. its section is collapsed).
+function collabPatchRoster(){
+  var pp=_collabPendingPatch;
+  var full=function(){ if(typeof renderList==='function') renderList(); };
+  if(!pp || pp.structural || typeof projItemHTML!=='function'){ full(); return; }
+  var ids=Object.keys(pp.ids||{});
+  if(!ids.length) return;                          // nothing in the roster changed → leave DOM as-is
+  var el=document.getElementById('project-list'); if(!el) return;
+  for(var i=0;i<ids.length;i++){
+    var id=+ids[i];
+    var p=projects.find(function(x){return x.id===id;});
+    var node=el.querySelector('.proj-item[data-pid="'+id+'"]');
+    if(!p||!node){ full(); return; }               // row not visible → safest to full-render
+    var tmp=document.createElement('div'); tmp.innerHTML=projItemHTML(p);
+    var fresh=tmp.firstElementChild;
+    if(!fresh){ full(); return; }
+    node.replaceWith(fresh);                        // swap ONLY this row — scroll + other rows untouched
+  }
+  var cb=document.getElementById('count-badge'); if(cb) cb.textContent=projects.length;
+}
 
 /* ── uid-anchored intra-dataset refs (see persist.js refsBackfill/refsRelink) ──
    The numeric `id` and the numeric id-refs (engId/projectId/reportsTo/successorId)
@@ -657,6 +799,45 @@ function collabCanonical(o,type){
   return c;
 }
 function collabCanonIndex(arr,type){ var o={}; (arr||[]).forEach(function(x){ if(x&&x.uid) o[x.uid]=collabCanonical(x,type); }); return o; }
+
+/* ── Per-field flatten / unflatten (Phase D increment C — real-time per-field CRDT merge) ──
+   To let TWO people edit DIFFERENT fields of the SAME entity concurrently and have Yjs merge
+   them (instead of whole-object last-write-wins), each entity is stored not as one blob but as
+   one Y.Map entry per LEAF FIELD. `collabFlattenEntity` turns a (canonical) entity into
+   {dottedPath: leafValue}; `collabUnflattenEntity` rebuilds it. Rule:
+     • recurse PLAIN OBJECTS → per-field leaves for every scalar AND map-like field
+       (idcard.grade, idcard.nextMove.position, allocs.2026-03, gatePlan.criteria.<id>,
+       decision.stances.features) — these are the fields people edit concurrently;
+     • ARRAYS are ATOMIC leaves (the whole array, LWW) — element-level list CRDT is out of scope
+       and index-keyed element merge would re-introduce the collision class uid-refs just fixed;
+     • an EMPTY object is an atomic `{}` leaf so it round-trips losslessly. */
+function collabIsPlainObj(v){ return v!=null && typeof v==='object' && !Array.isArray(v); }
+function collabFlattenEntity(o){
+  var out={};
+  (function walk(v,prefix){
+    Object.keys(v).forEach(function(k){
+      var val=v[k], p=prefix?prefix+'.'+k:k;
+      if(collabIsPlainObj(val)){
+        if(Object.keys(val).length) walk(val,p);
+        else out[p]={};                        // empty object → atomic leaf (lossless)
+      } else { out[p]=val; }                    // array or scalar → atomic leaf
+    });
+  })(o||{},'');
+  return out;
+}
+function collabUnflattenEntity(flat){
+  var o={};
+  // Shallowest paths first: an empty-object leaf (`gatePlan.criteria={}`) sets the container
+  // BEFORE any child (`gatePlan.criteria.x`) from a peer augments it, so a merge never clobbers.
+  Object.keys(flat||{}).sort(function(a,b){ return a.split('.').length-b.split('.').length; }).forEach(function(p){
+    var segs=p.split('.'), cur=o;
+    for(var i=0;i<segs.length-1;i++){ if(!collabIsPlainObj(cur[segs[i]])) cur[segs[i]]={}; cur=cur[segs[i]]; }
+    var leaf=segs[segs.length-1], val=flat[p];
+    if(collabIsPlainObj(val) && !Object.keys(val).length && collabIsPlainObj(cur[leaf]) && Object.keys(cur[leaf]).length) return; // don't clobber a populated container
+    cur[leaf]=collabClone(val);
+  });
+  return o;
+}
 // {uid:id} per array, captured BEFORE arrays are replaced so a known uid keeps its local
 // id across an adopt (no DOM churn); a genuinely new uid gets a fresh id from the counter.
 function collabUidIdMap(arr){ var m={}; (arr||[]).forEach(function(o){ if(o&&o.uid&&o.id!=null) m[o.uid]=o.id; }); return m; }
@@ -687,10 +868,28 @@ function collabRerender(){
   if(collabFieldFocused()){ _collabDirtyView=true; return; }
   _collabDirtyView=false;
   try{ if(typeof render==='function') render(); }catch(e){}
-  try{ if(typeof renderList==='function') renderList(); }catch(e){}
+  try{ collabPatchRoster(); }catch(e){ try{ if(typeof renderList==='function') renderList(); }catch(e2){} }  // surgical rows (inc. B)
   try{ var res=G('res-overlay'); if(res&&res.classList.contains('show')&&typeof renderResActiveTab==='function') renderResActiveTab(); }catch(e){}
   try{ var org=G('org-overlay'); if(org&&org.style.display!=='none'&&typeof renderOrgChart==='function') renderOrgChart(); }catch(e){}
   try{ if(typeof updateSnapBadge==='function') updateSnapBadge(); }catch(e){}
+  try{ collabRefreshOpenEditor(); }catch(e){}   // live-patch the open entity editor (Phase D)
+  _collabPendingPatch=null;                      // changeset consumed (only reached when not focus-deferred)
+}
+/* Phase D — live-patch the OPEN entity editor. Reached only from the non-focused
+   collabRerender path (focus-steal rule), so re-populating fields can't clobber the
+   input you're typing in — a deferred flush repaints once you blur. Each tracked modal
+   re-populates from current state (ID card sets values in place; charter re-renders its
+   current tab), and closes itself if the open entity was deleted remotely. */
+function collabRefreshOpenEditor(){
+  COLLAB_MODALS.forEach(function(m){
+    try{
+      var ov=document.getElementById(m.overlay);
+      if(!ov||!ov.classList.contains('show')) return;
+      var ent=m.cur();
+      if(ent){ if(m.refresh) m.refresh(ent); }
+      else if(m.close){ m.close(); }
+    }catch(e){}
+  });
 }
 
 /* ── Rail badge (peer count on the Collaborate util icon) ── */
@@ -711,7 +910,10 @@ function collabOpen(){
   var dlg=document.createElement('div');
   dlg.id='collab-dlg';
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;display:flex;align-items:center;justify-content:center';
-  dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
+  // Close only on a genuine backdrop click. Track where the press STARTED so a
+  // text-selection drag that happens to release on the backdrop doesn't close the panel.
+  dlg.addEventListener('mousedown',function(e){ dlg._downSelf=(e.target===dlg); });
+  dlg.addEventListener('click',function(e){ if(e.target===dlg && dlg._downSelf) dlg.remove(); });
   document.body.appendChild(dlg);
   collabRefreshPanel();
 }
@@ -741,6 +943,11 @@ function collabInput(id,label,val,ph,disabled){
 }
 function collabRefreshPanel(){
   var dlg=document.getElementById('collab-dlg'); if(!dlg) return;
+  // Preserve focus + caret across the innerHTML rebuild. Without this, typing in a panel
+  // field (e.g. YOUR NAME) loses focus after every keystroke — the name field's own
+  // awareness update re-fires this refresh, so you could only type one char at a time.
+  var _ae=document.activeElement, _fid=(_ae&&dlg.contains(_ae)&&_ae.id)?_ae.id:null;
+  var _ss=null,_se=null; if(_fid){ try{ _ss=_ae.selectionStart; _se=_ae.selectionEnd; }catch(e){} }
   var connected=_collabConnected||_collabStatus==='connecting'||_collabStatus==='synced';
   var link=(_collabCfg.room)?collabShareLink():'';
   var statusColor=_collabStatus==='synced'?'var(--accent)'
@@ -748,6 +955,12 @@ function collabRefreshPanel(){
     :(_collabStatus==='offline'?'var(--warn)':'var(--muted)'));
   var conflicts=collabConflictCount();
   var enc=collabEncLabel();
+  var peers=connected?collabPeerStates():[];
+  var presenceRow=peers.length?('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px;font-family:IBM Plex Mono,monospace">'
+    +'<span style="color:var(--muted)">'+t('IN THIS ROOM')+'</span>'
+    +peers.map(function(p){ return '<span style="display:inline-flex;align-items:center;gap:5px">'+collabAvatar(p,18)
+      +'<span style="color:var(--text);padding-left:2px">'+escH(p.name)+'</span></span>'; }).join('')
+    +'</div>'):'';
   dlg.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;'
     +'padding:22px 24px;width:min(540px,95vw);max-height:88vh;overflow:auto;box-shadow:0 18px 54px rgba(0,0,0,.6);'
     +'display:flex;flex-direction:column;gap:13px" onclick="event.stopPropagation()">'
@@ -758,6 +971,15 @@ function collabRefreshPanel(){
     +'<p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0">'
       +t('Create a room and share its link to work on the same data live across computers. Edits made offline merge back in when you reconnect; conflicts are kept in the history.')
     +'</p>'
+    +(connected?'':'<div style="border:1px solid var(--accent);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;background:rgba(200,241,53,.04)">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--accent);font-family:IBM Plex Mono,monospace">'+t('HAVE A LINK? JOIN A ROOM')+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);line-height:1.5">'+t('Paste the link a teammate shared with you (it carries the relay, room, token and encryption key). Works even if this computer has the app in a different folder.')+'</div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<input id="collab-joinlink" placeholder="'+t('paste room link here')+'" onkeydown="if(event.key===\'Enter\')collabJoinLink()" '
+        +'style="flex:1;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:10px">'
+      +'<button onclick="collabJoinLink()" class="primary" style="padding:7px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap">'+t('Join')+'</button>'
+      +'</div></div>'
+      +'<div style="text-align:center;font-size:9px;color:var(--dim);font-family:IBM Plex Mono,monospace;letter-spacing:.1em">'+t('— OR SET UP MANUALLY —')+'</div>')
     +collabInput('collab-actor',t('YOUR NAME (shown to teammates · labels history)'),_collabCfg.actor,'e.g. Benoit',false)
     +collabInput('collab-relay',t('RELAY URL'),_collabCfg.relay,'wss://your-app.herokuapp.com',connected)
     +collabInput('collab-token',t('TOKEN (from your relay)'),_collabCfg.token,t('the RELAY_TOKEN you set'),connected)
@@ -775,6 +997,7 @@ function collabRefreshPanel(){
       +'</div>'):'')
     +'<div style="display:flex;align-items:center;gap:8px;font-size:10px;font-family:IBM Plex Mono,monospace;color:'+enc.col+'">'
       +'<span>'+enc.ic+'</span><span>'+escH(enc.txt)+'</span></div>'
+    +presenceRow
     +'<div style="display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);padding-top:12px">'
       +'<span style="flex:1;font-size:11px;font-family:IBM Plex Mono,monospace;color:'+statusColor+'">'+escH(collabStatusLine())+'</span>'
       +'<button onclick="collabHistoryOpen()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px">🕓 '+t('History')
@@ -784,11 +1007,12 @@ function collabRefreshPanel(){
         :'<button onclick="collabConnect()" class="primary" style="padding:8px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">'+t('Connect')+'</button>')
     +'</div>'
   +'</div>';
+  if(_fid){ var _f=document.getElementById(_fid); if(_f){ try{ _f.focus(); if(_ss!=null&&_f.setSelectionRange) _f.setSelectionRange(_ss,_se); }catch(e){} } }
 }
 function collabField(k,v){
   _collabCfg[k]=v.trim(); collabSaveCfg();
   if(k==='room'){ var l=document.getElementById('collab-link'); if(l) l.value=collabShareLink(); }
-  if(k==='actor'&&_collabProvider){ try{ _collabProvider.awareness.setLocalStateField('user',collabEnc({name:_collabCfg.actor||'?',t:Date.now()})); }catch(e){} }
+  if(k==='actor'&&_collabProvider){ collabPublishPresence(); }   // broadcast the new name to teammates
 }
 function collabNewRoom(){ _collabCfg.room=collabRndHex(16); _collabCfg.key=collabRndKey(); collabSaveCfg(); collabRefreshPanel(); }
 function collabCopyLink(){
@@ -808,7 +1032,10 @@ function collabHistoryOpen(){
   var dlg=document.createElement('div');
   dlg.id='collab-hist-dlg';
   dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1120;display:flex;align-items:center;justify-content:center';
-  dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
+  // Close only on a genuine backdrop click. Track where the press STARTED so a
+  // text-selection drag that happens to release on the backdrop doesn't close the panel.
+  dlg.addEventListener('mousedown',function(e){ dlg._downSelf=(e.target===dlg); });
+  dlg.addEventListener('click',function(e){ if(e.target===dlg && dlg._downSelf) dlg.remove(); });
   document.body.appendChild(dlg);
   collabRenderHistory();
 }
@@ -875,6 +1102,218 @@ function collabHistoryClear(){
   if(!confirm(t('Clear the local change history? (This does not touch data, only the log on THIS computer.)'))) return;
   _collabLog=[]; Object.keys(_collabLogSeen).forEach(function(k){ delete _collabLogSeen[k]; });
   collabLogPersist(); collabRenderHistory(); collabRefreshPanel();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIVE PRESENCE / CURSORS (Phase D)
+   ══════════════════════════════════════════════════════════════════════
+   Each connected peer publishes a small state object in Yjs AWARENESS —
+   {name,color,view,focus,t} — encrypted with the room key like everything else.
+   `focus` = {type,uid,field} identifies which entity (and which form field) the
+   peer currently has open, so we can show live "cursors". We surface presence in
+   three places: an avatar cluster in the topbar, a "who else is here" banner +
+   per-field colored outlines on the ID card, and a strip in the collab panel.
+
+   Focus is tracked WITHOUT per-field wiring: a once-installed document focusin/
+   focusout listener re-publishes presence, and the entity editors' open/close hooks
+   (openIdCardModal/closeIdCardModal, openCharter/chtClose, chtOpenDecision/
+   chtCloseDecision) + railGo call collabPublishPresence() so entity/view changes
+   broadcast too. Tracked entity modals live in COLLAB_MODALS below. Remote
+   presence NEVER re-renders app data (it only decorates existing DOM by id), so it
+   can't steal the caret — the focus-steal rule that governs the rest of collab. */
+const COLLAB_PRESENCE_COLORS=['#5be5c8','#f1a435','#e879f9','#60a5fa','#fb7185','#a3e635','#f472b6','#facc15','#38bdf8','#c084fc'];
+let _collabPresenceTimer=null;   // throttle awareness publishes on rapid focus changes
+let _collabFieldDecor=[];        // field element ids currently outlined by a remote cursor (to undo)
+let _collabPresenceHooked=false; // document focus listeners installed once
+
+// Stable per-client color from the Yjs clientID (so a peer looks the same to everyone).
+function collabAssignColor(clientID){
+  var n=Number(clientID)||0;
+  return COLLAB_PRESENCE_COLORS[Math.abs(n)%COLLAB_PRESENCE_COLORS.length];
+}
+function collabMyColor(){
+  try{ return collabAssignColor(_collabProvider.awareness.clientID); }catch(e){ return COLLAB_PRESENCE_COLORS[0]; }
+}
+// Tracked entity editors: which open modals count as "editing an entity" for presence
+// AND get live-refreshed when a teammate edits the entity you have open. Each:
+//   overlay  – overlay element id
+//   banner   – "also here" presence banner element id
+//   type     – entity type ('engineer' | 'project')
+//   cur()    – the entity currently open in it (or null)
+//   refresh(ent) – re-populate the editor from current state, preserving caret/tab/scroll
+//   close()  – close the editor (used when the open entity was deleted remotely)
+// Order matters — a stacked overlay (dec on top of cht) must come before the one it
+// covers so the topmost focus wins. Add editors here the same way.
+const COLLAB_MODALS=[
+  { overlay:'idcard-modal-overlay', banner:'idc-presence', type:'engineer',
+    cur:function(){ try{ return (typeof _idcardEngId!=='undefined'&&_idcardEngId!=null)?engineers.find(function(e){return e.id===_idcardEngId;}):null; }catch(e){ return null; } },
+    // openIdCardModal only SETS field values into static markup (no innerHTML rebuild) →
+    // re-calling it is already a field-level patch; scroll/layout are untouched.
+    refresh:function(ent){ if(typeof openIdCardModal==='function') openIdCardModal(ent.id); },
+    close:function(){ if(typeof closeIdCardModal==='function') closeIdCardModal(); } },
+  { overlay:'dec-overlay', banner:'dec-presence', type:'project',
+    cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
+    refresh:function(){ collabRestoreScroll('dec-body',function(){ if(typeof chtRenderDecision==='function') chtRenderDecision(); }); },
+    close:function(){ if(typeof chtCloseDecision==='function') chtCloseDecision(); } },
+  { overlay:'cht-overlay', banner:'cht-presence', type:'project',
+    cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
+    // Re-render header (financial summary can change) + the CURRENT tab body (keep _chtTab).
+    refresh:function(){ collabRestoreScroll('cht-body',function(){
+      if(typeof chtRenderHeader==='function') chtRenderHeader();
+      if(typeof chtShowTab==='function') chtShowTab((typeof _chtTab!=='undefined'&&_chtTab)?_chtTab:'overview'); }); },
+    close:function(){ if(typeof chtClose==='function') chtClose(); } }
+];
+// Run an innerHTML-rebuilding refresh while preserving a scroll container's scrollTop.
+function collabRestoreScroll(bodyId,fn){
+  var b=document.getElementById(bodyId), st=b?b.scrollTop:0;
+  fn();
+  b=document.getElementById(bodyId); if(b) b.scrollTop=st;
+}
+// What entity/field does THIS user currently have focused? (null = just viewing a page).
+// Walks COLLAB_MODALS: prefer the open modal that actually contains the focused element
+// (so its field id rides along); else the first open tracked entity, field-less.
+function collabCurrentFocus(){
+  try{
+    var ae=document.activeElement, fallback=null;
+    for(var i=0;i<COLLAB_MODALS.length;i++){
+      var m=COLLAB_MODALS[i], ov=document.getElementById(m.overlay);
+      if(!ov||!ov.classList.contains('show')) continue;
+      var ent=m.cur(); if(!ent||!ent.uid) continue;
+      if(ae&&ov.contains(ae)) return { type:m.type, uid:ent.uid, field:(ae.id||'') };
+      if(!fallback) fallback={ type:m.type, uid:ent.uid, field:'' };
+    }
+    return fallback;
+  }catch(e){}
+  return null;
+}
+// Publish my presence into awareness (encrypted). Throttled so rapid focusin/out coalesce.
+function collabPublishPresence(){
+  if(!_collabProvider) return;
+  clearTimeout(_collabPresenceTimer);
+  _collabPresenceTimer=setTimeout(function(){
+    if(!_collabProvider) return;
+    try{
+      _collabProvider.awareness.setLocalStateField('user',collabEnc({
+        name:_collabCfg.actor||'?', color:collabMyColor(),
+        view:(typeof activeView!=='undefined'?activeView:''),
+        focus:collabCurrentFocus(), t:Date.now()
+      }));
+    }catch(e){}
+    collabRenderPresence();   // reflect my own context change locally too
+  },120);
+}
+// Install document-level focus listeners once → field-level cursor tracking is automatic,
+// no per-field onfocus wiring. Cheap: only publishes when a provider is live.
+function collabHookPresence(){
+  if(_collabPresenceHooked) return; _collabPresenceHooked=true;
+  document.addEventListener('focusin',function(){ if(_collabProvider) collabPublishPresence(); });
+  document.addEventListener('focusout',function(){ if(_collabProvider) collabPublishPresence(); });
+}
+// Decrypt every remote awareness state (skip self) → [{clientID,name,color,view,focus}].
+function collabPeerStates(){
+  var out=[]; if(!_collabProvider) return out;
+  try{
+    var self=_collabProvider.awareness.clientID;
+    _collabProvider.awareness.getStates().forEach(function(st,cid){
+      if(cid===self||!st||!st.user) return;
+      var u=collabDec(st.user); if(!u||typeof u!=='object') return;
+      out.push({ clientID:cid, name:u.name||'?', color:u.color||collabAssignColor(cid),
+                 view:u.view||'', focus:u.focus||null });
+    });
+  }catch(e){}
+  out.sort(function(a,b){ return a.clientID-b.clientID; });
+  return out;
+}
+function collabInitials(name){
+  var s=String(name||'?').trim(); if(!s) return '?';
+  var p=s.split(/\s+/);
+  return (p.length>1?(p[0][0]+p[1][0]):s.slice(0,2)).toUpperCase();
+}
+// Friendly label for a focused form field (reads the field's own <label> from the DOM).
+function collabFieldLabel(fid){
+  try{ var el=document.getElementById(fid); if(el){ var f=el.closest('.id-card-field'); var lb=f&&f.querySelector('label'); if(lb) return lb.textContent.trim(); } }catch(e){}
+  return String(fid||'').replace(/^idc-/,'');
+}
+// Friendly label for an activeView id (from the rail domain config; falls back to the id).
+function collabViewLabel(v){
+  try{ if(typeof RAIL_DOMAINS!=='undefined'){ for(var i=0;i<RAIL_DOMAINS.length;i++){
+    var vw=RAIL_DOMAINS[i].views.find(function(x){return x.id===v;}); if(vw) return vw.label||vw.name||v; } } }catch(e){}
+  return v;
+}
+// One-sentence description of what a peer is doing (tooltip text). Entity names are
+// resolved live, so "editing Ann Lee · Role" reads naturally.
+function collabPeerContext(p){
+  if(p.focus&&p.focus.type==='engineer'){
+    var e=engineers.find(function(x){return x.uid===p.focus.uid;});
+    var nm=e?(e.name||'(a profile)'):'(a profile)';
+    var f=p.focus.field?(' · '+collabFieldLabel(p.focus.field)):'';
+    return p.name+' — '+t('editing')+' '+nm+f;
+  }
+  if(p.focus&&p.focus.type==='project'){
+    var pr=projects.find(function(x){return x.uid===p.focus.uid;});
+    var pnm=pr?(pr.name||'(a project)'):'(a project)';
+    var pf=p.focus.field?(' · '+collabFieldLabel(p.focus.field)):'';
+    return p.name+' — '+t('editing')+' '+pnm+pf;
+  }
+  return p.name+(p.view?(' — '+t('on')+' '+collabViewLabel(p.view)):'');
+}
+function collabAvatar(p,size){
+  size=size||20;
+  return '<span title="'+escH(collabPeerContext(p))+'" style="display:inline-flex;align-items:center;justify-content:center;'
+    +'width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+safeColor(p.color,'var(--muted)')+';color:#0a0a0a;'
+    +'font-weight:700;font-size:'+Math.round(size*0.42)+'px;font-family:IBM Plex Mono,monospace;'
+    +'border:2px solid var(--surface);margin-left:-6px;box-shadow:0 0 0 1px '+safeColor(p.color,'var(--muted)')+'">'
+    +escH(collabInitials(p.name))+'</span>';
+}
+// Render all presence surfaces (topbar cluster + ID card banner/cursors). Called on every
+// awareness change and after we publish our own presence.
+function collabRenderPresence(){
+  var peers=collabPeerStates();
+  var bar=document.getElementById('collab-presence');
+  if(bar){
+    if(_collabProvider&&peers.length){
+      bar.style.display='inline-flex';
+      var shown=peers.slice(0,6).map(function(p){ return collabAvatar(p,20); }).join('');
+      var more=peers.length>6?('<span title="'+escH(peers.slice(6).map(function(p){return p.name;}).join(', '))
+        +'" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;'
+        +'background:var(--border);color:var(--text);font-size:8px;font-family:IBM Plex Mono,monospace;margin-left:-6px;'
+        +'border:2px solid var(--surface)">+'+(peers.length-6)+'</span>'):'';
+      bar.innerHTML='<span style="display:inline-flex;align-items:center;padding-left:6px">'+shown+more+'</span>';
+    } else { bar.style.display='none'; bar.innerHTML=''; }
+  }
+  collabRenderModalPresence(peers);
+}
+// Entity editors (ID card, charter, decision): for each open tracked modal, a banner of
+// teammates on THAT entity + a colored outline on the exact field each is editing (the
+// "live cursor"). Decorates existing DOM by id — never re-renders app data, can't steal
+// the caret. Field cursors only apply where fields carry an id (ID card); id-less editors
+// (charter) degrade to an entity-level banner. Table-driven off COLLAB_MODALS.
+function collabRenderModalPresence(peers){
+  // Clear previous field outlines first (peers may have moved on).
+  _collabFieldDecor.forEach(function(id){ var el=document.getElementById(id); if(el){ el.style.outline=''; el.style.outlineOffset=''; } });
+  _collabFieldDecor=[];
+  COLLAB_MODALS.forEach(function(m){
+    var banner=document.getElementById(m.banner); if(!banner) return;
+    var ov=document.getElementById(m.overlay);
+    var ent=(ov&&ov.classList.contains('show'))?m.cur():null;
+    var here=(peers||[]).filter(function(p){ return ent&&ent.uid&&p.focus&&p.focus.type===m.type&&p.focus.uid===ent.uid; });
+    if(!here.length){ banner.style.display='none'; banner.innerHTML=''; return; }
+    banner.style.display='flex';
+    banner.innerHTML='<span style="color:var(--muted)">👥 '+escH(t('Also here:'))+'</span>'
+      +here.map(function(p){
+        var fl=p.focus.field?(' <span style="color:var(--muted)">· '+escH(collabFieldLabel(p.focus.field))+'</span>'):'';
+        return '<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:11px;'
+          +'background:var(--bg);border:1px solid '+safeColor(p.color,'var(--muted)')+'">'
+          +'<span style="width:8px;height:8px;border-radius:50%;background:'+safeColor(p.color,'var(--muted)')+'"></span>'
+          +'<b>'+escH(p.name)+'</b>'+fl+'</span>';
+      }).join('');
+    // Outline the field each peer is editing with their color (id-bearing fields only).
+    here.forEach(function(p){
+      if(!p.focus.field) return;
+      var el=document.getElementById(p.focus.field);
+      if(el){ el.style.outline='2px solid '+safeColor(p.color,'var(--muted)'); el.style.outlineOffset='1px'; _collabFieldDecor.push(p.focus.field); }
+    });
+  });
 }
 
 /* ── Boot: auto-rejoin (returning) or join-via-link. Deferred to DOMContentLoaded so

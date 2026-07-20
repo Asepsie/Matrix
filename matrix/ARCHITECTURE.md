@@ -22,16 +22,36 @@ Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly 
   gotcha from the relay's DEPLOY.md). **build.js gotcha:** the literal `external=` in a
   URL trips the line-based duplicate-decl checker (reads it as declaring `external`), so
   it's built as `'?external'+'=yjs'` (`COLLAB_EXT`) to split the token.
-- **Entity-level sync keyed by `uid`.** Y.Maps `engineers`/`projects`/`allocRows` (keyed
-  by `uid`) + one `meta` Y.Map for the rest of the saved payload (whole-value LWW per
-  key — `COLLAB_META` lists them; excludes transient view state like zoom/filters/axis).
-  Different-entity edits merge; same-entity is last-write-wins.
+- **Per-FIELD sync keyed by `uid‖path` (inc. C).** The Y.Maps `engineers`/`projects`/`allocRows`
+  hold one entry **per leaf field**, keyed by `uid + COLLAB_KEYSEP + dotted.path` (e.g.
+  `<uid>‖idcard.grade`, `<uid>‖allocs.2026-03`), so Yjs merges each field independently — two
+  people editing **different fields of the same entity** now both land (was whole-object LWW).
+  `collabFlattenEntity`/`collabUnflattenEntity` convert an entity ⇄ its leaf map: plain objects
+  recurse (per-field for scalars + map-like fields), **arrays are atomic leaves** (element-level
+  list-CRDT is out of scope), an empty object is an atomic `{}` leaf (lossless). `collabWriteEntityDiff`
+  writes only the *changed* leaves (+ deletes vanished ones) inside the one `'local'` transaction;
+  `collabMapSnapshot` reads a map back to `{uid: canonicalObj}` (drops a leaf that fails to decrypt —
+  wrong key — but keeps a legit `null`). `_collabLastFields[uid]={path:JSON}` is the per-field wire
+  cache (alongside `_collabLastJson[uid]`, the entity-level change gate + audit-diff base). The
+  `meta` Y.Map still holds the rest of the payload **whole-value LWW per key** (`COLLAB_META`;
+  low-churn config like sections/engGroups/gateConfig — excludes transient view state). Different
+  entities always merge; same-entity **different-field** now merges; same-entity **same-field** is
+  still last-write-wins.
+  - **Wire-format note:** this is a breaking change to the Y.Doc layout (was one encrypted blob per
+    `uid`; now one encrypted value per `uid‖path`). A new client in an OLD room reads no entities
+    (blob keys are ignored, `indexOf(SEP)<0`) and re-seeds per-field; local `eim_v4`/backups are
+    untouched. Rebuild+share the same build to every peer and **start a fresh room** to avoid a doc
+    carrying both formats.
 - **Join / merge model (`collabReconcile`, runs once on the first relay sync).** The
   last-synced state is captured from IndexedDB (the **base**) via `_collabPersist.whenSynced`
   BEFORE the websocket opens — the 3-way merge needs it, so the connect flow now waits for
   y-indexeddb, snapshots base, THEN creates the `WebsocketProvider`.
   - **First time in a room** (base empty): empty room → **seed** (`collabSeed`, no log spam);
-    populated room → **adopt** (`collabAdoptFromDoc`) after a confirm.
+    populated room → **adopt** (`collabAdoptFromDoc`) after a confirm. **Adopt REPLACES the open
+    dataset**, so — like a full-backup restore — it takes an `'Auto: before joining room'`
+    `takeSnap('full')` first (only when there is local data to protect). Joining the wrong room is
+    therefore always recoverable from Snapshots (`eim_snaps_v1`, a separate store the join never
+    touches). This safety net was missing originally and caused a real "I lost all my data" scare.
   - **Returning to a room you've synced** (base non-empty): **3-way merge** per entity
     (`collab3way`: base vs local vs remote) — only-you-changed keeps yours (pushed),
     only-they-changed takes theirs, **both-changed = conflict** (yours stays live, theirs is
@@ -105,6 +125,43 @@ Phase A of the roadmap in `../matrix-relay/ARCHITECTURE.md`; it builds directly 
   WITHOUT it (≡ the relay) gets `null`. Scheme mirrored in [tests/collab-crypto.test.js](tests/collab-crypto.test.js)
   (round-trip, fresh-nonce, wrong-key + tamper rejection, plaintext passthrough).
 
+### Live presence & cursors (Phase D — the presence half)
+
+Real-time "who's here / who's editing what", built entirely on Yjs **awareness** (no new
+Y.Doc structures, no relay change). Each peer publishes one awareness `user` field —
+`{name, color, view, focus, t}` — **encrypted with `collabEnc` like every other synced value**
+(a peer without the room key can't read presence either). `focus` is `{type,uid,field}` when the
+peer has an entity open, else `null`.
+
+- **Color** is derived from the Yjs `clientID` (`collabAssignColor`, a fixed 10-color palette),
+  so a given peer looks identical to everyone. Rendered through `safeColor` at every sink (the
+  color rides in from another user = untrusted, same XSS rule as entity colors).
+- **Local focus is tracked with NO per-field wiring.** `collabHookPresence()` installs ONE
+  document `focusin`/`focusout` listener on connect; it plus the entity editors' open/close hooks
+  (`openIdCardModal`/`closeIdCardModal`, `openCharter`/`chtClose`, `chtOpenDecision`/`chtCloseDecision`)
+  and `railGo` all call `collabPublishPresence()`, which reads the live context
+  (`collabCurrentFocus()`) and broadcasts it (throttled 120 ms so rapid focus changes coalesce).
+- **Tracked entity modals live in one table, `COLLAB_MODALS`** — `{overlay, banner, type, cur()}`
+  per editor: ID card (engineer), charter financials (`cht-overlay`) and the trade-off decision
+  panel (`dec-overlay`), both project (keyed by `_chtProjId`). `collabCurrentFocus()` walks it and
+  prefers the open modal that actually **contains** the focused element (so its field id rides
+  along), else the first open tracked entity, field-less. Adding another editor = one more row +
+  a `#<x>-presence` banner element in [index.html](src/index.html). **Field cursors need a field
+  `id`** — the ID-card inputs carry `idc-*` ids so their cursors light up; the charter inputs are
+  id-less (they use `oninput`/`onchange`), so they degrade to an **entity-level banner** (who's on
+  this project) with no per-field outline. `collabRenderModalPresence` renders every tracked modal's
+  banner + outlines from the same table.
+- **Three render surfaces**, all driven by `collabRenderPresence()` (called on every awareness
+  `change` and after we publish): (1) a topbar **avatar cluster** (`#collab-presence`, overlapping
+  initials, tooltip = "Alice — editing Ann Lee · Role"); (2) on the ID card, an **"Also here"
+  banner** (`#idc-presence`) listing only peers focused on the *same* engineer uid, **plus a
+  colored outline on the exact field each is editing** (the live cursor) — applied directly to the
+  field element by id, tracked in `_collabFieldDecor` and cleared each render, so it **never
+  re-renders app data and can't steal the caret**; (3) an "IN THIS ROOM" strip in the collab panel.
+- **Reading peers:** `collabPeerStates()` decrypts every awareness state except our own
+  (`awareness.clientID`), dropping any that fail to decrypt (wrong key). Presence is ephemeral —
+  it is **not** logged, persisted, or part of the data model.
+
 ### Intra-dataset refs are uid-anchored (concurrent-creation safe)
 
 `allocRow.engId`/`.projectId`, `idcard.reportsTo`, and `succession.successorId` are
@@ -139,8 +196,40 @@ id 5/1 to different people merge with each allocation resolving to the correct h
   and the org-chart layout keys stay id-based. engGroups/sections are LWW `meta` blobs with no
   `uid` of their own and are low-churn; concurrent-creation collision there is a far narrower
   window. Extending the uid-ref pattern to them is additive (give them a uid + a mirror field).
-- **Field-level CRDT + live cursors (Phase D)** — entity values are still whole-object LWW; a
-  same-entity concurrent edit resolves by last-write, not per-field merge.
+- **Field-level DOM patching (Phase D, second half — increments A & B done; C open).**
+  - **A — open entity editor live-patches.** `collabRefreshOpenEditor()` (called at the end of
+    `collabRerender`, so only on the non-focused path) walks `COLLAB_MODALS` and re-populates whichever
+    editor is open from current state — the ID card (`openIdCardModal` only *sets* field values into
+    static markup, so re-calling it is already a field-level patch with no scroll/layout churn) and the
+    charter/decision (re-render header + the **current** `_chtTab`, scroll preserved via
+    `collabRestoreScroll`). Closes a real gap: a teammate's edit to the person/project you have open now
+    lands live (previously invisible until close+reopen), pairing with the presence cursors. An editor
+    whose entity was **deleted** remotely closes itself.
+  - **B — surgical roster row patching.** On a steady-state remote apply, `collabAdoptFromDoc` snapshots
+    the roster (`collabRosterSnapshot`, `{id:{sig,sec}}`) BEFORE replacing the arrays, then
+    `collabComputeRosterPatch` diffs into `_collabPendingPatch = {structural, ids}`. `collabRerender`
+    calls `collabPatchRoster()`: in-place field changes → replace **only** the changed
+    `.proj-item[data-pid]` rows (scroll + every other row's DOM node untouched); any **structural** change
+    (project added/removed, moved between sections, or any `sections` edit) OR a changed row not currently
+    in the DOM (e.g. collapsed section) → fall back to full `renderList()`. The changeset **merges** across
+    applies batched behind the focus-steal defer (two applies → union of ids; a structural one wins), and
+    is cleared once consumed. The **matrix stays a full SVG swap** — it's a monolithic canvas with global
+    label-collision layout (one dot's move reshuffles others' label groups) and no scroll, so per-node
+    patching is both unsafe and unnecessary. Decision table: [tests/collab-roster-patch.test.js](tests/collab-roster-patch.test.js).
+  - The focus-steal rule still governs both A & B (a field you're typing in defers to the 700 ms poll, so
+    your caret is never stolen and uncommitted text survives; the pending roster changeset waits with it).
+  - **C — DONE (real-time per-field CRDT merge).** Entities are stored **per leaf field** (`uid‖path`
+    Y.Map keys — see *Per-FIELD sync* above), so a same-entity concurrent *different-field* edit now
+    MERGES via Yjs instead of whole-object last-write-wins. Each field value is still individually E2E
+    encrypted (the `{c}` envelope is per-leaf now); reconcile's 3-way (`collab3way`) stays whole-entity
+    for the OFFLINE base-vs-local-vs-remote case (writes via `collabWriteEntityDiff`/`collabDeleteEntity`),
+    while the ONLINE steady state gets per-field merge for free from Yjs. Only **same-entity same-field**
+    concurrent edits remain LWW (and arrays are atomic — editing the same array concurrently is still
+    LWW). Verified in-browser with two real Y.Docs: a role edit on peer 1 + a notes/grade edit on peer 2
+    both survive on both docs, plaintext AND encrypted, wire is ciphertext. Tests:
+    [tests/collab-fields.test.js](tests/collab-fields.test.js) (round-trip losslessness over the real
+    factory shapes + write-diff/delete/merge semantics). (Live presence/cursors, the first half of Phase
+    D, is done — see *Live presence & cursors*.)
 - **The log records create/UPDATE/delete/conflict** (per-field before/after for updates — see
   *Per-field UPDATE audit* above). Conflicts are still detected only at **reconcile** (the
   offline-divergence case, where data loss was the real risk); live simultaneous edits resolve by
@@ -151,6 +240,43 @@ id 5/1 to different people merge with each allocation resolving to the correct h
   those too would need a dumb broadcast relay (transport encryption) — rejected for Phase B
   because it means a relay rewrite and loses server-held late-joiner state. Named access +
   metadata audit is the deferred Hocuspocus upgrade.
+
+### XSS — inbound entity data is untrusted (multi-user made this real)
+
+Single-user, a hostile `<img onerror>` in a project name only hurts yourself. **Once two
+people share a room, every synced field is attacker-controlled** — a teammate's project /
+engineer / group name, note, or **color** could run script in everyone else's browser.
+Backups/roster imports are the same threat. The whole app renders via `innerHTML`
+string-building (`h+=…`), so escaping is per-render-site, not framework-enforced. Two helpers,
+both in [helpers.js](src/core/helpers.js):
+
+- **Text → `escH()`** (already the codebase convention; ~560 call sites). Escapes `& < > "`,
+  which is sufficient in double-quoted attribute and element-text contexts. **Never** interpolate
+  a synced string field raw, and never route user data through `t()` (i18n interp inserts vars
+  verbatim — pre-escape).
+- **Color → `safeColor(c, fallback)`** (added by this audit). Colors are the sneaky vector: a
+  color like `"><img …>` breaks straight out of `style="…:COLOR"` / SVG `fill="COLOR"`. `escH`
+  would stop the breakout but still admits CSS-property injection (`;position:fixed;…`), so
+  colors get a *validator* instead — `#hex(3/4/8)`, `rgb[a]/hsl[a](…)`, or a bare keyword pass
+  through; anything else → fallback (`var(--muted)`). Apply it at (or before) every point a
+  **user-editable** color reaches markup: `project.color`, `engGroup.color`, `section.color`,
+  `quadrantsByMode[*].color`, channel colors (`chanColor()` wraps at source), gate `stage.color`,
+  `skillCat.color`. **Static palette colors** (nine-box/DISC cell `badge`, `CAT_COL`, `AN_COLORS`,
+  status-meta colors) are NOT user data — leave them, or wrap harmlessly.
+
+The audit swept every `${…}`/`+…+` interpolation of a synced field. Biggest sink was the
+**print/export builders in [profiles.js](src/sections/profiles.js)** (`document.write` into a new
+window → scripts execute) — every field there was raw. Also fixed: plan.js option labels,
+skills.js group-badge color + gap tooltips, and the color sinks in matrix/overlays/dashboard/
+timeline/org/portfolio/econ/gate/channels/sidebar/roster/backlog/tooltip. Deliberately left:
+`prompt`/`confirm`/`alert` dialogs (plain text, not HTML), `aiBuildContext` (plain text to the
+LLM, not DOM), and CSV export (spreadsheet formula-injection is a separate, out-of-scope
+concern). Tests: [tests/helpers.test.js](tests/helpers.test.js) (escH breakout + safeColor
+passthrough/rejection). Verified in-browser: a project injected with a hostile name **and** color
+renders on the matrix + sidebar with the `onerror` never firing and no breakout element created.
+Note this closes the sink at **render**, so it holds for the live-sync apply path too (which does
+not re-`sanitise` per patch — only the merge-finish does). **When adding any new render of a
+synced field, escH the text and safeColor the color** — there is no central choke point.
 
 ### Editors MUST `saveState()` or they don't sync (bit us: allocations)
 

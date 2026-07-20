@@ -201,10 +201,10 @@ function renderWithAnim(W,H,pw,ph,isAnim){
   // Quadrant fills
   const qx1=PAD.l,qx2=PAD.l+pw,qy1=PAD.t,qy2=PAD.t+ph;
   const sx=clamp(sxPx,qx1,qx2),sy=clamp(syPx,qy1,qy2);
-  h+=`<rect x="${qx1}" y="${qy1}" width="${sx-qx1}"  height="${sy-qy1}"  fill="${q.tl.color}"/>`;
-  h+=`<rect x="${sx}"  y="${qy1}" width="${qx2-sx}"   height="${sy-qy1}"  fill="${q.tr.color}"/>`;
-  h+=`<rect x="${qx1}" y="${sy}"  width="${sx-qx1}"  height="${qy2-sy}"  fill="${q.bl.color}"/>`;
-  h+=`<rect x="${sx}"  y="${sy}"  width="${qx2-sx}"   height="${qy2-sy}"  fill="${q.br.color}"/>`;
+  h+=`<rect x="${qx1}" y="${qy1}" width="${sx-qx1}"  height="${sy-qy1}"  fill="${safeColor(q.tl.color)}"/>`;
+  h+=`<rect x="${sx}"  y="${qy1}" width="${qx2-sx}"   height="${sy-qy1}"  fill="${safeColor(q.tr.color)}"/>`;
+  h+=`<rect x="${qx1}" y="${sy}"  width="${sx-qx1}"  height="${qy2-sy}"  fill="${safeColor(q.bl.color)}"/>`;
+  h+=`<rect x="${sx}"  y="${sy}"  width="${qx2-sx}"   height="${qy2-sy}"  fill="${safeColor(q.br.color)}"/>`;
 
   const ql=(t,x,y)=>`<text font-family="IBM Plex Sans,sans-serif" font-size="10" fill="#6b6b78" text-anchor="middle" x="${x}" y="${y}">${escH(t)}</text>`;
   h+=ql(q.tl.label,qx1+(sx-qx1)/2,qy1+14);
@@ -313,17 +313,18 @@ function renderWithAnim(W,H,pw,ph,isAnim){
     for(const nd of cl.nodes){
       const {p,cx,cy}=nd;
       const isSel=p.id===selId;
+      const pcol=safeColor(p.color);
       const sec=sections.find(s=>s.id===p.sectionId);
-      const ringColor=isSel?'#fff':(sec?sec.color:p.color);
-      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${p.color}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}"
+      const ringColor=isSel?'#fff':safeColor(sec?sec.color:p.color);
+      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}"
             style="cursor:${drawTool==='none'&&!isAnim?'grab':(isAnim?'default':'crosshair')}"
             onmousedown="${drawTool==='none'&&!isAnim?`startProjDrag(event,${p.id})`:''}"
             oncontextmenu="openCtx(event,${p.id})"
             onmouseover="showTip(event,${p.id})" onmouseout="hideTip()"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}" />`;
-      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${p.color}" pointer-events="none"/>`;
+      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${pcol}" pointer-events="none"/>`;
       const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
-      if(tt) h+=`<text font-family="IBM Plex Mono,monospace" font-size="8" fill="${p.color}88"
+      if(tt) h+=`<text font-family="IBM Plex Mono,monospace" font-size="8" fill="${pcol}88"
                    text-anchor="middle" x="${cx}" y="${cy+22}" pointer-events="none">${td}/${tt}</text>`;
     }
   }
@@ -338,6 +339,7 @@ function renderWithAnim(W,H,pw,ph,isAnim){
     cl.nodes.forEach((nd,i)=>{
       const {p,cx,cy,lbl,lw}=nd;
       const isSel=p.id===selId;
+      const pcol=safeColor(p.color);
       const angle=-Math.PI/2+i*step;
       const r=N===1?(DOT_R+8):fanR;
       // Label centre point
@@ -355,11 +357,11 @@ function renderWithAnim(W,H,pw,ph,isAnim){
         const lxe=lx-(anchor==='start'?lw*0.5:anchor==='end'?-lw*0.5:0)*0.15;
         h+=`<line x1="${lx0.toFixed(1)}" y1="${ly0.toFixed(1)}"
                   x2="${lxe.toFixed(1)}" y2="${(ly-2).toFixed(1)}"
-              stroke="${p.color}" stroke-width="0.9" stroke-dasharray="3,2"
+              stroke="${pcol}" stroke-width="0.9" stroke-dasharray="3,2"
               opacity="0.5" pointer-events="none"/>`;
       }
       h+=`<text font-family="IBM Plex Sans,sans-serif" font-size="10" font-weight="${isSel?700:600}"
-            fill="${p.color}" text-anchor="${anchor}" dominant-baseline="auto"
+            fill="${pcol}" text-anchor="${anchor}" dominant-baseline="auto"
             x="${lx.toFixed(1)}" y="${ly.toFixed(1)}"
             style="cursor:${drawTool==='none'&&!isAnim?'pointer':'default'};paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}"

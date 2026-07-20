@@ -290,7 +290,7 @@ export function renderResDashboard(){
     h+='<div class="db-group-head'+(isOpen?' db-open':'')
       +'" onclick="toggleDashSector(this.dataset.grp,this.dataset.sid)" data-grp="'+escH(grpName)+'" data-sid="'+safeId+'">'
       +'<span class="db-group-arrow" id="dsec-arrow-'+safeId+'">'+(isOpen?'▼':'▶')+'</span>'
-      +'<span class="db-dot" style="background:'+g.color+'"></span>'
+      +'<span class="db-dot" style="background:'+safeColor(g.color)+'"></span>'
       +'<span class="db-group-name">'+escH(grpName==='Unsectioned'?t('Unsectioned'):grpName)+'</span>'
       +'<span class="db-group-meta">'+t('{n} project(s)',{n:g.rows.length})+'</span>'
       +'<span class="db-group-total">'+Math.round(grpTotal/1000)+'k€</span>'
@@ -316,7 +316,7 @@ export function renderResDashboard(){
       if(p.gate)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.gate)+'</span>';
       if(p.status)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.status)+'</span>';
       h+='<tr>'
-       +'<td><span class="db-pname"><span class="db-dot" style="background:'+(p.color||'var(--muted)')+'"></span><span style="color:'+p.color+'">'+escH(p.name)+'</span></span>'+statusBadge+'</td>'
+       +'<td><span class="db-pname"><span class="db-dot" style="background:'+safeColor(p.color)+'"></span><span style="color:'+safeColor(p.color)+'">'+escH(p.name)+'</span></span>'+statusBadge+'</td>'
        +'<td class="db-money">'+Math.round(cost/1000)+'k€</td>'
        +'<td class="db-muted">'+pct+'%</td>'
        +'<td class="db-num" style="color:var(--accent2)">'+peakFte.toFixed(1)+'</td>'
@@ -519,7 +519,7 @@ export function renderResDashboard(){
     var ug=utilByKey[gk];
     h+='<div class="db-ugroup">'
      +'<div class="db-ugroup-head">'
-     +'<span class="db-dot" style="background:'+ug.color+'"></span>'
+     +'<span class="db-dot" style="background:'+safeColor(ug.color)+'"></span>'
      +'<span class="db-ugroup-name">'+escH(gk)+'</span>'
      +'<span class="db-ugroup-count">'+t('{n} engineer(s)',{n:ug.members.length})+'</span>'
      +'</div>'

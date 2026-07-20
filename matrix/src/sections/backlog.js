@@ -204,7 +204,7 @@ export function renderBacklogTab(){
     var gOpen=g.rows.filter(function(r){return !r.done;}).length;
     h+='<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:7px;overflow:hidden">'
      +'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)">'
-     +'<div style="width:8px;height:8px;border-radius:50%;background:'+g.color+';flex-shrink:0"></div>'
+     +'<div style="width:8px;height:8px;border-radius:50%;background:'+safeColor(g.color)+';flex-shrink:0"></div>'
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(gk)+'</span>'
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">'+t('{n} open',{n:gOpen})+' · '+g.rows.length+' '+t('total')+'</span>'
      +'</div><div>';

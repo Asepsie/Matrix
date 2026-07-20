@@ -117,7 +117,7 @@ function gtModelEditor(m){
 
 function gtStageCard(s,i,n){
   const folded=!!_gtFold[s.id];
-  const sw=s.color||'var(--dim)';
+  const sw=safeColor(s.color||'var(--dim)');
   let h='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+sw+';border-radius:8px;padding:10px 12px">';
   // header row
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
@@ -411,7 +411,7 @@ function gtProjectDetail(p,m,signals){
   // stage progress strip
   h+=gtStageStrip(stages,curIdx,gp,signals);
   // current-stage header + readiness
-  const sw=cur.color||'var(--accent)';
+  const sw=safeColor(cur.color||'var(--accent)');
   h+='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">';
   h+='<div style="min-width:0"><div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:'+sw+';font-weight:700;letter-spacing:.05em">'+escH(cur.name||'—')+'</div>'
     +(cur.desc?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escH(cur.desc)+'</div>':'')+'</div>';
@@ -446,7 +446,7 @@ function gtStageStrip(stages,curIdx,gp,signals){
   stages.forEach((s,i)=>{
     const rd=gtStageReadiness(s,gp,signals);
     const past=i<curIdx, isCur=i===curIdx;
-    const col=s.color||'var(--accent)';
+    const col=safeColor(s.color||'var(--accent)');
     const bg=past?col:(isCur?'var(--bg)':'var(--bg)');
     const bd=isCur?col:(past?col:'var(--border)');
     const txt=past?'var(--bg)':(isCur?col:'var(--dim)');
@@ -582,7 +582,7 @@ function gtPipelineView(m){
   return h;
 }
 function gtPipelineColumn(stage,idx,projs,signals){
-  const col=stage.color||'var(--accent)';
+  const col=safeColor(stage.color||'var(--accent)');
   let h='<div style="flex:0 0 210px;width:210px;display:flex;flex-direction:column;gap:8px">';
   // column header
   h+='<div style="border-top:3px solid '+col+';background:var(--surface);border-radius:0 0 6px 6px;padding:7px 9px;display:flex;align-items:center;gap:6px">'
@@ -601,9 +601,9 @@ function gtPipelineColumn(stage,idx,projs,signals){
 function gtPipelineCard(p,stage,idx,signals){
   const gp=p.gatePlan||makeGatePlan();
   const rd=gtStageReadiness(stage,gp,signals);
-  const col=stage.color||'var(--accent)';
+  const col=safeColor(stage.color||'var(--accent)');
   const barCol=rd.blocked?'var(--warn)':col;
-  const pc=p.color||'var(--dim)';
+  const pc=safeColor(p.color||'var(--dim)');
   let h='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+pc+';border-radius:6px;padding:8px 9px;display:flex;flex-direction:column;gap:6px">';
   // title row (click → detail)
   h+='<div onclick="gtOpenDetail('+p.id+')" title="'+escH(t('Open gate detail'))+'" style="cursor:pointer;font-size:11px;color:var(--text);font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name||t('Untitled project'))+'</div>';
@@ -734,7 +734,7 @@ function gtOverviewRow(p,stages,incs){
   const curIdx=gtCurStageIdx(p,stages);
   const curStage=stages[curIdx];
   let h='<tr draggable="true" ondragstart="gtDragStart(event,'+p.id+')" ondragover="gtDragOver(event)" ondrop="gtDragDrop(event,'+p.id+')" ondragend="gtDragEnd(event)">';
-  h+='<td style="position:sticky;left:0;background:var(--surface);padding:6px 10px;border-bottom:1px solid var(--border);border-left:3px solid '+(p.color||'var(--dim)')+';white-space:nowrap;z-index:1">'
+  h+='<td style="position:sticky;left:0;background:var(--surface);padding:6px 10px;border-bottom:1px solid var(--border);border-left:3px solid '+safeColor(p.color||'var(--dim)')+';white-space:nowrap;z-index:1">'
     +'<div style="display:flex;align-items:center;gap:7px">'
     +'<span title="'+escH(t('Drag to reorder'))+'" style="cursor:grab;color:var(--dim);font-size:12px">⋮⋮</span>'
     +'<input type="checkbox" checked onchange="gtPiToggleSelect('+p.id+')" title="'+escH(t('Selected — untick to collapse'))+'" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0">'
@@ -745,7 +745,7 @@ function gtOverviewRow(p,stages,incs){
   incs.forEach(iv=>{
     const sel=roadmap[iv.id]||'';
     const selStage=stages.find(s=>s.id===sel);
-    const bd=selStage?(selStage.color||'var(--accent)'):'var(--border)';
+    const bd=selStage?safeColor(selStage.color||'var(--accent)'):'var(--border)';
     h+='<td style="padding:5px 8px;border-bottom:1px solid var(--border);border-left:3px solid '+bd+';text-align:center">'
       +'<select onchange="gtSetRoadmap('+p.id+','+JSON.stringify(iv.id)+',this.value)" style="'+gtInStyle('105px')+'">'
       +'<option value="">'+escH(t('—'))+'</option>'
@@ -769,7 +769,7 @@ function gtUnselectedPanel(list){
     h+='<div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px 12px">';
     list.forEach(p=>{
       h+='<button onclick="gtPiToggleSelect('+p.id+')" title="'+escH(t('Add to the gate overview'))+'" '
-        +'style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-left:3px solid '+(p.color||'var(--dim)')+';color:var(--text);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px;max-width:200px">'
+        +'style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-left:3px solid '+safeColor(p.color||'var(--dim)')+';color:var(--text);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px;max-width:200px">'
         +'<span style="color:var(--accent);font-weight:700">+</span>'
         +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name||t('Untitled project'))+'</span>'
         +'</button>';
@@ -800,7 +800,7 @@ function gtPiPlanGrid(m){
   h+='</tr></thead><tbody>';
   selected.forEach(p=>{
     h+='<tr>';
-    h+='<td style="position:sticky;left:0;background:var(--surface);padding:8px 10px;border-bottom:1px solid var(--border);border-left:3px solid '+(p.color||'var(--dim)')+';white-space:nowrap;z-index:1;vertical-align:top">'
+    h+='<td style="position:sticky;left:0;background:var(--surface);padding:8px 10px;border-bottom:1px solid var(--border);border-left:3px solid '+safeColor(p.color||'var(--dim)')+';white-space:nowrap;z-index:1;vertical-align:top">'
       +'<div style="color:var(--text);font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis">'+escH(p.name||t('Untitled project'))+'</div></td>';
     incs.forEach(iv=>{
       h+='<td style="padding:6px 8px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);vertical-align:top;min-width:220px">'+gtPiCell(p,iv)+'</td>';

@@ -77,7 +77,7 @@ function ecKpi(val,label,sub,color){
 function ecBar(label,frac,rightHtml,color,title){
   return '<div style="display:flex;align-items:center;gap:10px">'
     +'<div style="width:150px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(title||label)+'">'+escH(label)+'</div>'
-    +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(Math.max(0,Math.min(100,frac*100))).toFixed(1)+'%;background:'+(color||'var(--accent)')+'"></div></div>'
+    +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(Math.max(0,Math.min(100,frac*100))).toFixed(1)+'%;background:'+safeColor(color||'var(--accent)')+'"></div></div>'
     +'<div style="width:200px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace">'+rightHtml+'</div></div>';
 }
 function ecEur(v){ return (typeof pfEur==='function') ? pfEur(v) : Math.round(+v||0)+'€'; }

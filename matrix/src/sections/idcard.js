@@ -83,6 +83,7 @@ export function openIdCardModal(engId){
   idcRenderCops();
   idcRenderReviews();
   G('idcard-modal-overlay').classList.add('show');
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this profile" (live presence)
 }
 // handles photo file selection: compress → IDB → preview
 export function idcPhotoSelected(inp){
@@ -116,6 +117,7 @@ export function idcPhotoClear(){
 export function closeIdCardModal(){
   G('idcard-modal-overlay').classList.remove('show');
   _idcardEngId=null;
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // clear my "editing" focus for teammates
 }
 // saves all ID card fields back to the engineer object
 export function saveIdCardModal(){

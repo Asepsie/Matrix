@@ -839,8 +839,8 @@ export function renderSkillRisk(){
     h+='<td style="padding:6px 8px;min-width:180px"><div style="display:flex;align-items:center;gap:5px;margin-bottom:4px"><div style="flex:1;background:var(--border);border-radius:3px;height:5px;min-width:60px"><div style="background:'+barCol+';width:'+covPct+'%;height:5px;border-radius:3px"></div></div><span style="font-size:9px;color:var(--muted);width:28px;text-align:right">'+covPct+'%</span></div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:3px">'+s.holders.slice(0,5).map(function(h2){
         const g=engGroups.find(function(g){return g.id===h2.eng.groupId;});
-        const gc=g?g.color:'var(--muted)';const hasGap=h2.gaps&&h2.gaps.trim();
-        return '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+gc+'22;color:'+gc+';border:1px solid '+gc+'44" title="L'+h2.level+' '+(LEVEL_LABEL[h2.level]||'')+(hasGap?' | Gap: '+h2.gaps:'')+'">'
+        const gc=safeColor(g?g.color:'var(--muted)');const hasGap=h2.gaps&&h2.gaps.trim();
+        return '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+gc+'22;color:'+gc+';border:1px solid '+gc+'44" title="'+escH('L'+h2.level+' '+(LEVEL_LABEL[h2.level]||'')+(hasGap?' | Gap: '+h2.gaps:''))+'">'
           +escH(h2.eng.name)+(hasGap?' ⚠':'')+'</span>';
       }).join('')+(s.holders.length>5?'<span style="font-size:9px;color:var(--muted)">+'+(s.holders.length-5)+'</span>':'')+'</div></td>';
     h+='<td style="padding:6px 8px;font-size:10px;font-weight:600;color:'+riskCol+';white-space:nowrap">'+riskLabel+'</td>';
@@ -862,7 +862,7 @@ export function renderSkillRisk(){
       const eng=engineers.find(function(e){return e.id===eid;});if(!eng)return;
       const engSpof=spofSkills.filter(function(s){return s.holders.some(function(h2){return h2.eng.id===eid;});});
       const grp=engGroups.find(function(g){return g.id===eng.groupId;});
-      const gc=grp?grp.color:'var(--muted)';
+      const gc=safeColor(grp?grp.color:'var(--muted)');
       var _spofCatCol=engSpof.length?(skillCats.find(function(c){return engSpof.some(function(s){return s.cat===c.id;});})||{color:'#f1a435'}).color:'#f1a435';
       h+='<div style="border:1px solid '+_spofCatCol+';border-radius:6px;padding:8px 12px;min-width:160px;max-width:220px;background:'+_spofCatCol+'18">';
       h+='<div style="font-weight:700;font-size:12px;color:'+gc+'">'+escH(eng.name)+'</div>';
@@ -1057,7 +1057,7 @@ export function renderSkillsTab(){
     h+='<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+(isSpof?'#f14335':'var(--accent2)')+'">'+s.holders.length+'</td>';
     h+='<td style="padding:6px 8px;text-align:center"><span style="font-family:\'IBM Plex Mono\',monospace;color:var(--accent2)">L'+s.avgLevel+'</span><span style="font-size:9px;color:var(--muted);margin-left:3px">'+LEVEL_LABEL[Math.round(s.avgLevel)]+'</span></td>';
     h+='<td style="padding:6px 8px;text-align:center"><span style="font-family:\'IBM Plex Mono\',monospace;color:var(--accent)">L'+s.maxLevel+'</span></td>';
-    h+='<td style="padding:6px 8px;min-width:160px"><div style="display:flex;flex-wrap:wrap;gap:3px">'+s.holders.slice(0,5).map(function(h2){const g=engGroups.find(function(g){return g.id===h2.eng.groupId;});const gc=g?g.color:'var(--muted)';return '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+gc+'22;color:'+gc+';border:1px solid '+gc+'44" title="L'+h2.level+' '+LEVEL_LABEL[h2.level]+'">'+escH(h2.eng.name)+'</span>';}).join('')+(s.holders.length>5?'<span style="font-size:9px;color:var(--muted)">+'+(s.holders.length-5)+'</span>':'')+'</div></td>';
+    h+='<td style="padding:6px 8px;min-width:160px"><div style="display:flex;flex-wrap:wrap;gap:3px">'+s.holders.slice(0,5).map(function(h2){const g=engGroups.find(function(g){return g.id===h2.eng.groupId;});const gc=safeColor(g?g.color:'var(--muted)');return '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:'+gc+'22;color:'+gc+';border:1px solid '+gc+'44" title="'+escH('L'+h2.level+' '+LEVEL_LABEL[h2.level])+'">'+escH(h2.eng.name)+'</span>';}).join('')+(s.holders.length>5?'<span style="font-size:9px;color:var(--muted)">+'+(s.holders.length-5)+'</span>':'')+'</div></td>';
     h+='<td style="padding:6px 8px;white-space:nowrap"><button class="sm" onclick="srfRenameSkill(\''+snE+'\')" style="font-size:9px;padding:2px 6px">✏ Rename</button> <button class="sm" onclick="srfMergeSkill(\''+snE+'\')" style="font-size:9px;padding:2px 6px">⇒ Merge</button> <button class="sm" onclick="skSplitSkill(\''+snE+'\')" style="font-size:9px;padding:2px 6px">⇔ Split</button></td>';
     h+='</tr>';
   });

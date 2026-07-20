@@ -70,7 +70,7 @@ function renderProfilesTab(){
 
   engs.forEach(function(e){
     const c=e.idcard||{};
-    const col=engGroupColor(e);
+    const col=safeColor(engGroupColor(e));
     const grp=engGroups.find(function(g){return g.id===e.groupId;});
     const photo=idbGetPhoto(e.id)||(c.photo||'');
     const mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
@@ -89,7 +89,7 @@ function renderProfilesTab(){
 
     if(photo){
       h+='<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'">'
-        +'<img src="'+photo+'" style="width:100%;height:100%;object-fit:cover"></div>';
+        +'<img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>';
     } else {
       h+='<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col
         +';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col
@@ -99,7 +99,7 @@ function renderProfilesTab(){
     h+='<div style="flex:1;min-width:0">';
     h+='<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(e.name)+'</div>';
     h+='<div style="font-size:11px;color:var(--muted)">'+escH(e.role||'—')+'</div>';
-    if(grp)h+='<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>';
+    if(grp)h+='<div style="font-size:10px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>';
     h+='</div>';
 
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
@@ -171,7 +171,7 @@ function renderProfilesTab(){
             const cc=CAT_COL[s.cat]||'#888';
             const hasGap=showInd&&s.gaps&&s.gaps.trim();
             h+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc
-              +'" title="'+(hasGap?'⚠ '+t('Gap:')+' '+s.gaps:'')+'">'
+              +'" title="'+(hasGap?escH('⚠ '+t('Gap:')+' '+s.gaps):'')+'">'
               +escH(s.name)
               +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
               +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
@@ -193,7 +193,7 @@ function renderProfilesTab(){
     }
 
     if(spofSkills.length&&showInd){
-      h+='<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ '+t('SPOF:')+' '+spofSkills.map(function(s){return s.name;}).join(', ')+'</div>';
+      h+='<div style="margin-top:5px;font-size:10px;color:#f14335;font-weight:600">⚠ '+t('SPOF:')+' '+spofSkills.map(function(s){return escH(s.name);}).join(', ')+'</div>';
     }
 
     if(fullMode){
@@ -362,45 +362,46 @@ function profilesExportAllPDF(){
     const photo=idbGetPhoto(e.id)||(c.photo||'');
     const skills=e.skills||[];
     const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
+    const sc=safeColor(col);
     const avatarHTML=photo
-      ?'<img src="'+photo+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+col+'">'
-      :'<div style="width:60px;height:60px;border-radius:50%;background:'+col+'33;border:3px solid '+col
-        +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+col+'">'+engInitials(e.name)+'</div>';
+      ?'<img src="'+escH(photo)+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+sc+'">'
+      :'<div style="width:60px;height:60px;border-radius:50%;background:'+sc+'33;border:3px solid '+sc
+        +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+sc+'">'+escH(engInitials(e.name))+'</div>';
     const skillsHTML=domains.map(function(dom){
       const ds=skills.filter(function(s){return (s.domain||'General')===dom;});
       return '<div style="margin-bottom:8px">'
-        +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+dom+'</div>'
+        +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+escH(dom)+'</div>'
         +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
         +ds.map(function(s){
-          const cc=CAT_COL[s.cat]||'#888';
+          const cc=safeColor(CAT_COL[s.cat]||'#888');
           return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
-            +s.name+' <sup>L'+(s.level||3)+'</sup></span>';
+            +escH(s.name)+' <sup>L'+(s.level||3)+'</sup></span>';
         }).join('')+'</div></div>';
     }).join('');
     return '<div class="profile-page">'
-      +'<div style="height:5px;background:'+col+';margin:-16px -16px 14px"></div>'
+      +'<div style="height:5px;background:'+sc+';margin:-16px -16px 14px"></div>'
       +'<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">'
       +avatarHTML
-      +'<div><h1 style="font-size:18px;font-weight:700;margin:0">'+e.name+'</h1>'
-      +'<div style="font-size:13px;color:#555;margin-top:2px">'+(e.role||'')+'</div>'
-      +(grp?'<div style="font-size:11px;color:'+grp.color+';margin-top:2px">'+grp.name+'</div>':'')
+      +'<div><h1 style="font-size:18px;font-weight:700;margin:0">'+escH(e.name)+'</h1>'
+      +'<div style="font-size:13px;color:#555;margin-top:2px">'+escH(e.role||'')+'</div>'
+      +(grp?'<div style="font-size:11px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
       +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:11px;margin-bottom:12px">'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Location</span>'+(e.location||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Seniority</span>'+(c.seniority||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Contract</span>'+(c.contract||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Potential</span>'+(c.potential||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Reports to</span>'+mgrName+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Languages</span>'+(c.languages||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Start date</span>'+(c.startdate||'—')+'</div>'
-      +(c.reviewdate?'<div><span style="color:#888;min-width:90px;display:inline-block">Review</span>'+c.reviewdate+'</div>':'')
-      +(c.gender?'<div><span style="color:#888;min-width:90px;display:inline-block">Gender</span>'+c.gender+'</div>':'')
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Location</span>'+escH(e.location||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Seniority</span>'+escH(c.seniority||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Contract</span>'+escH(c.contract||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Potential</span>'+escH(c.potential||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Reports to</span>'+escH(mgrName)+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Languages</span>'+escH(c.languages||'—')+'</div>'
+      +'<div><span style="color:#888;min-width:90px;display:inline-block">Start date</span>'+escH(c.startdate||'—')+'</div>'
+      +(c.reviewdate?'<div><span style="color:#888;min-width:90px;display:inline-block">Review</span>'+escH(c.reviewdate)+'</div>':'')
+      +(c.gender?'<div><span style="color:#888;min-width:90px;display:inline-block">Gender</span>'+escH(c.gender)+'</div>':'')
       +'</div>'
-      +(fullMode&&c.aspirations?'<h2 class="sec">Aspirations</h2><p>'+c.aspirations+'</p>':'')
-      +(fullMode&&c.strengths?'<h2 class="sec">Strengths</h2><p>'+c.strengths+'</p>':'')
-      +(fullMode&&c.devarea?'<h2 class="sec">Development Areas</h2><p>'+c.devarea+'</p>':'')
+      +(fullMode&&c.aspirations?'<h2 class="sec">Aspirations</h2><p>'+escH(c.aspirations)+'</p>':'')
+      +(fullMode&&c.strengths?'<h2 class="sec">Strengths</h2><p>'+escH(c.strengths)+'</p>':'')
+      +(fullMode&&c.devarea?'<h2 class="sec">Development Areas</h2><p>'+escH(c.devarea)+'</p>':'')
       +(skills.length?'<h2 class="sec">Skills ('+skills.length+')</h2>'+skillsHTML:'')
-      +(fullMode&&c.notes?'<h2 class="sec">Notes</h2><p>'+c.notes+'</p>':'')
+      +(fullMode&&c.notes?'<h2 class="sec">Notes</h2><p>'+escH(c.notes)+'</p>':'')
       +'</div>';
   }
 
@@ -449,7 +450,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
   var sm=buildSkillMap();
   return engs.map(function(e){
     var c=e.idcard||{};
-    var col=engGroupColor(e);
+    var col=safeColor(engGroupColor(e));
     var grp=engGroups.find(function(g){return g.id===e.groupId;});
     var photo=idbGetPhoto(e.id)||(c.photo||'');
     var mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
@@ -461,7 +462,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
     });
 
     var avatarHTML=photo
-      ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+photo+'" style="width:100%;height:100%;object-fit:cover"></div>'
+      ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
       :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace">'+escH(engInitials(e.name))+'</div>';
 
     var _nm=c.nextMove||{};
@@ -487,7 +488,7 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
       +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
-      +(grp?'<div style="font-size:10px;color:'+grp.color+';margin-top:2px">'+escH(grp.name)+'</div>':'')
+      +(grp?'<div style="font-size:10px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
       +'</div></div>'
       +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">'
       +details.map(function(d){
@@ -799,7 +800,7 @@ function openProjectBriefExport(){
     list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:6px 9px;'
       +'border-radius:5px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid var(--border)">'
       +'<input type="checkbox" data-pid="'+p.id+'"'+(isVis?' checked':'')+'>'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:'+p.color+';flex-shrink:0"></span>'
+      +'<span style="width:10px;height:10px;border-radius:50%;background:'+safeColor(p.color)+';flex-shrink:0"></span>'
       +'<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name)+'</span>'
       +(p.sector?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+escH(p.sector)+'</span>':'')
       +'</label>';
@@ -883,7 +884,7 @@ function buildBriefHTML(selectedProjs, opts){
   var LVL=['','Awareness','Basic','Proficient','Advanced','Expert'];
 
   function buildProjectBlock(p){
-    var col=p.color||V.accent;
+    var col=safeColor(p.color||V.accent);
     var sec=sections.find(function(s){return s.id===p.sectionId;});
     var allocs=projAllocMap[p.id]||[];
     var totalProjCost=allocs.reduce(function(s,a){return s+a.totalCost;},0)||p.planCost||0;
@@ -936,7 +937,7 @@ function buildBriefHTML(selectedProjs, opts){
         var e=a.eng;
         var c=e.idcard||{};
         var grp=engGroups.find(function(g){return g.id===e.groupId;});
-        var gc=grp?grp.color:'#6b6b78';
+        var gc=safeColor(grp?grp.color:'#6b6b78');
         var photo=idbGetPhoto(e.id)||(c.photo||'');
         var initials=engInitials(e.name);
         var avgFTE=a.activeMonths.length?a.totalFTE/a.activeMonths.length:0;
@@ -946,7 +947,7 @@ function buildBriefHTML(selectedProjs, opts){
           +'background:'+V.bg+';border:1px solid '+V.border+';border-radius:6px">';
 
         html+=photo
-          ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+photo+'" style="width:100%;height:100%;object-fit:cover"></div>'
+          ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
           :'<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:'+gc+'33;border:2px solid '+gc
             +';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+gc+';font-family:monospace">'+escH(initials)+'</div>';
 

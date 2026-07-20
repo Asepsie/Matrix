@@ -521,7 +521,7 @@ function anScatter(points, opt){
     s += anTxt(W-padR, padT+6, 'r = '+(Math.round(r*100)/100), {anchor:'end', size:10, fill:AN_COLORS.warn});
   }
   pts.forEach(p => {
-    s += '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="5" fill="'+(p.color||AN_COLORS.primary)+'" fill-opacity="0.8" stroke="'+AN_COLORS.surface+'"'
+    s += '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="5" fill="'+safeColor(p.color||AN_COLORS.primary)+'" fill-opacity="0.8" stroke="'+AN_COLORS.surface+'"'
        + anTip((p.label?p.label+'\n':'')+'x='+anNiceNum(p.x)+', y='+anNiceNum(p.y))+anIds(p.id != null ? [p.id] : null, p.label)+'></circle>';
   });
   s += anTxt(padL, H-padB+14, anNiceNum(xmin), {size:9, fill:AN_COLORS.muted});

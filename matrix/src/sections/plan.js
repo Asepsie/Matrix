@@ -145,7 +145,7 @@ export function renderResPlan(){
     if(showEngCol){
       rh+=`<td class="col-name"><select class="alloc-sel" onchange="setRowEng(${row.id},+this.value)">
         <option value="">${t('— Select —')}</option>`;
-      engineers.forEach(e=>{const g=engGroups.find(g=>g.id===e.groupId);rh+=`<option value="${e.id}"${e.id===row.engId?' selected':''}>${escH(e.name)}${e.role?' · '+e.role:''}${g?' ['+g.name+']':''}</option>`;});
+      engineers.forEach(e=>{const g=engGroups.find(g=>g.id===e.groupId);rh+=`<option value="${e.id}"${e.id===row.engId?' selected':''}>${escH(e.name)}${e.role?' · '+escH(e.role):''}${g?' ['+escH(g.name)+']':''}</option>`;});
       rh+=`</select></td>`;
     } else {
       rh+=`<td class="col-name" style="padding:0"></td>`;
@@ -284,14 +284,14 @@ export function renderResPlan(){
       const pRows=visibleRows.filter(r=>r.projectId===pid);
       const collapsed=planCollapsed['p'+pid];
       h+=`<tr style="background:rgba(255,255,255,.06);cursor:pointer" onclick="planCollapsed['p${pid}']=!planCollapsed['p${pid}'];renderResPlan()">
-        <td colspan="2" style="padding:6px 10px;font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;color:${proj.color}">
+        <td colspan="2" style="padding:6px 10px;font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;color:${safeColor(proj.color)}">
           <span style="margin-right:6px">${collapsed?'▶':'▼'}</span>
           ${escH(proj.name)}
         </td>
         <td class="col-cost"></td>`;
       months.forEach(m=>{
         const cost=pRows.reduce((s,r)=>{const e=engineers.find(e=>e.id===r.engId);return s+(e&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],e.monthlyCost):0);},0);
-        h+=`<td class="alloc-cell${m===cur?' month-cur':''}" style="text-align:center;font-family:IBM Plex Mono,monospace;font-size:10px;color:${proj.color}">${cost?Math.round(cost/1000)+'k€':''}</td>`;
+        h+=`<td class="alloc-cell${m===cur?' month-cur':''}" style="text-align:center;font-family:IBM Plex Mono,monospace;font-size:10px;color:${safeColor(proj.color)}">${cost?Math.round(cost/1000)+'k€':''}</td>`;
       });
       h+=`<td><button class="add-row-btn" style="padding:2px 5px;font-size:10px" onclick="event.stopPropagation();addRowForProj(${pid})">+</button></td></tr>`;
       if(!collapsed){
@@ -379,7 +379,7 @@ export function engCardHTML(e){
   (e.skills||[]).forEach(s=>{ catCounts[s.cat]=(catCounts[s.cat]||0)+1; });
   const skillBadge=skillCount
     ?`<span style="font-family:IBM Plex Mono,monospace;font-size:9px;margin-left:4px">`
-      +skillCats.filter(c=>catCounts[c.id]).map(c=>`<span style="color:${c.color}">●${catCounts[c.id]}</span>`).join(' ')
+      +skillCats.filter(c=>catCounts[c.id]).map(c=>`<span style="color:${safeColor(c.color)}">●${catCounts[c.id]}</span>`).join(' ')
       +`</span>`
     :'';
   // Avatar — from IDB cache or initials

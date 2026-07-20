@@ -2,6 +2,19 @@ export const G=id=>document.getElementById(id);
 export const V=id=>G(id).value;
 export const SV=(id,v)=>{G(id).value=v;};
 export function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* Validate a CSS color before it lands in a style="" attribute. Entity colors
+   (project.color, engGroup.color, section.color, quadrant/channel colors) SYNC
+   between peers and ride in backups, so a hostile/garbage value could otherwise
+   break out of the attribute or inject extra CSS. Accepts #hex (3/4/6/8),
+   rgb[a]/hsl[a](…), and bare CSS keywords (red, transparent, currentColor);
+   anything else → fallback. See ARCHITECTURE › Multi-user › XSS. */
+export function safeColor(c, fallback){
+  const s=String(c==null?'':c).trim();
+  if(/^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
+  if(/^(rgb|hsl)a?\([0-9.,%/\sdeg]+\)$/i.test(s)) return s;
+  if(/^[a-zA-Z]{1,24}$/.test(s)) return s;
+  return fallback||'var(--muted)';
+}
 
 export function getMonthRange(){
   const s=G('res-start').value, e=G('res-end').value;

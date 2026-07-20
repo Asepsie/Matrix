@@ -139,6 +139,7 @@ function renderTimeline(){
 
   // Project rows
   activeProjects.forEach(function(proj){
+    var pcol=safeColor(proj.color);
     var sec=sections.find(function(s){return s.id===proj.sectionId;});
     var projRows=allocRows.filter(function(r){return r.projectId===proj.id;});
     var projEngs=projRows.map(function(r){return engineers.find(function(e){return e.id===r.engId;});}).filter(Boolean);
@@ -153,8 +154,8 @@ function renderTimeline(){
     h+='<div draggable="true" '      +'ondragstart="_tlDragStart(event,'+activeProjects.indexOf(proj)+')" '      +'ondragend="_tlDragEnd(event)" '      +'ondragover="_tlDragOver(event)" '      +'ondrop="_tlDrop(event,'+activeProjects.indexOf(proj)+')" '      +'style="display:flex;align-items:stretch;border-bottom:1px solid var(--border);cursor:grab">'
      +'<div style="width:'+LABEL_W+'px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:4px 8px;border-right:1px solid var(--border);background:var(--surface)">'
      +'<span style="color:var(--muted);font-size:10px;margin-right:2px">⠿</span>'
-     +'<div style="width:8px;height:8px;border-radius:2px;background:'+proj.color+';flex-shrink:0"></div>'
-     +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;color:'+proj.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(LABEL_W-40)+'px" title="'+escH(proj.name)+'">'+escH(proj.name)+'</div>'
+     +'<div style="width:8px;height:8px;border-radius:2px;background:'+pcol+';flex-shrink:0"></div>'
+     +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;color:'+pcol+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(LABEL_W-40)+'px" title="'+escH(proj.name)+'">'+escH(proj.name)+'</div>'
      +(sec?'<div style="font-size:8px;color:var(--muted);white-space:nowrap">'+escH(sec.name)+'</div>':'')
      +'</div>'
      +'<div style="display:flex;position:relative">'
@@ -165,8 +166,8 @@ function renderTimeline(){
        var isStart=i===projStartIdx;
        var isEnd=i===projEndIdx;
        var bg=!inProj?'transparent':isCur?'rgba(200,241,53,.25)':'rgba(200,241,53,.12)';
-       var border=isStart?'border-left:2px solid '+proj.color+';':'';
-       var border2=isEnd?'border-right:2px solid '+proj.color+';':'';
+       var border=isStart?'border-left:2px solid '+pcol+';':'';
+       var border2=isEnd?'border-right:2px solid '+pcol+';':'';
        var fteLabel=v>0.1?Math.round(v*10)/10+'':'' ;
        return '<div style="width:'+CELL_W+'px;flex-shrink:0;height:'+ROW_H+'px;background:'+bg+';'+border+border2+
          (isCur?'border-top:1px solid rgba(200,241,53,.3);border-bottom:1px solid rgba(200,241,53,.3);':'')+

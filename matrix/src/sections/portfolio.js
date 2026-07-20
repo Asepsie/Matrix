@@ -247,7 +247,7 @@ function pfChannelMix(ds){
     var bp=r.revenue/max*100, share=total>0?(r.revenue/total*100):0;
     h+='<div style="display:flex;align-items:center;gap:10px">'
       +'<div style="width:120px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.name)+'">'+escH(r.name)+'</div>'
-      +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bp.toFixed(1)+'%;background:'+r.color+'"></div></div>'
+      +'<div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bp.toFixed(1)+'%;background:'+safeColor(r.color)+'"></div></div>'
       +'<div style="width:170px;text-align:right;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--text)">'+pfEur(r.revenue)+'</span> <span style="color:var(--dim)">'+share.toFixed(0)+'%</span>'+(r.margin!=null?' <span style="color:var(--accent2)">m'+r.margin.toFixed(0)+'%</span>':'')+'</div></div>';
   });
   h+='<div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:IBM Plex Mono,monospace">'+t('bar = € revenue by channel · share of portfolio · blended margin')+'</div>';
@@ -487,7 +487,7 @@ function pfBurnSvg(by){
   h+='<line x1="'+PADl+'" y1="'+(PADt+ph)+'" x2="'+(PADl+pw)+'" y2="'+(PADt+ph)+'" stroke="#3a3a46" stroke-width="1"/>';
   h+='</svg>';
   h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+series.slice(0,12).map(function(se){
-    return '<span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace"><span style="width:9px;height:9px;border-radius:2px;background:'+se.color+'"></span>'+escH(se.key)+'</span>';
+    return '<span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace"><span style="width:9px;height:9px;border-radius:2px;background:'+safeColor(se.color)+'"></span>'+escH(se.key)+'</span>';
   }).join('')+'</div>';
   return h;
 }

@@ -138,7 +138,15 @@
       "WebFetch(domain:esm.sh)",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(git -C /c/Users/pyro3/Documents/Matrix/matrix status --short)"
+      "Bash(git -C /c/Users/pyro3/Documents/Matrix/matrix status --short)",
+      "Bash(grep -rnE \"\\\\\\\\\\\\$\\\\{[^}]*\\\\.\\(color|col\\)\\\\}\" *.js)",
+      "Bash(grep -rnE \"\\(background|fill|stroke|:| solid \\)[^;\\\\\"'{]*\\\\\\\\\\\\$\\\\{[^}]*\\\\.\\(color\\)\\\\b|\\(background|fill|stroke\\):[^;\\\\\"'{]*'\\\\+[a-zA-Z_][\\\\w.]*\\\\.color\\\\b\" channels.js gate.js sections.js charter.js econ.js heatmap.js exec.js)",
+      "Bash(grep -rnE \"\\\\\\\\\\\\$\\\\{[\\\\w.\\\\[\\\\]]+\\\\.\\(name|note|notes|text|desc|label|partner|segment|company|owner|goal|aspirations|strengths|devarea|gaps|risks|businessCase|comments|comment|freeText|successorFreeText|position|timeline|manager|seniority|languages|mobility\\)\\\\}\" *.js)",
+      "Bash(grep -rnE \"\\\\\\\\\\\\$\\\\{[\\\\w.\\\\[\\\\]]*\\\\.\\(color|col\\)\\\\}\" *.js)",
+      "Bash(grep -nE \"\\(background|fill|stroke|border[^:]*:|color\\)[^;{]*['\\\\\"]?\\\\+?[\\\\w.]*\\(\\\\.color|col\\)\\\\b|\\\\\\\\\\\\$\\\\{[^}]*\\\\.color[^}]*\\\\}\" econ.js)",
+      "Bash(grep -nE \"n:[^,}]+|\\\\.n=|g=\\\\{|\\\\{n:\" econ.js)",
+      "Bash(grep -nE \"\\(background|fill|stroke|border[^:]*:|color\\)[^;{]*['\\\\\"]\\\\+[\\\\w.]+\\\\.\\(color|col\\)\\\\b|:\\\\\\\\\\\\$\\\\{[^}]*\\\\.color[^}]*\\\\}\" src/sections/portfolio.js)",
+      "Bash(node --test tests/)"
     ]
   }
 }

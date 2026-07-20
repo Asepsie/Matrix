@@ -38,6 +38,8 @@
     border-radius:10px;padding:2px 10px;letter-spacing:.04em"></span>
   <div style="flex:1"></div>
   <div class="tb-status">
+    <!-- Live presence: avatar cluster of teammates in the shared room (collab.js) -->
+    <span id="collab-presence" style="display:none;align-items:center"></span>
     <span id="idb-status" style="font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;cursor:pointer"></span>
     <!-- Storage health indicator -->
     <span id="storage-health" title="localStorage usage" onclick="showStorageDetail()"
@@ -467,6 +469,7 @@
     <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
     <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
+  <div id="cht-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
   <div id="cht-tabs"></div>
   <div id="cht-body"></div>
 </div>
@@ -479,6 +482,7 @@
     <div style="flex:1"></div>
     <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
+  <div id="dec-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
   <div id="dec-body"></div>
 </div>
 
@@ -698,6 +702,8 @@
       <div style="flex:1"></div>
       <button onclick="closeIdCardModal()">✕</button>
     </div>
+    <!-- Live presence: teammates viewing/editing THIS profile (collab.js › collabRenderIdcPresence) -->
+    <div id="idc-presence" style="display:none;margin:2px 0 6px;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
     <div class="id-card-grid">
       <div class="id-card-field"><label>FULL NAME</label><input class="id-card-inp" id="idc-name"></div>
       <div class="id-card-field"><label>ROLE / TITLE</label><input class="id-card-inp" id="idc-role"></div>

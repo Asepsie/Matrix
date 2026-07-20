@@ -347,6 +347,7 @@ function railGo(ev,viewId){
   railRouting=true;             // suppress the overlay-close→'matrix' sync during nav
   try{ railRoute(viewId); }
   finally{ railRouting=false; railRender(); railUpdateCrumb(); }  // never leave the guard stuck
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // tell teammates which page I moved to (live presence)
 }
 
 /* ← Back: dismiss the current rail VIEW panel by navigating to the previous view

@@ -20,7 +20,7 @@ let _chanProjId = null;
 
 // Default channel swatch palette (assigned by index when a channel has no colour).
 const CHAN_PALETTE = ['#5be5c8','#c8f135','#f1a435','#7aa2ff','#f14335','#c07af0','#5bd0f1','#f19bd0'];
-function chanColor(ch,i){ return (ch&&ch.color) || CHAN_PALETTE[i%CHAN_PALETTE.length]; }
+function chanColor(ch,i){ return safeColor((ch&&ch.color) || CHAN_PALETTE[i%CHAN_PALETTE.length]); }
 function chanHexOr(col){ return /^#[0-9a-f]{6}$/i.test(col) ? col : '#5be5c8'; }
 
 // Picker mode (shared with the charter panels).

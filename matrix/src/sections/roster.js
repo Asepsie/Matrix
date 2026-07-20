@@ -51,8 +51,8 @@ export function renderRosterTab(){
     h+=`<div class="eng-group-block" id="eg-${g.id}">
       <div class="eng-group-header" onclick="toggleEngGroup(${g.id})">
         <div style="position:relative;width:14px;height:14px;flex-shrink:0">
-          <div class="eng-group-dot" style="background:${g.color}"></div>
-          <input type="color" value="${rgbaToHex?rgbaToHex(g.color):g.color}" title="Group color"
+          <div class="eng-group-dot" style="background:${safeColor(g.color)}"></div>
+          <input type="color" value="${safeColor(rgbaToHex?rgbaToHex(g.color):g.color)}" title="Group color"
             style="position:absolute;inset:0;opacity:0;cursor:pointer;width:14px;height:14px"
             onclick="event.stopPropagation()"
             onchange="setEngGroupColor(${g.id},this.value);event.stopPropagation()">

@@ -85,8 +85,10 @@ export function openCharter(projId){
   chtRenderHeader();
   chtRenderTabStrip();
   chtShowTab('overview');
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
 }
-export function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfterClose(); }
+export function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfterClose();
+  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
 // If closing a panel reveals the BASE matrix (no charter surface left showing) and
 // we're not mid-navigation, sync the rail highlight back to matrix. When the hub
 // is still visible beneath (hub mode) it stays highlighted as the charter view.
@@ -743,8 +745,10 @@ export function chtOpenDecision(projId){
   G('dec-overlay').classList.add('show');
   chtRenderPicker('decision');
   chtRenderDecision();
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
 }
-export function chtCloseDecision(){ G('dec-overlay').classList.remove('show'); chtSyncRailAfterClose(); }
+export function chtCloseDecision(){ G('dec-overlay').classList.remove('show'); chtSyncRailAfterClose();
+  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
 export function chtDecSelectProject(id){ chtOpenDecision(id); }
 
 function chtRenderDecision(){

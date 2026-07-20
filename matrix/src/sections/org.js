@@ -1317,7 +1317,7 @@ function orgHover(e,engId){
     +'<div style="width:42px;height:42px;border-radius:50%;background:'+col+'33;border:2px solid '+col
       +';display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">'+avatarHtml+'</div>'
     +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(eng.name)+'</div>'
-    +'<div style="font-size:10px;color:#6b6b78">'+escH(eng.role||'')+(grp?' · <span style="color:'+grp.color+'">'+escH(grp.name)+'</span>':'')+'</div></div></div>'
+    +'<div style="font-size:10px;color:#6b6b78">'+escH(eng.role||'')+(grp?' · <span style="color:'+safeColor(grp.color)+'">'+escH(grp.name)+'</span>':'')+'</div></div></div>'
     +(c.seniority?'<div style="font-size:10px;color:#6b6b78;margin-bottom:3px">📊 '+escH(c.seniority)+(c.contract?' · '+escH(c.contract):'')+'</div>':'')
     +(eng.location?'<div style="font-size:10px;color:#6b6b78;margin-bottom:3px">📍 '+escH(eng.location)+'</div>':'')
     +'<div style="font-size:10px;color:#6b6b78;margin-bottom:8px">Reports to: <b style="color:var(--text)">'+escH(mgrName)+'</b></div>'
@@ -1689,10 +1689,10 @@ function orgRenderKPI(){
     var pct2=active.length?Math.round(v.count/active.length*100):0;
     h+='<div style="margin-bottom:4px">'
       +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
-      +'<span style="color:'+v.color+'">'+escH(k==='Ungrouped'?t('Ungrouped'):k)+'</span>'
+      +'<span style="color:'+safeColor(v.color)+'">'+escH(k==='Ungrouped'?t('Ungrouped'):k)+'</span>'
       +'<span style="color:var(--text)">'+v.count+(v.vacancies?' <span style="color:#f1a435">+'+v.vacancies+'◻</span>':'')+'</span></div>'
       +'<div style="background:var(--border);border-radius:2px;height:4px">'
-      +'<div style="background:'+v.color+';width:'+pct2+'%;height:4px;border-radius:2px"></div></div></div>';
+      +'<div style="background:'+safeColor(v.color)+';width:'+pct2+'%;height:4px;border-radius:2px"></div></div></div>';
   });
 
   var locEntries=Object.entries(byLoc).sort(function(a,b){return b[1]-a[1];});
