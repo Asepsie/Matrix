@@ -1,27 +1,28 @@
 /* ►► SECTION: PROFILES ◄◄ Profiles tab: cards, matrices badge, PDF/CSV export
  *
+ * Every profile-related PDF/HTML/PNG/SVG export shares ONE picker — the same
+ * exportOpenBuilder drag-and-drop content/theme/format picker exec.js's
+ * Executive Summary uses (src/core/export.js). See the "PROFILE-EXPORT"
+ * section below for the shared block registry (prfCardBlocks) and card
+ * renderer (buildProfileCardHTMLs) all three deliverables build on.
+ *
  * Functions defined in this file:
  *   renderProfilesTab            — renders the profiles tab: filter bar + engineer cards
  *   profileExportCSV             — exports a single engineer's profile + skills as CSV
  *   profilesExportCSV            — exports all profiles + skills as one CSV
- *   profileExportPDF             — opens a print-ready single-profile page in a new window
- *   profilesExportAllPDF         — opens one print-ready page per filtered profile
- *   buildProfileCardHTMLs        — builds the profile-card HTML array (themed for screen/export)
- *   getProfileExportEngs         — returns the filtered engineer set + full-detail flag for export
- *   buildProfilesPageHTML        — builds the standalone profiles dashboard HTML page
- *   exportProfilesDashboardPDF   — opens the profiles dashboard in a print popup
- *   _doExportProfilesDashboardPDF — alias for exportProfilesDashboardPDF
- *   exportProfilesDashboardHTML  — downloads the profiles dashboard as an HTML file
- *   exportProfilesDashboardPNG   — renders the profiles dashboard to a PNG via SVG foreignObject
- *   exportProfilesDashboardSVG   — renders the profiles dashboard to a standalone SVG
- *   openProjectBriefExport       — opens the project-brief export modal with the project checklist
+ *   prfCardBlocks                — the six content toggles shared by every profile export
+ *   prfBuiltinTemplates          — "Full detail"/"Compact" built-in template presets
+ *   buildProfileCardHTMLs        — the ONE card renderer (single/dashboard/all-profiles share it)
+ *   profileExportOpen            — opens the builder for a single profile (PDF/SVG)
+ *   getProfileExportEngs         — returns the filtered engineer set for export
+ *   exportProfilesDashboardOpen  — opens the builder for the card grid (PDF/HTML/PNG/SVG + columns)
+ *   profilesExportAllOpen        — opens the builder for one full page per person (PDF)
+ *   openProjectBriefExport       — opens the project-brief project checklist (project SCOPE, separate from content blocks)
  *   briefSelectAll               — checks/unchecks all projects in the brief modal
  *   briefSelectVisible           — selects only the currently-visible projects in the brief modal
  *   getSelectedBriefProjects     — returns the projects checked in the brief modal
- *   buildBriefHTML               — builds the multi-project brief HTML (KPIs, team, risks, todos…)
- *   _getBriefOpts                — reads the brief section-include checkboxes into an options object
- *   exportProjectBrief           — opens the project brief in a print popup
- *   exportProjectBriefHTML       — downloads the project brief as an HTML file
+ *   buildBriefProjectBlock       — builds one project's HTML block (KPIs, team, risks, todos…)
+ *   exportProjectBriefOpen       — opens the builder for the project brief (PDF/HTML; blocks = team/risks/todos/milestones/actions)
  */
 // renders the profiles tab: filter bar + engineer cards
 function renderProfilesTab(){
@@ -47,11 +48,8 @@ function renderProfilesTab(){
     +engGroups.map(function(g){return '<option value="'+g.id+'"'+(grpFilter===String(g.id)?' selected':'')+'>'+escH(g.name)+'</option>';}).join('')
     +'</select>';
   h+='<div style="width:1px;background:var(--border);height:18px"></div>';
-  h+='<button class="sm primary" onclick="exportProfilesDashboardPDF()" title="'+t('Export profile cards as PDF')+'">↓ PDF</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardHTML()" title="'+t('Download as interactive HTML')+'" style="border-color:var(--accent);color:var(--accent)">↓ HTML</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardPNG()" title="'+t('Download as PNG image')+'">↓ PNG</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardSVG()" title="'+t('Download as SVG')+'">↓ SVG</button>';
-  h+='<button class="sm" onclick="profilesExportAllPDF()" title="'+t('Export one full profile page per person')+'">'+t('↓ PDF (full profiles)')+'</button>';
+  h+='<button class="sm primary" onclick="exportProfilesDashboardOpen()" title="'+t('Export the profile card grid — pick content, theme, columns and format')+'">📄 '+t('Export dashboard')+'</button>';
+  h+='<button class="sm" onclick="profilesExportAllOpen()" title="'+t('Export one full profile page per person')+'">📄 '+t('Export full profiles')+'</button>';
   h+='<button class="sm" onclick="profilesExportCSV()" title="'+t('Export all profiles as CSV')+'">'+t('↓ CSV (all)')+'</button>';
   h+='<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;white-space:nowrap">'
     +'<input type="checkbox" id="prf-fullmode"'+(G('prf-fullmode')&&G('prf-fullmode').checked?' checked':'')
@@ -104,8 +102,7 @@ function renderProfilesTab(){
 
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
       +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="'+t('Edit this profile')+'" style="font-size:9px;padding:2px 8px;font-weight:700">'+t('✏ EDIT')+'</button>'
-      +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="'+t('Export this profile as PDF')+'" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
-      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="'+t('Export this profile as SVG')+'" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
+      +'<button class="sm" onclick="profileExportOpen('+e.id+')" title="'+t('Export this profile — pick content, theme and format')+'" style="font-size:9px;padding:2px 6px">📄 '+t('Export')+'</button>'
       +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="'+t('Export this profile as CSV')+'" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
       +'</div>';
 
@@ -282,172 +279,49 @@ function profilesExportCSV(){
   a.download='all_profiles.csv';a.click();
 }
 
-// opens a print-ready single-profile page (themed ID card, matches the on-screen profile)
-function profileExportPDF(engId){
-  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  const win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked — please allow pop-ups.'));return;}
-  win.document.write(buildSingleProfilePageHTML(e,fullMode));
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>');
-  win.document.close();
+/* ►► SECTION: PROFILE-EXPORT ◄◄ Every profile-related export shares ONE builder
+ * (exportOpenBuilder, src/core/export.js) — same drag-and-drop content picker,
+ * theme select and (where relevant) format/columns controls as exec.js's
+ * Executive Summary. Three deliverables, three thin wrappers below:
+ *   profileExportOpen        — single profile (formats: pdf, svg)
+ *   exportProfilesDashboardOpen — the card grid (formats: pdf, html, png, svg; +columns)
+ *   profilesExportAllOpen    — one full page per person (format: pdf)
+ * All three share prfCardBlocks() (the six info-group toggles) and
+ * buildProfileCardHTMLs() (the actual card renderer) — a block excluded from
+ * the picker is excluded from EVERY card on the page, in the order picked.
+ * Card markup uses var(--…) tokens throughout (no palette threading needed —
+ * exportHTML() already writes the chosen brand palette onto :root, so the
+ * exact same markup is correct for every theme).
+ */
+
+// the six content toggles every profile-export picker shares
+function prfCardBlocks(){
+  return [
+    {id:'basic', label:t('Basic info')},
+    {id:'compGrade', label:t('Compa-ratio & Grade')},
+    {id:'skills', label:t('Skills')},
+    {id:'spof', label:t('SPOF & risk flags')},
+    {id:'notes', label:t('Aspirations / Strengths / Notes')},
+    {id:'matrices', label:t('Matrices badge')},
+  ];
+}
+function prfBuiltinTemplates(){
+  return [
+    {id:'full', name:t('Full detail'), blocks:['basic','compGrade','skills','spof','notes','matrices']},
+    {id:'compact', name:t('Compact'), blocks:['basic','skills']},
+  ];
 }
 
-// downloads a single profile as a standalone themed SVG (matches the on-screen ID card)
-function profileExportSVG(engId){
-  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  const V=getProfileExportPalette();
-  const html=buildSingleProfilePageHTML(e,fullMode);
-  const width=488;
-
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+width+'px;height:10px;border:none;visibility:hidden';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight+40;
-    document.body.removeChild(iframe);
-
-    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
-    var styleCSS=styleMatch?styleMatch[1]:'';
-    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    var bodyContent=bodyMatch?bodyMatch[1]:html;
-
-    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
-      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
-      +' width="'+width+'" height="'+h+'">\n'
-      +'<rect width="'+width+'" height="'+h+'" fill="'+V.bg+'"/>\n'
-      +'<foreignObject x="0" y="0" width="'+width+'" height="'+h+'">\n'
-      +'<body xmlns="http://www.w3.org/1999/xhtml"'
-      +' style="margin:0;padding:24px;background:'+V.bg+';font-family:Arial,sans-serif;'
-      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
-      +'<style>'+styleCSS+'</style>\n'
-      +bodyContent
-      +'\n</body>\n'
-      +'</foreignObject>\n'
-      +'</svg>';
-
-    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=(e.name||'profile').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_profile.svg';
-    a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  },300);
-}
-
-// opens one print-ready page per filtered profile
-function profilesExportAllPDF(){
-  const grpFilter=G('prf-grp')?G('prf-grp').value:'';
-  const search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  let engs=engineers.filter(function(e){return !e.vacant;});
-  if(grpFilter)engs=engs.filter(function(e){return String(e.groupId)===grpFilter;});
-  if(search)engs=engs.filter(function(e){return e.name.toLowerCase().includes(search);});
-  if(!engs.length){alert(t('No profiles to export.'));return;}
-
-  const CAT_COL=getSkillCatCol();
-  const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-
-  function buildProfileHTML(e){
-    const c=e.idcard||{};
-    const col=engGroupColor(e);
-    const grp=engGroups.find(function(g){return g.id===e.groupId;});
-    const mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
-    const mgrName=mgr?mgr.name:(c.manager||'—');
-    const photo=idbGetPhoto(e.id)||(c.photo||'');
-    const skills=e.skills||[];
-    const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
-    const sc=safeColor(col);
-    const avatarHTML=photo
-      ?'<img src="'+escH(photo)+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+sc+'">'
-      :'<div style="width:60px;height:60px;border-radius:50%;background:'+sc+'33;border:3px solid '+sc
-        +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+sc+'">'+escH(engInitials(e.name))+'</div>';
-    const skillsHTML=domains.map(function(dom){
-      const ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-      return '<div style="margin-bottom:8px">'
-        +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+escH(dom)+'</div>'
-        +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
-        +ds.map(function(s){
-          const cc=safeColor(CAT_COL[s.cat]||'#888');
-          return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
-            +escH(s.name)+' <sup>L'+(s.level||3)+'</sup></span>';
-        }).join('')+'</div></div>';
-    }).join('');
-    return '<div class="profile-page">'
-      +'<div style="height:5px;background:'+sc+';margin:-16px -16px 14px"></div>'
-      +'<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">'
-      +avatarHTML
-      +'<div><h1 style="font-size:18px;font-weight:700;margin:0">'+escH(e.name)+'</h1>'
-      +'<div style="font-size:13px;color:#555;margin-top:2px">'+escH(e.role||'')+'</div>'
-      +(grp?'<div style="font-size:11px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
-      +'</div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:11px;margin-bottom:12px">'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Location</span>'+escH(e.location||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Seniority</span>'+escH(c.seniority||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Contract</span>'+escH(c.contract||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Potential</span>'+escH(c.potential||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Reports to</span>'+escH(mgrName)+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Languages</span>'+escH(c.languages||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Start date</span>'+escH(c.startdate||'—')+'</div>'
-      +(c.reviewdate?'<div><span style="color:#888;min-width:90px;display:inline-block">Review</span>'+escH(c.reviewdate)+'</div>':'')
-      +(c.gender?'<div><span style="color:#888;min-width:90px;display:inline-block">Gender</span>'+escH(c.gender)+'</div>':'')
-      +'</div>'
-      +(fullMode&&c.aspirations?'<h2 class="sec">Aspirations</h2><p>'+escH(c.aspirations)+'</p>':'')
-      +(fullMode&&c.strengths?'<h2 class="sec">Strengths</h2><p>'+escH(c.strengths)+'</p>':'')
-      +(fullMode&&c.devarea?'<h2 class="sec">Development Areas</h2><p>'+escH(c.devarea)+'</p>':'')
-      +(skills.length?'<h2 class="sec">Skills ('+skills.length+')</h2>'+skillsHTML:'')
-      +(fullMode&&c.notes?'<h2 class="sec">Notes</h2><p>'+escH(c.notes)+'</p>':'')
-      +'</div>';
-  }
-
-  const win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked.'));return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Profiles</title>'
-    +'<style>*{margin:0;padding:0;box-sizing:border-box;}'
-    +'body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:0;}'
-    +'.profile-page{padding:16px;border-bottom:2px solid #eee;page-break-after:always;break-after:page;}'
-    +'.profile-page:last-child{border-bottom:none;page-break-after:avoid;}'
-    +'h2.sec{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:10px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px;}'
-    +'p{font-size:11px;line-height:1.6;color:#444;}'
-    +'@media print{@page{size:A4;margin:8mm;}.profile-page{padding:8px;}}'
-    +'</style></head><body>');
-  engs.forEach(function(e){win.document.write(buildProfileHTML(e));});
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script></body></html>');
-  win.document.close();
-}
-
-/* ►► SECTION: PROFILE-EXPORT ◄◄ Profile card builder, dashboard PNG/SVG/HTML/PDF export */
-// resolves the live theme palette (with dark fallback) so exports match the interface
-function getProfileExportPalette(){
-  var cs=getComputedStyle(document.documentElement);
-  return {
-    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger:cs.getPropertyValue('--danger').trim()||'#f14335'
-  };
-}
-// builds the profile-card HTML array — faithful copy of the on-screen card
-// in renderProfilesTab (honours Full-detail + SPOF/gaps/notes toggles, minus action buttons)
-function buildProfileCardHTMLs(engs, fullMode, vars){
+// builds the profile-card HTML array — the ONE card renderer shared by single/
+// dashboard/all-profiles export. includedBlocks controls which sections show,
+// in the order given (prfCardBlocks() ids) — identity (photo/name/role/group
+// stripe) is always shown, everything else is opt-in.
+function buildProfileCardHTMLs(engs, includedBlocks){
+  var inc=includedBlocks||[];
+  var has=function(id){ return inc.indexOf(id)>=0; };
   var CAT_COL=getSkillCatCol();
-  var V=vars||{
-    bg:'#0f0f11',surface:'#18181c',border:'#2a2a32',
-    text:'#e8e8ea',muted:'#6b6b78',accent:'#c8f135',
-    accent2:'#5be5c8',danger:'#f14335'
-  };
-
-  var showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
   var sm=buildSkillMap();
+
   return engs.map(function(e){
     var c=e.idcard||{};
     var col=safeColor(engGroupColor(e));
@@ -465,74 +339,73 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
       :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace">'+escH(engInitials(e.name))+'</div>';
 
-    var _nm=c.nextMove||{};
-    var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
-    var details=[
-      [t('📍 Location'),e.location||c.location||'—'],
-      [t('📊 Seniority'),c.seniority||'—'],
-      [t('📋 Contract'),c.contract||'—'],
-      [t('📅 Start date'),c.startdate||'—'],
-      [t('🚀 Potential (GTP)'),c.potential||'—'],
-      [t('🧭 Mobility'),c.mobility||'—'],
-      [t('🎯 Next move'),nmStr],
-      [t('👤 Reports to'),mgrName],
-      [t('🌐 Languages'),c.languages||'—'],
-    ];
-    var inTalent=e.includeTalent!==false;
-
-    var html='<div style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
+    var html='<div style="background:var(--surface);border:1px solid var(--border);'
+      +'border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
       +'<div style="height:5px;background:'+col+'"></div>'
       +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
       +avatarHTML
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
-      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(e.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+escH(e.role||'—')+'</div>'
       +(grp?'<div style="font-size:10px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
       +'</div></div>'
-      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">'
-      +details.map(function(d){
-        return '<div style="display:flex;gap:6px;font-size:10px">'
-          +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">'+d[0]+'</span>'
-          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
-      }).join('')
-      +'<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
-      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
-      +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
-      +(inTalent
-        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; '+t('Nine-Box &amp; DISC')
-        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; '+t('Excluded (contractor/intern)'))
-      +'</span></div>';
+      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">';
 
-    if(fullMode){
-      var hasCompa=c.comparatio!=null&&c.comparatio!=='';
-      var hasGrade=c.grade!=null&&c.grade!=='';
-      var compaCol=!hasCompa?V.muted:(c.comparatio<90?'#f1a435':(c.comparatio>110?V.accent2:V.accent));
-      html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid '+V.border+'">'
-        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
-        +'</div>'
-        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?V.text:V.muted)+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
-        +'</div>'
-        +'</div>';
-    }
-
-    if(skills.length){
-      if(fullMode){
+    inc.forEach(function(blockId){
+      if(blockId==='basic'){
+        var _nm=c.nextMove||{};
+        var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
+        var details=[
+          [t('📍 Location'),e.location||c.location||'—'],
+          [t('📊 Seniority'),c.seniority||'—'],
+          [t('📋 Contract'),c.contract||'—'],
+          [t('📅 Start date'),c.startdate||'—'],
+          [t('🚀 Potential (GTP)'),c.potential||'—'],
+          [t('🧭 Mobility'),c.mobility||'—'],
+          [t('🎯 Next move'),nmStr],
+          [t('👤 Reports to'),mgrName],
+          [t('🌐 Languages'),c.languages||'—'],
+        ];
+        html+=details.map(function(d){
+          return '<div style="display:flex;gap:6px;font-size:10px">'
+            +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">'+d[0]+'</span>'
+            +'<span style="color:var(--text)">'+escH(d[1])+'</span></div>';
+        }).join('');
+      } else if(blockId==='matrices'){
+        var inTalent=e.includeTalent!==false;
+        html+='<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
+          +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
+          +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
+          +(inTalent
+            ?'background:var(--accent);color:var(--bg);border:1px solid var(--accent)">&#10003; '+t('Nine-Box &amp; DISC')
+            :'background:var(--muted);color:var(--bg);border:1px solid var(--border)">&#8212; '+t('Excluded (contractor/intern)'))
+          +'</span></div>';
+      } else if(blockId==='compGrade'){
+        var hasCompa=c.comparatio!=null&&c.comparatio!=='';
+        var hasGrade=c.grade!=null&&c.grade!=='';
+        var compaCol=!hasCompa?'var(--muted)':(c.comparatio<90?'var(--warn)':(c.comparatio>110?'var(--accent2)':'var(--accent)'));
+        html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+          +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
+          +'</div>'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+          +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?'var(--text)':'var(--muted)')+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
+          +'</div>'
+          +'</div>';
+      } else if(blockId==='skills'&&skills.length){
         var domains=[];
         skills.forEach(function(s){var d=s.domain||'General';if(!domains.includes(d))domains.push(d);});
         html+='<div style="margin-top:8px">';
         domains.forEach(function(dom){
           var ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-          html+='<div style="font-size:9px;color:'+V.muted+';font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
+          html+='<div style="font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
           html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             var cc=CAT_COL[s.cat]||'#888';
-            var hasGap=showInd&&s.gaps&&s.gaps.trim();
-            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
+            var hasGap=s.gaps&&s.gaps.trim();
+            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'" title="'+(hasGap?escH('⚠ '+t('Gap:')+' '+s.gaps):'')+'">'
               +escH(s.name)
               +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
               +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
@@ -541,252 +414,115 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
           html+='</div>';
         });
         html+='</div>';
-      } else {
-        html+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
-        skills.slice(0,16).forEach(function(s){
-          var cc=CAT_COL[s.cat]||'#888';
-          html+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
+      } else if(blockId==='spof'&&spof.length){
+        html+='<div style="margin-top:5px;font-size:10px;color:var(--danger);font-weight:600">⚠ '+t('SPOF:')+' '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
+      } else if(blockId==='notes'){
+        var extras=[
+          [t('💡 Aspirations'),c.aspirations],
+          [t('💪 Strengths'),c.strengths],
+          [t('📈 Development areas'),c.devarea],
+          [t('📝 Notes'),c.notes]
+        ];
+        extras.forEach(function(f){
+          if(!f[1]||!f[1].trim())return;
+          html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border)">'
+            +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
+            +'<div style="font-size:10px;color:var(--text);line-height:1.55">'+escH(f[1])+'</div>'
+            +'</div>';
         });
-        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' '+t('more')+'</span>';
-        html+='</div>';
       }
-    }
-
-    if(spof.length&&showInd){
-      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ '+t('SPOF:')+' '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
-    }
-
-    if(fullMode){
-      var extras=[
-        [t('💡 Aspirations'),c.aspirations,true],
-        [t('💪 Strengths'),c.strengths,false],
-        [t('📈 Development areas'),c.devarea,false],
-        [t('📝 Notes'),c.notes,true]
-      ];
-      extras.forEach(function(f){
-        if(f[2]&&!showInd)return;
-        if(!f[1]||!f[1].trim())return;
-        html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+V.muted+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
-          +'<div style="font-size:10px;color:'+V.text+';line-height:1.55">'+escH(f[1])+'</div>'
-          +'</div>';
-      });
-    }
+    });
 
     html+='</div></div>';
     return html;
   });
 }
 
-// builds a standalone print-ready page for a single profile card (themed, matches the interface)
-function buildSingleProfilePageHTML(e, fullMode){
-  var V=getProfileExportPalette();
-  var card=buildProfileCardHTMLs([e],fullMode,V)[0]||'';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH('Profile — '+e.name)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;padding:24px;'
-    +'-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.wrap{max-width:440px;margin:0 auto;}'
-    +'.rf{margin-top:14px;font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;font-family:monospace;}'
-    +'@media print{@page{size:A4;margin:14mm;}html,body{padding:0;background:'+V.bg+'!important;}'
-    +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}'
-    +'</style></head><body><div class="wrap">'
-    +card
-    +'<div class="rf"><span>Project Matrix</span><span>'+dateStr+'</span></div>'
-    +'</div></body></html>';
+// opens the shared builder for a single engineer's profile (formats: PDF, SVG)
+function profileExportOpen(engId){
+  var e=engineers.find(function(x){return x.id===engId;}); if(!e) return;
+  exportOpenBuilder({
+    deliverableId: 'profile-single',
+    title: e.name,
+    subtitleDefault: e.role||'',
+    blocks: prfCardBlocks(),
+    ctx: {eng:e},
+    formats: [{id:'pdf',label:t('PDF (print)')},{id:'svg',label:t('SVG image')}],
+    builtinTemplates: prfBuiltinTemplates(),
+    rasterWidth: 488,
+    composeRender: function(includedIds, ctx){
+      var card=buildProfileCardHTMLs([ctx.eng],includedIds)[0]||'';
+      return '<div style="max-width:440px;margin:0 auto">'+card+'</div>';
+    },
+  });
 }
 
-// returns the filtered engineer set + full-detail flag for export
+// returns the filtered engineer set for the dashboard/full-profiles export
 function getProfileExportEngs(){
   var grpFilter=G('prf-grp')?G('prf-grp').value:'';
   var search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
-  var fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
   var engs=engineers.filter(function(e){return !e.vacant;});
   if(grpFilter)engs=engs.filter(function(e){return String(e.groupId)===grpFilter;});
   if(search)engs=engs.filter(function(e){return e.name.toLowerCase().includes(search);});
-  return{engs:engs,fullMode:fullMode};
+  return engs;
 }
 
-// builds the standalone profiles dashboard HTML page
-function buildProfilesPageHTML(engs, fullMode, cols){
-  var V=getProfileExportPalette();
-
-  var cards=buildProfileCardHTMLs(engs,fullMode,V);
-  var numCols=cols||3;
-
+// opens the shared builder for the profile CARD GRID (formats: PDF/HTML/PNG/
+// SVG; +columns — the "3 per row, no way to change it" complaint this fixes)
+function exportProfilesDashboardOpen(){
+  var engs=getProfileExportEngs();
+  if(!engs.length){alert(t('No profiles to export.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'Resource Plan';
-  var title=planTitle+' — Team Profiles';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
   var grpLabel=G('prf-grp')&&G('prf-grp').value
     ?' · '+G('prf-grp').options[G('prf-grp').selectedIndex].text:'';
-  var fullLabel=fullMode?' · Full detail':'';
-
-  return '<!DOCTYPE html><html><head>'
-    +'<meta charset="UTF-8"><title>'+escH(title)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;'
-    +'  padding:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.rh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;'
-    +'  margin-bottom:14px;background:'+V.surface+';border:1px solid '+V.border+';border-radius:8px;}'
-    +'.rh-title{font-size:16px;font-weight:700;color:'+V.accent+';font-family:monospace;letter-spacing:.04em;}'
-    +'.rh-meta{font-size:10px;color:'+V.muted+';margin-top:3px;}'
-    +'.card-grid{display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:12px;}'
-    +'.card-grid>div{break-inside:avoid;page-break-inside:avoid;}'
-    +'.rf{margin-top:12px;padding-top:8px;border-top:1px solid '+V.border+';'
-    +'  font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;}'
-    +'@media print{'
-    +'  @page{size:A3 landscape;margin:7mm;}'
-    +'  html,body{padding:0;background:'+V.bg+'!important;}'
-    +'  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
-    +'}'
-    +'</style></head><body>'
-    +'<div class="rh">'
-    +'<div><div class="rh-title">'+escH(title)+'</div>'
-    +'<div class="rh-meta">'+engs.length+' member'+(engs.length!==1?'s':'')+grpLabel+fullLabel+'</div></div>'
-    +'<div style="text-align:right;font-family:monospace">'
-    +'<div style="font-size:11px;color:'+V.accent+'">Project Matrix</div>'
-    +'<div style="font-size:10px;color:'+V.muted+'">'+dateStr+'</div>'
-    +'</div></div>'
-    +'<div class="card-grid">'+cards.join('')+'</div>'
-    +'<div class="rf"><span>'+escH(title)+'</span><span>Project Matrix · '+dateStr+'</span></div>'
-    +'</body></html>';
+  exportOpenBuilder({
+    deliverableId: 'profiles-dashboard',
+    title: planTitle+' — Team Profiles',
+    subtitleDefault: engs.length+' member'+(engs.length!==1?'s':'')+grpLabel,
+    blocks: prfCardBlocks(),
+    ctx: {engs:engs},
+    formats: [
+      {id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')},
+      {id:'png',label:t('PNG image')},{id:'svg',label:t('SVG image')},
+    ],
+    columns: {default:3, options:[2,3,4,5]},
+    orientation: 'landscape', pageSize: 'A3', rasterWidth: 1600,
+    builtinTemplates: prfBuiltinTemplates(),
+    composeRender: function(includedIds, ctx){
+      var cards=buildProfileCardHTMLs(ctx.engs,includedIds);
+      var cols=ctx.columns||3;
+      // min-width:0 overrides the grid item's default min-width:auto — without it, a single
+      // long unbroken token (a URL in someone's notes, say) forces THAT column wider than its
+      // 1fr share, breaking the equal-column grid for everyone else (real bug, reported by user:
+      // one card visibly wider than the rest). overflow-wrap:break-word (exportHTML's shell
+      // CSS) handles the text itself wrapping inside the now-fixed-width column.
+      return '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:12px">'
+        +cards.map(function(c){return '<div style="min-width:0;break-inside:avoid;page-break-inside:avoid">'+c+'</div>';}).join('')
+        +'</div>';
+    },
+  });
 }
 
-// opens the profiles dashboard in a print popup
-function exportProfilesDashboardPDF(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-  var win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked.'));return;}
-  win.document.write(html);
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,500);});<\/script>');
-  win.document.close();
-}
-// alias for exportProfilesDashboardPDF
-function _doExportProfilesDashboardPDF(){exportProfilesDashboardPDF();}
-
-// downloads the profiles dashboard as an HTML file
-function exportProfilesDashboardHTML(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-    .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-  a.download=name+'_profiles.html';
-  a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-}
-
-// renders the profiles dashboard to a PNG via SVG foreignObject
-function exportProfilesDashboardPNG(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-
-  var iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1600px;height:10px;border:none';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight;
-    iframe.style.height=h+'px';
-    setTimeout(function(){
-      var _sm=html.match(/<style>([\s\S]*?)<\/style>/i);
-      var _sc=_sm?_sm[1]:'';
-      var _bm=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      var _bc=_bm?_bm[1]:html;
-      var svgStr='<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="'+h+'">'
-        +'<foreignObject width="1600" height="'+h+'">'
-        +'<body xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:16px;background:#0f0f11">'
-        +'<style>'+_sc+'</style>'
-        +_bc
-        +'</body></foreignObject></svg>';
-      var img=new Image();
-      var b64='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
-      img.onload=function(){
-        var canvas=document.createElement('canvas');
-        var scale=2;
-        canvas.width=1600*scale;canvas.height=h*scale;
-        var ctx=canvas.getContext('2d');
-        ctx.scale(scale,scale);
-        ctx.drawImage(img,0,0);
-        canvas.toBlob(function(blob){
-          var a=document.createElement('a');
-          a.href=URL.createObjectURL(blob);
-          var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-            .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-          a.download=name+'_profiles.png';
-          a.click();
-        },'image/png');
-        document.body.removeChild(iframe);
-      };
-      img.onerror=function(){
-        document.body.removeChild(iframe);
-        alert(t('PNG export is limited by browser security. Opening as HTML instead — you can screenshot or print to PDF from there.'));
-        exportProfilesDashboardHTML();
-      };
-      img.src=b64;
-    },300);
-  },200);
-}
-
-// renders the profiles dashboard to a standalone SVG
-function exportProfilesDashboardSVG(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-
-  var iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1600px;height:10px;border:none;visibility:hidden';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight+40;
-    document.body.removeChild(iframe);
-
-    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
-    var styleCSS=styleMatch?styleMatch[1]:'';
-    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/is);
-    var bodyContent=bodyMatch?bodyMatch[1]:html;
-
-    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
-      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
-      +' width="1600" height="'+h+'">\n'
-      +'<rect width="1600" height="'+h+'" fill="#0f0f11"/>\n'
-      +'<foreignObject x="0" y="0" width="1600" height="'+h+'">\n'
-      +'<body xmlns="http://www.w3.org/1999/xhtml"'
-      +' style="margin:0;padding:16px;background:#0f0f11;font-family:Arial,sans-serif;'
-      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
-      +'<style>'+styleCSS+'</style>\n'
-      +bodyContent
-      +'\n</body>\n'
-      +'</foreignObject>\n'
-      +'</svg>';
-
-    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-      .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-    a.download=name+'_profiles.svg';
-    a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  },300);
+// opens the shared builder for one full print-ready page per person (format: PDF)
+function profilesExportAllOpen(){
+  var engs=getProfileExportEngs();
+  if(!engs.length){alert(t('No profiles to export.'));return;}
+  var planTitle=G('res-title-input')?G('res-title-input').value:'Team';
+  exportOpenBuilder({
+    deliverableId: 'profiles-all',
+    title: planTitle+' — Full Profiles',
+    subtitleDefault: engs.length+' profile'+(engs.length!==1?'s':''),
+    blocks: prfCardBlocks(),
+    ctx: {engs:engs},
+    builtinTemplates: prfBuiltinTemplates(),
+    composeRender: function(includedIds, ctx){
+      // one page per person — same card design as the single-profile export,
+      // just returned as an array so the shell gives each its own .export-page
+      return ctx.engs.map(function(e){
+        return '<div style="max-width:440px;margin:0 auto">'+buildProfileCardHTMLs([e],includedIds)[0]+'</div>';
+      });
+    },
+  });
 }
 
 /* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
@@ -833,372 +569,324 @@ function getSelectedBriefProjects(){
   return selected;
 }
 
-// builds the multi-project brief HTML (KPIs, team, risks, todos, milestones, actions)
-function buildBriefHTML(selectedProjs, opts){
-  var cs=getComputedStyle(document.documentElement);
-  var V={
-    bg:     cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border: cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:   cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:  cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent: cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger: cs.getPropertyValue('--danger').trim()||'#f14335',
-  };
+// the five content toggles the project-brief picker offers (mirrors the old
+// brief-include-team/risks/todos/milestones/actions checkboxes, now inside
+// the shared builder instead of the brief panel itself)
+function prfBriefBlocks(){
+  return [
+    {id:'team', label:t('Team allocation')},
+    {id:'risks', label:t('Project risks')},
+    {id:'todos', label:t('Open todos')},
+    {id:'milestones', label:t('Milestones')},
+    {id:'actions', label:t('Actions / Gantt')},
+  ];
+}
 
-  var axName='Effort';
-  try{axName=axX().name||'Effort';}catch(e){}
+// builds one project's HTML block (KPIs always; team/risks/todos/milestones/
+// actions gated by `inc`, the includedBlocks array from the builder). `shared`
+// is the cross-project setup (allocation map, axis labels) computed once by
+// the caller — see exportProjectBriefOpen's composeRender.
+function buildBriefProjectBlock(p, inc, shared){
+  var has=function(id){ return inc.indexOf(id)>=0; };
+  var col=safeColor(p.color||'var(--accent)');
+  var sec=sections.find(function(s){return s.id===p.sectionId;});
+  var allocs=shared.projAllocMap[p.id]||[];
+  var totalProjCost=allocs.reduce(function(s,a){return s+a.totalCost;},0)||p.planCost||0;
+  var totalFTE=allocs.reduce(function(s,a){return s+a.totalFTE;},0);
 
-  var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
+  var html='<div class="proj-block" style="background:var(--surface);border:1px solid var(--border)'
+    +';border-left:5px solid '+col+';border-radius:8px;margin-bottom:20px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">';
 
-  var allMonthKeys=new Set();
-  allocRows.forEach(function(row){
-    if(row.allocs)Object.keys(row.allocs).forEach(function(m){
-      if(row.allocs[m]>0)allMonthKeys.add(m);
-    });
+  html+='<div style="padding:16px 18px 12px;border-bottom:1px solid var(--border)">';
+  html+='<div style="display:flex;align-items:flex-start;gap:12px">';
+  html+='<div style="width:14px;height:14px;border-radius:50%;background:'+col+';flex-shrink:0;margin-top:3px"></div>';
+  html+='<div style="flex:1">';
+  html+='<h2 style="font-size:18px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:4px">'+escH(p.name)+'</h2>';
+  if(p.note)html+='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+escH(p.note)+'</div>';
+  html+='</div></div>';
+
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px">';
+
+  var kpis=[
+    {label:shared.axName,val:p.x!=null?p.x:'—',unit:''},
+    {label:shared.yLabel+' (0-10)',val:getProjY(p).toFixed(1),unit:''},
+    {label:'Visibility',val:(p.vis??5).toFixed(1),unit:'/ 10'},
+    {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
+  ];
+  if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
+  var _rev=projRevenueM(p);
+  if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
+  if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
+  if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
+  if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});
+  if(p.eta)            kpis.push({label:'ETA',val:p.eta,unit:''});
+  if(sec)              kpis.push({label:'Section',val:sec.name,unit:''});
+
+  kpis.forEach(function(k){
+    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px">'
+      +'<div style="font-family:monospace;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px">'+k.label+'</div>'
+      +'<div style="font-size:15px;font-weight:700;color:'+col+'">'+escH(String(k.val))
+      +(k.unit?'<span style="font-size:10px;color:var(--muted);margin-left:3px">'+k.unit+'</span>':'')
+      +'</div>'
+      +'</div>';
   });
-  var domMonths=[];
-  try{domMonths=getMonthRange();}catch(e){}
-  if(domMonths.length)domMonths.forEach(function(m){allMonthKeys.add(m);});
+  html+='</div></div>';
 
-  var sortedMonths=Array.from(allMonthKeys).sort();
+  if(has('team')&&allocs.length){
+    html+='<div style="padding:14px 18px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Team Allocation</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px">';
 
-  var projAllocMap={};
-  allocRows.forEach(function(row){
-    if(!row.projectId||!row.engId)return;
-    var eng=engineers.find(function(e){return e.id===row.engId;});if(!eng)return;
-    if(!projAllocMap[row.projectId])projAllocMap[row.projectId]=[];
-    var rowMonths=row.allocs?Object.keys(row.allocs).filter(function(m){return row.allocs[m]>0;}).sort():[];
-    var totalFTE=rowMonths.reduce(function(s,m){return s+row.allocs[m];},0);
-    var totalCost=rowMonths.reduce(function(s,m){return s+_allocCost(row.allocs[m],eng.monthlyCost);},0);
-    projAllocMap[row.projectId].push({
-      eng:eng,row:row,
-      totalFTE:totalFTE,totalCost:totalCost,
-      activeMonths:rowMonths,months:sortedMonths
+    allocs.forEach(function(a){
+      var e=a.eng;
+      var c=e.idcard||{};
+      var grp=engGroups.find(function(g){return g.id===e.groupId;});
+      var gc=safeColor(grp?grp.color:'#6b6b78');
+      var photo=idbGetPhoto(e.id)||(c.photo||'');
+      var initials=engInitials(e.name);
+      var avgFTE=a.activeMonths.length?a.totalFTE/a.activeMonths.length:0;
+      var topSkills=(e.skills||[]).filter(function(s){return s.cat==='crit';}).slice(0,4);
+
+      html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;'
+        +'background:var(--bg);border:1px solid var(--border);border-radius:6px">';
+
+      html+=photo
+        ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
+        :'<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:'+gc+'33;border:2px solid '+gc
+          +';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+gc+';font-family:monospace">'+escH(initials)+'</div>';
+
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">';
+      html+='<span style="font-size:12px;font-weight:700;color:var(--text)">'+escH(e.name)+'</span>';
+      if(grp)html+='<span style="font-size:10px;color:'+gc+'">'+escH(grp.name)+'</span>';
+      html+='</div>';
+      html+='<div style="font-size:10px;color:var(--muted);margin-top:1px">'+escH(e.role||'—');
+      if(c.seniority)html+=' · '+escH(c.seniority);
+      if(e.location||c.location)html+=' · 📍'+escH(e.location||c.location);
+      html+='</div>';
+
+      if(topSkills.length){
+        html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">';
+        topSkills.forEach(function(s){
+          html+='<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:var(--danger);color:var(--bg)">'+escH(s.name)+'</span>';
+        });
+        if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:var(--muted)">'+(e.skills.length-4)+' '+t('more')+'</span>';
+        html+='</div>';
+      }
+      html+='</div>';
+
+      html+='<div style="text-align:right;flex-shrink:0">';
+      html+='<div style="font-size:18px;font-weight:700;color:'+col+';font-family:monospace">'+Math.round(avgFTE*100)+'%</div>';
+      html+='<div style="font-size:9px;color:var(--muted)">avg alloc</div>';
+      if(a.totalCost>0)html+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+Math.round(a.totalCost/1000)+'k€</div>';
+      html+='<div style="font-size:9px;color:var(--muted)">'+a.activeMonths.length+' mo</div>';
+      html+='</div>';
+
+      html+='</div>';
     });
-  });
 
-  var CAT_COL=getSkillCatCol();
-  var LVL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-
-  function buildProjectBlock(p){
-    var col=safeColor(p.color||V.accent);
-    var sec=sections.find(function(s){return s.id===p.sectionId;});
-    var allocs=projAllocMap[p.id]||[];
-    var totalProjCost=allocs.reduce(function(s,a){return s+a.totalCost;},0)||p.planCost||0;
-    var totalFTE=allocs.reduce(function(s,a){return s+a.totalFTE;},0);
-
-    var html='<div class="proj-block" style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-left:5px solid '+col+';border-radius:8px;margin-bottom:20px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">';
-
-    html+='<div style="padding:16px 18px 12px;border-bottom:1px solid '+V.border+'">';
-    html+='<div style="display:flex;align-items:flex-start;gap:12px">';
-    html+='<div style="width:14px;height:14px;border-radius:50%;background:'+col+';flex-shrink:0;margin-top:3px"></div>';
-    html+='<div style="flex:1">';
-    html+='<h2 style="font-size:18px;font-weight:700;color:'+V.text+';line-height:1.2;margin-bottom:4px">'+escH(p.name)+'</h2>';
-    if(p.note)html+='<div style="font-size:11px;color:'+V.muted+';margin-bottom:6px">'+escH(p.note)+'</div>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)'
+      +';font-size:10px;color:var(--muted)">';
+    html+='<span><b style="color:var(--text)">'+allocs.length+'</b> engineers</span>';
+    html+='<span><b style="color:var(--text)">'+totalFTE.toFixed(1)+'</b> FTE-months total</span>';
+    if(totalProjCost>0)html+='<span><b style="color:var(--text)">'+Math.round(totalProjCost/1000)+'k€</b> total cost</span>';
     html+='</div></div>';
+  } else if(has('team')){
+    html+='<div style="padding:10px 18px 14px;font-size:11px;color:var(--muted)">No team allocation found for this project. Add allocation rows in the Resource Plan.</div>';
+  }
 
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px">';
+  if(has('risks')&&p.risks&&p.risks.length){
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Risks ('+p.risks.length+')</div>';
+    p.risks.forEach(function(r){
+      var rpn=(r.sev||1)*(r.occ||1)*(r.det||1);
+      var rcol=rpn>=300?'var(--danger)':rpn>=100?'var(--warn)':'var(--muted)';
+      var status=r.status||'open';
+      var statusCol={open:'var(--danger)',mitigated:'var(--warn)',accepted:'var(--muted)',closed:'var(--accent)'}[status]||'var(--muted)';
+      html+='<div style="padding:8px 12px;border-left:3px solid '+rcol
+        +';background:var(--bg);border-radius:0 5px 5px 0;margin-bottom:6px">'
+        +'<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text);flex:1">'
+        +escH(r.desc||'Unnamed risk')+'</span>'
+        +'<span style="font-family:monospace;font-size:10px;font-weight:700;color:'+rcol
+        +';border:1px solid '+rcol+';padding:1px 6px;border-radius:4px;white-space:nowrap">'
+        +'RPN '+rpn+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:10px;margin-top:4px;font-size:9px;color:var(--muted);font-family:monospace">'
+        +'<span>Prob '+(r.prob||1)+'/5</span>'
+        +'<span>Imp '+(r.imp||1)+'/5</span>'
+        +'<span>Sev '+(r.sev||1)+'</span>'
+        +'<span>Occ '+(r.occ||1)+'</span>'
+        +'<span>Det '+(r.det||1)+'</span>'
+        +(r.owner?'<span style="margin-left:auto">👤 '+escH(r.owner)+'</span>':'')
+        +'<span style="color:'+statusCol+'">● '+escH(status)+'</span>'
+        +'</div>'
+        +(r.mit&&r.mit.trim()
+          ?'<div style="margin-top:5px;font-size:10px;color:var(--muted)'
+            +';border-top:1px solid var(--border);padding-top:4px">'
+            +'<span style="color:var(--accent2)">→ Mitigation: </span>'+escH(r.mit)+'</div>'
+          :'')
+        +'</div>';
+    });
+    html+='</div>';
+  }
 
-    var kpis=[
-      {label:axName,val:p.x!=null?p.x:'—',unit:''},
-      {label:yLabel+' (0-10)',val:getProjY(p).toFixed(1),unit:''},
-      {label:'Visibility',val:(p.vis??5).toFixed(1),unit:'/ 10'},
-      {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
-    ];
-    if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
-    var _rev=projRevenueM(p);
-    if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
-    if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
-    if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
-    if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});
-    if(p.eta)            kpis.push({label:'ETA',val:p.eta,unit:''});
-    if(sec)              kpis.push({label:'Section',val:sec.name,unit:''});
+  if(has('todos')&&p.todos&&p.todos.length){
+    var openTodos=p.todos.filter(function(x){return !x.done;});
+    var doneTodos=p.todos.filter(function(x){return x.done;});
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted)'
+      +';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Actions · '
+      +'<span style="color:var(--accent)">'+doneTodos.length+' done</span>'
+      +' / '+p.todos.length+' total</div>';
+    if(openTodos.length){
+      openTodos.forEach(function(x){
+        html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
+          +'padding:5px 0;border-bottom:1px solid var(--border)">'
+          +'<span style="color:var(--muted);flex-shrink:0">☐</span>'
+          +'<span style="color:var(--text);flex:1">'+escH(x.text||'')+'</span>'
+          +'</div>';
+      });
+    }
+    if(doneTodos.length){
+      html+='<div style="margin-top:6px">';
+      doneTodos.forEach(function(x){
+        html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
+          +'padding:5px 0;border-bottom:1px solid var(--border);opacity:0.5">'
+          +'<span style="color:var(--accent);flex-shrink:0">☑</span>'
+          +'<span style="color:var(--muted);text-decoration:line-through;flex:1">'+escH(x.text||'')+'</span>'
+          +'</div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  }
 
-    kpis.forEach(function(k){
-      html+='<div style="background:'+V.bg+';border:1px solid '+V.border+';border-radius:6px;padding:8px 12px">'
-        +'<div style="font-family:monospace;font-size:9px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px">'+k.label+'</div>'
-        +'<div style="font-size:15px;font-weight:700;color:'+col+'">'+escH(String(k.val))
-        +(k.unit?'<span style="font-size:10px;color:'+V.muted+';margin-left:3px">'+k.unit+'</span>':'')
+  if(has('milestones')&&p.milestones&&p.milestones.length){
+    var sortedMs=p.milestones.slice().sort(function(a,b){
+      if(!a.date&&!b.date)return 0;
+      if(!a.date)return 1;
+      if(!b.date)return -1;
+      return a.date.localeCompare(b.date);
+    });
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Milestones ('+sortedMs.length+')</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:4px">';
+    sortedMs.forEach(function(m){
+      var done=m.done;
+      var dateStr2=m.date?new Date(m.date+'T00:00:00').toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'}):'No date';
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;'
+        +'background:var(--bg);border-radius:5px;border:1px solid var(--border);'
+        +(done?'opacity:0.55;':'')+'">'
+        +'<span style="font-size:14px;flex-shrink:0">'+(m.icon||'🎯')+'</span>'
+        +'<div style="flex:1">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--text);'+(done?'text-decoration:line-through':'')+'">'+escH(m.name||'Milestone')+'</div>'
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0">'
+        +'<div style="font-family:monospace;font-size:10px;color:var(--accent2)">'+escH(dateStr2)+'</div>'
+        +(done?'<div style="font-size:9px;color:var(--accent)">✓ Done</div>':'')
         +'</div>'
         +'</div>';
     });
     html+='</div></div>';
-
-    if(opts.includeTeam&&allocs.length){
-      html+='<div style="padding:14px 18px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Team Allocation</div>';
-      html+='<div style="display:flex;flex-direction:column;gap:8px">';
-
-      allocs.forEach(function(a){
-        var e=a.eng;
-        var c=e.idcard||{};
-        var grp=engGroups.find(function(g){return g.id===e.groupId;});
-        var gc=safeColor(grp?grp.color:'#6b6b78');
-        var photo=idbGetPhoto(e.id)||(c.photo||'');
-        var initials=engInitials(e.name);
-        var avgFTE=a.activeMonths.length?a.totalFTE/a.activeMonths.length:0;
-        var topSkills=(e.skills||[]).filter(function(s){return s.cat==='crit';}).slice(0,4);
-
-        html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;'
-          +'background:'+V.bg+';border:1px solid '+V.border+';border-radius:6px">';
-
-        html+=photo
-          ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
-          :'<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:'+gc+'33;border:2px solid '+gc
-            +';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+gc+';font-family:monospace">'+escH(initials)+'</div>';
-
-        html+='<div style="flex:1;min-width:0">';
-        html+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">';
-        html+='<span style="font-size:12px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</span>';
-        if(grp)html+='<span style="font-size:10px;color:'+gc+'">'+escH(grp.name)+'</span>';
-        html+='</div>';
-        html+='<div style="font-size:10px;color:'+V.muted+';margin-top:1px">'+escH(e.role||'—');
-        if(c.seniority)html+=' · '+escH(c.seniority);
-        if(e.location||c.location)html+=' · 📍'+escH(e.location||c.location);
-        html+='</div>';
-
-        if(topSkills.length){
-          html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">';
-          topSkills.forEach(function(s){
-            html+='<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f1433520;border:1px solid #f1433544;color:#f14335">'+escH(s.name)+'</span>';
-          });
-          if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:'+V.muted+'">'+(e.skills.length-4)+' '+t('more')+'</span>';
-          html+='</div>';
-        }
-        html+='</div>';
-
-        html+='<div style="text-align:right;flex-shrink:0">';
-        html+='<div style="font-size:18px;font-weight:700;color:'+col+';font-family:monospace">'+Math.round(avgFTE*100)+'%</div>';
-        html+='<div style="font-size:9px;color:'+V.muted+'">avg alloc</div>';
-        if(a.totalCost>0)html+='<div style="font-size:10px;color:'+V.muted+';margin-top:2px">'+Math.round(a.totalCost/1000)+'k€</div>';
-        html+='<div style="font-size:9px;color:'+V.muted+'">'+a.activeMonths.length+' mo</div>';
-        html+='</div>';
-
-        html+='</div>';
-      });
-
-      html+='</div>';
-      html+='<div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid '+V.border
-        +';font-size:10px;color:'+V.muted+'">';
-      html+='<span><b style="color:'+V.text+'">'+allocs.length+'</b> engineers</span>';
-      html+='<span><b style="color:'+V.text+'">'+totalFTE.toFixed(1)+'</b> FTE-months total</span>';
-      if(totalProjCost>0)html+='<span><b style="color:'+V.text+'">'+Math.round(totalProjCost/1000)+'k€</b> total cost</span>';
-      html+='</div></div>';
-    } else if(opts.includeTeam){
-      html+='<div style="padding:10px 18px 14px;font-size:11px;color:'+V.muted+'">No team allocation found for this project. Add allocation rows in the Resource Plan.</div>';
-    }
-
-    if(opts.includeRisks&&p.risks&&p.risks.length){
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Risks ('+p.risks.length+')</div>';
-      p.risks.forEach(function(r){
-        var rpn=(r.sev||1)*(r.occ||1)*(r.det||1);
-        var rcol=rpn>=300?V.danger:rpn>=100?'#f1a435':V.muted;
-        var status=r.status||'open';
-        var statusCol={open:V.danger,mitigated:'#f1a435',accepted:V.muted,closed:V.accent}[status]||V.muted;
-        html+='<div style="padding:8px 12px;border-left:3px solid '+rcol
-          +';background:'+V.bg+';border-radius:0 5px 5px 0;margin-bottom:6px">'
-          +'<div style="display:flex;align-items:flex-start;gap:8px">'
-          +'<span style="font-size:11px;font-weight:600;color:'+V.text+';flex:1">'
-          +escH(r.desc||'Unnamed risk')+'</span>'
-          +'<span style="font-family:monospace;font-size:10px;font-weight:700;color:'+rcol
-          +';background:'+rcol+'18;border:1px solid '+rcol+'44;padding:1px 6px;border-radius:4px;white-space:nowrap">'
-          +'RPN '+rpn+'</span>'
-          +'</div>'
-          +'<div style="display:flex;gap:10px;margin-top:4px;font-size:9px;color:'+V.muted+';font-family:monospace">'
-          +'<span>Prob '+(r.prob||1)+'/5</span>'
-          +'<span>Imp '+(r.imp||1)+'/5</span>'
-          +'<span>Sev '+(r.sev||1)+'</span>'
-          +'<span>Occ '+(r.occ||1)+'</span>'
-          +'<span>Det '+(r.det||1)+'</span>'
-          +(r.owner?'<span style="margin-left:auto">👤 '+escH(r.owner)+'</span>':'')
-          +'<span style="color:'+statusCol+'">● '+escH(status)+'</span>'
-          +'</div>'
-          +(r.mit&&r.mit.trim()
-            ?'<div style="margin-top:5px;font-size:10px;color:'+V.muted
-              +';border-top:1px solid '+V.border+';padding-top:4px">'
-              +'<span style="color:'+V.accent2+'">→ Mitigation: </span>'+escH(r.mit)+'</div>'
-            :'')
-          +'</div>';
-      });
-      html+='</div>';
-    }
-
-    if(opts.includeTodos&&p.todos&&p.todos.length){
-      var openTodos=p.todos.filter(function(t){return !t.done;});
-      var doneTodos=p.todos.filter(function(t){return t.done;});
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted
-        +';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Actions · '
-        +'<span style="color:'+V.accent+'">'+doneTodos.length+' done</span>'
-        +' / '+p.todos.length+' total</div>';
-      if(openTodos.length){
-        openTodos.forEach(function(t){
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
-            +'padding:5px 0;border-bottom:1px solid '+V.border+'">'
-            +'<span style="color:'+V.muted+';flex-shrink:0">☐</span>'
-            +'<span style="color:'+V.text+';flex:1">'+escH(t.text||'')+'</span>'
-            +'</div>';
-        });
-      }
-      if(doneTodos.length){
-        html+='<div style="margin-top:6px">';
-        doneTodos.forEach(function(t){
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
-            +'padding:5px 0;border-bottom:1px solid '+V.border+';opacity:0.5">'
-            +'<span style="color:'+V.accent+';flex-shrink:0">☑</span>'
-            +'<span style="color:'+V.muted+';text-decoration:line-through;flex:1">'+escH(t.text||'')+'</span>'
-            +'</div>';
-        });
-        html+='</div>';
-      }
-      html+='</div>';
-    }
-
-    if(opts.includeMilestones&&p.milestones&&p.milestones.length){
-      var sortedMs=p.milestones.slice().sort(function(a,b){
-        if(!a.date&&!b.date)return 0;
-        if(!a.date)return 1;
-        if(!b.date)return -1;
-        return a.date.localeCompare(b.date);
-      });
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Milestones ('+sortedMs.length+')</div>';
-      html+='<div style="display:flex;flex-direction:column;gap:4px">';
-      sortedMs.forEach(function(m){
-        var done=m.done;
-        var dateStr2=m.date?new Date(m.date+'T00:00:00').toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'}):'No date';
-        html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;'
-          +'background:'+V.bg+';border-radius:5px;border:1px solid '+V.border+';'
-          +(done?'opacity:0.55;':'')+'">'
-          +'<span style="font-size:14px;flex-shrink:0">'+(m.icon||'🎯')+'</span>'
-          +'<div style="flex:1">'
-          +'<div style="font-size:11px;font-weight:600;color:'+V.text+';'+(done?'text-decoration:line-through':'')+'">'+escH(m.name||'Milestone')+'</div>'
-          +'</div>'
-          +'<div style="text-align:right;flex-shrink:0">'
-          +'<div style="font-family:monospace;font-size:10px;color:'+V.accent2+'">'+escH(dateStr2)+'</div>'
-          +(done?'<div style="font-size:9px;color:'+V.accent+'">✓ Done</div>':'')
-          +'</div>'
-          +'</div>';
-      });
-      html+='</div></div>';
-    }
-
-    if(opts.includeActions&&p.actions&&p.actions.length){
-      var STATUS_COL={Open:V.danger,Done:V.accent,'In Progress':'#f1a435',Closed:V.muted};
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Gantt Actions ('+p.actions.length+')</div>';
-      html+='<table style="width:100%;border-collapse:collapse;font-size:10px">'
-        +'<thead><tr style="background:'+V.bg+';border-bottom:1px solid '+V.border+'">'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">ACTION</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">START</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">END</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">OWNER</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">STATUS</th>'
-        +'</tr></thead><tbody>';
-      p.actions.forEach(function(a,i){
-        var sc=STATUS_COL[a.status]||V.muted;
-        var rowBg=i%2===1?'background:'+V.surface+';':'';
-        var fmt=function(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric',year:'2-digit'}):'—';};
-        html+='<tr style="'+rowBg+'border-bottom:1px solid '+V.border+'">'
-          +'<td style="padding:5px 8px;font-weight:600;color:'+(a.color||V.accent)+'">'
-          +(a.isMilestone?'🎯 ':'')
-          +escH(a.desc||'—')
-          +(a.priority&&a.priority!=='Medium'?'<span style="font-size:9px;color:'+V.muted+';margin-left:5px">'+escH(a.priority)+'</span>':'')
-          +'</td>'
-          +'<td style="padding:5px 8px;font-family:monospace;color:'+V.muted+'">'+fmt(a.start)+'</td>'
-          +'<td style="padding:5px 8px;font-family:monospace;color:'+V.muted+'">'+fmt(a.end||a.due)+'</td>'
-          +'<td style="padding:5px 8px;color:'+V.muted+'">'+escH(a.member||'—')+'</td>'
-          +'<td style="padding:5px 8px">'
-          +'<span style="font-family:monospace;font-size:9px;padding:1px 6px;border-radius:3px;background:'+sc+'20;color:'+sc+';border:1px solid '+sc+'44">'+escH(a.status||'Open')+'</span>'
-          +'</td>'
-          +'</tr>';
-      });
-      html+='</tbody></table></div>';
-    }
-
-    html+='</div>';
-    return html;
   }
 
+  if(has('actions')&&p.actions&&p.actions.length){
+    var STATUS_COL={Open:'var(--danger)',Done:'var(--accent)','In Progress':'var(--warn)',Closed:'var(--muted)'};
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Gantt Actions ('+p.actions.length+')</div>';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:10px">'
+      +'<thead><tr style="background:var(--bg);border-bottom:1px solid var(--border)">'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">ACTION</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">START</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">END</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">OWNER</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">STATUS</th>'
+      +'</tr></thead><tbody>';
+    p.actions.forEach(function(a,i){
+      var sc=STATUS_COL[a.status]||'var(--muted)';
+      var rowBg=i%2===1?'background:var(--surface);':'';
+      var fmt=function(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric',year:'2-digit'}):'—';};
+      html+='<tr style="'+rowBg+'border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 8px;font-weight:600;color:'+safeColor(a.color||'var(--accent)')+'">'
+        +(a.isMilestone?'🎯 ':'')
+        +escH(a.desc||'—')
+        +(a.priority&&a.priority!=='Medium'?'<span style="font-size:9px;color:var(--muted);margin-left:5px">'+escH(a.priority)+'</span>':'')
+        +'</td>'
+        +'<td style="padding:5px 8px;font-family:monospace;color:var(--muted)">'+fmt(a.start)+'</td>'
+        +'<td style="padding:5px 8px;font-family:monospace;color:var(--muted)">'+fmt(a.end||a.due)+'</td>'
+        +'<td style="padding:5px 8px;color:var(--muted)">'+escH(a.member||'—')+'</td>'
+        +'<td style="padding:5px 8px">'
+        +'<span style="font-family:monospace;font-size:9px;padding:1px 6px;border-radius:3px;color:'+sc+';border:1px solid '+sc+'">'+escH(a.status||'Open')+'</span>'
+        +'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+// opens the shared builder for the project brief (formats: PDF, HTML; blocks =
+// team/risks/todos/milestones/actions — project SCOPE stays the brief panel's
+// own checklist, since that's "which projects", not "which content").
+function exportProjectBriefOpen(){
+  var sel=getSelectedBriefProjects();
+  if(!sel.length){alert(t('Select at least one project.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'R&D Portfolio';
-  var blocks=selectedProjs.map(buildProjectBlock).join('');
 
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>'+escH(planTitle)+' — Project Briefs</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;'
-    +'  padding:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.cover{padding:24px 28px;background:'+V.surface+';border:1px solid '+V.border+';border-radius:10px;margin-bottom:24px;}'
-    +'.cover-title{font-size:24px;font-weight:700;color:'+V.accent+';font-family:monospace;letter-spacing:.04em;}'
-    +'.cover-sub{font-size:12px;color:'+V.muted+';margin-top:5px;}'
-    +'@media print{'
-    +'  @page{size:A4;margin:10mm;}'
-    +'  html,body{background:'+V.bg+'!important;padding:0;}'
-    +'  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
-    +'  .proj-block{break-inside:avoid;}'
-    +'}'
-    +'</style></head><body>'
-    +'<div class="cover">'
-    +'<div class="cover-title">'+escH(planTitle)+'</div>'
-    +'<div class="cover-sub">Project Briefs · '+selectedProjs.length+' project'+(selectedProjs.length!==1?'s':'')+' · '+dateStr+'</div>'
-    +'</div>'
-    +blocks
-    +'<div style="margin-top:16px;padding-top:10px;border-top:1px solid '+V.border
-    +';font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between">'
-    +'<span>'+escH(planTitle)+' — Project Briefs</span><span>Project Matrix · '+dateStr+'</span>'
-    +'</div>'
-    +'</body></html>';
-}
+  exportOpenBuilder({
+    deliverableId: 'project-brief',
+    title: planTitle,
+    subtitleDefault: 'Project Briefs · '+sel.length+' project'+(sel.length!==1?'s':''),
+    blocks: prfBriefBlocks(),
+    ctx: {selectedProjs:sel},
+    formats: [{id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')}],
+    builtinTemplates: [
+      {id:'full', name:t('Full'), blocks:['team','risks','todos','milestones','actions']},
+      {id:'kpis-only', name:t('KPIs only')+' ('+t('no content blocks')+')', blocks:[]},
+    ],
+    composeRender: function(includedIds, ctx){
+      var axName='Effort';
+      try{axName=axX().name||'Effort';}catch(e){}
+      var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
 
-// reads the brief section-include checkboxes into an options object
-function _getBriefOpts(){
-  return {
-    includeTeam:       !!(G('brief-include-team')       && G('brief-include-team').checked),
-    includeRisks:      !!(G('brief-include-risks')      && G('brief-include-risks').checked),
-    includeTodos:      !!(G('brief-include-todos')      && G('brief-include-todos').checked),
-    includeMilestones: !!(G('brief-include-milestones') && G('brief-include-milestones').checked),
-    includeActions:    !!(G('brief-include-actions')    && G('brief-include-actions').checked),
-  };
-}
+      var allMonthKeys=new Set();
+      allocRows.forEach(function(row){
+        if(row.allocs)Object.keys(row.allocs).forEach(function(m){
+          if(row.allocs[m]>0)allMonthKeys.add(m);
+        });
+      });
+      var domMonths=[];
+      try{domMonths=getMonthRange();}catch(e){}
+      if(domMonths.length)domMonths.forEach(function(m){allMonthKeys.add(m);});
+      var sortedMonths=Array.from(allMonthKeys).sort();
 
-// opens the project brief in a print popup
-function exportProjectBrief(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
-  var opts=_getBriefOpts();
-  var html=buildBriefHTML(sel,opts);
-  if(!html){alert(t('Export failed — could not build brief content.'));return;}
-  var win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked — please allow pop-ups for this page.'));return;}
-  win.document.write(html);
-  win.document.close();
-}
+      var projAllocMap={};
+      allocRows.forEach(function(row){
+        if(!row.projectId||!row.engId)return;
+        var eng=engineers.find(function(e){return e.id===row.engId;});if(!eng)return;
+        if(!projAllocMap[row.projectId])projAllocMap[row.projectId]=[];
+        var rowMonths=row.allocs?Object.keys(row.allocs).filter(function(m){return row.allocs[m]>0;}).sort():[];
+        var totalFTE=rowMonths.reduce(function(s,m){return s+row.allocs[m];},0);
+        var totalCost=rowMonths.reduce(function(s,m){return s+_allocCost(row.allocs[m],eng.monthlyCost);},0);
+        projAllocMap[row.projectId].push({
+          eng:eng,row:row,
+          totalFTE:totalFTE,totalCost:totalCost,
+          activeMonths:rowMonths,months:sortedMonths
+        });
+      });
 
-// downloads the project brief as an HTML file
-function exportProjectBriefHTML(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
-  var opts=_getBriefOpts();
-  var html=buildBriefHTML(sel,opts);
-  if(!html){alert(t('Export failed.'));return;}
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  var planName=(G('res-title-input')?G('res-title-input').value:'portfolio')
-    .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-  a.download=planName+'_briefs.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+      var shared={axName:axName,yLabel:yLabel,projAllocMap:projAllocMap};
+      // kept as one flowing page (not one-per-project) — projects were never
+      // forced onto separate pages here, only .proj-block{break-inside:avoid}
+      return ctx.selectedProjs.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
+    },
+  });
 }

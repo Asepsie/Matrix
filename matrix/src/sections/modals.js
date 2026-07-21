@@ -306,8 +306,7 @@ function renderSchedTab(p){
   h+=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px">
     <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">${t('GANTT')} <span style="font-weight:300">${t('(drag bars to move · drag edges to resize · drag ◆ to reschedule)')}</span></span>
     <div style="flex:1"></div>
-    <button class="sm" onclick="exportGanttPNG()" title="${t('Download Gantt as PNG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ PNG</button>
-    <button class="sm" onclick="exportGanttSVG()" title="${t('Download Gantt as SVG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ SVG</button>
+    <button class="sm" onclick="ganttExportOpen()" title="${t('Export the schedule')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">📄 ${t('EXPORT')}</button>
   </div>`;
   h+=`<div id="gantt-area" style="flex:1;min-height:280px;position:relative;overflow:auto;background:#0a0a0c;border:1px solid var(--border);border-radius:6px;display:block"></div>`;
 
@@ -533,6 +532,78 @@ function _ganttFileName(ext){
   const p=projects.find(x=>x.id===tabProjId);
   return ((p&&p.name)||'gantt').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_gantt.'+ext;
 }
+/* ►► SECTION: GANTT-EXPORT ◄◄ The schedule on the shared export engine.
+ *
+ * Like the org chart, the SVG/PNG formats keep their own `run` handlers: the
+ * Gantt is a NATIVE SVG cloned out of the live DOM, so routing it through the
+ * engine's HTML-in-foreignObject converters would lose fidelity for nothing.
+ * The picker, branding, theme, paper and preview are shared; only the final
+ * encode differs. See export.js › exportBuilderRun.
+ */
+function ganttExportBlocks(){
+  return [
+    {id:'chart', label:t('Gantt chart'), render:function(){
+      const str=_ganttSVGString();
+      if(!str) return '';
+      // drop the XML prolog (illegal mid-document) and scale to the page
+      return '<div style="width:100%;overflow:hidden">'
+        +str.replace(/^<\?xml[^>]*\?>\s*/,'')
+            .replace(/^<svg width="([^"]*)" height="([^"]*)"/,
+              '<svg style="width:100%;height:auto;max-width:100%" viewBox="0 0 $1 $2"')
+        +'</div>';
+    }},
+    {id:'schedule', label:t('Schedule table'), render:function(){
+      const p=projects.find(x=>x.id===tabProjId);
+      if(!p) return '';
+      schedEnsure(p);
+      const rows=[]
+        .concat(p.milestones.map(m=>({when:m.date, what:m.label||m.desc||t('Milestone'), kind:t('Milestone'), who:'', status:''})))
+        .concat(p.actions.map(a=>({when:a.end||a.start||'', what:a.desc||t('Action'), kind:t('Action'), who:a.member||'', status:a.status||''})))
+        .filter(r=>r.when)
+        .sort((a,b)=>String(a.when).localeCompare(String(b.when)));
+      if(!rows.length) return '';
+      let h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Schedule'))+'</h2>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">'
+        +'<th style="padding:4px 6px">'+escH(t('Date'))+'</th><th style="padding:4px 6px">'+escH(t('Type'))+'</th>'
+        +'<th style="padding:4px 6px">'+escH(t('Item'))+'</th><th style="padding:4px 6px">'+escH(t('Owner'))+'</th>'
+        +'<th style="padding:4px 6px">'+escH(t('Status'))+'</th></tr>'
+      rows.forEach(r=>{
+        h+='<tr style="border-bottom:1px solid var(--border)">'
+          +'<td style="padding:4px 6px;color:var(--accent2);white-space:nowrap">'+escH(r.when)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.kind)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--text)">'+escH(r.what)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.who||'—')+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.status||'—')+'</td></tr>'
+      });
+      return h+'</table>';
+    }},
+  ];
+}
+// opens the shared export picker for the current project's schedule
+function ganttExportOpen(){
+  if(!_ganttSVGString()){ alert(t('Add dated actions/milestones and render the Gantt first.')); return; }
+  const p=projects.find(x=>x.id===tabProjId);
+  exportOpenBuilder({
+    deliverableId:'gantt',
+    title:t('Schedule'),
+    subtitleDefault:(p&&p.name)||'',
+    blocks:ganttExportBlocks(),
+    ctx:{},
+    filename:_ganttFileName('').replace(/\.$/,''),
+    orientation:'landscape', pageSize:'A3',
+    builtinTemplates:[
+      {id:'full', name:t('Chart + table'), blocks:['chart','schedule']},
+      {id:'chart', name:t('Chart only'), blocks:['chart']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'svg', label:t('SVG (vector)'), run:function(){ exportGanttSVG(); }},
+      {id:'png', label:t('PNG (2×)'), run:function(){ exportGanttPNG(); }},
+    ],
+  });
+}
+
 // downloads the current Gantt as a standalone SVG file
 function exportGanttSVG(){
   const str=_ganttSVGString();

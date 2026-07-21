@@ -12,9 +12,13 @@
 >   not in this plan's original §2) and a **Settings › EXPORT THEME** control (app theme
 >   default / light print theme, user-overridable per export) — the plan's §2.2 "light paper
 >   default" idea was rejected in favor of a real user-facing choice.
-> - Only the exec pack (D1) is migrated so far. The rest of this document's phasing (D2–D5)
->   is directionally still useful but not authoritative — re-confirm scope with the user
->   before resuming, rather than treating the table in §4 as a checklist.
+> - The exec pack (D1) and ALL FOUR profile-related deliverables (single profile, profiles
+>   dashboard, "full profiles", project brief — D4) are fully migrated onto the shared
+>   drag-and-drop builder, incl. FORMAT/COLUMNS controls and no more auto-triggered print —
+>   see ARCHITECTURE.md › "Export engine" › "profiles.js: full builder migration". The rest of
+>   this document's phasing (D2–D5) is directionally still useful but not authoritative —
+>   re-confirm scope with the user before resuming, rather than treating the table in §4 as a
+>   checklist.
 
 **Audience:** a developer starting a fresh session on Project Matrix.
 **Goal:** turn the tool's rich data model into **great, professional, versatile,

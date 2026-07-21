@@ -239,6 +239,9 @@ body{padding-left:var(--rail);}
    closing the current view, so at z-index:200 they'd render hidden behind an open
    Resources/Org panel. Above the rail (z-index:1000) too, and inset so the rail
    stays visible. */
-#settings-overlay, #landing-firstrun, #export-builder-overlay{
+#settings-overlay, #landing-firstrun, #export-builder-overlay, #export-picker-overlay{
   z-index:1100; left:var(--rail);
 }
+/* the picker hands off to the builder, so the builder must sit ABOVE it */
+#export-builder-overlay{ z-index:1110; }
+#export-picker-overlay .exp-pick:hover{ border-color:var(--accent); }

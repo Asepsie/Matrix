@@ -148,7 +148,13 @@
       "Bash(grep -nE \"\\(background|fill|stroke|border[^:]*:|color\\)[^;{]*['\\\\\"]\\\\+[\\\\w.]+\\\\.\\(color|col\\)\\\\b|:\\\\\\\\\\\\$\\\\{[^}]*\\\\.color[^}]*\\\\}\" src/sections/portfolio.js)",
       "Bash(node --test tests/)",
       "Bash(ls -la \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/\" 2>/dev/null | sed 's/pyro3/USER/g')",
-      "Bash(node --test tests/export.test.js)"
+      "Bash(node --test tests/export.test.js)",
+      "Bash(grep -n \"^function \\\\|^/\\\\* ►►\" src/sections/profiles.js)",
+      "Bash(grep -n \"overflow-wrap:break-word\\\\` on \\\\`\\\\*\\\\`, globally\" ARCHITECTURE.md)",
+      "Bash(python -)",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\")",
+      "PowerShell(cd C:\\\\Users\\\\pyro3\\\\Documents\\\\Matrix\\\\matrix; Copy-Item dist\\\\matrix.html dist\\\\_verify.html -Force; \\(Get-Item dist\\\\_verify.html\\).Length)",
+      "Bash(tail -12 \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/output-layer-export-engine.md\")"
     ]
   }
 }

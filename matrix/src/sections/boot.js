@@ -18,6 +18,11 @@ document.addEventListener('keydown',e=>{
     // A modal/popup on top of a view? Dismiss just that (don't navigate back).
     var modalWasOpen=(typeof railAnyModalOpen==='function')&&railAnyModalOpen();
     closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeSnap();closeSkillsPdfDlg();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();
+    // Membership of RAIL_MODAL_OVERLAYS only suppresses the back-navigation
+    // below — it does NOT close anything. Each modal needs its closer here, and
+    // the two export overlays were missing (the builder ignored Esc entirely).
+    if(typeof exportBuilderClose==='function')exportBuilderClose();
+    if(typeof exportClosePicker==='function')exportClosePicker();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }

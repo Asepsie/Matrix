@@ -36,6 +36,7 @@ var RAIL_I = {
   planning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 12h10"/><path d="M4 18h7"/><path d="m16.5 16.5 2 2 3.5-3.8"/></svg>',
   snap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
   backup:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v8.6L12 20l-7.5-4.2V7.2z"/><path d="M4.8 7.4L12 11.5l7.2-4.1"/><path d="M12 11.5V20"/></svg>',
+  exportico:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h6.5L18 9v10.5H7z"/><path d="M13 4.5V9h5"/><path d="M12 11.5v5.5"/><path d="M9.6 14.6L12 12l2.4 2.6"/></svg>',
   restore:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v3.4h3.4"/></svg>',
   ai:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2.6"/><path d="M10 3v2.4M14 3v2.4M10 18.6V21M14 18.6V21M3 10h2.4M3 14h2.4M18.6 10H21M18.6 14H21"/></svg>',
   help:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.8.3-1.3.9-1.3 1.9"/><circle cx="11.6" cy="16.6" r="0.7" fill="currentColor" stroke="none"/></svg>',
@@ -99,6 +100,7 @@ var RAIL_DOMAINS = [
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
+  {id:'export',   name:t('Export'),    ico:RAIL_I.exportico},
   {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
   {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
   {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
@@ -374,7 +376,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay'];
+  'export-builder-overlay','export-picker-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -383,7 +385,8 @@ function railAnyModalOpen(){
 function railAction(id){
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
-  if(id==='collab')        collabOpen();
+  if(id==='export')        exportOpenPicker();
+  else if(id==='collab')   collabOpen();
   else if(id==='snap')     openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();
@@ -518,8 +521,44 @@ function railOpenSettings(){
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var sbz=G('set-scrollbar'); if(sbz) sbz.value=railScrollbar;
-  var et=G('set-export-theme'); if(et) et.value=exportLoadPrefs().theme;
+  var ep0=exportLoadPrefs();
+  var et=G('set-export-theme'); if(et) et.value=ep0.theme;
+  var eo=G('set-export-org'); if(eo) eo.value=ep0.orgName||'';
+  _railExportLogo=ep0.logo||'';
+  railRenderExportLogo();
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
+}
+
+/* Export branding (org name + logo). exportBrand() has read prefs.orgName and
+ * prefs.logo since the engine landed, but nothing ever WROTE them — so every
+ * export in the product was stamped with the hardcoded 'Project Matrix'
+ * fallback and the white-label seam was effectively dead code. This is the
+ * missing half. Staged in a module var so CANCEL genuinely cancels; only
+ * railSaveSettings persists it. Same UI-only tier as the export theme (see
+ * export.js EXPORT_PREFS_KEY) — deliberately NOT app state, so branding never
+ * travels in a backup or into a collab room. */
+var RAIL_LOGO_MAX=200*1024;
+var _railExportLogo='';
+function railRenderExportLogo(){
+  var img=G('set-export-logo-prev'), clr=G('set-export-logo-clear');
+  if(img){
+    if(_railExportLogo){ img.src=_railExportLogo; img.style.display=''; }
+    else { img.removeAttribute('src'); img.style.display='none'; }
+  }
+  if(clr) clr.style.display=_railExportLogo?'':'none';
+}
+function railPickExportLogo(){ var i=G('set-export-logo-input'); if(i) i.click(); }
+function railClearExportLogo(){ _railExportLogo=''; railRenderExportLogo(); }
+function railLoadExportLogo(input){
+  var f=input&&input.files&&input.files[0]; if(!f) return;
+  // The logo is inlined as a dataURL into every exported document AND into the
+  // prefs key, so localStorage's quota is the real ceiling here, not aesthetics.
+  if(f.size>RAIL_LOGO_MAX){ alert(t('Logo is too large — use an image under 200 KB.')); input.value=''; return; }
+  var rd=new FileReader();
+  rd.onload=function(){ _railExportLogo=String(rd.result||''); railRenderExportLogo(); };
+  rd.onerror=function(){ alert(t('Could not read that image.')); };
+  rd.readAsDataURL(f);
+  input.value='';
 }
 
 // Read the Settings modal, persist, apply, and close.
@@ -530,7 +569,12 @@ function railSaveSettings(){
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
   var sbz=G('set-scrollbar'); if(sbz&&RAIL_SB[sbz.value]) railScrollbar=sbz.value;
-  var et=G('set-export-theme'); if(et){ var ep=exportLoadPrefs(); ep.theme=(et.value==='light'?'light':'app'); exportSavePrefs(ep); }
+  var et=G('set-export-theme'), eo=G('set-export-org');
+  var ep=exportLoadPrefs();
+  if(et) ep.theme=(et.value==='light'?'light':'app');
+  if(eo) ep.orgName=eo.value.trim();
+  ep.logo=_railExportLogo;
+  exportSavePrefs(ep);
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railApplyScrollbar();

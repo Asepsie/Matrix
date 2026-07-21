@@ -52,18 +52,19 @@ function _discPeopleHTML(key,placements,engList,photoCache,forExport){
   var chips=placed.map(function(e){
     var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    // structure-only fork — see the same note in ninebox.js's _nbPeopleHTML
     var avSz=forExport?26:28;
-    var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
-    var avBg=forExport?'#1a1a1e':'var(--surface)';
-    var avCl=forExport?'#c8f135':'var(--accent)';
-    var txCl=forExport?'#e8e8ec':'var(--text)';
-    var muCl=forExport?'#888':'var(--muted)';
+    var avBd='2px solid var(--accent)';
+    var avBg='var(--surface)';
+    var avCl='var(--accent)';
+    var txCl='var(--text)';
+    var muCl='var(--muted)';
     var av=photo
       ?('<img src="'+photo+'" style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;object-fit:cover;border:'+avBd+';flex-shrink:0;">')
       :('<div style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;background:'+avBg+';border:'+avBd+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+avCl+';flex-shrink:0;font-family:monospace">'+ini+'</div>');
     var nm='<div style="overflow:hidden"><div style="font-size:10px;font-weight:600;color:'+txCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+escH(e.name)+'</div><div style="font-size:8px;color:'+muCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+escH(e.role||'')+'</div></div>';
     if(forExport){
-      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:#0f0f11;margin:2px">'+av+nm+'</div>';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px">'+av+nm+'</div>';
     }
     return '<div draggable="true" ondragstart="discDragStart(event,'+e.id+')"'
       +' style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px;cursor:grab;position:relative;transition:background .12s"'
@@ -92,8 +93,7 @@ export function renderDiscMatrix(){
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">DISC BEHAVIORAL PROFILE</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_discPlacements).length+' profiled · '+unplaced.length+' unassigned</span>'
     +'<div style="flex:1"></div>'
-    +'<button class="add-row-btn" onclick="exportDiscPDF()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PDF">&#8595; PDF</button>'
-    +'<button class="add-row-btn" onclick="exportDiscPNG()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PNG">&#8595; PNG</button>'
+    +'<button class="add-row-btn" onclick="discExportOpen()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="'+escH(t('Export DISC'))+'">&#128196; '+escH(t('EXPORT'))+'</button>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
     +'<button class="add-row-btn" onclick="_discPlacements={};saveState();talentIdbSave();renderDiscMatrix()" style="color:var(--muted);font-size:9px">&#8635; CLEAR</button>'
     +'<button class="primary" style="font-size:10px;padding:3px 10px" onclick="saveState();flashSaved()">SAVE</button>'
@@ -191,6 +191,95 @@ function buildDiscHTML(){
     +'</div></div>'
     +'<div class="grid">'+quadsHTML+'</div>'
     +'</body></html>';
+}
+
+/* ►► SECTION: DISC-EXPORT ◄◄ DISC on the shared export engine.
+ *
+ * Same shape as the nine-box migration next door: the quadrant markup is
+ * re-expressed in var(--…) tokens (the old buildDiscHTML hardcodes #777/#0a0a0c
+ * and only ever looked right on the dark theme), so one markup string serves
+ * both the app theme and the light paper theme. Plain HTML, so the engine's own
+ * PNG rasteriser applies — no custom `run` format handler needed.
+ */
+function discExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  return [
+    {id:'quadrants', label:t('DISC quadrants'), render:function(){
+      var QUADRANTS=_discQuadrants();
+      var quads=QUADRANTS.map(function(q){
+        var people=_discPeopleHTML(q.key,_discPlacements,engineers,_photoCache,true);
+        // translucent `color`, not the dark-only `colorSolid` — see the same note
+        // in ninebox.js's nbExportBlocks
+        return '<div style="background:'+safeColor(q.color)+';border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;overflow:hidden">'
+          +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<div style="width:30px;height:30px;border-radius:6px;background:'+safeColor(q.badge)+';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+escH(q.emoji)+'</div>'
+          +'<div><div style="'+mono+';font-size:16px;font-weight:700;color:'+safeColor(q.badge)+';letter-spacing:.06em">'+escH(q.key)+'</div>'
+          +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.08em">'+escH(q.label)+'</div></div></div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:3px">'
+          +q.traits.map(function(tr){return '<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg);color:var(--muted);'+mono+';border:1px solid var(--border)">'+escH(tr)+'</span>';}).join('')
+          +'</div>'
+          +'<div style="flex:1;min-height:60px;display:grid;grid-template-columns:1fr 1fr;gap:0">'+(people||'<span style="font-size:9px;color:var(--dim)">—</span>')+'</div>'
+          +'<div style="font-size:9px;color:var(--muted);'+mono+';line-height:1.5;padding:6px;background:var(--bg);border-radius:5px;border-left:2px solid '+safeColor(q.badge)+'">'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('STRENGTHS:'))+'</span> '+escH(q.strengths)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('BLINDSPOTS:'))+'</span> '+escH(q.blindspots)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('MOTIVATES:'))+'</span> '+escH(q.motivates)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('MANAGE BY:'))+'</span> '+escH(q.manages)+'</div>'
+          +'</div></div>';
+      }).join('');
+      return '<div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;min-height:560px">'+quads+'</div>';
+    }},
+    {id:'mix', label:t('Team mix'), render:function(){
+      var QUADRANTS=_discQuadrants();
+      var total=engineers.filter(function(e){return _discPlacements[e.uid];}).length;
+      if(!total) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Team mix'))+'</h2>'
+      QUADRANTS.forEach(function(q){
+        var n=engineers.filter(function(e){return _discPlacements[e.uid]===q.key;}).length;
+        var pct=Math.round(n/total*100);
+        h+='<div style="margin-bottom:5px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
+          +'<span style="color:'+safeColor(q.badge)+'">'+escH(q.key)+' — '+escH(q.label)+'</span>'
+          +'<span style="color:var(--text);font-weight:700">'+n+' <span style="color:var(--muted);font-weight:400">('+pct+'%)</span></span></div>'
+          +'<div style="background:var(--border);border-radius:2px;height:5px">'
+          +'<div style="background:'+safeColor(q.badge)+';width:'+pct+'%;height:5px;border-radius:2px"></div></div></div>'
+      });
+      return h;
+    }},
+    {id:'unprofiled', label:t('Not yet profiled'), render:function(){
+      var un=engineers.filter(function(e){return !e.planningOnly&&!_discPlacements[e.uid];});
+      if(!un.length) return '';
+      return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Not yet profiled'))+'</h2>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +un.map(function(e){
+          return '<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text)">'+escH(e.name)+'</span>';
+        }).join('')+'</div>';
+    }},
+  ];
+}
+// opens the shared export picker for DISC
+function discExportOpen(){
+  if(!Object.keys(_discPlacements).length){
+    alert(t('Profile at least one person first.')); return;
+  }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'disc',
+    title:t('DISC behavioral profile'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} profiled',{n:Object.keys(_discPlacements).length}),
+    blocks:discExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['quadrants','mix','unprofiled']},
+      {id:'quadrants', name:t('Quadrants only'), blocks:['quadrants']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'png', label:t('PNG (image)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // opens a print popup with the DISC layout

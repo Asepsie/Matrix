@@ -417,6 +417,17 @@
       </select>
       <span data-i18n="Default theme for exported PDFs/decks. Each export can override this." style="font-size:10px;color:var(--muted)">Default theme for exported PDFs/decks. Each export can override this.</span>
     </div>
+    <div class="field">
+      <label data-i18n="EXPORT BRANDING">EXPORT BRANDING</label>
+      <input type="text" id="set-export-org" placeholder="Organisation name">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <button class="sm" data-i18n="LOGO…" onclick="railPickExportLogo()">LOGO…</button>
+        <img id="set-export-logo-prev" alt="" style="height:22px;max-width:110px;object-fit:contain;display:none">
+        <button class="sm" id="set-export-logo-clear" data-i18n="CLEAR" onclick="railClearExportLogo()" style="display:none">CLEAR</button>
+        <input type="file" id="set-export-logo-input" accept="image/*" style="display:none" onchange="railLoadExportLogo(this)">
+      </div>
+      <span data-i18n="Name and logo printed on every export cover, header and footer. Stays on this machine — not part of backups." style="font-size:10px;color:var(--muted)">Name and logo printed on every export cover, header and footer. Stays on this machine — not part of backups.</span>
+    </div>
     <div class="modal-actions">
       <button class="primary" data-i18n="SAVE" onclick="railSaveSettings()">SAVE</button>
       <button data-i18n="CANCEL" onclick="railCancelSettings()">CANCEL</button>
@@ -446,6 +457,18 @@
 
 <!-- EXPORT BUILDER — drag-and-drop content/order/theme picker shared by every
      deliverable's Export button (src/core/export.js, exportOpenBuilder). -->
+<!-- GLOBAL EXPORT PICKER — the rail's Export action; hands off to the builder below -->
+
+<div id="export-picker-overlay" class="overlay">
+  <div class="modal-box" style="width:min(560px,95vw);max-height:88vh;overflow-y:auto">
+    <h2 data-i18n="EXPORT">EXPORT</h2>
+    <div id="exp-picker-list"></div>
+    <div class="modal-actions">
+      <button data-i18n="CANCEL" onclick="exportClosePicker()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
 <div id="export-builder-overlay" class="overlay">
   <div class="modal-box" style="width:min(760px,95vw);max-height:88vh;overflow-y:auto">
     <h2 id="exb-heading">EXPORT</h2>
@@ -469,7 +492,40 @@
           <option value="light">Light (print-friendly)</option>
         </select>
       </div>
+      <div class="field" id="exb-format-row" style="flex:1;min-width:170px;display:none">
+        <label>FORMAT</label>
+        <select id="exb-format" onchange="exportBuilderSetFormat(this.value)"></select>
+      </div>
+      <div class="field" id="exb-columns-row" style="flex:1;min-width:170px;display:none">
+        <label>COLUMNS</label>
+        <select id="exb-columns" onchange="exportBuilderSetColumns(this.value)"></select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="LAYOUT">LAYOUT</label>
+        <select id="exb-layout" onchange="exportBuilderSetLayout(this.value)">
+          <option value="page" data-i18n="One section per page">One section per page</option>
+          <option value="flow" data-i18n="Continuous flow">Continuous flow</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="PAPER">PAPER</label>
+        <select id="exb-paper" onchange="exportBuilderSetPaper(this.value)"></select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="COVER PAGE">COVER PAGE</label>
+        <!-- a plain div, not a nested <label> — `.field label` styling would
+             otherwise apply to it and blow the row apart -->
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding-top:5px">
+          <!-- explicit width: `.field input` sets width:100%, which stretches a
+               bare checkbox across the whole field and pushes its text off-panel -->
+          <input type="checkbox" id="exb-cover" checked onchange="exportBuilderSetCover(this.checked)"
+            style="accent-color:var(--accent);flex:0 0 auto;width:14px;height:14px;min-width:0;margin:0">
+          <span data-i18n="Include a title cover">Include a title cover</span>
+        </div>
+      </div>
     </div>
+    <!-- per-deliverable extra controls (People Analytics scope/dimensions/chart) -->
+    <div id="exb-controls" style="display:none;gap:12px;flex-wrap:wrap"></div>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
         <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:4px">AVAILABLE — drag or click to add</div>
@@ -481,6 +537,17 @@
         <div id="exb-included" class="exb-list" ondragover="exportBuilderDragOver(event)" ondrop="exportBuilderDrop(event,'included')"
           style="min-height:120px;border:1px dashed var(--accent);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span data-i18n="PREVIEW" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">PREVIEW</span>
+        <span id="exb-preview-note" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim)"></span>
+      </div>
+      <!-- srcdoc executes inline script: exportHTML() is script-free by design
+           (autoprint was removed engine-wide) and sandbox withholds allow-scripts
+           so it stays that way — see export.js › exportBuilderRenderPreview -->
+      <iframe id="exb-preview" sandbox="allow-same-origin" title="Export preview"
+        style="width:100%;height:260px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></iframe>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <input type="text" id="exb-tpl-name" placeholder="Save current selection as…"
@@ -962,8 +1029,7 @@
       <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" data-i18n-title="Show nine-box rating & recommended next move on each card" title="Show nine-box rating &amp; recommended next move on each card" data-i18n="◔ DETAILS: OFF">◔ DETAILS: OFF</button>
 
       <div style="flex:1"></div>
-      <button class="sm" onclick="orgExportSVG()" data-i18n-title="Download SVG" title="Download SVG">↓ SVG</button>
-      <button class="sm" onclick="orgExportPNG()" data-i18n-title="Download PNG" title="Download PNG">↓ PNG</button>
+      <button class="sm" onclick="orgExportOpen()" data-i18n-title="Export the org chart" title="Export the org chart">📄 EXPORT</button>
 
 
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
@@ -1036,8 +1102,7 @@
   <div id="brief-header">
     <span id="brief-title">📄 PROJECT BRIEF</span>
     <div style="flex:1"></div>
-    <button class="sm primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
-    <button class="sm" onclick="exportProjectBriefHTML()">↓ HTML</button>
+    <button class="sm primary" onclick="exportProjectBriefOpen()">📄 EXPORT</button>
     <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="brief-body">
@@ -1057,17 +1122,6 @@
       </section>
 
       <div class="brief-2col">
-        <section class="brief-sec">
-          <div class="brief-sec-title">SECTIONS TO INCLUDE</div>
-          <div class="brief-opts">
-            <label class="brief-opt"><input type="checkbox" id="brief-include-team" checked> Team allocation</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-risks"> Project risks</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-todos" checked> Open todos</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-milestones" checked> Milestones</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-actions" checked> Actions / Gantt</label>
-          </div>
-        </section>
-
         <section class="brief-sec">
           <div class="brief-sec-title">ALLOCATION PERIOD</div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">

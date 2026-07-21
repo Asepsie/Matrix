@@ -733,9 +733,12 @@ body{padding-left:var(--rail);}
    closing the current view, so at z-index:200 they'd render hidden behind an open
    Resources/Org panel. Above the rail (z-index:1000) too, and inset so the rail
    stays visible. */
-#settings-overlay, #landing-firstrun, #export-builder-overlay{
+#settings-overlay, #landing-firstrun, #export-builder-overlay, #export-picker-overlay{
   z-index:1100; left:var(--rail);
 }
+/* the picker hands off to the builder, so the builder must sit ABOVE it */
+#export-builder-overlay{ z-index:1110; }
+#export-picker-overlay .exp-pick:hover{ border-color:var(--accent); }
 /* ►► CHARTER ◄◄ Now two rail-inset PANELS (like Design-to-cost), not full-cover
  * modals: #cht-overlay = "Financials analysis" (overview/demands/financials tabs)
  * and #dec-overlay = "Trade-off decision" (the configurable triangle(s) + lists).
@@ -1683,6 +1686,17 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
         <option value="light" data-i18n="Light — print-friendly paper theme">Light — print-friendly paper theme</option>
       </select>
       <span data-i18n="Default theme for exported PDFs/decks. Each export can override this." style="font-size:10px;color:var(--muted)">Default theme for exported PDFs/decks. Each export can override this.</span>
+    </div>
+    <div class="field">
+      <label data-i18n="EXPORT BRANDING">EXPORT BRANDING</label>
+      <input type="text" id="set-export-org" placeholder="Organisation name">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <button class="sm" data-i18n="LOGO…" onclick="railPickExportLogo()">LOGO…</button>
+        <img id="set-export-logo-prev" alt="" style="height:22px;max-width:110px;object-fit:contain;display:none">
+        <button class="sm" id="set-export-logo-clear" data-i18n="CLEAR" onclick="railClearExportLogo()" style="display:none">CLEAR</button>
+        <input type="file" id="set-export-logo-input" accept="image/*" style="display:none" onchange="railLoadExportLogo(this)">
+      </div>
+      <span data-i18n="Name and logo printed on every export cover, header and footer. Stays on this machine — not part of backups." style="font-size:10px;color:var(--muted)">Name and logo printed on every export cover, header and footer. Stays on this machine — not part of backups.</span>
     </div>
     <div class="modal-actions">
       <button class="primary" data-i18n="SAVE" onclick="railSaveSettings()">SAVE</button>
@@ -3792,8 +3806,12 @@ function applyAssigneeSelect(raw,ownerField,v){
  *                              paper). opts.theme overrides the Settings default.
  *       exportField(l,v)    — XSS-safe "label: value" row.
  *       exportHTML(spec)    — full standalone document string (cover + pages +
- *                              running footer). Pure — does not open a window.
- *       exportOpen(spec)    — exportHTML() + window.open + autoprint trigger.
+ *                              running footer + a manual "Print / Save as PDF"
+ *                              button). Pure — does not open a window.
+ *       exportOpen(spec)    — exportHTML() + window.open. No auto-print — the
+ *                              user clicks the button when ready (a surprise
+ *                              print dialog on every export was the original
+ *                              design; removed per user feedback).
  *
  *  2. THE BUILDER — the drag-and-drop "what goes in, in what order, which theme"
  *     picker a deliverable opens instead of calling exportOpen directly.
@@ -3818,6 +3836,7 @@ function applyAssigneeSelect(raw,ownerField,v){
 
 var EXPORT_PREFS_KEY='eim_export_prefs';        // tiny UI-only key — org name/logo/theme, NOT app state/backups
 var EXPORT_TEMPLATES_KEY='eim_export_templates'; // { [deliverableId]: [{id,name,blocks:[blockId,...]}] } — custom templates only
+var EXPORT_LAST_KEY='eim_export_last';           // { [deliverableId]: {included,theme,format,columns,layout,paper,cover} } — "what I picked last time"
 
 // load persisted export branding prefs (org name + optional logo dataURL + default theme)
 function exportLoadPrefs(){
@@ -3853,6 +3872,44 @@ function exportSaveCustomTemplates(deliverableId,list){
     var all=JSON.parse(localStorage.getItem(EXPORT_TEMPLATES_KEY)||'null')||{};
     all[deliverableId]=list||[];
     localStorage.setItem(EXPORT_TEMPLATES_KEY,JSON.stringify(all));
+  }catch(e){}
+}
+
+/* Per-deliverable "last used" selection. Distinct from a saved TEMPLATE: a
+ * template is something the user deliberately named and can re-apply; this is
+ * the implicit memory that stops the builder from resetting every single choice
+ * on every open (block selection AND theme/format/columns/layout/paper/cover).
+ * Same UI-only storage tier as the prefs above — never app state or backups.
+ * Stored per deliverableId so the exec pack and the profiles dashboard don't
+ * fight over one another's paper size. */
+function exportLoadLast(deliverableId){
+  try{
+    var all=JSON.parse(localStorage.getItem(EXPORT_LAST_KEY)||'null')||{};
+    var s=all[deliverableId];
+    if(!s||typeof s!=='object') return null;
+    return {
+      included: Array.isArray(s.included)?s.included.slice():null,
+      theme: (s.theme==='app'||s.theme==='light')?s.theme:null,
+      format: typeof s.format==='string'?s.format:null,
+      columns: typeof s.columns==='number'?s.columns:null,
+      layout: (s.layout==='page'||s.layout==='flow')?s.layout:null,
+      paper: typeof s.paper==='string'?s.paper:null,
+      cover: typeof s.cover==='boolean'?s.cover:null,
+      controls: (s.controls&&typeof s.controls==='object'&&!Array.isArray(s.controls))?s.controls:null
+    };
+  }catch(e){ return null; }
+}
+function exportSaveLast(deliverableId,sel){
+  if(!deliverableId||!sel) return;
+  try{
+    var all=JSON.parse(localStorage.getItem(EXPORT_LAST_KEY)||'null')||{};
+    all[deliverableId]={
+      included: Array.isArray(sel.included)?sel.included.slice():[],
+      theme: sel.theme, format: sel.format, columns: sel.columns,
+      layout: sel.layout, paper: sel.paper, cover: sel.cover,
+      controls: (sel.controls&&typeof sel.controls==='object')?sel.controls:undefined
+    };
+    localStorage.setItem(EXPORT_LAST_KEY,JSON.stringify(all));
   }catch(e){}
 }
 
@@ -3907,6 +3964,7 @@ var EXPORT_PRINT_CSS=
   +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}'
   +'.export-page{page-break-after:always;break-after:page}'
   +'.export-page:last-child{page-break-after:avoid;break-after:avoid}'
+  +'.no-print{display:none!important}'
   +'}';
 
 // XSS-safe "label: value" row — escapes both sides internally so a deliverable
@@ -3916,10 +3974,32 @@ function exportField(label,value){
     +'<span class="ex-field-v">'+escH(value==null||value===''?'—':String(value))+'</span></div>';
 }
 
-// builds the full standalone document (cover + running footer + pages) as a string.
-// Pure — never opens a window or touches state. spec:
-//   { title, subtitle, brand, pages:[html,...], orientation:'portrait'|'landscape' }
-function exportHTML(spec){
+// The date every deliverable stamps, in the user's active app language
+// (was hardcoded 'en' — wrong for the FR/ZH locales the app already supports).
+function exportDateStr(d){
+  return i18nDate(d||new Date(),{year:'numeric',month:'long',day:'numeric'});
+}
+
+/* exportHTMLParts(spec) — the document split into its {css, body} halves.
+ *
+ * Exists because exportRasterize/exportToSVG need exactly those two pieces to
+ * build a foreignObject wrapper, and used to obtain them by REGEX-SCRAPING the
+ * finished document string they had just been handed (`<style>(...)</style>` —
+ * which silently captured only the FIRST style block). Building both consumers
+ * from the same parts removes that round-trip entirely.
+ *
+ * spec: { title, subtitle, brand, pages:[html,...],
+ *         orientation:'portrait'|'landscape', pageSize:'A4'|'A3',
+ *         layout:'page'|'flow', cover:bool }
+ *
+ *  - layout 'page' (default, and what every existing deliverable gets): each
+ *    entry in `pages` is one printed page, numbered "N / M".
+ *  - layout 'flow': the pages run continuously down one document, each kept
+ *    off a page boundary with break-inside:avoid. For short sections this is
+ *    the difference between a 2-page pack and a 6-page one with four
+ *    near-empty pages — the old behaviour had no way to avoid the latter.
+ */
+function exportHTMLParts(spec){
   var s=spec||{};
   var brand=s.brand||exportBrand();
   var V=brand.palette;
@@ -3927,68 +4007,311 @@ function exportHTML(spec){
   var title=s.title||'Export';
   var subtitle=s.subtitle||'';
   var orientation=s.orientation==='landscape'?'landscape':'portrait';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
+  var pageSize=s.pageSize==='A3'?'A3':'A4';
+  var layout=s.layout==='flow'?'flow':'page';
+  var showCover=s.cover!==false;
+  var dateStr=exportDateStr();
 
   var logoHTML=brand.logo
     ?'<img src="'+escH(brand.logo)+'" alt="" style="height:30px;max-width:140px;object-fit:contain">'
     :'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;letter-spacing:.08em;color:'+safeColor(V.accent)+'">'+escH(brand.name)+'</div>';
 
-  var coverHTML='<div class="export-page" style="display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:70vh;text-align:center;gap:6px">'
-    +logoHTML
-    +'<h1 style="font-size:26px;font-weight:700;margin:16px 0 4px;color:'+safeColor(V.text)+'">'+escH(title)+'</h1>'
-    +(subtitle?'<div style="font-size:13px;color:'+safeColor(V.muted)+'">'+escH(subtitle)+'</div>':'')
-    +'<div style="margin-top:20px;font-family:IBM Plex Mono,monospace;font-size:10px;color:'+safeColor(V.muted)+'">'+escH(dateStr)+'</div>'
-    +'</div>';
+  var coverHTML=showCover
+    ?'<div class="export-page ex-cover" style="display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:70vh;text-align:center;gap:6px">'
+      +logoHTML
+      +'<h1 style="font-size:26px;font-weight:700;margin:16px 0 4px;color:'+safeColor(V.text)+'">'+escH(title)+'</h1>'
+      +(subtitle?'<div style="font-size:13px;color:'+safeColor(V.muted)+'">'+escH(subtitle)+'</div>':'')
+      +'<div style="margin-top:20px;font-family:IBM Plex Mono,monospace;font-size:10px;color:'+safeColor(V.muted)+'">'+escH(dateStr)+'</div>'
+      +'</div>'
+    :'';
 
-  var body=coverHTML+pages.map(function(p){ return '<div class="export-page">'+p+'</div>'; }).join('');
+  /* The per-page running head. Chromium does NOT support CSS `@page` margin
+   * boxes, so `counter(page)` is unavailable and a genuine browser-generated
+   * "page N of M" is impossible. In 'page' layout each `.export-page` IS
+   * exactly one printed sheet, so the number is stamped at build time instead
+   * — accurate by construction. In 'flow' layout page boundaries are decided
+   * by the browser, so no number is claimed rather than printing a wrong one. */
+  var total=pages.length;
+  var head=function(n){
+    return '<div class="ex-pagehead"><span>'+escH(brand.name)+' — '+escH(title)+'</span>'
+      +(layout==='page'&&total>1?'<span>'+escH(n)+' / '+escH(total)+'</span>':'<span></span>')
+      +'</div>';
+  };
 
-  var footer='<div class="ex-foot" style="font-size:9px;color:'+safeColor(V.muted)+';display:flex;justify-content:space-between;'
-    +'font-family:IBM Plex Mono,monospace;margin-top:14px;padding-top:8px;border-top:1px solid '+safeColor(V.border)+'">'
+  var body;
+  if(layout==='flow'){
+    body=coverHTML+'<div class="export-page">'+head(1)
+      +pages.map(function(p){ return '<section class="ex-block">'+p+'</section>'; }).join('')
+      +'</div>';
+  } else {
+    body=coverHTML+pages.map(function(p,i){
+      return '<div class="export-page">'+head(i+1)+p+'</div>';
+    }).join('');
+  }
+
+  // The footer genuinely REPEATS now. It used to be a single div appended after
+  // the last page, so it printed once, at the very bottom of the document —
+  // despite being documented as a "running footer". A fixed-position element is
+  // the one mechanism Chromium repeats on every printed sheet.
+  var footer='<div class="ex-foot">'
     +'<span>'+escH(brand.name)+' — '+escH(title)+'</span><span>'+escH(dateStr)+'</span></div>';
 
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH(title)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
+  // manual print trigger — replaces the old auto-popped print dialog (surprised
+  // users the moment a tab opened). .no-print keeps it off the printed output itself.
+  var printBtn='<button class="no-print" onclick="window.print()" '
+    +'style="position:fixed;top:14px;right:14px;z-index:10;font-family:IBM Plex Mono,monospace;font-size:11px;'
+    +'padding:7px 14px;border-radius:6px;cursor:pointer;background:'+safeColor(V.accent)+';color:'+safeColor(V.bg)+';border:none;font-weight:700">'
+    +'🖨 '+escH(t('Print / Save as PDF'))+'</button>';
+
+  var css='*{box-sizing:border-box;margin:0;padding:0;overflow-wrap:break-word;word-break:break-word}'
     +'html,body{background:'+safeColor(V.bg)+';color:'+safeColor(V.text)+';font-family:Arial,Helvetica,sans-serif;padding:24px}'
     +':root{--bg:'+safeColor(V.bg)+';--surface:'+safeColor(V.surface)+';--border:'+safeColor(V.border)+';--text:'+safeColor(V.text)
     +';--muted:'+safeColor(V.muted)+';--dim:'+safeColor(V.dim)+';--accent:'+safeColor(V.accent)+';--accent2:'+safeColor(V.accent2)
     +';--danger:'+safeColor(V.danger)+';--warn:'+safeColor(V.warn)+'}'
-    +'.export-page{max-width:920px;margin:0 auto 20px}'
+    // A3 pages (currently just the profiles dashboard's multi-column card grid) get a much
+    // wider page — 920px split across 4-5 columns is what made that grid look "small and
+    // tight" (real user complaint): field values wrapped mid-word for lack of room, even
+    // after the equal-column bug above was fixed. A4 (every single-column deliverable) is
+    // unaffected. 1600px matches the PNG/SVG raster width already used for this deliverable.
+    +'.export-page{max-width:'+(pageSize==='A3'?'1600px':'920px')+';margin:0 auto 20px}'
+    +'.ex-pagehead{display:flex;justify-content:space-between;font-family:IBM Plex Mono,monospace;font-size:9px;'
+    +'color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:12px}'
+    +'.ex-cover .ex-pagehead{display:none}'
+    // keeps a section off a page boundary in flow layout — the whole point of the mode
+    +'.ex-block{break-inside:avoid;page-break-inside:avoid;margin-bottom:22px}'
+    +'.ex-block:last-child{margin-bottom:0}'
+    +'.ex-foot{font-size:9px;color:var(--muted);display:flex;justify-content:space-between;'
+    +'font-family:IBM Plex Mono,monospace;margin-top:14px;padding-top:8px;border-top:1px solid var(--border)}'
     +'.ex-field{display:flex;gap:8px;font-size:11px;margin-bottom:2px}'
     +'.ex-field-l{color:var(--muted);min-width:120px;flex-shrink:0}'
     +'.ex-field-v{color:var(--text)}'
     +EXPORT_PRINT_CSS
-    +'@media print{@page{size:A4 '+orientation+';margin:14mm}}'
-    +'</style></head><body>'
-    +body
-    +footer
-    +'</body></html>';
+    // the footer only becomes a true running footer in print; body gains the
+    // matching bottom padding so it never sits on top of the last lines.
+    +'@media print{@page{size:'+pageSize+' '+orientation+';margin:14mm}'
+    +'body{padding-bottom:16mm}'
+    +'.ex-foot{position:fixed;bottom:0;left:0;right:0;background:var(--bg);padding:5px 14mm 8px;margin:0}}';
+
+  return {css:css, body:printBtn+body+footer, title:title, brand:brand};
 }
 
-// exportOpen(spec) — builds the document, opens it in a new tab, and (unless
-// spec.autoprint===false) triggers window.print. Split-token '<scr'+'ipt>' —
-// build.js invariant #1, no literal script-close tag in a JS string.
+// builds the full standalone document (cover + running head/foot + pages) as a
+// string. Pure — never opens a window or touches state. See exportHTMLParts for
+// the spec shape.
+function exportHTML(spec){
+  var p=exportHTMLParts(spec);
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH(p.title)+'</title>'
+    +'<style>'+p.css+'</style></head><body>'+p.body+'</body></html>';
+}
+
+// exportOpen(spec) — builds the document and opens it in a new tab. No more
+// auto-triggered print (removed — it surprised users with a print dialog the
+// instant an export tab opened); the tab now shows a themed preview with an
+// explicit "Print / Save as PDF" button (see exportHTML's printBtn) instead.
 function exportOpen(spec){
   var s=spec||{};
   var win=window.open('','_blank');
   if(!win){ alert(t('Pop-up blocked — please allow pop-ups.')); return null; }
   win.document.write(exportHTML(s));
-  if(s.autoprint!==false)
-    win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,450);});<\/script>');
   win.document.close();
   return win;
 }
 
-/* ── THE BUILDER — drag-and-drop content/order/theme picker ──────────────────
+// downloads arbitrary text/blob content as a file — the one place every format
+// (HTML/PNG/SVG) triggers a browser download from, instead of each deliverable
+// hand-rolling its own Blob+<a>+click.
+function exportDownloadBlob(content,mime,filename){
+  var blob=content instanceof Blob?content:new Blob([content],{type:mime});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+}
+
+/* Measures an exportHTML() document by rendering it into a hidden iframe and
+ * calls back with {css, body, height}. Shared by the PNG and SVG paths, which
+ * previously each hand-rolled the same iframe + fixed-setTimeout dance AND
+ * regex-scraped the CSS/body back out of the finished document string.
+ *
+ * The old fixed 200/300ms waits were a guess — a slow machine or an unloaded
+ * webfont measured a wrong height and silently produced a clipped image. This
+ * waits on document.fonts.ready (with its own timeout, since a hung font load
+ * must not hang the export) before measuring.
+ */
+function _exportMeasure(spec,width,cb){
+  var parts=exportHTMLParts(spec);
+  // .no-print covers the print button; the captured image is the deliverable,
+  // not the interactive affordance around it.
+  var css=parts.css+'.no-print{display:none!important}';
+  var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'+parts.body+'</body></html>';
+
+  var iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+width+'px;height:10px;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(doc);
+  iframe.contentDocument.close();
+
+  var done=false;
+  var finish=function(){
+    if(done) return; done=true;
+    var h=0;
+    try{ h=iframe.contentDocument.body.scrollHeight; }catch(e){}
+    try{ document.body.removeChild(iframe); }catch(e){}
+    cb({css:css, body:parts.body, height:h||600});
+  };
+  var fonts=null;
+  try{ fonts=iframe.contentDocument.fonts; }catch(e){}
+  if(fonts&&fonts.ready&&typeof fonts.ready.then==='function'){
+    fonts.ready.then(function(){ setTimeout(finish,60); },finish);
+    setTimeout(finish,2500);   // a hung font load must not hang the export
+  } else {
+    setTimeout(finish,350);
+  }
+}
+
+// Chromium refuses to allocate a canvas past these limits and hands back a
+// blank one (or null from toBlob) with no error — a tall multi-page pack at
+// width 1600 x scale 2 crosses the area cap easily. Scale down instead of
+// silently producing a corrupt file.
+var EXPORT_MAX_CANVAS_DIM=16384;
+var EXPORT_MAX_CANVAS_AREA=268435456;
+function _exportSafeScale(w,h,want){
+  var scale=want||2;
+  scale=Math.min(scale, EXPORT_MAX_CANVAS_DIM/Math.max(w,h));
+  scale=Math.min(scale, Math.sqrt(EXPORT_MAX_CANVAS_AREA/(w*h)));
+  return Math.max(0.5, scale);
+}
+
+// exportRasterize(spec, opts) — renders an export document to a PNG via a
+// hidden iframe → SVG foreignObject → canvas, generalised from what used to be
+// profiles.js's exportProfilesDashboardPNG (one copy, reused by every
+// deliverable's PNG format option). opts: {width, filenameBase, bg, onerror}.
+// Best-effort — some browsers block foreignObject→canvas for security
+// (tainted canvas); onerror lets the caller fall back (e.g. to HTML download).
+function exportRasterize(spec,opts){
+  var o=opts||{};
+  var width=o.width||1600;
+  var filenameBase=o.filenameBase||'export';
+  var bg=o.bg||'#0f0f11';
+  var fail=function(){
+    if(o.onerror) o.onerror();
+    else alert(t('PNG export is limited by browser security. Try the HTML or PDF format instead.'));
+  };
+
+  _exportMeasure(spec,width,function(m){
+    var h=m.height;
+    var svgStr='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+h+'">'
+      +'<foreignObject width="'+width+'" height="'+h+'">'
+      +'<body xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:16px;background:'+safeColor(bg,'#0f0f11')+'">'
+      +'<style>'+m.css+'</style>'
+      +m.body
+      +'</body></foreignObject></svg>';
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var scale=_exportSafeScale(width,h,2);
+        var canvas=document.createElement('canvas');
+        canvas.width=Math.floor(width*scale);canvas.height=Math.floor(h*scale);
+        var cctx=canvas.getContext('2d');
+        cctx.scale(scale,scale);
+        cctx.drawImage(img,0,0);
+        canvas.toBlob(function(blob){
+          // toBlob hands back null when the canvas could not be allocated or
+          // is tainted. Unchecked, exportDownloadBlob wrapped that null into a
+          // Blob containing the literal text "null" and downloaded it as .png.
+          if(!blob){ fail(); return; }
+          exportDownloadBlob(blob,'image/png',filenameBase+'.png');
+        },'image/png');
+      }catch(e){ fail(); }
+    };
+    img.onerror=fail;
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
+  });
+}
+
+// exportToSVG(spec, opts) — wraps an export document as a standalone SVG
+// (foreignObject), generalised from profileExportSVG/exportProfilesDashboardSVG.
+// opts: {width, filenameBase, bg}.
+function exportToSVG(spec,opts){
+  var o=opts||{};
+  var width=o.width||488;
+  var filenameBase=o.filenameBase||'export';
+  var bg=safeColor(o.bg||'#0f0f11','#0f0f11');
+
+  _exportMeasure(spec,width,function(m){
+    var h=m.height+40;
+    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
+      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+      +' width="'+width+'" height="'+h+'">\n'
+      +'<rect width="'+width+'" height="'+h+'" fill="'+bg+'"/>\n'
+      +'<foreignObject x="0" y="0" width="'+width+'" height="'+h+'">\n'
+      +'<body xmlns="http://www.w3.org/1999/xhtml"'
+      +' style="margin:0;padding:24px;background:'+bg+';font-family:Arial,sans-serif;'
+      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
+      +'<style>'+m.css+'</style>\n'
+      +m.body
+      +'\n</body>\n'
+      +'</foreignObject>\n'
+      +'</svg>';
+    exportDownloadBlob(svgStr,'image/svg+xml;charset=utf-8',filenameBase+'.svg');
+  });
+}
+
+/* ── THE BUILDER — drag-and-drop content/order/theme/format picker ───────────
  * One modal (#export-builder-overlay in index.html) shared by every deliverable.
  * A deliverable calls exportOpenBuilder({deliverableId, title, subtitleDefault,
- * blocks, ctx, builtinTemplates}) instead of exportOpen() directly; the user
+ * blocks, ctx, builtinTemplates, formats, columns, composeRender, orientation,
+ * pageSize, filename, rasterWidth}) instead of exportOpen() directly; the user
  * picks a template (or freely drags blocks between Available/Included), sets
- * the theme, optionally saves their selection as a new named template, then
- * hits Export — which finally calls exportOpen() with the chosen pages.
+ * the theme/format/columns, optionally saves their selection as a named
+ * template, then hits Export.
+ *
+ * Two block-composition modes (a deliverable picks ONE by whether it passes
+ * `composeRender`):
+ *  - default (exec.js) — each included block IS one page: pages=included.map(
+ *    id => block.render(ctx)). Good when blocks are independent report
+ *    sections (scorecard/spend/burn/…).
+ *  - composeRender(includedIds, ctx) (profiles.js) — the deliverable gets the
+ *    ordered included-id list itself and builds pages however it needs to
+ *    (e.g. one page of MANY cards, each card honouring the SAME included
+ *    field list) — for content that isn't "one block = one page" but "one
+ *    block = one field-group toggle applied uniformly per entity". Must
+ *    return a string (one page) or an array of strings (pages).
+ *
+ * formats:[{id,label}] (default just PDF) adds a FORMAT select; 'pdf' opens
+ * exportOpen, 'html' downloads exportHTML() as a file, 'png'/'svg' rasterize
+ * via exportRasterize/exportToSVG. columns:{default,options:[...]} adds a
+ * COLUMNS select and exposes the chosen value as ctx.columns to render/
+ * composeRender — for grid-style deliverables (the profiles dashboard).
  */
-var _exportBuilderState=null;   // { deliverableId, title, subtitle, theme, blocks, ctx, templates, selectedTemplateId, included }
+var _exportBuilderState=null;   // see exportOpenBuilder for the shape
 var _exportDragId=null;         // fallback for browsers that restrict dataTransfer reads outside 'drop'
+var _exportPreviewTimer=null;
+
+// The four paper choices, as one id so a single select drives both @page
+// dimensions. Deliverables still pass orientation/pageSize (unchanged API);
+// this just gives the USER the control they never had — the exec pack could
+// not be landscaped at all before, whatever the content needed.
+var EXPORT_PAPERS=[
+  {id:'a4p', pageSize:'A4', orientation:'portrait'},
+  {id:'a4l', pageSize:'A4', orientation:'landscape'},
+  {id:'a3p', pageSize:'A3', orientation:'portrait'},
+  {id:'a3l', pageSize:'A3', orientation:'landscape'}
+];
+function exportPaperLabel(p){
+  return p.pageSize+' '+(p.orientation==='landscape'?t('landscape'):t('portrait'));
+}
+function exportPaperById(id){
+  for(var i=0;i<EXPORT_PAPERS.length;i++) if(EXPORT_PAPERS[i].id===id) return EXPORT_PAPERS[i];
+  return EXPORT_PAPERS[0];
+}
+function exportPaperIdFor(pageSize,orientation){
+  return (pageSize==='A3'?'a3':'a4')+(orientation==='landscape'?'l':'p');
+}
 
 function exportOpenBuilder(spec){
   var s=spec||{};
@@ -3998,16 +4321,45 @@ function exportOpenBuilder(spec){
   var templates=builtins.concat(custom);
   var first=templates[0];
   var blocks=s.blocks||[];
+  var known=function(id){ return blocks.some(function(b){return b.id===id;}); };
+  var formats=(s.formats&&s.formats.length)?s.formats:[{id:'pdf',label:t('PDF (print)')}];
+  var columnsConfig=s.columns||null;
+  var last=exportLoadLast(s.deliverableId);
+
+  // The deliverable's own defaults, then whatever the user last chose for THIS
+  // deliverable on top. Without this the builder threw away every choice on
+  // close, so anyone exporting the same pack twice re-did the whole picker.
+  var defPaper=exportPaperIdFor(s.pageSize,s.orientation);
+  var included=first?first.blocks.filter(known):blocks.map(function(b){return b.id;});
+  var selectedTemplateId=first?first.id:null;
+  if(last&&last.included&&last.included.length){
+    var restored=last.included.filter(known);
+    // a build that renamed/removed blocks must not resurrect dead ids, and an
+    // empty result means the registry changed enough that the default is safer
+    if(restored.length){ included=restored; selectedTemplateId=null; }
+  }
+
   _exportBuilderState={
     deliverableId: s.deliverableId,
     title: s.title||'Export',
     subtitle: s.subtitleDefault||'',
-    theme: prefs.theme,
+    theme: (last&&last.theme)||prefs.theme,
+    format: (last&&last.format&&formats.some(function(f){return f.id===last.format;}))?last.format:formats[0].id,
+    formats: formats,
+    columnsConfig: columnsConfig,
+    columns: columnsConfig?((last&&last.columns&&columnsConfig.options.indexOf(last.columns)>=0)?last.columns:columnsConfig.default):null,
+    layout: (last&&last.layout)||(s.layout==='flow'?'flow':'page'),
+    paper: (last&&last.paper)||defPaper,
+    cover: (last&&typeof last.cover==='boolean')?last.cover:(s.cover!==false),
+    controlsSpec: s.controls||null,
+    controlValues: (last&&last.controls&&typeof last.controls==='object')?Object.assign({},last.controls):{},
     blocks: blocks,
     ctx: s.ctx||{},
     templates: templates,
-    selectedTemplateId: first?first.id:null,
-    included: first?first.blocks.filter(function(id){return blocks.some(function(b){return b.id===id;});}):blocks.map(function(b){return b.id;}),
+    selectedTemplateId: selectedTemplateId,
+    included: included,
+    composeRender: typeof s.composeRender==='function'?s.composeRender:null,
+    filename: s.filename, rasterWidth: s.rasterWidth,
   };
   exportBuilderRenderAll();
   var ov=G('export-builder-overlay'); if(ov) ov.classList.add('show');
@@ -4019,9 +4371,109 @@ function exportBuilderRenderAll(){
   var ti=G('exb-title'); if(ti) ti.value=st.title;
   var su=G('exb-subtitle'); if(su) su.value=st.subtitle;
   var th=G('exb-theme'); if(th) th.value=st.theme;
+
+  var fmtRow=G('exb-format-row'), fmtSel=G('exb-format');
+  if(fmtRow) fmtRow.style.display=st.formats.length>1?'':'none';
+  if(fmtSel){
+    fmtSel.innerHTML=st.formats.map(function(f){return '<option value="'+escH(f.id)+'">'+escH(f.label)+'</option>';}).join('');
+    fmtSel.value=st.format;
+  }
+
+  var colRow=G('exb-columns-row'), colSel=G('exb-columns');
+  if(colRow) colRow.style.display=st.columnsConfig?'':'none';
+  if(colSel&&st.columnsConfig){
+    colSel.innerHTML=st.columnsConfig.options.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+    colSel.value=st.columns;
+  }
+
+  var lay=G('exb-layout'); if(lay) lay.value=st.layout;
+  var pap=G('exb-paper');
+  if(pap){
+    pap.innerHTML=EXPORT_PAPERS.map(function(p){
+      return '<option value="'+p.id+'">'+escH(exportPaperLabel(p))+'</option>';
+    }).join('');
+    pap.value=st.paper;
+  }
+  var cov=G('exb-cover'); if(cov) cov.checked=!!st.cover;
+
+  exportBuilderRenderControls();
   exportBuilderRenderTemplateSelect();
   exportBuilderRenderLists();
 }
+
+/* Per-deliverable EXTRA controls — the generic version of what `columns` does
+ * for one deliverable. A spec passes `controls:` either as an array or, when
+ * one control's options depend on another's value, as a FUNCTION of the current
+ * values that is re-evaluated on every change:
+ *
+ *   controls:[{id, label, type:'select'|'toggle', options:[{v,label}], value}]
+ *   controls:function(values){ return [ ...same shape... ]; }
+ *
+ * Chosen values are merged into `ctx` (both spread directly — ctx.scope — and
+ * under ctx.controls) and persisted with the rest of the last-used selection.
+ * The function form is what lets People Analytics offer dimension A × B ×
+ * chart-template pickers, where the available templates depend on the two
+ * dimensions already chosen.
+ *
+ * NB the spread means a control id shadows a ctx key of the same name — avoid
+ * `theme`/`columns`/`layout`, which the builder already writes.
+ */
+function exportBuilderControls(){
+  var st=_exportBuilderState; if(!st||!st.controlsSpec) return [];
+  var list=(typeof st.controlsSpec==='function')
+    ? st.controlsSpec(st.controlValues||{})
+    : st.controlsSpec;
+  list=list||[];
+  // Clamp each value to something the control can actually represent: a stale
+  // last-used value (or one invalidated by another control changing) falls back
+  // to the spec's own default rather than silently rendering nothing.
+  list.forEach(function(c){
+    var cur=st.controlValues[c.id];
+    var ok;
+    if(c.type==='toggle') ok=(typeof cur==='boolean');
+    else ok=(cur!=null)&&(c.options||[]).some(function(o){return String(o.v)===String(cur);});
+    if(!ok) st.controlValues[c.id]=c.value;
+  });
+  return list;
+}
+function exportBuilderRenderControls(){
+  var wrap=G('exb-controls'); if(!wrap) return;
+  var st=_exportBuilderState;
+  var list=exportBuilderControls();
+  if(!st||!list.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  wrap.style.display='flex';   // explicit: clearing the inline style would fall back to block
+  wrap.innerHTML=list.map(function(c){
+    var val=st.controlValues[c.id];
+    if(c.type==='toggle'){
+      return '<div class="field" style="flex:1;min-width:170px"><label>'+escH(c.label)+'</label>'
+        +'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding-top:5px">'
+        +'<input type="checkbox" data-cid="'+escH(c.id)+'"'+(val?' checked':'')
+        +' onchange="exportBuilderSetControl(this,this.checked)"'
+        +' style="accent-color:var(--accent);flex:0 0 auto;width:14px;height:14px;min-width:0;margin:0">'
+        +'<span>'+escH(c.hint||'')+'</span></div></div>';
+    }
+    return '<div class="field" style="flex:1;min-width:170px"><label>'+escH(c.label)+'</label>'
+      +'<select data-cid="'+escH(c.id)+'" onchange="exportBuilderSetControl(this,this.value)">'
+      +(c.options||[]).map(function(o){
+        return '<option value="'+escH(o.v)+'"'+(String(o.v)===String(val)?' selected':'')+'>'+escH(o.label)+'</option>';
+      }).join('')
+      +'</select></div>';
+  }).join('');
+}
+// element-based (id read off data-cid), same rule as the block chips
+function exportBuilderSetControl(el,value){
+  var st=_exportBuilderState; if(!st) return;
+  var id=el&&el.getAttribute?el.getAttribute('data-cid'):null; if(!id) return;
+  st.controlValues[id]=value;
+  // re-render: a dependent control's option list may have just changed
+  exportBuilderRenderControls();
+  exportBuilderSchedulePreview();
+}
+function exportBuilderSetFormat(v){ if(_exportBuilderState) _exportBuilderState.format=v; exportBuilderSchedulePreview(); }
+function exportBuilderSetColumns(v){ if(_exportBuilderState) _exportBuilderState.columns=+v; exportBuilderSchedulePreview(); }
+function exportBuilderSetLayout(v){ if(_exportBuilderState) _exportBuilderState.layout=(v==='flow'?'flow':'page'); exportBuilderSchedulePreview(); }
+function exportBuilderSetPaper(v){ if(_exportBuilderState) _exportBuilderState.paper=exportPaperById(v).id; exportBuilderSchedulePreview(); }
+function exportBuilderSetCover(v){ if(_exportBuilderState) _exportBuilderState.cover=!!v; exportBuilderSchedulePreview(); }
 
 function exportBuilderRenderTemplateSelect(){
   var st=_exportBuilderState; if(!st) return;
@@ -4035,14 +4487,26 @@ function exportBuilderRenderTemplateSelect(){
   if(del) del.style.display=(sel2&&!sel2.builtin)?'':'none';
 }
 
+// Handlers take the ELEMENT, never the id — the id is read back off data-id at
+// call time. The previous form interpolated the raw block id into a JS string
+// literal inside an attribute (`onclick="exportBuilderAdd('<id>')"`) while
+// escaping it only for data-id, so an id containing a quote broke out of the
+// handler. Harmless while every id is a hardcoded literal, but the obvious next
+// step for this builder is data-derived blocks ("pick which projects to
+// include"), where ids come from entity names — i.e. from synced, hostile-
+// capable input. Closed at the source instead.
+function exportBuilderChipId(el){
+  var chip=el&&el.closest?el.closest('.exb-chip'):null;
+  return chip?chip.getAttribute('data-id'):null;
+}
 function exportBuilderChipHTML(b,included){
   return '<div class="exb-chip" draggable="true" data-id="'+escH(b.id)+'" '
-    +'ondragstart="exportBuilderDragStart(event,\''+b.id+'\')" ondragend="exportBuilderDragEnd(event)" '
-    +(included?'':'onclick="exportBuilderAdd(\''+b.id+'\')" ')
+    +'ondragstart="exportBuilderDragStart(event,this)" ondragend="exportBuilderDragEnd(event)" '
+    +(included?'':'onclick="exportBuilderAdd(this)" ')
     +'style="display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 8px;border-radius:5px;cursor:grab;'
     +'background:var(--bg);border:1px solid '+(included?'var(--accent)':'var(--border)')+';color:var(--text)">'
     +'<span style="color:var(--muted)">⠿</span><span style="flex:1">'+escH(b.label)+'</span>'
-    +(included?'<button onclick="exportBuilderRemove(event,\''+b.id+'\')" title="'+escH(t('Remove'))+'" '
+    +(included?'<button onclick="exportBuilderRemove(event,this)" title="'+escH(t('Remove'))+'" '
       +'style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px">✕</button>':'')
     +'</div>';
 }
@@ -4062,11 +4526,13 @@ function exportBuilderRenderLists(){
     }).join('')
       :'<div style="font-size:10px;color:var(--dim);padding:6px">'+t('Drag a block here, or click one on the left.')+'</div>';
   }
+  exportBuilderSchedulePreview();
 }
 
-function exportBuilderDragStart(ev,id){
+function exportBuilderDragStart(ev,el){
+  var id=exportBuilderChipId(el)||(el&&el.getAttribute?el.getAttribute('data-id'):null);
   _exportDragId=id;
-  if(ev.dataTransfer){ ev.dataTransfer.setData('text/plain',id); ev.dataTransfer.effectAllowed='move'; }
+  if(ev.dataTransfer&&id){ ev.dataTransfer.setData('text/plain',id); ev.dataTransfer.effectAllowed='move'; }
   if(ev.target&&ev.target.style) ev.target.style.opacity='.4';
 }
 function exportBuilderDragEnd(ev){ if(ev.target&&ev.target.style) ev.target.style.opacity=''; }
@@ -4098,13 +4564,15 @@ function exportBuilderDrop(ev,zone){
   _exportDragId=null;
   exportBuilderRenderLists();
 }
-function exportBuilderAdd(id){
+function exportBuilderAdd(el){
+  var id=exportBuilderChipId(el); if(!id) return;
   var st=_exportBuilderState; if(!st||st.included.indexOf(id)>=0) return;
   st.included.push(id);
   exportBuilderRenderLists();
 }
-function exportBuilderRemove(ev,id){
+function exportBuilderRemove(ev,el){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
+  var id=exportBuilderChipId(el); if(!id) return;
   var st=_exportBuilderState; if(!st) return;
   var idx=st.included.indexOf(id); if(idx>=0) st.included.splice(idx,1);
   exportBuilderRenderLists();
@@ -4118,7 +4586,7 @@ function exportBuilderApplyTemplate(templateId){
   exportBuilderRenderTemplateSelect();
   exportBuilderRenderLists();
 }
-function exportBuilderSetTheme(v){ if(_exportBuilderState) _exportBuilderState.theme=(v==='light'?'light':'app'); }
+function exportBuilderSetTheme(v){ if(_exportBuilderState) _exportBuilderState.theme=(v==='light'?'light':'app'); exportBuilderSchedulePreview(); }
 
 function exportBuilderSaveTemplate(){
   var st=_exportBuilderState; if(!st) return;
@@ -4146,21 +4614,139 @@ function exportBuilderDeleteTemplate(){
   exportBuilderRenderTemplateSelect();
 }
 
+/* Builds the exportHTML spec from the current picker state. ONE path, shared by
+ * the live preview and the real export, so what the preview shows is by
+ * construction what gets produced.
+ *
+ * Every block render is individually guarded: a single throwing block used to
+ * abort the entire export with nothing but a console error, leaving the modal
+ * open and the user with no output and no explanation. Now the rest of the
+ * document still renders and the failed section says so in place. */
+function exportBuilderComposeSpec(){
+  var st=_exportBuilderState; if(!st) return null;
+  var titleEl=G('exb-title'), subEl=G('exb-subtitle');
+  var title=titleEl&&titleEl.value.trim()?titleEl.value.trim():st.title;
+  var subtitle=subEl?subEl.value.trim():st.subtitle;
+  var brand=exportBrand({theme:st.theme});
+  var paper=exportPaperById(st.paper);
+  exportBuilderControls();   // clamps controlValues before they are read
+  var mergedCtx=Object.assign({},st.ctx,{theme:st.theme,columns:st.columns,layout:st.layout},
+    st.controlValues,{controls:st.controlValues});
+
+  var failed=[];
+  var oops=function(label){
+    failed.push(label);
+    return '<div style="border:1px solid var(--danger);border-radius:6px;padding:10px;font-size:11px;color:var(--danger)">'
+      +escH(t('“{b}” could not be rendered and was left out.',{b:label}))+'</div>';
+  };
+
+  var pages;
+  if(st.composeRender){
+    try{
+      var out=st.composeRender(st.included.slice(),mergedCtx);
+      pages=(Array.isArray(out)?out:[out]).filter(function(p){return p;});
+    }catch(e){ pages=[oops(title)]; }
+  } else {
+    pages=st.included.map(function(id){
+      var b=st.blocks.find(function(x){return x.id===id;});
+      if(!b) return '';
+      try{ return b.render(mergedCtx)||''; }
+      catch(e){ return oops(b.label||b.id); }
+    }).filter(function(p){return p;});
+  }
+
+  return {
+    spec:{title:title, subtitle:subtitle, brand:brand, pages:pages,
+      orientation:paper.orientation, pageSize:paper.pageSize,
+      layout:st.layout, cover:st.cover},
+    brand:brand, title:title, ctx:mergedCtx, failed:failed
+  };
+}
+
+/* Live preview. The builder previously gave no sight of the result at all —
+ * theme, layout, paper and block order were all guesswork until a tab opened,
+ * which is most of why the controls felt like trial and error. Rendered into a
+ * sandboxed iframe srcdoc; debounced because a render walks the whole dataset.
+ *
+ * NOTE (ARCHITECTURE › Export engine, "Verify gotcha"): an iframe srcdoc
+ * EXECUTES inline script. exportHTML is script-free by design since autoprint
+ * was removed — keep it that way, or this preview starts firing window.print()
+ * on every keystroke. sandbox="allow-same-origin" (no allow-scripts) is the
+ * belt to that braces. */
+function exportBuilderSchedulePreview(){
+  if(_exportPreviewTimer) clearTimeout(_exportPreviewTimer);
+  _exportPreviewTimer=setTimeout(exportBuilderRenderPreview,220);
+}
+function exportBuilderRenderPreview(){
+  var frame=G('exb-preview'); if(!frame) return;
+  var st=_exportBuilderState;
+  var note=G('exb-preview-note');
+  if(!st||!st.included.length){
+    frame.removeAttribute('srcdoc');
+    if(note) note.textContent=t('Nothing included yet.');
+    return;
+  }
+  var built;
+  try{ built=exportBuilderComposeSpec(); }catch(e){ built=null; }
+  if(!built){ return; }
+  frame.setAttribute('srcdoc',exportHTML(built.spec));
+  if(note){
+    var n=built.spec.pages.length;
+    note.textContent=st.layout==='flow'
+      ? t('{n} section(s), continuous flow',{n:n})
+      : t('{n} page(s) + cover',{n:n});
+    if(!st.cover&&st.layout!=='flow') note.textContent=t('{n} page(s), no cover',{n:n});
+  }
+}
+
 function exportBuilderRun(){
   var st=_exportBuilderState; if(!st) return;
   if(!st.included.length){ alert(t('Include at least one block first.')); return; }
-  var titleEl=G('exb-title'), subEl=G('exb-subtitle');
-  var title=titleEl&&titleEl.value.trim()?titleEl.value.trim():st.title;
-  var subtitle=subEl?subEl.value:st.subtitle;
-  var pages=st.included.map(function(id){
-    var b=st.blocks.find(function(x){return x.id===id;});
-    return b?b.render(st.ctx):'';
-  }).filter(function(p){return p;});
-  exportOpen({title:title,subtitle:subtitle,brand:exportBrand({theme:st.theme}),pages:pages});
+  var built=exportBuilderComposeSpec();
+  if(!built||!built.spec.pages.length){ alert(t('Nothing to export with the current selection.')); return; }
+
+  var htmlSpec=built.spec, brand=built.brand;
+  // date-stamped so a folder of exports of the same deliverable stays sortable
+  // and successive downloads do not collide as "pack (1).pdf", "pack (2).pdf"
+  var stamp=new Date().toISOString().slice(0,10);
+  var filenameBase=((st.filename||built.title).replace(/[^a-z0-9]/gi,'_').toLowerCase()||'export')+'_'+stamp;
+
+  // remember the whole picker state for next time — see exportSaveLast
+  exportSaveLast(st.deliverableId,{
+    included:st.included, theme:st.theme, format:st.format,
+    columns:st.columns, layout:st.layout, paper:st.paper, cover:st.cover,
+    controls:st.controlValues
+  });
+
+  /* A format may carry its own `run` handler. Needed because some deliverables
+   * already emit something BETTER than this engine's generic converters: the
+   * org chart and the Gantt build NATIVE SVG (real vector shapes, rasterisable
+   * at 8x), whereas exportToSVG/exportRasterize wrap an HTML document in a
+   * foreignObject. Forcing those through the generic path to "unify" them would
+   * be a straight quality downgrade — so the generic path is the DEFAULT, not a
+   * requirement, and a deliverable keeps its own renderer while still getting
+   * the shared picker, branding, theme, title/subtitle and preview. */
+  var fmt=st.formats.find(function(f){return f.id===st.format;});
+  if(fmt&&typeof fmt.run==='function'){
+    try{
+      fmt.run({spec:htmlSpec, brand:brand, ctx:built.ctx,
+        included:st.included.slice(), filenameBase:filenameBase});
+    }catch(e){ alert(t('That export could not be generated.')); }
+  } else if(st.format==='html'){
+    exportDownloadBlob(exportHTML(htmlSpec),'text/html;charset=utf-8',filenameBase+'.html');
+  } else if(st.format==='png'){
+    exportRasterize(htmlSpec,{filenameBase:filenameBase,width:st.rasterWidth,bg:brand.palette.bg});
+  } else if(st.format==='svg'){
+    exportToSVG(htmlSpec,{filenameBase:filenameBase,width:st.rasterWidth,bg:brand.palette.bg});
+  } else {
+    exportOpen(htmlSpec);
+  }
   exportBuilderClose();
 }
 function exportBuilderClose(){
   var ov=G('export-builder-overlay'); if(ov) ov.classList.remove('show');
+  if(_exportPreviewTimer){ clearTimeout(_exportPreviewTimer); _exportPreviewTimer=null; }
+  var frame=G('exb-preview'); if(frame) frame.removeAttribute('srcdoc');
   _exportBuilderState=null;
 }
 /* ◄◄ END: core/export.js ►► */
@@ -7304,8 +7890,7 @@ function renderSchedTab(p){
   h+=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px">
     <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.07em">${t('GANTT')} <span style="font-weight:300">${t('(drag bars to move · drag edges to resize · drag ◆ to reschedule)')}</span></span>
     <div style="flex:1"></div>
-    <button class="sm" onclick="exportGanttPNG()" title="${t('Download Gantt as PNG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ PNG</button>
-    <button class="sm" onclick="exportGanttSVG()" title="${t('Download Gantt as SVG')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">↓ SVG</button>
+    <button class="sm" onclick="ganttExportOpen()" title="${t('Export the schedule')}" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px">📄 ${t('EXPORT')}</button>
   </div>`;
   h+=`<div id="gantt-area" style="flex:1;min-height:280px;position:relative;overflow:auto;background:#0a0a0c;border:1px solid var(--border);border-radius:6px;display:block"></div>`;
 
@@ -7531,6 +8116,78 @@ function _ganttFileName(ext){
   const p=projects.find(x=>x.id===tabProjId);
   return ((p&&p.name)||'gantt').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_gantt.'+ext;
 }
+/* ►► SECTION: GANTT-EXPORT ◄◄ The schedule on the shared export engine.
+ *
+ * Like the org chart, the SVG/PNG formats keep their own `run` handlers: the
+ * Gantt is a NATIVE SVG cloned out of the live DOM, so routing it through the
+ * engine's HTML-in-foreignObject converters would lose fidelity for nothing.
+ * The picker, branding, theme, paper and preview are shared; only the final
+ * encode differs. See export.js › exportBuilderRun.
+ */
+function ganttExportBlocks(){
+  return [
+    {id:'chart', label:t('Gantt chart'), render:function(){
+      const str=_ganttSVGString();
+      if(!str) return '';
+      // drop the XML prolog (illegal mid-document) and scale to the page
+      return '<div style="width:100%;overflow:hidden">'
+        +str.replace(/^<\?xml[^>]*\?>\s*/,'')
+            .replace(/^<svg width="([^"]*)" height="([^"]*)"/,
+              '<svg style="width:100%;height:auto;max-width:100%" viewBox="0 0 $1 $2"')
+        +'</div>';
+    }},
+    {id:'schedule', label:t('Schedule table'), render:function(){
+      const p=projects.find(x=>x.id===tabProjId);
+      if(!p) return '';
+      schedEnsure(p);
+      const rows=[]
+        .concat(p.milestones.map(m=>({when:m.date, what:m.label||m.desc||t('Milestone'), kind:t('Milestone'), who:'', status:''})))
+        .concat(p.actions.map(a=>({when:a.end||a.start||'', what:a.desc||t('Action'), kind:t('Action'), who:a.member||'', status:a.status||''})))
+        .filter(r=>r.when)
+        .sort((a,b)=>String(a.when).localeCompare(String(b.when)));
+      if(!rows.length) return '';
+      let h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Schedule'))+'</h2>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">'
+        +'<th style="padding:4px 6px">'+escH(t('Date'))+'</th><th style="padding:4px 6px">'+escH(t('Type'))+'</th>'
+        +'<th style="padding:4px 6px">'+escH(t('Item'))+'</th><th style="padding:4px 6px">'+escH(t('Owner'))+'</th>'
+        +'<th style="padding:4px 6px">'+escH(t('Status'))+'</th></tr>'
+      rows.forEach(r=>{
+        h+='<tr style="border-bottom:1px solid var(--border)">'
+          +'<td style="padding:4px 6px;color:var(--accent2);white-space:nowrap">'+escH(r.when)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.kind)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--text)">'+escH(r.what)+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.who||'—')+'</td>'
+          +'<td style="padding:4px 6px;color:var(--muted)">'+escH(r.status||'—')+'</td></tr>'
+      });
+      return h+'</table>';
+    }},
+  ];
+}
+// opens the shared export picker for the current project's schedule
+function ganttExportOpen(){
+  if(!_ganttSVGString()){ alert(t('Add dated actions/milestones and render the Gantt first.')); return; }
+  const p=projects.find(x=>x.id===tabProjId);
+  exportOpenBuilder({
+    deliverableId:'gantt',
+    title:t('Schedule'),
+    subtitleDefault:(p&&p.name)||'',
+    blocks:ganttExportBlocks(),
+    ctx:{},
+    filename:_ganttFileName('').replace(/\.$/,''),
+    orientation:'landscape', pageSize:'A3',
+    builtinTemplates:[
+      {id:'full', name:t('Chart + table'), blocks:['chart','schedule']},
+      {id:'chart', name:t('Chart only'), blocks:['chart']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'svg', label:t('SVG (vector)'), run:function(){ exportGanttSVG(); }},
+      {id:'png', label:t('PNG (2×)'), run:function(){ exportGanttPNG(); }},
+    ],
+  });
+}
+
 // downloads the current Gantt as a standalone SVG file
 function exportGanttSVG(){
   const str=_ganttSVGString();
@@ -14534,9 +15191,19 @@ function orgToggleKPI(){
   if(btn){btn.style.borderColor=_orgKpiOpen?'var(--accent)':'';btn.style.color=_orgKpiOpen?'var(--accent)':'';}
   if(_orgKpiOpen)orgRenderKPI();
 }
-// renders the headcount KPI panel
+// renders the headcount KPI panel (on-screen shell + the shared body below)
 function orgRenderKPI(){
   var panel=G('org-kpi-panel');if(!panel)return;
+  panel.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+t('📊 HEADCOUNT')
+    +'<button onclick="orgToggleKPI()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>'
+    +orgKpiHTML();
+}
+/* The headcount body as a pure string, with no panel chrome and no close button,
+ * so the org export can reuse the EXACT same markup as a content block instead
+ * of a parallel implementation that would drift. Renders entirely through
+ * var(--…) tokens, so it themes itself inside an export popup for free (see
+ * ARCHITECTURE › Export engine, "theming trick"). */
+function orgKpiHTML(){
   var T=buildOrgTree();
   var engs=T.engs;
   // planning resources are excluded from all headcount KPIs (consistent with the cost dashboard)
@@ -14579,8 +15246,7 @@ function orgRenderKPI(){
     byLoc[l]=(byLoc[l]||0)+1;
   });
 
-  var h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+t('📊 HEADCOUNT')
-    +'<button onclick="orgToggleKPI()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>';
+  var h='';
 
   h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">'
     +'<div style="font-size:22px;font-weight:700;color:var(--accent)">'+active.length+'</div>'
@@ -14680,12 +15346,64 @@ function orgRenderKPI(){
     });
   }
 
-  panel.innerHTML=h;
+  return h;
+}
+
+/* ►► SECTION: ORG-EXPORT ◄◄ The org chart on the shared export engine.
+ *
+ * Blocks are the chart itself + the headcount breakdown (`orgKpiHTML`, the same
+ * markup the on-screen panel uses). The NATIVE SVG and high-res PNG paths are
+ * kept as custom `run` format handlers rather than being routed through the
+ * engine's exportToSVG/exportRasterize: those wrap an HTML document in a
+ * foreignObject, whereas orgBuildExportSVG emits real vector shapes that
+ * rasterise cleanly up to 8x. Unifying the CHROME (picker, branding, theme,
+ * title, preview) without downgrading the OUTPUT is the whole point of the
+ * per-format `run` hook — see export.js › exportBuilderRun.
+ */
+function orgExportBlocks(){
+  return [
+    {id:'chart', label:t('Org chart'), render:function(){
+      var res=orgBuildExportSVG();
+      if(!res) return '';
+      // scale the native SVG to the page rather than letting it overflow
+      return '<div style="width:100%;overflow:hidden">'
+        +res.svgStr.replace(/^<svg width="([^"]*)" height="([^"]*)"/,
+          '<svg style="width:100%;height:auto;max-width:100%" viewBox="0 0 $1 $2"')
+        +'</div>';
+    }},
+    {id:'headcount', label:t('Headcount breakdown'), render:function(){
+      var h=orgKpiHTML();
+      return h?'<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Headcount'))+'</h2>'+h:'';
+    }},
+  ];
+}
+// opens the shared export picker for the org chart
+function orgExportOpen(){
+  if(!engineers.filter(function(e){return !e.planningOnly;}).length){
+    alert(t('Nothing to export yet — add people first.')); return;
+  }
+  exportOpenBuilder({
+    deliverableId:'org',
+    title:t('Org chart'),
+    subtitleDefault:(G('res-title-input')?G('res-title-input').value:'')||'',
+    blocks:orgExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    builtinTemplates:[
+      {id:'full', name:t('Chart + headcount'), blocks:['chart','headcount']},
+      {id:'chart', name:t('Chart only'), blocks:['chart']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'svg', label:t('SVG (vector)'), run:function(){ orgExportSVG(); }},
+      {id:'png', label:t('PNG (high-res)'), run:function(){ orgExportPNG(); }},
+    ],
+  });
 }
 
 // downloads the chart as an SVG file
 function orgExportSVG(){
-  var res=orgBuildExportSVG();if(!res){alert('No data to export.');return;}
+  var res=orgBuildExportSVG();if(!res){alert(t('No data to export.'));return;}
   var blob=new Blob([res.svgStr],{type:'image/svg+xml;charset=utf-8'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');a.href=url;a.download='org_chart.svg';a.click();
@@ -14693,7 +15411,7 @@ function orgExportSVG(){
 }
 // renders and downloads the chart as a high-res PNG
 function orgExportPNG(){
-  var res=orgBuildExportSVG();if(!res){alert('No data to export.');return;}
+  var res=orgBuildExportSVG();if(!res){alert(t('No data to export.'));return;}
 
   var LONG_EDGE=4000;
   var naturalLong=Math.max(res.W,res.H);
@@ -14738,28 +15456,29 @@ function orgExportPNG(){
 
 /* ►► SECTION: PROFILES ◄◄ Profiles tab: cards, matrices badge, PDF/CSV export
  *
+ * Every profile-related PDF/HTML/PNG/SVG export shares ONE picker — the same
+ * exportOpenBuilder drag-and-drop content/theme/format picker exec.js's
+ * Executive Summary uses (src/core/export.js). See the "PROFILE-EXPORT"
+ * section below for the shared block registry (prfCardBlocks) and card
+ * renderer (buildProfileCardHTMLs) all three deliverables build on.
+ *
  * Functions defined in this file:
  *   renderProfilesTab            — renders the profiles tab: filter bar + engineer cards
  *   profileExportCSV             — exports a single engineer's profile + skills as CSV
  *   profilesExportCSV            — exports all profiles + skills as one CSV
- *   profileExportPDF             — opens a print-ready single-profile page in a new window
- *   profilesExportAllPDF         — opens one print-ready page per filtered profile
- *   buildProfileCardHTMLs        — builds the profile-card HTML array (themed for screen/export)
- *   getProfileExportEngs         — returns the filtered engineer set + full-detail flag for export
- *   buildProfilesPageHTML        — builds the standalone profiles dashboard HTML page
- *   exportProfilesDashboardPDF   — opens the profiles dashboard in a print popup
- *   _doExportProfilesDashboardPDF — alias for exportProfilesDashboardPDF
- *   exportProfilesDashboardHTML  — downloads the profiles dashboard as an HTML file
- *   exportProfilesDashboardPNG   — renders the profiles dashboard to a PNG via SVG foreignObject
- *   exportProfilesDashboardSVG   — renders the profiles dashboard to a standalone SVG
- *   openProjectBriefExport       — opens the project-brief export modal with the project checklist
+ *   prfCardBlocks                — the six content toggles shared by every profile export
+ *   prfBuiltinTemplates          — "Full detail"/"Compact" built-in template presets
+ *   buildProfileCardHTMLs        — the ONE card renderer (single/dashboard/all-profiles share it)
+ *   profileExportOpen            — opens the builder for a single profile (PDF/SVG)
+ *   getProfileExportEngs         — returns the filtered engineer set for export
+ *   exportProfilesDashboardOpen  — opens the builder for the card grid (PDF/HTML/PNG/SVG + columns)
+ *   profilesExportAllOpen        — opens the builder for one full page per person (PDF)
+ *   openProjectBriefExport       — opens the project-brief project checklist (project SCOPE, separate from content blocks)
  *   briefSelectAll               — checks/unchecks all projects in the brief modal
  *   briefSelectVisible           — selects only the currently-visible projects in the brief modal
  *   getSelectedBriefProjects     — returns the projects checked in the brief modal
- *   buildBriefHTML               — builds the multi-project brief HTML (KPIs, team, risks, todos…)
- *   _getBriefOpts                — reads the brief section-include checkboxes into an options object
- *   exportProjectBrief           — opens the project brief in a print popup
- *   exportProjectBriefHTML       — downloads the project brief as an HTML file
+ *   buildBriefProjectBlock       — builds one project's HTML block (KPIs, team, risks, todos…)
+ *   exportProjectBriefOpen       — opens the builder for the project brief (PDF/HTML; blocks = team/risks/todos/milestones/actions)
  */
 // renders the profiles tab: filter bar + engineer cards
 function renderProfilesTab(){
@@ -14785,11 +15504,8 @@ function renderProfilesTab(){
     +engGroups.map(function(g){return '<option value="'+g.id+'"'+(grpFilter===String(g.id)?' selected':'')+'>'+escH(g.name)+'</option>';}).join('')
     +'</select>';
   h+='<div style="width:1px;background:var(--border);height:18px"></div>';
-  h+='<button class="sm primary" onclick="exportProfilesDashboardPDF()" title="'+t('Export profile cards as PDF')+'">↓ PDF</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardHTML()" title="'+t('Download as interactive HTML')+'" style="border-color:var(--accent);color:var(--accent)">↓ HTML</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardPNG()" title="'+t('Download as PNG image')+'">↓ PNG</button>';
-  h+='<button class="sm" onclick="exportProfilesDashboardSVG()" title="'+t('Download as SVG')+'">↓ SVG</button>';
-  h+='<button class="sm" onclick="profilesExportAllPDF()" title="'+t('Export one full profile page per person')+'">'+t('↓ PDF (full profiles)')+'</button>';
+  h+='<button class="sm primary" onclick="exportProfilesDashboardOpen()" title="'+t('Export the profile card grid — pick content, theme, columns and format')+'">📄 '+t('Export dashboard')+'</button>';
+  h+='<button class="sm" onclick="profilesExportAllOpen()" title="'+t('Export one full profile page per person')+'">📄 '+t('Export full profiles')+'</button>';
   h+='<button class="sm" onclick="profilesExportCSV()" title="'+t('Export all profiles as CSV')+'">'+t('↓ CSV (all)')+'</button>';
   h+='<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;white-space:nowrap">'
     +'<input type="checkbox" id="prf-fullmode"'+(G('prf-fullmode')&&G('prf-fullmode').checked?' checked':'')
@@ -14842,8 +15558,7 @@ function renderProfilesTab(){
 
     h+='<div style="display:flex;gap:4px;flex-shrink:0">'
       +'<button class="sm primary" onclick="openIdCardModal('+e.id+')" title="'+t('Edit this profile')+'" style="font-size:9px;padding:2px 8px;font-weight:700">'+t('✏ EDIT')+'</button>'
-      +'<button class="sm" onclick="profileExportPDF('+e.id+')" title="'+t('Export this profile as PDF')+'" style="font-size:9px;padding:2px 6px">↓ PDF</button>'
-      +'<button class="sm" onclick="profileExportSVG('+e.id+')" title="'+t('Export this profile as SVG')+'" style="font-size:9px;padding:2px 6px">↓ SVG</button>'
+      +'<button class="sm" onclick="profileExportOpen('+e.id+')" title="'+t('Export this profile — pick content, theme and format')+'" style="font-size:9px;padding:2px 6px">📄 '+t('Export')+'</button>'
       +'<button class="sm" onclick="profileExportCSV('+e.id+')" title="'+t('Export this profile as CSV')+'" style="font-size:9px;padding:2px 6px">↓ CSV</button>'
       +'</div>';
 
@@ -15020,172 +15735,49 @@ function profilesExportCSV(){
   a.download='all_profiles.csv';a.click();
 }
 
-// opens a print-ready single-profile page (themed ID card, matches the on-screen profile)
-function profileExportPDF(engId){
-  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  const win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked — please allow pop-ups.'));return;}
-  win.document.write(buildSingleProfilePageHTML(e,fullMode));
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script>');
-  win.document.close();
+/* ►► SECTION: PROFILE-EXPORT ◄◄ Every profile-related export shares ONE builder
+ * (exportOpenBuilder, src/core/export.js) — same drag-and-drop content picker,
+ * theme select and (where relevant) format/columns controls as exec.js's
+ * Executive Summary. Three deliverables, three thin wrappers below:
+ *   profileExportOpen        — single profile (formats: pdf, svg)
+ *   exportProfilesDashboardOpen — the card grid (formats: pdf, html, png, svg; +columns)
+ *   profilesExportAllOpen    — one full page per person (format: pdf)
+ * All three share prfCardBlocks() (the six info-group toggles) and
+ * buildProfileCardHTMLs() (the actual card renderer) — a block excluded from
+ * the picker is excluded from EVERY card on the page, in the order picked.
+ * Card markup uses var(--…) tokens throughout (no palette threading needed —
+ * exportHTML() already writes the chosen brand palette onto :root, so the
+ * exact same markup is correct for every theme).
+ */
+
+// the six content toggles every profile-export picker shares
+function prfCardBlocks(){
+  return [
+    {id:'basic', label:t('Basic info')},
+    {id:'compGrade', label:t('Compa-ratio & Grade')},
+    {id:'skills', label:t('Skills')},
+    {id:'spof', label:t('SPOF & risk flags')},
+    {id:'notes', label:t('Aspirations / Strengths / Notes')},
+    {id:'matrices', label:t('Matrices badge')},
+  ];
+}
+function prfBuiltinTemplates(){
+  return [
+    {id:'full', name:t('Full detail'), blocks:['basic','compGrade','skills','spof','notes','matrices']},
+    {id:'compact', name:t('Compact'), blocks:['basic','skills']},
+  ];
 }
 
-// downloads a single profile as a standalone themed SVG (matches the on-screen ID card)
-function profileExportSVG(engId){
-  const e=engineers.find(function(x){return x.id===engId;});if(!e)return;
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  const V=getProfileExportPalette();
-  const html=buildSingleProfilePageHTML(e,fullMode);
-  const width=488;
-
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+width+'px;height:10px;border:none;visibility:hidden';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight+40;
-    document.body.removeChild(iframe);
-
-    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
-    var styleCSS=styleMatch?styleMatch[1]:'';
-    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    var bodyContent=bodyMatch?bodyMatch[1]:html;
-
-    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
-      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
-      +' width="'+width+'" height="'+h+'">\n'
-      +'<rect width="'+width+'" height="'+h+'" fill="'+V.bg+'"/>\n'
-      +'<foreignObject x="0" y="0" width="'+width+'" height="'+h+'">\n'
-      +'<body xmlns="http://www.w3.org/1999/xhtml"'
-      +' style="margin:0;padding:24px;background:'+V.bg+';font-family:Arial,sans-serif;'
-      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
-      +'<style>'+styleCSS+'</style>\n'
-      +bodyContent
-      +'\n</body>\n'
-      +'</foreignObject>\n'
-      +'</svg>';
-
-    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=(e.name||'profile').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_profile.svg';
-    a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  },300);
-}
-
-// opens one print-ready page per filtered profile
-function profilesExportAllPDF(){
-  const grpFilter=G('prf-grp')?G('prf-grp').value:'';
-  const search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
-  const fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
-  let engs=engineers.filter(function(e){return !e.vacant;});
-  if(grpFilter)engs=engs.filter(function(e){return String(e.groupId)===grpFilter;});
-  if(search)engs=engs.filter(function(e){return e.name.toLowerCase().includes(search);});
-  if(!engs.length){alert(t('No profiles to export.'));return;}
-
-  const CAT_COL=getSkillCatCol();
-  const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-
-  function buildProfileHTML(e){
-    const c=e.idcard||{};
-    const col=engGroupColor(e);
-    const grp=engGroups.find(function(g){return g.id===e.groupId;});
-    const mgr=engineers.find(function(x){return String(x.id)===String(c.reportsTo);});
-    const mgrName=mgr?mgr.name:(c.manager||'—');
-    const photo=idbGetPhoto(e.id)||(c.photo||'');
-    const skills=e.skills||[];
-    const domains=[...new Set(skills.map(function(s){return s.domain||'General';}))];
-    const sc=safeColor(col);
-    const avatarHTML=photo
-      ?'<img src="'+escH(photo)+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+sc+'">'
-      :'<div style="width:60px;height:60px;border-radius:50%;background:'+sc+'33;border:3px solid '+sc
-        +';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:'+sc+'">'+escH(engInitials(e.name))+'</div>';
-    const skillsHTML=domains.map(function(dom){
-      const ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-      return '<div style="margin-bottom:8px">'
-        +'<div style="font-size:9px;font-weight:bold;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+escH(dom)+'</div>'
-        +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
-        +ds.map(function(s){
-          const cc=safeColor(CAT_COL[s.cat]||'#888');
-          return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
-            +escH(s.name)+' <sup>L'+(s.level||3)+'</sup></span>';
-        }).join('')+'</div></div>';
-    }).join('');
-    return '<div class="profile-page">'
-      +'<div style="height:5px;background:'+sc+';margin:-16px -16px 14px"></div>'
-      +'<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">'
-      +avatarHTML
-      +'<div><h1 style="font-size:18px;font-weight:700;margin:0">'+escH(e.name)+'</h1>'
-      +'<div style="font-size:13px;color:#555;margin-top:2px">'+escH(e.role||'')+'</div>'
-      +(grp?'<div style="font-size:11px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
-      +'</div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:11px;margin-bottom:12px">'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Location</span>'+escH(e.location||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Seniority</span>'+escH(c.seniority||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Contract</span>'+escH(c.contract||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Potential</span>'+escH(c.potential||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Reports to</span>'+escH(mgrName)+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Languages</span>'+escH(c.languages||'—')+'</div>'
-      +'<div><span style="color:#888;min-width:90px;display:inline-block">Start date</span>'+escH(c.startdate||'—')+'</div>'
-      +(c.reviewdate?'<div><span style="color:#888;min-width:90px;display:inline-block">Review</span>'+escH(c.reviewdate)+'</div>':'')
-      +(c.gender?'<div><span style="color:#888;min-width:90px;display:inline-block">Gender</span>'+escH(c.gender)+'</div>':'')
-      +'</div>'
-      +(fullMode&&c.aspirations?'<h2 class="sec">Aspirations</h2><p>'+escH(c.aspirations)+'</p>':'')
-      +(fullMode&&c.strengths?'<h2 class="sec">Strengths</h2><p>'+escH(c.strengths)+'</p>':'')
-      +(fullMode&&c.devarea?'<h2 class="sec">Development Areas</h2><p>'+escH(c.devarea)+'</p>':'')
-      +(skills.length?'<h2 class="sec">Skills ('+skills.length+')</h2>'+skillsHTML:'')
-      +(fullMode&&c.notes?'<h2 class="sec">Notes</h2><p>'+escH(c.notes)+'</p>':'')
-      +'</div>';
-  }
-
-  const win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked.'));return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Profiles</title>'
-    +'<style>*{margin:0;padding:0;box-sizing:border-box;}'
-    +'body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;padding:0;}'
-    +'.profile-page{padding:16px;border-bottom:2px solid #eee;page-break-after:always;break-after:page;}'
-    +'.profile-page:last-child{border-bottom:none;page-break-after:avoid;}'
-    +'h2.sec{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:10px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px;}'
-    +'p{font-size:11px;line-height:1.6;color:#444;}'
-    +'@media print{@page{size:A4;margin:8mm;}.profile-page{padding:8px;}}'
-    +'</style></head><body>');
-  engs.forEach(function(e){win.document.write(buildProfileHTML(e));});
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,400);});<\/script></body></html>');
-  win.document.close();
-}
-
-/* ►► SECTION: PROFILE-EXPORT ◄◄ Profile card builder, dashboard PNG/SVG/HTML/PDF export */
-// resolves the live theme palette (with dark fallback) so exports match the interface
-function getProfileExportPalette(){
-  var cs=getComputedStyle(document.documentElement);
-  return {
-    bg:cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border:cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent:cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger:cs.getPropertyValue('--danger').trim()||'#f14335'
-  };
-}
-// builds the profile-card HTML array — faithful copy of the on-screen card
-// in renderProfilesTab (honours Full-detail + SPOF/gaps/notes toggles, minus action buttons)
-function buildProfileCardHTMLs(engs, fullMode, vars){
+// builds the profile-card HTML array — the ONE card renderer shared by single/
+// dashboard/all-profiles export. includedBlocks controls which sections show,
+// in the order given (prfCardBlocks() ids) — identity (photo/name/role/group
+// stripe) is always shown, everything else is opt-in.
+function buildProfileCardHTMLs(engs, includedBlocks){
+  var inc=includedBlocks||[];
+  var has=function(id){ return inc.indexOf(id)>=0; };
   var CAT_COL=getSkillCatCol();
-  var V=vars||{
-    bg:'#0f0f11',surface:'#18181c',border:'#2a2a32',
-    text:'#e8e8ea',muted:'#6b6b78',accent:'#c8f135',
-    accent2:'#5be5c8',danger:'#f14335'
-  };
-
-  var showInd=!G('prf-show-ind')||G('prf-show-ind').checked;
   var sm=buildSkillMap();
+
   return engs.map(function(e){
     var c=e.idcard||{};
     var col=safeColor(engGroupColor(e));
@@ -15203,74 +15795,73 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
       ?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+col+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
       :'<div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;background:'+col+'33;border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace">'+escH(engInitials(e.name))+'</div>';
 
-    var _nm=c.nextMove||{};
-    var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
-    var details=[
-      [t('📍 Location'),e.location||c.location||'—'],
-      [t('📊 Seniority'),c.seniority||'—'],
-      [t('📋 Contract'),c.contract||'—'],
-      [t('📅 Start date'),c.startdate||'—'],
-      [t('🚀 Potential (GTP)'),c.potential||'—'],
-      [t('🧭 Mobility'),c.mobility||'—'],
-      [t('🎯 Next move'),nmStr],
-      [t('👤 Reports to'),mgrName],
-      [t('🌐 Languages'),c.languages||'—'],
-    ];
-    var inTalent=e.includeTalent!==false;
-
-    var html='<div style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
+    var html='<div style="background:var(--surface);border:1px solid var(--border);'
+      +'border-radius:8px;overflow:hidden;display:flex;flex-direction:column">'
       +'<div style="height:5px;background:'+col+'"></div>'
       +'<div style="padding:12px 14px;display:flex;gap:12px;align-items:flex-start">'
       +avatarHTML
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</div>'
-      +'<div style="font-size:11px;color:'+V.muted+'">'+escH(e.role||'—')+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(e.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+escH(e.role||'—')+'</div>'
       +(grp?'<div style="font-size:10px;color:'+safeColor(grp.color)+';margin-top:2px">'+escH(grp.name)+'</div>':'')
       +'</div></div>'
-      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">'
-      +details.map(function(d){
-        return '<div style="display:flex;gap:6px;font-size:10px">'
-          +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">'+d[0]+'</span>'
-          +'<span style="color:'+V.text+'">'+escH(d[1])+'</span></div>';
-      }).join('')
-      +'<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
-      +'<span style="color:'+V.muted+';min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
-      +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
-      +(inTalent
-        ?'background:'+V.accent+'1a;color:'+V.accent+';border:1px solid '+V.accent+'4d">&#10003; '+t('Nine-Box &amp; DISC')
-        :'background:'+V.muted+'1a;color:'+V.muted+';border:1px solid '+V.border+'">&#8212; '+t('Excluded (contractor/intern)'))
-      +'</span></div>';
+      +'<div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:4px">';
 
-    if(fullMode){
-      var hasCompa=c.comparatio!=null&&c.comparatio!=='';
-      var hasGrade=c.grade!=null&&c.grade!=='';
-      var compaCol=!hasCompa?V.muted:(c.comparatio<90?'#f1a435':(c.comparatio>110?V.accent2:V.accent));
-      html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid '+V.border+'">'
-        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
-        +'</div>'
-        +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
-        +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?V.text:V.muted)+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
-        +'</div>'
-        +'</div>';
-    }
-
-    if(skills.length){
-      if(fullMode){
+    inc.forEach(function(blockId){
+      if(blockId==='basic'){
+        var _nm=c.nextMove||{};
+        var nmStr=[_nm.position,_nm.timeline].filter(function(x){return x&&String(x).trim();}).join(' · ')||'—';
+        var details=[
+          [t('📍 Location'),e.location||c.location||'—'],
+          [t('📊 Seniority'),c.seniority||'—'],
+          [t('📋 Contract'),c.contract||'—'],
+          [t('📅 Start date'),c.startdate||'—'],
+          [t('🚀 Potential (GTP)'),c.potential||'—'],
+          [t('🧭 Mobility'),c.mobility||'—'],
+          [t('🎯 Next move'),nmStr],
+          [t('👤 Reports to'),mgrName],
+          [t('🌐 Languages'),c.languages||'—'],
+        ];
+        html+=details.map(function(d){
+          return '<div style="display:flex;gap:6px;font-size:10px">'
+            +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">'+d[0]+'</span>'
+            +'<span style="color:var(--text)">'+escH(d[1])+'</span></div>';
+        }).join('');
+      } else if(blockId==='matrices'){
+        var inTalent=e.includeTalent!==false;
+        html+='<div style="display:flex;gap:6px;font-size:10px;margin-top:2px">'
+          +'<span style="color:var(--muted);min-width:90px;flex-shrink:0">&#9670; '+t('Matrices')+'</span>'
+          +'<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-family:IBM Plex Mono,monospace;'
+          +(inTalent
+            ?'background:var(--accent);color:var(--bg);border:1px solid var(--accent)">&#10003; '+t('Nine-Box &amp; DISC')
+            :'background:var(--muted);color:var(--bg);border:1px solid var(--border)">&#8212; '+t('Excluded (contractor/intern)'))
+          +'</span></div>';
+      } else if(blockId==='compGrade'){
+        var hasCompa=c.comparatio!=null&&c.comparatio!=='';
+        var hasGrade=c.grade!=null&&c.grade!=='';
+        var compaCol=!hasCompa?'var(--muted)':(c.comparatio<90?'var(--warn)':(c.comparatio>110?'var(--accent2)':'var(--accent)'));
+        html+='<div style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+          +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Compa-ratio')+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:'+compaCol+'">'+(hasCompa?escH(String(c.comparatio))+'%':'—')+'</span>'
+          +'</div>'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+          +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('Grade')+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:'+(hasGrade?'var(--text)':'var(--muted)')+'">'+(hasGrade?escH(String(c.grade)):'—')+'</span>'
+          +'</div>'
+          +'</div>';
+      } else if(blockId==='skills'&&skills.length){
         var domains=[];
         skills.forEach(function(s){var d=s.domain||'General';if(!domains.includes(d))domains.push(d);});
         html+='<div style="margin-top:8px">';
         domains.forEach(function(dom){
           var ds=skills.filter(function(s){return (s.domain||'General')===dom;});
-          html+='<div style="font-size:9px;color:'+V.muted+';font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
+          html+='<div style="font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.05em;margin:5px 0 3px">'+escH(dom)+'</div>';
           html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
           ds.forEach(function(s){
             var cc=CAT_COL[s.cat]||'#888';
-            var hasGap=showInd&&s.gaps&&s.gaps.trim();
-            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'
+            var hasGap=s.gaps&&s.gaps.trim();
+            html+='<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'" title="'+(hasGap?escH('⚠ '+t('Gap:')+' '+s.gaps):'')+'">'
               +escH(s.name)
               +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;opacity:.8;margin-left:3px">L'+(s.level||3)+'</span>'
               +(hasGap?'<span style="font-size:9px;margin-left:2px">⚠</span>':'')
@@ -15279,252 +15870,115 @@ function buildProfileCardHTMLs(engs, fullMode, vars){
           html+='</div>';
         });
         html+='</div>';
-      } else {
-        html+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">';
-        skills.slice(0,16).forEach(function(s){
-          var cc=CAT_COL[s.cat]||'#888';
-          html+='<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:'+cc+'18;border:1px solid '+cc+'44;color:'+cc+'">'+escH(s.name)+'</span>';
+      } else if(blockId==='spof'&&spof.length){
+        html+='<div style="margin-top:5px;font-size:10px;color:var(--danger);font-weight:600">⚠ '+t('SPOF:')+' '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
+      } else if(blockId==='notes'){
+        var extras=[
+          [t('💡 Aspirations'),c.aspirations],
+          [t('💪 Strengths'),c.strengths],
+          [t('📈 Development areas'),c.devarea],
+          [t('📝 Notes'),c.notes]
+        ];
+        extras.forEach(function(f){
+          if(!f[1]||!f[1].trim())return;
+          html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border)">'
+            +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
+            +'<div style="font-size:10px;color:var(--text);line-height:1.55">'+escH(f[1])+'</div>'
+            +'</div>';
         });
-        if(skills.length>16)html+='<span style="font-size:9px;color:'+V.muted+'">+'+(skills.length-16)+' '+t('more')+'</span>';
-        html+='</div>';
       }
-    }
-
-    if(spof.length&&showInd){
-      html+='<div style="margin-top:5px;font-size:10px;color:'+V.danger+';font-weight:600">⚠ '+t('SPOF:')+' '+spof.map(function(s){return escH(s.name);}).join(', ')+'</div>';
-    }
-
-    if(fullMode){
-      var extras=[
-        [t('💡 Aspirations'),c.aspirations,true],
-        [t('💪 Strengths'),c.strengths,false],
-        [t('📈 Development areas'),c.devarea,false],
-        [t('📝 Notes'),c.notes,true]
-      ];
-      extras.forEach(function(f){
-        if(f[2]&&!showInd)return;
-        if(!f[1]||!f[1].trim())return;
-        html+='<div style="margin-top:7px;padding-top:6px;border-top:1px solid '+V.border+'">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+V.muted+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+f[0]+'</div>'
-          +'<div style="font-size:10px;color:'+V.text+';line-height:1.55">'+escH(f[1])+'</div>'
-          +'</div>';
-      });
-    }
+    });
 
     html+='</div></div>';
     return html;
   });
 }
 
-// builds a standalone print-ready page for a single profile card (themed, matches the interface)
-function buildSingleProfilePageHTML(e, fullMode){
-  var V=getProfileExportPalette();
-  var card=buildProfileCardHTMLs([e],fullMode,V)[0]||'';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escH('Profile — '+e.name)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;padding:24px;'
-    +'-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.wrap{max-width:440px;margin:0 auto;}'
-    +'.rf{margin-top:14px;font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;font-family:monospace;}'
-    +'@media print{@page{size:A4;margin:14mm;}html,body{padding:0;background:'+V.bg+'!important;}'
-    +'*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}'
-    +'</style></head><body><div class="wrap">'
-    +card
-    +'<div class="rf"><span>Project Matrix</span><span>'+dateStr+'</span></div>'
-    +'</div></body></html>';
+// opens the shared builder for a single engineer's profile (formats: PDF, SVG)
+function profileExportOpen(engId){
+  var e=engineers.find(function(x){return x.id===engId;}); if(!e) return;
+  exportOpenBuilder({
+    deliverableId: 'profile-single',
+    title: e.name,
+    subtitleDefault: e.role||'',
+    blocks: prfCardBlocks(),
+    ctx: {eng:e},
+    formats: [{id:'pdf',label:t('PDF (print)')},{id:'svg',label:t('SVG image')}],
+    builtinTemplates: prfBuiltinTemplates(),
+    rasterWidth: 488,
+    composeRender: function(includedIds, ctx){
+      var card=buildProfileCardHTMLs([ctx.eng],includedIds)[0]||'';
+      return '<div style="max-width:440px;margin:0 auto">'+card+'</div>';
+    },
+  });
 }
 
-// returns the filtered engineer set + full-detail flag for export
+// returns the filtered engineer set for the dashboard/full-profiles export
 function getProfileExportEngs(){
   var grpFilter=G('prf-grp')?G('prf-grp').value:'';
   var search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
-  var fullMode=G('prf-fullmode')&&G('prf-fullmode').checked;
   var engs=engineers.filter(function(e){return !e.vacant;});
   if(grpFilter)engs=engs.filter(function(e){return String(e.groupId)===grpFilter;});
   if(search)engs=engs.filter(function(e){return e.name.toLowerCase().includes(search);});
-  return{engs:engs,fullMode:fullMode};
+  return engs;
 }
 
-// builds the standalone profiles dashboard HTML page
-function buildProfilesPageHTML(engs, fullMode, cols){
-  var V=getProfileExportPalette();
-
-  var cards=buildProfileCardHTMLs(engs,fullMode,V);
-  var numCols=cols||3;
-
+// opens the shared builder for the profile CARD GRID (formats: PDF/HTML/PNG/
+// SVG; +columns — the "3 per row, no way to change it" complaint this fixes)
+function exportProfilesDashboardOpen(){
+  var engs=getProfileExportEngs();
+  if(!engs.length){alert(t('No profiles to export.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'Resource Plan';
-  var title=planTitle+' — Team Profiles';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
   var grpLabel=G('prf-grp')&&G('prf-grp').value
     ?' · '+G('prf-grp').options[G('prf-grp').selectedIndex].text:'';
-  var fullLabel=fullMode?' · Full detail':'';
-
-  return '<!DOCTYPE html><html><head>'
-    +'<meta charset="UTF-8"><title>'+escH(title)+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;'
-    +'  padding:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.rh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;'
-    +'  margin-bottom:14px;background:'+V.surface+';border:1px solid '+V.border+';border-radius:8px;}'
-    +'.rh-title{font-size:16px;font-weight:700;color:'+V.accent+';font-family:monospace;letter-spacing:.04em;}'
-    +'.rh-meta{font-size:10px;color:'+V.muted+';margin-top:3px;}'
-    +'.card-grid{display:grid;grid-template-columns:repeat('+numCols+',1fr);gap:12px;}'
-    +'.card-grid>div{break-inside:avoid;page-break-inside:avoid;}'
-    +'.rf{margin-top:12px;padding-top:8px;border-top:1px solid '+V.border+';'
-    +'  font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between;}'
-    +'@media print{'
-    +'  @page{size:A3 landscape;margin:7mm;}'
-    +'  html,body{padding:0;background:'+V.bg+'!important;}'
-    +'  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
-    +'}'
-    +'</style></head><body>'
-    +'<div class="rh">'
-    +'<div><div class="rh-title">'+escH(title)+'</div>'
-    +'<div class="rh-meta">'+engs.length+' member'+(engs.length!==1?'s':'')+grpLabel+fullLabel+'</div></div>'
-    +'<div style="text-align:right;font-family:monospace">'
-    +'<div style="font-size:11px;color:'+V.accent+'">Project Matrix</div>'
-    +'<div style="font-size:10px;color:'+V.muted+'">'+dateStr+'</div>'
-    +'</div></div>'
-    +'<div class="card-grid">'+cards.join('')+'</div>'
-    +'<div class="rf"><span>'+escH(title)+'</span><span>Project Matrix · '+dateStr+'</span></div>'
-    +'</body></html>';
+  exportOpenBuilder({
+    deliverableId: 'profiles-dashboard',
+    title: planTitle+' — Team Profiles',
+    subtitleDefault: engs.length+' member'+(engs.length!==1?'s':'')+grpLabel,
+    blocks: prfCardBlocks(),
+    ctx: {engs:engs},
+    formats: [
+      {id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')},
+      {id:'png',label:t('PNG image')},{id:'svg',label:t('SVG image')},
+    ],
+    columns: {default:3, options:[2,3,4,5]},
+    orientation: 'landscape', pageSize: 'A3', rasterWidth: 1600,
+    builtinTemplates: prfBuiltinTemplates(),
+    composeRender: function(includedIds, ctx){
+      var cards=buildProfileCardHTMLs(ctx.engs,includedIds);
+      var cols=ctx.columns||3;
+      // min-width:0 overrides the grid item's default min-width:auto — without it, a single
+      // long unbroken token (a URL in someone's notes, say) forces THAT column wider than its
+      // 1fr share, breaking the equal-column grid for everyone else (real bug, reported by user:
+      // one card visibly wider than the rest). overflow-wrap:break-word (exportHTML's shell
+      // CSS) handles the text itself wrapping inside the now-fixed-width column.
+      return '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:12px">'
+        +cards.map(function(c){return '<div style="min-width:0;break-inside:avoid;page-break-inside:avoid">'+c+'</div>';}).join('')
+        +'</div>';
+    },
+  });
 }
 
-// opens the profiles dashboard in a print popup
-function exportProfilesDashboardPDF(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-  var win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked.'));return;}
-  win.document.write(html);
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,500);});<\/script>');
-  win.document.close();
-}
-// alias for exportProfilesDashboardPDF
-function _doExportProfilesDashboardPDF(){exportProfilesDashboardPDF();}
-
-// downloads the profiles dashboard as an HTML file
-function exportProfilesDashboardHTML(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-    .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-  a.download=name+'_profiles.html';
-  a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-}
-
-// renders the profiles dashboard to a PNG via SVG foreignObject
-function exportProfilesDashboardPNG(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-
-  var iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1600px;height:10px;border:none';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight;
-    iframe.style.height=h+'px';
-    setTimeout(function(){
-      var _sm=html.match(/<style>([\s\S]*?)<\/style>/i);
-      var _sc=_sm?_sm[1]:'';
-      var _bm=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      var _bc=_bm?_bm[1]:html;
-      var svgStr='<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="'+h+'">'
-        +'<foreignObject width="1600" height="'+h+'">'
-        +'<body xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:16px;background:#0f0f11">'
-        +'<style>'+_sc+'</style>'
-        +_bc
-        +'</body></foreignObject></svg>';
-      var img=new Image();
-      var b64='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
-      img.onload=function(){
-        var canvas=document.createElement('canvas');
-        var scale=2;
-        canvas.width=1600*scale;canvas.height=h*scale;
-        var ctx=canvas.getContext('2d');
-        ctx.scale(scale,scale);
-        ctx.drawImage(img,0,0);
-        canvas.toBlob(function(blob){
-          var a=document.createElement('a');
-          a.href=URL.createObjectURL(blob);
-          var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-            .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-          a.download=name+'_profiles.png';
-          a.click();
-        },'image/png');
-        document.body.removeChild(iframe);
-      };
-      img.onerror=function(){
-        document.body.removeChild(iframe);
-        alert(t('PNG export is limited by browser security. Opening as HTML instead — you can screenshot or print to PDF from there.'));
-        exportProfilesDashboardHTML();
-      };
-      img.src=b64;
-    },300);
-  },200);
-}
-
-// renders the profiles dashboard to a standalone SVG
-function exportProfilesDashboardSVG(){
-  var r=getProfileExportEngs();
-  if(!r.engs.length){alert(t('No profiles to export.'));return;}
-
-  var html=buildProfilesPageHTML(r.engs,r.fullMode,3);
-
-  var iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1600px;height:10px;border:none;visibility:hidden';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function(){
-    var h=iframe.contentDocument.body.scrollHeight+40;
-    document.body.removeChild(iframe);
-
-    var styleMatch=html.match(/<style>([\s\S]*?)<\/style>/i);
-    var styleCSS=styleMatch?styleMatch[1]:'';
-    var bodyMatch=html.match(/<body[^>]*>([\s\S]*?)<\/body>/is);
-    var bodyContent=bodyMatch?bodyMatch[1]:html;
-
-    var svgStr='<?xml version="1.0" encoding="UTF-8"?>\n'
-      +'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
-      +' width="1600" height="'+h+'">\n'
-      +'<rect width="1600" height="'+h+'" fill="#0f0f11"/>\n'
-      +'<foreignObject x="0" y="0" width="1600" height="'+h+'">\n'
-      +'<body xmlns="http://www.w3.org/1999/xhtml"'
-      +' style="margin:0;padding:16px;background:#0f0f11;font-family:Arial,sans-serif;'
-      +'-webkit-print-color-adjust:exact;print-color-adjust:exact">\n'
-      +'<style>'+styleCSS+'</style>\n'
-      +bodyContent
-      +'\n</body>\n'
-      +'</foreignObject>\n'
-      +'</svg>';
-
-    var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    var name=(G('res-title-input')?G('res-title-input').value:'profiles')
-      .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-    a.download=name+'_profiles.svg';
-    a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
-  },300);
+// opens the shared builder for one full print-ready page per person (format: PDF)
+function profilesExportAllOpen(){
+  var engs=getProfileExportEngs();
+  if(!engs.length){alert(t('No profiles to export.'));return;}
+  var planTitle=G('res-title-input')?G('res-title-input').value:'Team';
+  exportOpenBuilder({
+    deliverableId: 'profiles-all',
+    title: planTitle+' — Full Profiles',
+    subtitleDefault: engs.length+' profile'+(engs.length!==1?'s':''),
+    blocks: prfCardBlocks(),
+    ctx: {engs:engs},
+    builtinTemplates: prfBuiltinTemplates(),
+    composeRender: function(includedIds, ctx){
+      // one page per person — same card design as the single-profile export,
+      // just returned as an array so the shell gives each its own .export-page
+      return ctx.engs.map(function(e){
+        return '<div style="max-width:440px;margin:0 auto">'+buildProfileCardHTMLs([e],includedIds)[0]+'</div>';
+      });
+    },
+  });
 }
 
 /* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
@@ -15571,374 +16025,326 @@ function getSelectedBriefProjects(){
   return selected;
 }
 
-// builds the multi-project brief HTML (KPIs, team, risks, todos, milestones, actions)
-function buildBriefHTML(selectedProjs, opts){
-  var cs=getComputedStyle(document.documentElement);
-  var V={
-    bg:     cs.getPropertyValue('--bg').trim()||'#0f0f11',
-    surface:cs.getPropertyValue('--surface').trim()||'#18181c',
-    border: cs.getPropertyValue('--border').trim()||'#2a2a32',
-    text:   cs.getPropertyValue('--text').trim()||'#e8e8ea',
-    muted:  cs.getPropertyValue('--muted').trim()||'#6b6b78',
-    accent: cs.getPropertyValue('--accent').trim()||'#c8f135',
-    accent2:cs.getPropertyValue('--accent2').trim()||'#5be5c8',
-    danger: cs.getPropertyValue('--danger').trim()||'#f14335',
-  };
+// the five content toggles the project-brief picker offers (mirrors the old
+// brief-include-team/risks/todos/milestones/actions checkboxes, now inside
+// the shared builder instead of the brief panel itself)
+function prfBriefBlocks(){
+  return [
+    {id:'team', label:t('Team allocation')},
+    {id:'risks', label:t('Project risks')},
+    {id:'todos', label:t('Open todos')},
+    {id:'milestones', label:t('Milestones')},
+    {id:'actions', label:t('Actions / Gantt')},
+  ];
+}
 
-  var axName='Effort';
-  try{axName=axX().name||'Effort';}catch(e){}
+// builds one project's HTML block (KPIs always; team/risks/todos/milestones/
+// actions gated by `inc`, the includedBlocks array from the builder). `shared`
+// is the cross-project setup (allocation map, axis labels) computed once by
+// the caller — see exportProjectBriefOpen's composeRender.
+function buildBriefProjectBlock(p, inc, shared){
+  var has=function(id){ return inc.indexOf(id)>=0; };
+  var col=safeColor(p.color||'var(--accent)');
+  var sec=sections.find(function(s){return s.id===p.sectionId;});
+  var allocs=shared.projAllocMap[p.id]||[];
+  var totalProjCost=allocs.reduce(function(s,a){return s+a.totalCost;},0)||p.planCost||0;
+  var totalFTE=allocs.reduce(function(s,a){return s+a.totalFTE;},0);
 
-  var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
+  var html='<div class="proj-block" style="background:var(--surface);border:1px solid var(--border)'
+    +';border-left:5px solid '+col+';border-radius:8px;margin-bottom:20px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">';
 
-  var allMonthKeys=new Set();
-  allocRows.forEach(function(row){
-    if(row.allocs)Object.keys(row.allocs).forEach(function(m){
-      if(row.allocs[m]>0)allMonthKeys.add(m);
-    });
+  html+='<div style="padding:16px 18px 12px;border-bottom:1px solid var(--border)">';
+  html+='<div style="display:flex;align-items:flex-start;gap:12px">';
+  html+='<div style="width:14px;height:14px;border-radius:50%;background:'+col+';flex-shrink:0;margin-top:3px"></div>';
+  html+='<div style="flex:1">';
+  html+='<h2 style="font-size:18px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:4px">'+escH(p.name)+'</h2>';
+  if(p.note)html+='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+escH(p.note)+'</div>';
+  html+='</div></div>';
+
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px">';
+
+  var kpis=[
+    {label:shared.axName,val:p.x!=null?p.x:'—',unit:''},
+    {label:shared.yLabel+' (0-10)',val:getProjY(p).toFixed(1),unit:''},
+    {label:'Visibility',val:(p.vis??5).toFixed(1),unit:'/ 10'},
+    {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
+  ];
+  if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
+  var _rev=projRevenueM(p);
+  if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
+  if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
+  if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
+  if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});
+  if(p.eta)            kpis.push({label:'ETA',val:p.eta,unit:''});
+  if(sec)              kpis.push({label:'Section',val:sec.name,unit:''});
+
+  kpis.forEach(function(k){
+    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px">'
+      +'<div style="font-family:monospace;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px">'+k.label+'</div>'
+      +'<div style="font-size:15px;font-weight:700;color:'+col+'">'+escH(String(k.val))
+      +(k.unit?'<span style="font-size:10px;color:var(--muted);margin-left:3px">'+k.unit+'</span>':'')
+      +'</div>'
+      +'</div>';
   });
-  var domMonths=[];
-  try{domMonths=getMonthRange();}catch(e){}
-  if(domMonths.length)domMonths.forEach(function(m){allMonthKeys.add(m);});
+  html+='</div></div>';
 
-  var sortedMonths=Array.from(allMonthKeys).sort();
+  if(has('team')&&allocs.length){
+    html+='<div style="padding:14px 18px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Team Allocation</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px">';
 
-  var projAllocMap={};
-  allocRows.forEach(function(row){
-    if(!row.projectId||!row.engId)return;
-    var eng=engineers.find(function(e){return e.id===row.engId;});if(!eng)return;
-    if(!projAllocMap[row.projectId])projAllocMap[row.projectId]=[];
-    var rowMonths=row.allocs?Object.keys(row.allocs).filter(function(m){return row.allocs[m]>0;}).sort():[];
-    var totalFTE=rowMonths.reduce(function(s,m){return s+row.allocs[m];},0);
-    var totalCost=rowMonths.reduce(function(s,m){return s+_allocCost(row.allocs[m],eng.monthlyCost);},0);
-    projAllocMap[row.projectId].push({
-      eng:eng,row:row,
-      totalFTE:totalFTE,totalCost:totalCost,
-      activeMonths:rowMonths,months:sortedMonths
+    allocs.forEach(function(a){
+      var e=a.eng;
+      var c=e.idcard||{};
+      var grp=engGroups.find(function(g){return g.id===e.groupId;});
+      var gc=safeColor(grp?grp.color:'#6b6b78');
+      var photo=idbGetPhoto(e.id)||(c.photo||'');
+      var initials=engInitials(e.name);
+      var avgFTE=a.activeMonths.length?a.totalFTE/a.activeMonths.length:0;
+      var topSkills=(e.skills||[]).filter(function(s){return s.cat==='crit';}).slice(0,4);
+
+      html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;'
+        +'background:var(--bg);border:1px solid var(--border);border-radius:6px">';
+
+      html+=photo
+        ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
+        :'<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:'+gc+'33;border:2px solid '+gc
+          +';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+gc+';font-family:monospace">'+escH(initials)+'</div>';
+
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">';
+      html+='<span style="font-size:12px;font-weight:700;color:var(--text)">'+escH(e.name)+'</span>';
+      if(grp)html+='<span style="font-size:10px;color:'+gc+'">'+escH(grp.name)+'</span>';
+      html+='</div>';
+      html+='<div style="font-size:10px;color:var(--muted);margin-top:1px">'+escH(e.role||'—');
+      if(c.seniority)html+=' · '+escH(c.seniority);
+      if(e.location||c.location)html+=' · 📍'+escH(e.location||c.location);
+      html+='</div>';
+
+      if(topSkills.length){
+        html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">';
+        topSkills.forEach(function(s){
+          html+='<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:var(--danger);color:var(--bg)">'+escH(s.name)+'</span>';
+        });
+        if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:var(--muted)">'+(e.skills.length-4)+' '+t('more')+'</span>';
+        html+='</div>';
+      }
+      html+='</div>';
+
+      html+='<div style="text-align:right;flex-shrink:0">';
+      html+='<div style="font-size:18px;font-weight:700;color:'+col+';font-family:monospace">'+Math.round(avgFTE*100)+'%</div>';
+      html+='<div style="font-size:9px;color:var(--muted)">avg alloc</div>';
+      if(a.totalCost>0)html+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+Math.round(a.totalCost/1000)+'k€</div>';
+      html+='<div style="font-size:9px;color:var(--muted)">'+a.activeMonths.length+' mo</div>';
+      html+='</div>';
+
+      html+='</div>';
     });
-  });
 
-  var CAT_COL=getSkillCatCol();
-  var LVL=['','Awareness','Basic','Proficient','Advanced','Expert'];
-
-  function buildProjectBlock(p){
-    var col=safeColor(p.color||V.accent);
-    var sec=sections.find(function(s){return s.id===p.sectionId;});
-    var allocs=projAllocMap[p.id]||[];
-    var totalProjCost=allocs.reduce(function(s,a){return s+a.totalCost;},0)||p.planCost||0;
-    var totalFTE=allocs.reduce(function(s,a){return s+a.totalFTE;},0);
-
-    var html='<div class="proj-block" style="background:'+V.surface+';border:1px solid '+V.border
-      +';border-left:5px solid '+col+';border-radius:8px;margin-bottom:20px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">';
-
-    html+='<div style="padding:16px 18px 12px;border-bottom:1px solid '+V.border+'">';
-    html+='<div style="display:flex;align-items:flex-start;gap:12px">';
-    html+='<div style="width:14px;height:14px;border-radius:50%;background:'+col+';flex-shrink:0;margin-top:3px"></div>';
-    html+='<div style="flex:1">';
-    html+='<h2 style="font-size:18px;font-weight:700;color:'+V.text+';line-height:1.2;margin-bottom:4px">'+escH(p.name)+'</h2>';
-    if(p.note)html+='<div style="font-size:11px;color:'+V.muted+';margin-bottom:6px">'+escH(p.note)+'</div>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)'
+      +';font-size:10px;color:var(--muted)">';
+    html+='<span><b style="color:var(--text)">'+allocs.length+'</b> engineers</span>';
+    html+='<span><b style="color:var(--text)">'+totalFTE.toFixed(1)+'</b> FTE-months total</span>';
+    if(totalProjCost>0)html+='<span><b style="color:var(--text)">'+Math.round(totalProjCost/1000)+'k€</b> total cost</span>';
     html+='</div></div>';
+  } else if(has('team')){
+    html+='<div style="padding:10px 18px 14px;font-size:11px;color:var(--muted)">No team allocation found for this project. Add allocation rows in the Resource Plan.</div>';
+  }
 
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px">';
+  if(has('risks')&&p.risks&&p.risks.length){
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Risks ('+p.risks.length+')</div>';
+    p.risks.forEach(function(r){
+      var rpn=(r.sev||1)*(r.occ||1)*(r.det||1);
+      var rcol=rpn>=300?'var(--danger)':rpn>=100?'var(--warn)':'var(--muted)';
+      var status=r.status||'open';
+      var statusCol={open:'var(--danger)',mitigated:'var(--warn)',accepted:'var(--muted)',closed:'var(--accent)'}[status]||'var(--muted)';
+      html+='<div style="padding:8px 12px;border-left:3px solid '+rcol
+        +';background:var(--bg);border-radius:0 5px 5px 0;margin-bottom:6px">'
+        +'<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text);flex:1">'
+        +escH(r.desc||'Unnamed risk')+'</span>'
+        +'<span style="font-family:monospace;font-size:10px;font-weight:700;color:'+rcol
+        +';border:1px solid '+rcol+';padding:1px 6px;border-radius:4px;white-space:nowrap">'
+        +'RPN '+rpn+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:10px;margin-top:4px;font-size:9px;color:var(--muted);font-family:monospace">'
+        +'<span>Prob '+(r.prob||1)+'/5</span>'
+        +'<span>Imp '+(r.imp||1)+'/5</span>'
+        +'<span>Sev '+(r.sev||1)+'</span>'
+        +'<span>Occ '+(r.occ||1)+'</span>'
+        +'<span>Det '+(r.det||1)+'</span>'
+        +(r.owner?'<span style="margin-left:auto">👤 '+escH(r.owner)+'</span>':'')
+        +'<span style="color:'+statusCol+'">● '+escH(status)+'</span>'
+        +'</div>'
+        +(r.mit&&r.mit.trim()
+          ?'<div style="margin-top:5px;font-size:10px;color:var(--muted)'
+            +';border-top:1px solid var(--border);padding-top:4px">'
+            +'<span style="color:var(--accent2)">→ Mitigation: </span>'+escH(r.mit)+'</div>'
+          :'')
+        +'</div>';
+    });
+    html+='</div>';
+  }
 
-    var kpis=[
-      {label:axName,val:p.x!=null?p.x:'—',unit:''},
-      {label:yLabel+' (0-10)',val:getProjY(p).toFixed(1),unit:''},
-      {label:'Visibility',val:(p.vis??5).toFixed(1),unit:'/ 10'},
-      {label:'Enabler',val:(p.ena??5).toFixed(1),unit:'/ 10'},
-    ];
-    if(p.sector)         kpis.unshift({label:'Sector',val:p.sector,unit:''});
-    var _rev=projRevenueM(p);
-    if(_rev>0)           kpis.push({label:'Revenue Impact'+(projRevenueIsDefault(p)?' (est.)':''),val:_rev,unit:'MEur'});
-    if(totalProjCost>0)  kpis.push({label:'Plan Cost',val:Math.round(totalProjCost/1000)+'k',unit:'€'});
-    if(p.currentGate)    kpis.push({label:'Current Gate',val:p.currentGate,unit:''});
-    if(p.gate)           kpis.push({label:'Next Gate',val:p.gate,unit:''});
-    if(p.eta)            kpis.push({label:'ETA',val:p.eta,unit:''});
-    if(sec)              kpis.push({label:'Section',val:sec.name,unit:''});
+  if(has('todos')&&p.todos&&p.todos.length){
+    var openTodos=p.todos.filter(function(x){return !x.done;});
+    var doneTodos=p.todos.filter(function(x){return x.done;});
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted)'
+      +';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Actions · '
+      +'<span style="color:var(--accent)">'+doneTodos.length+' done</span>'
+      +' / '+p.todos.length+' total</div>';
+    if(openTodos.length){
+      openTodos.forEach(function(x){
+        html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
+          +'padding:5px 0;border-bottom:1px solid var(--border)">'
+          +'<span style="color:var(--muted);flex-shrink:0">☐</span>'
+          +'<span style="color:var(--text);flex:1">'+escH(x.text||'')+'</span>'
+          +'</div>';
+      });
+    }
+    if(doneTodos.length){
+      html+='<div style="margin-top:6px">';
+      doneTodos.forEach(function(x){
+        html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
+          +'padding:5px 0;border-bottom:1px solid var(--border);opacity:0.5">'
+          +'<span style="color:var(--accent);flex-shrink:0">☑</span>'
+          +'<span style="color:var(--muted);text-decoration:line-through;flex:1">'+escH(x.text||'')+'</span>'
+          +'</div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  }
 
-    kpis.forEach(function(k){
-      html+='<div style="background:'+V.bg+';border:1px solid '+V.border+';border-radius:6px;padding:8px 12px">'
-        +'<div style="font-family:monospace;font-size:9px;color:'+V.muted+';letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px">'+k.label+'</div>'
-        +'<div style="font-size:15px;font-weight:700;color:'+col+'">'+escH(String(k.val))
-        +(k.unit?'<span style="font-size:10px;color:'+V.muted+';margin-left:3px">'+k.unit+'</span>':'')
+  if(has('milestones')&&p.milestones&&p.milestones.length){
+    var sortedMs=p.milestones.slice().sort(function(a,b){
+      if(!a.date&&!b.date)return 0;
+      if(!a.date)return 1;
+      if(!b.date)return -1;
+      return a.date.localeCompare(b.date);
+    });
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Milestones ('+sortedMs.length+')</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:4px">';
+    sortedMs.forEach(function(m){
+      var done=m.done;
+      var dateStr2=m.date?new Date(m.date+'T00:00:00').toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'}):'No date';
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;'
+        +'background:var(--bg);border-radius:5px;border:1px solid var(--border);'
+        +(done?'opacity:0.55;':'')+'">'
+        +'<span style="font-size:14px;flex-shrink:0">'+(m.icon||'🎯')+'</span>'
+        +'<div style="flex:1">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--text);'+(done?'text-decoration:line-through':'')+'">'+escH(m.name||'Milestone')+'</div>'
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0">'
+        +'<div style="font-family:monospace;font-size:10px;color:var(--accent2)">'+escH(dateStr2)+'</div>'
+        +(done?'<div style="font-size:9px;color:var(--accent)">✓ Done</div>':'')
         +'</div>'
         +'</div>';
     });
     html+='</div></div>';
-
-    if(opts.includeTeam&&allocs.length){
-      html+='<div style="padding:14px 18px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Team Allocation</div>';
-      html+='<div style="display:flex;flex-direction:column;gap:8px">';
-
-      allocs.forEach(function(a){
-        var e=a.eng;
-        var c=e.idcard||{};
-        var grp=engGroups.find(function(g){return g.id===e.groupId;});
-        var gc=safeColor(grp?grp.color:'#6b6b78');
-        var photo=idbGetPhoto(e.id)||(c.photo||'');
-        var initials=engInitials(e.name);
-        var avgFTE=a.activeMonths.length?a.totalFTE/a.activeMonths.length:0;
-        var topSkills=(e.skills||[]).filter(function(s){return s.cat==='crit';}).slice(0,4);
-
-        html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;'
-          +'background:'+V.bg+';border:1px solid '+V.border+';border-radius:6px">';
-
-        html+=photo
-          ?'<div style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid '+gc+'"><img src="'+escH(photo)+'" style="width:100%;height:100%;object-fit:cover"></div>'
-          :'<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:'+gc+'33;border:2px solid '+gc
-            +';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+gc+';font-family:monospace">'+escH(initials)+'</div>';
-
-        html+='<div style="flex:1;min-width:0">';
-        html+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">';
-        html+='<span style="font-size:12px;font-weight:700;color:'+V.text+'">'+escH(e.name)+'</span>';
-        if(grp)html+='<span style="font-size:10px;color:'+gc+'">'+escH(grp.name)+'</span>';
-        html+='</div>';
-        html+='<div style="font-size:10px;color:'+V.muted+';margin-top:1px">'+escH(e.role||'—');
-        if(c.seniority)html+=' · '+escH(c.seniority);
-        if(e.location||c.location)html+=' · 📍'+escH(e.location||c.location);
-        html+='</div>';
-
-        if(topSkills.length){
-          html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">';
-          topSkills.forEach(function(s){
-            html+='<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f1433520;border:1px solid #f1433544;color:#f14335">'+escH(s.name)+'</span>';
-          });
-          if((e.skills||[]).length>4)html+='<span style="font-size:9px;color:'+V.muted+'">'+(e.skills.length-4)+' '+t('more')+'</span>';
-          html+='</div>';
-        }
-        html+='</div>';
-
-        html+='<div style="text-align:right;flex-shrink:0">';
-        html+='<div style="font-size:18px;font-weight:700;color:'+col+';font-family:monospace">'+Math.round(avgFTE*100)+'%</div>';
-        html+='<div style="font-size:9px;color:'+V.muted+'">avg alloc</div>';
-        if(a.totalCost>0)html+='<div style="font-size:10px;color:'+V.muted+';margin-top:2px">'+Math.round(a.totalCost/1000)+'k€</div>';
-        html+='<div style="font-size:9px;color:'+V.muted+'">'+a.activeMonths.length+' mo</div>';
-        html+='</div>';
-
-        html+='</div>';
-      });
-
-      html+='</div>';
-      html+='<div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid '+V.border
-        +';font-size:10px;color:'+V.muted+'">';
-      html+='<span><b style="color:'+V.text+'">'+allocs.length+'</b> engineers</span>';
-      html+='<span><b style="color:'+V.text+'">'+totalFTE.toFixed(1)+'</b> FTE-months total</span>';
-      if(totalProjCost>0)html+='<span><b style="color:'+V.text+'">'+Math.round(totalProjCost/1000)+'k€</b> total cost</span>';
-      html+='</div></div>';
-    } else if(opts.includeTeam){
-      html+='<div style="padding:10px 18px 14px;font-size:11px;color:'+V.muted+'">No team allocation found for this project. Add allocation rows in the Resource Plan.</div>';
-    }
-
-    if(opts.includeRisks&&p.risks&&p.risks.length){
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Risks ('+p.risks.length+')</div>';
-      p.risks.forEach(function(r){
-        var rpn=(r.sev||1)*(r.occ||1)*(r.det||1);
-        var rcol=rpn>=300?V.danger:rpn>=100?'#f1a435':V.muted;
-        var status=r.status||'open';
-        var statusCol={open:V.danger,mitigated:'#f1a435',accepted:V.muted,closed:V.accent}[status]||V.muted;
-        html+='<div style="padding:8px 12px;border-left:3px solid '+rcol
-          +';background:'+V.bg+';border-radius:0 5px 5px 0;margin-bottom:6px">'
-          +'<div style="display:flex;align-items:flex-start;gap:8px">'
-          +'<span style="font-size:11px;font-weight:600;color:'+V.text+';flex:1">'
-          +escH(r.desc||'Unnamed risk')+'</span>'
-          +'<span style="font-family:monospace;font-size:10px;font-weight:700;color:'+rcol
-          +';background:'+rcol+'18;border:1px solid '+rcol+'44;padding:1px 6px;border-radius:4px;white-space:nowrap">'
-          +'RPN '+rpn+'</span>'
-          +'</div>'
-          +'<div style="display:flex;gap:10px;margin-top:4px;font-size:9px;color:'+V.muted+';font-family:monospace">'
-          +'<span>Prob '+(r.prob||1)+'/5</span>'
-          +'<span>Imp '+(r.imp||1)+'/5</span>'
-          +'<span>Sev '+(r.sev||1)+'</span>'
-          +'<span>Occ '+(r.occ||1)+'</span>'
-          +'<span>Det '+(r.det||1)+'</span>'
-          +(r.owner?'<span style="margin-left:auto">👤 '+escH(r.owner)+'</span>':'')
-          +'<span style="color:'+statusCol+'">● '+escH(status)+'</span>'
-          +'</div>'
-          +(r.mit&&r.mit.trim()
-            ?'<div style="margin-top:5px;font-size:10px;color:'+V.muted
-              +';border-top:1px solid '+V.border+';padding-top:4px">'
-              +'<span style="color:'+V.accent2+'">→ Mitigation: </span>'+escH(r.mit)+'</div>'
-            :'')
-          +'</div>';
-      });
-      html+='</div>';
-    }
-
-    if(opts.includeTodos&&p.todos&&p.todos.length){
-      var openTodos=p.todos.filter(function(t){return !t.done;});
-      var doneTodos=p.todos.filter(function(t){return t.done;});
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted
-        +';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Actions · '
-        +'<span style="color:'+V.accent+'">'+doneTodos.length+' done</span>'
-        +' / '+p.todos.length+' total</div>';
-      if(openTodos.length){
-        openTodos.forEach(function(t){
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
-            +'padding:5px 0;border-bottom:1px solid '+V.border+'">'
-            +'<span style="color:'+V.muted+';flex-shrink:0">☐</span>'
-            +'<span style="color:'+V.text+';flex:1">'+escH(t.text||'')+'</span>'
-            +'</div>';
-        });
-      }
-      if(doneTodos.length){
-        html+='<div style="margin-top:6px">';
-        doneTodos.forEach(function(t){
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:11px;'
-            +'padding:5px 0;border-bottom:1px solid '+V.border+';opacity:0.5">'
-            +'<span style="color:'+V.accent+';flex-shrink:0">☑</span>'
-            +'<span style="color:'+V.muted+';text-decoration:line-through;flex:1">'+escH(t.text||'')+'</span>'
-            +'</div>';
-        });
-        html+='</div>';
-      }
-      html+='</div>';
-    }
-
-    if(opts.includeMilestones&&p.milestones&&p.milestones.length){
-      var sortedMs=p.milestones.slice().sort(function(a,b){
-        if(!a.date&&!b.date)return 0;
-        if(!a.date)return 1;
-        if(!b.date)return -1;
-        return a.date.localeCompare(b.date);
-      });
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Milestones ('+sortedMs.length+')</div>';
-      html+='<div style="display:flex;flex-direction:column;gap:4px">';
-      sortedMs.forEach(function(m){
-        var done=m.done;
-        var dateStr2=m.date?new Date(m.date+'T00:00:00').toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'}):'No date';
-        html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;'
-          +'background:'+V.bg+';border-radius:5px;border:1px solid '+V.border+';'
-          +(done?'opacity:0.55;':'')+'">'
-          +'<span style="font-size:14px;flex-shrink:0">'+(m.icon||'🎯')+'</span>'
-          +'<div style="flex:1">'
-          +'<div style="font-size:11px;font-weight:600;color:'+V.text+';'+(done?'text-decoration:line-through':'')+'">'+escH(m.name||'Milestone')+'</div>'
-          +'</div>'
-          +'<div style="text-align:right;flex-shrink:0">'
-          +'<div style="font-family:monospace;font-size:10px;color:'+V.accent2+'">'+escH(dateStr2)+'</div>'
-          +(done?'<div style="font-size:9px;color:'+V.accent+'">✓ Done</div>':'')
-          +'</div>'
-          +'</div>';
-      });
-      html+='</div></div>';
-    }
-
-    if(opts.includeActions&&p.actions&&p.actions.length){
-      var STATUS_COL={Open:V.danger,Done:V.accent,'In Progress':'#f1a435',Closed:V.muted};
-      html+='<div style="padding:0 18px 14px">';
-      html+='<div style="font-family:monospace;font-size:10px;color:'+V.muted+';letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
-        +'Gantt Actions ('+p.actions.length+')</div>';
-      html+='<table style="width:100%;border-collapse:collapse;font-size:10px">'
-        +'<thead><tr style="background:'+V.bg+';border-bottom:1px solid '+V.border+'">'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">ACTION</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">START</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">END</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">OWNER</th>'
-        +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:'+V.muted+'">STATUS</th>'
-        +'</tr></thead><tbody>';
-      p.actions.forEach(function(a,i){
-        var sc=STATUS_COL[a.status]||V.muted;
-        var rowBg=i%2===1?'background:'+V.surface+';':'';
-        var fmt=function(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric',year:'2-digit'}):'—';};
-        html+='<tr style="'+rowBg+'border-bottom:1px solid '+V.border+'">'
-          +'<td style="padding:5px 8px;font-weight:600;color:'+(a.color||V.accent)+'">'
-          +(a.isMilestone?'🎯 ':'')
-          +escH(a.desc||'—')
-          +(a.priority&&a.priority!=='Medium'?'<span style="font-size:9px;color:'+V.muted+';margin-left:5px">'+escH(a.priority)+'</span>':'')
-          +'</td>'
-          +'<td style="padding:5px 8px;font-family:monospace;color:'+V.muted+'">'+fmt(a.start)+'</td>'
-          +'<td style="padding:5px 8px;font-family:monospace;color:'+V.muted+'">'+fmt(a.end||a.due)+'</td>'
-          +'<td style="padding:5px 8px;color:'+V.muted+'">'+escH(a.member||'—')+'</td>'
-          +'<td style="padding:5px 8px">'
-          +'<span style="font-family:monospace;font-size:9px;padding:1px 6px;border-radius:3px;background:'+sc+'20;color:'+sc+';border:1px solid '+sc+'44">'+escH(a.status||'Open')+'</span>'
-          +'</td>'
-          +'</tr>';
-      });
-      html+='</tbody></table></div>';
-    }
-
-    html+='</div>';
-    return html;
   }
 
+  if(has('actions')&&p.actions&&p.actions.length){
+    var STATUS_COL={Open:'var(--danger)',Done:'var(--accent)','In Progress':'var(--warn)',Closed:'var(--muted)'};
+    html+='<div style="padding:0 18px 14px">';
+    html+='<div style="font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">'
+      +'Gantt Actions ('+p.actions.length+')</div>';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:10px">'
+      +'<thead><tr style="background:var(--bg);border-bottom:1px solid var(--border)">'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">ACTION</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">START</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">END</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">OWNER</th>'
+      +'<th style="text-align:left;padding:5px 8px;font-family:monospace;font-size:9px;color:var(--muted)">STATUS</th>'
+      +'</tr></thead><tbody>';
+    p.actions.forEach(function(a,i){
+      var sc=STATUS_COL[a.status]||'var(--muted)';
+      var rowBg=i%2===1?'background:var(--surface);':'';
+      var fmt=function(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric',year:'2-digit'}):'—';};
+      html+='<tr style="'+rowBg+'border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 8px;font-weight:600;color:'+safeColor(a.color||'var(--accent)')+'">'
+        +(a.isMilestone?'🎯 ':'')
+        +escH(a.desc||'—')
+        +(a.priority&&a.priority!=='Medium'?'<span style="font-size:9px;color:var(--muted);margin-left:5px">'+escH(a.priority)+'</span>':'')
+        +'</td>'
+        +'<td style="padding:5px 8px;font-family:monospace;color:var(--muted)">'+fmt(a.start)+'</td>'
+        +'<td style="padding:5px 8px;font-family:monospace;color:var(--muted)">'+fmt(a.end||a.due)+'</td>'
+        +'<td style="padding:5px 8px;color:var(--muted)">'+escH(a.member||'—')+'</td>'
+        +'<td style="padding:5px 8px">'
+        +'<span style="font-family:monospace;font-size:9px;padding:1px 6px;border-radius:3px;color:'+sc+';border:1px solid '+sc+'">'+escH(a.status||'Open')+'</span>'
+        +'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+// opens the shared builder for the project brief (formats: PDF, HTML; blocks =
+// team/risks/todos/milestones/actions — project SCOPE stays the brief panel's
+// own checklist, since that's "which projects", not "which content").
+function exportProjectBriefOpen(){
+  var sel=getSelectedBriefProjects();
+  if(!sel.length){alert(t('Select at least one project.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'R&D Portfolio';
-  var blocks=selectedProjs.map(buildProjectBlock).join('');
 
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>'+escH(planTitle)+' — Project Briefs</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'html,body{background:'+V.bg+';color:'+V.text+';font-family:Arial,Helvetica,sans-serif;'
-    +'  padding:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'.cover{padding:24px 28px;background:'+V.surface+';border:1px solid '+V.border+';border-radius:10px;margin-bottom:24px;}'
-    +'.cover-title{font-size:24px;font-weight:700;color:'+V.accent+';font-family:monospace;letter-spacing:.04em;}'
-    +'.cover-sub{font-size:12px;color:'+V.muted+';margin-top:5px;}'
-    +'@media print{'
-    +'  @page{size:A4;margin:10mm;}'
-    +'  html,body{background:'+V.bg+'!important;padding:0;}'
-    +'  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}'
-    +'  .proj-block{break-inside:avoid;}'
-    +'}'
-    +'</style></head><body>'
-    +'<div class="cover">'
-    +'<div class="cover-title">'+escH(planTitle)+'</div>'
-    +'<div class="cover-sub">Project Briefs · '+selectedProjs.length+' project'+(selectedProjs.length!==1?'s':'')+' · '+dateStr+'</div>'
-    +'</div>'
-    +blocks
-    +'<div style="margin-top:16px;padding-top:10px;border-top:1px solid '+V.border
-    +';font-size:9px;color:'+V.muted+';display:flex;justify-content:space-between">'
-    +'<span>'+escH(planTitle)+' — Project Briefs</span><span>Project Matrix · '+dateStr+'</span>'
-    +'</div>'
-    +'</body></html>';
-}
+  exportOpenBuilder({
+    deliverableId: 'project-brief',
+    title: planTitle,
+    subtitleDefault: 'Project Briefs · '+sel.length+' project'+(sel.length!==1?'s':''),
+    blocks: prfBriefBlocks(),
+    ctx: {selectedProjs:sel},
+    formats: [{id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')}],
+    builtinTemplates: [
+      {id:'full', name:t('Full'), blocks:['team','risks','todos','milestones','actions']},
+      {id:'kpis-only', name:t('KPIs only')+' ('+t('no content blocks')+')', blocks:[]},
+    ],
+    composeRender: function(includedIds, ctx){
+      var axName='Effort';
+      try{axName=axX().name||'Effort';}catch(e){}
+      var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
 
-// reads the brief section-include checkboxes into an options object
-function _getBriefOpts(){
-  return {
-    includeTeam:       !!(G('brief-include-team')       && G('brief-include-team').checked),
-    includeRisks:      !!(G('brief-include-risks')      && G('brief-include-risks').checked),
-    includeTodos:      !!(G('brief-include-todos')      && G('brief-include-todos').checked),
-    includeMilestones: !!(G('brief-include-milestones') && G('brief-include-milestones').checked),
-    includeActions:    !!(G('brief-include-actions')    && G('brief-include-actions').checked),
-  };
-}
+      var allMonthKeys=new Set();
+      allocRows.forEach(function(row){
+        if(row.allocs)Object.keys(row.allocs).forEach(function(m){
+          if(row.allocs[m]>0)allMonthKeys.add(m);
+        });
+      });
+      var domMonths=[];
+      try{domMonths=getMonthRange();}catch(e){}
+      if(domMonths.length)domMonths.forEach(function(m){allMonthKeys.add(m);});
+      var sortedMonths=Array.from(allMonthKeys).sort();
 
-// opens the project brief in a print popup
-function exportProjectBrief(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
-  var opts=_getBriefOpts();
-  var html=buildBriefHTML(sel,opts);
-  if(!html){alert(t('Export failed — could not build brief content.'));return;}
-  var win=window.open('','_blank');
-  if(!win){alert(t('Pop-up blocked — please allow pop-ups for this page.'));return;}
-  win.document.write(html);
-  win.document.close();
-}
+      var projAllocMap={};
+      allocRows.forEach(function(row){
+        if(!row.projectId||!row.engId)return;
+        var eng=engineers.find(function(e){return e.id===row.engId;});if(!eng)return;
+        if(!projAllocMap[row.projectId])projAllocMap[row.projectId]=[];
+        var rowMonths=row.allocs?Object.keys(row.allocs).filter(function(m){return row.allocs[m]>0;}).sort():[];
+        var totalFTE=rowMonths.reduce(function(s,m){return s+row.allocs[m];},0);
+        var totalCost=rowMonths.reduce(function(s,m){return s+_allocCost(row.allocs[m],eng.monthlyCost);},0);
+        projAllocMap[row.projectId].push({
+          eng:eng,row:row,
+          totalFTE:totalFTE,totalCost:totalCost,
+          activeMonths:rowMonths,months:sortedMonths
+        });
+      });
 
-// downloads the project brief as an HTML file
-function exportProjectBriefHTML(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
-  var opts=_getBriefOpts();
-  var html=buildBriefHTML(sel,opts);
-  if(!html){alert(t('Export failed.'));return;}
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  var planName=(G('res-title-input')?G('res-title-input').value:'portfolio')
-    .replace(/[^a-z0-9]/gi,'_').toLowerCase();
-  a.download=planName+'_briefs.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+      var shared={axName:axName,yLabel:yLabel,projAllocMap:projAllocMap};
+      // kept as one flowing page (not one-per-project) — projects were never
+      // forced onto separate pages here, only .proj-block{break-inside:avoid}
+      return ctx.selectedProjs.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
+    },
+  });
 }
 /* ◄◄ END: sections/profiles.js ►► */
 
@@ -16324,18 +16730,22 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
     }
     var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    // `forExport` now forks on STRUCTURE only (no drag handles, no remove button,
+    // no "Drop here" placeholder). It used to fork on COLOUR too — hardcoded dark
+    // hexes — which predates the export engine's theming and made these chips print
+    // as dark-on-white under the light paper theme. Tokens work for both.
     var avSz=forExport?26:28;
-    var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
-    var avBg=forExport?'#1a1a1e':'var(--surface)';
-    var avCl=forExport?'#c8f135':'var(--accent)';
-    var txCl=forExport?'#e8e8ec':'var(--text)';
-    var muCl=forExport?'#888':'var(--muted)';
+    var avBd='2px solid var(--accent)';
+    var avBg='var(--surface)';
+    var avCl='var(--accent)';
+    var txCl='var(--text)';
+    var muCl='var(--muted)';
     var av=photo
       ?('<img src="'+photo+'" style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;object-fit:cover;border:'+avBd+';flex-shrink:0;">')
       :('<div style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;background:'+avBg+';border:'+avBd+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+avCl+';flex-shrink:0;font-family:monospace">'+ini+'</div>');
     var nm='<div style="overflow:hidden"><div style="font-size:10px;font-weight:600;color:'+txCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">'+escH(e.name)+'</div><div style="font-size:8px;color:'+muCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">'+escH(e.role||'')+'</div></div>';
     if(forExport){
-      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:#0f0f11;margin:2px">'+av+nm+'</div>';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px">'+av+nm+'</div>';
     }
     return '<div draggable="true" ondragstart="nbDragStart(event,'+e.id+')"'
       +' title="'+escH(e.name)+' — drag to move"'
@@ -16399,8 +16809,7 @@ function renderNineBox(){
     +' style="font-size:9px;padding:2px 7px;'+(_nbSwapAxes?'border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.12);font-weight:700':'')+'">Pot/Perf</button>'
     +'</div>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
-    +'<button class="add-row-btn" onclick="exportNineBoxPDF()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PDF">&#8595; PDF</button>'
-    +'<button class="add-row-btn" onclick="exportNineBoxPNG()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PNG">&#8595; PNG</button>'
+    +'<button class="add-row-btn" onclick="nineBoxExportOpen()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="'+escH(t('Export the nine-box'))+'">&#128196; '+escH(t('EXPORT'))+'</button>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
     +'<button class="add-row-btn" onclick="nbClearYear()" title="Clear placements for the active year only" style="color:var(--muted);font-size:9px">&#8635; CLEAR '+escH(_nbYear)+'</button>'
     +'<button class="primary" style="font-size:10px;padding:3px 10px" onclick="saveState();flashSaved()">SAVE</button>'
@@ -16525,14 +16934,106 @@ function buildNineBoxHTML(){
     +'</body></html>';
 }
 
-// opens a print popup with the nine-box layout
-function exportNineBoxPDF(){
-  var html=buildNineBoxHTML();
-  var win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
-  win.document.write(html);
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,600);});<\/script>');
-  win.document.close();
+/* ►► SECTION: NINEBOX-EXPORT ◄◄ The nine-box on the shared export engine.
+ *
+ * `buildNineBoxHTML` above stays as-is only because the legacy PNG path still
+ * reads it; everything user-facing now goes through these blocks, which render
+ * in var(--…) tokens instead of that builder's hardcoded #666/#0a0a0c greys.
+ * That is what lets the SAME markup print on the light paper theme or the app
+ * theme, chosen per export (ARCHITECTURE › Export engine, "theming trick").
+ * The nine-box is plain HTML, not native SVG, so unlike org/gantt it uses the
+ * engine's own PNG rasteriser — no custom `run` handler needed.
+ */
+function nbExportBlocks(){
+  var axes=function(){
+    return {x:_nbSwapAxes?t('POTENTIAL'):t('PERFORMANCE'), y:_nbSwapAxes?t('PERFORMANCE'):t('POTENTIAL')};
+  };
+  return [
+    {id:'grid', label:t('Nine-box grid'), render:function(){
+      var CELLS=_nbCells();
+      var ordered=_nbOrderedCells(CELLS,_nbSwapAxes);
+      var A=axes();
+      var mono='font-family:IBM Plex Mono,monospace';
+      var cells=ordered.map(function(cell){
+        var people=_nbPeopleHTML(cell.key,_nineBoxPlacements,engineers,_photoCache,true);
+        // `color` (a translucent rgba tint) not `colorSolid` (an opaque DARK hex):
+        // the tint composites over whatever page background the chosen theme sets,
+        // so the same markup reads correctly on the app theme AND on light paper.
+        // colorSolid only ever worked on the dark theme — on paper it printed as a
+        // block of near-black, which is both wrong and a toner sink.
+        return '<div style="background:'+safeColor(cell.color)+';border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:5px;min-height:130px">'
+          +'<div style="display:flex;align-items:center;gap:5px">'
+          +'<div style="width:7px;height:7px;border-radius:50%;background:'+safeColor(cell.badge)+';flex-shrink:0"></div>'
+          +'<span style="'+mono+';font-size:9px;font-weight:700;color:'+safeColor(cell.badge)+';letter-spacing:.06em">'+escH(cell.label)+'</span></div>'
+          +'<div style="'+mono+';font-size:8px;color:var(--muted);margin-bottom:2px">'+escH(cell.sub)+'</div>'
+          +'<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0">'+(people||'<span style="font-size:9px;color:var(--dim)">—</span>')+'</div>'
+          +'<div style="padding:5px;background:var(--bg);border-radius:4px;border-left:2px solid '+safeColor(cell.badge)+'">'
+          +'<div style="font-size:8px;color:var(--muted);line-height:1.4;'+mono+'">'+escH(cell.rec)+'</div>'
+          +'</div></div>';
+      }).join('');
+      var tick=function(l){ return '<div style="'+mono+';font-size:8px;color:var(--muted)">'+escH(l)+'</div>'; };
+      return '<div style="display:flex;gap:0;min-height:620px">'
+        +'<div style="display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0">'
+        +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.1em;transform:rotate(-90deg);white-space:nowrap">'+escH(A.y)+' &#8594;</div></div>'
+        +'<div style="display:flex;flex-direction:column;flex:1;min-width:0">'
+        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);flex:1;gap:4px;padding-bottom:16px">'+cells+'</div>'
+        +'<div style="text-align:center;'+mono+';font-size:9px;color:var(--muted);letter-spacing:.1em">'+escH(A.x)+' &#8594;</div></div>'
+        +'<div style="display:flex;flex-direction:column;justify-content:space-around;width:48px;flex-shrink:0;padding:0 0 16px 6px">'
+        +[t('HIGH'),t('MED'),t('LOW')].map(tick).join('')
+        +'</div></div>';
+    }},
+    {id:'distribution', label:t('Distribution'), render:function(){
+      var ordered=_nbOrderedCells(_nbCells(),_nbSwapAxes);
+      var total=engineers.filter(function(e){return _nineBoxPlacements[e.uid];}).length;
+      if(!total) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Distribution'))+'</h2>'
+      ordered.forEach(function(cell){
+        var n=engineers.filter(function(e){return _nineBoxPlacements[e.uid]===cell.key;}).length;
+        var pct=Math.round(n/total*100);
+        h+='<div style="margin-bottom:5px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
+          +'<span style="color:'+safeColor(cell.badge)+'">'+escH(cell.label)+'</span>'
+          +'<span style="color:var(--text);font-weight:700">'+n+' <span style="color:var(--muted);font-weight:400">('+pct+'%)</span></span></div>'
+          +'<div style="background:var(--border);border-radius:2px;height:5px">'
+          +'<div style="background:'+safeColor(cell.badge)+';width:'+pct+'%;height:5px;border-radius:2px"></div></div></div>'
+      });
+      return h;
+    }},
+    {id:'unplaced', label:t('Unplaced people'), render:function(){
+      var un=engineers.filter(function(e){return !e.planningOnly&&!_nineBoxPlacements[e.uid];});
+      if(!un.length) return '';
+      return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Not yet placed'))+'</h2>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +un.map(function(e){
+          return '<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text)">'+escH(e.name)+'</span>';
+        }).join('')+'</div>';
+    }},
+  ];
+}
+// opens the shared export picker for the nine-box
+function nineBoxExportOpen(){
+  if(!Object.keys(_nineBoxPlacements).length){
+    alert(t('Place at least one person on the grid first.')); return;
+  }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'ninebox',
+    title:t('Nine-box talent matrix'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} placed',{n:Object.keys(_nineBoxPlacements).length}),
+    blocks:nbExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['grid','distribution','unplaced']},
+      {id:'grid', name:t('Grid only'), blocks:['grid']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'png', label:t('PNG (image)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // renders the nine-box to a PNG via SVG foreignObject
@@ -16673,18 +17174,19 @@ function _discPeopleHTML(key,placements,engList,photoCache,forExport){
   var chips=placed.map(function(e){
     var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    // structure-only fork — see the same note in ninebox.js's _nbPeopleHTML
     var avSz=forExport?26:28;
-    var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
-    var avBg=forExport?'#1a1a1e':'var(--surface)';
-    var avCl=forExport?'#c8f135':'var(--accent)';
-    var txCl=forExport?'#e8e8ec':'var(--text)';
-    var muCl=forExport?'#888':'var(--muted)';
+    var avBd='2px solid var(--accent)';
+    var avBg='var(--surface)';
+    var avCl='var(--accent)';
+    var txCl='var(--text)';
+    var muCl='var(--muted)';
     var av=photo
       ?('<img src="'+photo+'" style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;object-fit:cover;border:'+avBd+';flex-shrink:0;">')
       :('<div style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;background:'+avBg+';border:'+avBd+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+avCl+';flex-shrink:0;font-family:monospace">'+ini+'</div>');
     var nm='<div style="overflow:hidden"><div style="font-size:10px;font-weight:600;color:'+txCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+escH(e.name)+'</div><div style="font-size:8px;color:'+muCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">'+escH(e.role||'')+'</div></div>';
     if(forExport){
-      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:#0f0f11;margin:2px">'+av+nm+'</div>';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px">'+av+nm+'</div>';
     }
     return '<div draggable="true" ondragstart="discDragStart(event,'+e.id+')"'
       +' style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px;cursor:grab;position:relative;transition:background .12s"'
@@ -16713,8 +17215,7 @@ function renderDiscMatrix(){
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">DISC BEHAVIORAL PROFILE</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_discPlacements).length+' profiled · '+unplaced.length+' unassigned</span>'
     +'<div style="flex:1"></div>'
-    +'<button class="add-row-btn" onclick="exportDiscPDF()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PDF">&#8595; PDF</button>'
-    +'<button class="add-row-btn" onclick="exportDiscPNG()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PNG">&#8595; PNG</button>'
+    +'<button class="add-row-btn" onclick="discExportOpen()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="'+escH(t('Export DISC'))+'">&#128196; '+escH(t('EXPORT'))+'</button>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
     +'<button class="add-row-btn" onclick="_discPlacements={};saveState();talentIdbSave();renderDiscMatrix()" style="color:var(--muted);font-size:9px">&#8635; CLEAR</button>'
     +'<button class="primary" style="font-size:10px;padding:3px 10px" onclick="saveState();flashSaved()">SAVE</button>'
@@ -16812,6 +17313,95 @@ function buildDiscHTML(){
     +'</div></div>'
     +'<div class="grid">'+quadsHTML+'</div>'
     +'</body></html>';
+}
+
+/* ►► SECTION: DISC-EXPORT ◄◄ DISC on the shared export engine.
+ *
+ * Same shape as the nine-box migration next door: the quadrant markup is
+ * re-expressed in var(--…) tokens (the old buildDiscHTML hardcodes #777/#0a0a0c
+ * and only ever looked right on the dark theme), so one markup string serves
+ * both the app theme and the light paper theme. Plain HTML, so the engine's own
+ * PNG rasteriser applies — no custom `run` format handler needed.
+ */
+function discExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  return [
+    {id:'quadrants', label:t('DISC quadrants'), render:function(){
+      var QUADRANTS=_discQuadrants();
+      var quads=QUADRANTS.map(function(q){
+        var people=_discPeopleHTML(q.key,_discPlacements,engineers,_photoCache,true);
+        // translucent `color`, not the dark-only `colorSolid` — see the same note
+        // in ninebox.js's nbExportBlocks
+        return '<div style="background:'+safeColor(q.color)+';border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;overflow:hidden">'
+          +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<div style="width:30px;height:30px;border-radius:6px;background:'+safeColor(q.badge)+';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+escH(q.emoji)+'</div>'
+          +'<div><div style="'+mono+';font-size:16px;font-weight:700;color:'+safeColor(q.badge)+';letter-spacing:.06em">'+escH(q.key)+'</div>'
+          +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.08em">'+escH(q.label)+'</div></div></div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:3px">'
+          +q.traits.map(function(tr){return '<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg);color:var(--muted);'+mono+';border:1px solid var(--border)">'+escH(tr)+'</span>';}).join('')
+          +'</div>'
+          +'<div style="flex:1;min-height:60px;display:grid;grid-template-columns:1fr 1fr;gap:0">'+(people||'<span style="font-size:9px;color:var(--dim)">—</span>')+'</div>'
+          +'<div style="font-size:9px;color:var(--muted);'+mono+';line-height:1.5;padding:6px;background:var(--bg);border-radius:5px;border-left:2px solid '+safeColor(q.badge)+'">'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('STRENGTHS:'))+'</span> '+escH(q.strengths)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('BLINDSPOTS:'))+'</span> '+escH(q.blindspots)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('MOTIVATES:'))+'</span> '+escH(q.motivates)+'</div>'
+          +'<div><span style="color:'+safeColor(q.badge)+'">'+escH(t('MANAGE BY:'))+'</span> '+escH(q.manages)+'</div>'
+          +'</div></div>';
+      }).join('');
+      return '<div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;min-height:560px">'+quads+'</div>';
+    }},
+    {id:'mix', label:t('Team mix'), render:function(){
+      var QUADRANTS=_discQuadrants();
+      var total=engineers.filter(function(e){return _discPlacements[e.uid];}).length;
+      if(!total) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Team mix'))+'</h2>'
+      QUADRANTS.forEach(function(q){
+        var n=engineers.filter(function(e){return _discPlacements[e.uid]===q.key;}).length;
+        var pct=Math.round(n/total*100);
+        h+='<div style="margin-bottom:5px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
+          +'<span style="color:'+safeColor(q.badge)+'">'+escH(q.key)+' — '+escH(q.label)+'</span>'
+          +'<span style="color:var(--text);font-weight:700">'+n+' <span style="color:var(--muted);font-weight:400">('+pct+'%)</span></span></div>'
+          +'<div style="background:var(--border);border-radius:2px;height:5px">'
+          +'<div style="background:'+safeColor(q.badge)+';width:'+pct+'%;height:5px;border-radius:2px"></div></div></div>'
+      });
+      return h;
+    }},
+    {id:'unprofiled', label:t('Not yet profiled'), render:function(){
+      var un=engineers.filter(function(e){return !e.planningOnly&&!_discPlacements[e.uid];});
+      if(!un.length) return '';
+      return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Not yet profiled'))+'</h2>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +un.map(function(e){
+          return '<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text)">'+escH(e.name)+'</span>';
+        }).join('')+'</div>';
+    }},
+  ];
+}
+// opens the shared export picker for DISC
+function discExportOpen(){
+  if(!Object.keys(_discPlacements).length){
+    alert(t('Profile at least one person first.')); return;
+  }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'disc',
+    title:t('DISC behavioral profile'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} profiled',{n:Object.keys(_discPlacements).length}),
+    blocks:discExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['quadrants','mix','unprofiled']},
+      {id:'quadrants', name:t('Quadrants only'), blocks:['quadrants']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'png', label:t('PNG (image)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // opens a print popup with the DISC layout
@@ -16912,11 +17502,56 @@ const AN_RATING_ORDER = ['U','D','M','M+','E','E+'];      // low → high
 const AN_RATING_COLOR = {'U':'#f14335','D':'#f1a435','M':'#5be5c8','M+':'#3bd4b8','E':'#a8e820','E+':'#c8f135'};
 
 /* ── Chart palette (mirrors the dark theme / CSS vars) ── */
-const AN_COLORS = {
+/* The analytics charts are SVG STRINGS whose colours land in `fill=`/`stroke=`
+ * PRESENTATION ATTRIBUTES, and CSS `var()` is not valid there (only in `style`
+ * attributes or stylesheets). So the export engine's usual theming trick —
+ * writing the brand palette onto the popup's :root and letting `var(--…)`
+ * resolve — cannot reach these charts, and dropping them onto the light paper
+ * theme would print near-white text on white.
+ *
+ * Instead the palette is swappable at this single definition point: all 115
+ * `AN_COLORS.x` call sites are untouched and keep emitting real hex, while
+ * `anWithPalette()` renders a block under the paper variant. AN_COLORS is used
+ * nowhere outside this file, so the swap is fully contained.
+ */
+const AN_SCREEN = {
   primary:'#c8f135', secondary:'#5be5c8', danger:'#f14335', warn:'#f1a435',
   purple:'#a78bfa', blue:'#60a5fa', muted:'#5a6380',
-  surface:'#0e1117', border:'#1e2330', text:'#e2e8f4',
+  surface:'#0e1117', border:'#1e2330', text:'#e2e8f4', onFill:'#0a0c10',
 };
+// Paper equivalents — same semantics, legible on white. Lime/teal in particular
+// are invisible on paper and become a deep green/teal rather than staying bright.
+// `onFill` is the ink used ON TOP of a saturated cell (the heatmap): dark on
+// both themes by design, which is why it is not simply `text` inverted.
+const AN_PAPER = {
+  primary:'#6d8f0a', secondary:'#0f8f78', danger:'#c62a1e', warn:'#b3780a',
+  purple:'#6d4fd0', blue:'#2563eb', muted:'#6b7280',
+  surface:'#f6f6f8', border:'#dcdce2', text:'#1a1a2e', onFill:'#14141f',
+};
+let _anPalette = null;   // null → the on-screen palette
+const AN_COLORS = {
+  get primary(){   return (_anPalette||AN_SCREEN).primary; },
+  get secondary(){ return (_anPalette||AN_SCREEN).secondary; },
+  get danger(){    return (_anPalette||AN_SCREEN).danger; },
+  get warn(){      return (_anPalette||AN_SCREEN).warn; },
+  get purple(){    return (_anPalette||AN_SCREEN).purple; },
+  get blue(){      return (_anPalette||AN_SCREEN).blue; },
+  get muted(){     return (_anPalette||AN_SCREEN).muted; },
+  get surface(){   return (_anPalette||AN_SCREEN).surface; },
+  get border(){    return (_anPalette||AN_SCREEN).border; },
+  get text(){      return (_anPalette||AN_SCREEN).text; },
+  get onFill(){    return (_anPalette||AN_SCREEN).onFill; },
+};
+/* Renders `fn()` with the paper palette active when the export theme asks for
+ * it. try/finally is load-bearing: a throwing block must not leave the whole
+ * on-screen panel stuck in paper colours (the engine catches block errors, so
+ * a throw here is an ordinary, expected path). */
+function anWithPalette(theme, fn){
+  const prev = _anPalette;
+  _anPalette = (theme === 'light') ? AN_PAPER : null;
+  try { return fn(); }
+  finally { _anPalette = prev; }
+}
 
 /* ── Coded ordinal/boolean values → human-readable axis labels ── */
 const AN_VALUE_LABELS = {
@@ -17470,7 +18105,7 @@ function anHeatmap(matrix, rowLabels, colLabels, opt){
       const cellIds = opt.ids && opt.ids[ri] ? opt.ids[ri][ci] : null;
       s += '<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cell-2)+'" height="'+(cell-2)+'" rx="2" '
          + 'fill="rgba(200,241,53,'+alpha+')" stroke="'+AN_COLORS.border+'"'+anTip(r+' × '+c+'\n'+v+' '+unit)+anIds(cellIds, r+' × '+c)+'></rect>';
-      if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? '#0a0c10' : AN_COLORS.text});
+      if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? AN_COLORS.onFill : AN_COLORS.text});
     });
   });
   // row axis title (rotated, far left)
@@ -17998,7 +18633,9 @@ function anStorySkillCoverage(data){
 function anStoryDiscTeam(data){
   const withDisc = data.filter(d => d.discProfile);
   if (!withDisc.length) return anEmpty(t('No DISC placements yet (place engineers on the DISC tab)'));
-  const DCOL = {D:'#f14335', I:'#c8f135', S:'#5be5c8', C:'#9090f0'};
+  // via AN_COLORS, not literals — these were duplicating the palette, so they
+  // stayed dark-theme lime/teal even when a paper export swapped everything else
+  const DCOL = {D:AN_COLORS.danger, I:AN_COLORS.primary, S:AN_COLORS.secondary, C:AN_COLORS.purple};
   const teams = [...new Set(withDisc.map(d => d.group))].sort();
   const rows = teams.map(tm => {
     const members = withDisc.filter(d => d.group === tm);
@@ -18022,9 +18659,9 @@ function anStoryTrajectory(data){
   const groups = { up:[], down:[], 'new':[], same:[] };
   data.forEach(d => { const k = curMap[d.uid]; if (!k) return; const mv = nbMove(k, prevMap[d.uid]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.uid] || null, to: k }); });
   const order = [
-    { key:'up',   label:t('RISING ▲'),    color:'#c8f135' },
-    { key:'down', label:t('DECLINING ▼'), color:'#f14335' },
-    { key:'new',  label:t('NEW ✦'),       color:'#5be5c8' },
+    { key:'up',   label:t('RISING ▲'),    color:AN_COLORS.primary },
+    { key:'down', label:t('DECLINING ▼'), color:AN_COLORS.danger },
+    { key:'new',  label:t('NEW ✦'),       color:AN_COLORS.secondary },
     { key:'same', label:t('STABLE •'),    color:AN_COLORS.muted },
   ];
   let h = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+t('Movement')+' <b style="color:var(--text)">'+escH(prev)+'</b> → <b style="color:var(--accent)">'+escH(cur)+'</b></div>';
@@ -18283,8 +18920,7 @@ function anRenderMain(){
   // Export bar
   h += '<div style="display:flex;gap:8px;margin-top:12px">'
     + '<button onclick="anExportCSV()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ CSV</button>'
-    + '<button onclick="anExportPNG()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PNG</button>'
-    + '<button onclick="anExportPDF()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PDF</button>'
+    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="background:var(--bg);border:1px solid var(--accent);color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">📄 '+escH(t('EXPORT'))+'</button>'
     + '</div>';
 
   main.innerHTML = h;
@@ -18337,6 +18973,140 @@ function anExportCSV(){
   a.download = 'matrix-analytics.csv';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/* ►► SECTION: ANALYTICS-EXPORT ◄◄ People Analytics on the shared export engine.
+ *
+ * The app's first DATA-DERIVED block registry: one block per story view, built
+ * by walking ANALYTICS_TEMPLATES rather than hand-listing them, so a story view
+ * added there becomes exportable with no wiring here — the same
+ * "add a template, it auto-appears" contract the panel itself has.
+ *
+ * Two things make this panel unlike the other migrations:
+ *  - Its charts are hardcoded light-on-dark SVG in presentation attributes, so
+ *    theming goes through anWithPalette() (see AN_COLORS above), not var(--…).
+ *  - Its compare mode is combinatorial (dimension × dimension × template), so
+ *    it drives the engine's per-deliverable `controls` rather than exposing a
+ *    fixed block for every possible chart.
+ */
+
+// Dataset for an export, honouring (or ignoring) the panel's live filters per
+// the SCOPE control.
+function anExportData(ctx){
+  const all = buildAnalyticsDataset();
+  return (ctx && ctx.scope === 'all') ? all : anApplyFilters(all);
+}
+// One chart + its optional stats summary, laid out for a page.
+function anExportChart(title, out){
+  if (!out || !out.chart) return '';
+  let h = '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(title)+'</h2>'
+    + out.chart
+  const stats = out.stats && out.stats.length ? anSummaryStats(out.stats) : '';
+  if (stats) h += '<div style="margin-top:12px;max-width:320px">'+stats+'</div>'
+  return h;
+}
+// '— none —' + grouped dimension options, mirroring the panel's own dimension select
+function anExportDimOptions(){
+  const opts = [{ v:'', label:t('— none —') }];
+  ANALYTICS_DIMENSIONS.forEach(d => opts.push({ v:d.id, label:d.group+' · '+d.label }));
+  return opts;
+}
+
+function anExportBlocks(){
+  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  const blocks = [
+    { id:'scorecard', label:t('KPI scorecard'), render(ctx){
+        return anWithPalette(ctx.theme, () => anScorecard(anExportData(ctx))); } },
+    { id:'insights', label:t('Auto-insights'), render(ctx){
+        return anWithPalette(ctx.theme, () => anInsightsBar(anExportData(ctx))); } },
+    { id:'compare', label:t('Compare chart (your selection)'), render(ctx){
+        const dimA = anDim(ctx.anDimA), dimB = anDim(ctx.anDimB);
+        if (!dimA && !dimB) return '';
+        const tpl = ANALYTICS_TEMPLATES.find(x => x.id === ctx.anTemplate);
+        if (!tpl) return '';
+        const data = anExportData(ctx);
+        if (!data.length) return '';
+        return anWithPalette(ctx.theme, () =>
+          anExportChart(tpl.icon+' '+anTplName(tpl, dimA, dimB), tpl.render(data, dimA, dimB))); } },
+  ];
+  stories.forEach(s => blocks.push({
+    id:'story.'+s.id,
+    label:s.icon+' '+s.name,
+    render(ctx){
+      const data = anExportData(ctx);
+      if (!data.length) return '';
+      return anWithPalette(ctx.theme, () => anExportChart(s.icon+' '+s.name, s.render(data)));
+    },
+  }));
+  return blocks;
+}
+
+// Human-readable summary of the live filters, so the document says what it covers
+function anExportScopeLabel(){
+  const f = _anState.filters;
+  const parts = [];
+  if (f.group.size)     parts.push([...f.group].join(', '));
+  if (f.location.size)  parts.push([...f.location].join(', '));
+  if (f.seniority.size) parts.push([...f.seniority].join(', '));
+  return parts.join(' · ');
+}
+
+function anExportOpen(){
+  const all = buildAnalyticsDataset();
+  if (!all.length) { alert(t('No people to analyse yet.')); return; }
+  const filtered = anApplyFilters(all);
+  const scopeLabel = anExportScopeLabel();
+  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+
+  exportOpenBuilder({
+    deliverableId:'analytics',
+    title:t('People Analytics'),
+    subtitleDefault:(G('res-title-input') ? G('res-title-input').value : '') || '',
+    blocks:anExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    /* Function form: the CHART list depends on the two dimensions chosen above
+       it, exactly as the panel's own template cards do. Defaults mirror whatever
+       the panel is currently showing, so "export what I'm looking at" is the
+       zero-click path while still being overridable here. */
+    controls(v){
+      const dimA = anDim(v.anDimA), dimB = anDim(v.anDimB);
+      const avail = getAvailableTemplates(dimA, dimB);
+      return [
+        { id:'scope', label:t('SCOPE'), type:'select',
+          value: scopeLabel ? 'filtered' : 'all',
+          options:[
+            { v:'filtered', label:t('Panel filters — {n} people',{n:filtered.length}) },
+            { v:'all',      label:t('Whole team — {n} people',{n:all.length}) },
+          ] },
+        { id:'anDimA', label:t('COMPARE — A'), type:'select',
+          value:_anState.dimA || '', options:anExportDimOptions() },
+        { id:'anDimB', label:t('COMPARE — B'), type:'select',
+          value:_anState.dimB || '', options:anExportDimOptions() },
+        { id:'anTemplate', label:t('COMPARE — CHART'), type:'select',
+          value: (avail.find(x => x.id === _anState.template) || avail[0] || {}).id || '',
+          options: avail.length
+            ? avail.map(x => ({ v:x.id, label:x.icon+' '+anTplName(x, dimA, dimB) }))
+            : [{ v:'', label:t('— pick a dimension first —') }] },
+      ];
+    },
+    builtinTemplates:[
+      { id:'review', name:t('Talent review'),
+        blocks:['scorecard','insights','story.talent_risk','story.retention_risk','story.succession'] },
+      { id:'comp', name:t('Compensation'),
+        blocks:['scorecard','story.pay_equity_full','story.pay_progression'] },
+      { id:'capacity', name:t('Capacity & skills'),
+        blocks:['scorecard','story.capacity_health','story.skill_coverage'] },
+      { id:'all', name:t('Everything'),
+        blocks:['scorecard','insights','compare'].concat(stories.map(s => 'story.'+s.id)) },
+      { id:'current', name:t('Just my chart'), blocks:['compare'] },
+    ],
+    formats:[
+      { id:'pdf',  label:t('PDF (print)') },
+      { id:'html', label:t('HTML (standalone)') },
+      { id:'png',  label:t('PNG (image)') },
+    ],
+  });
 }
 
 // PDF — open a print-optimised window with the current chart + summary, then print.
@@ -20560,6 +21330,7 @@ var RAIL_I = {
   planning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 12h10"/><path d="M4 18h7"/><path d="m16.5 16.5 2 2 3.5-3.8"/></svg>',
   snap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
   backup:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v8.6L12 20l-7.5-4.2V7.2z"/><path d="M4.8 7.4L12 11.5l7.2-4.1"/><path d="M12 11.5V20"/></svg>',
+  exportico:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h6.5L18 9v10.5H7z"/><path d="M13 4.5V9h5"/><path d="M12 11.5v5.5"/><path d="M9.6 14.6L12 12l2.4 2.6"/></svg>',
   restore:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v3.4h3.4"/></svg>',
   ai:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2.6"/><path d="M10 3v2.4M14 3v2.4M10 18.6V21M14 18.6V21M3 10h2.4M3 14h2.4M18.6 10H21M18.6 14H21"/></svg>',
   help:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.8.3-1.3.9-1.3 1.9"/><circle cx="11.6" cy="16.6" r="0.7" fill="currentColor" stroke="none"/></svg>',
@@ -20623,6 +21394,7 @@ var RAIL_DOMAINS = [
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
+  {id:'export',   name:t('Export'),    ico:RAIL_I.exportico},
   {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
   {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
   {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
@@ -20898,7 +21670,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay'];
+  'export-builder-overlay','export-picker-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -20907,7 +21679,8 @@ function railAnyModalOpen(){
 function railAction(id){
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
-  if(id==='collab')        collabOpen();
+  if(id==='export')        exportOpenPicker();
+  else if(id==='collab')   collabOpen();
   else if(id==='snap')     openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();
@@ -21042,8 +21815,44 @@ function railOpenSettings(){
   var rw=G('set-railwidth'); if(rw){ rw.min=RAIL_W_MIN; rw.max=RAIL_W_MAX; rw.value=railClampWidth(railWidth); }
   var rwv=G('set-railwidth-val'); if(rwv) rwv.textContent=railClampWidth(railWidth)+'px';
   var sbz=G('set-scrollbar'); if(sbz) sbz.value=railScrollbar;
-  var et=G('set-export-theme'); if(et) et.value=exportLoadPrefs().theme;
+  var ep0=exportLoadPrefs();
+  var et=G('set-export-theme'); if(et) et.value=ep0.theme;
+  var eo=G('set-export-org'); if(eo) eo.value=ep0.orgName||'';
+  _railExportLogo=ep0.logo||'';
+  railRenderExportLogo();
   var ov=G('settings-overlay'); if(ov) ov.classList.add('show');
+}
+
+/* Export branding (org name + logo). exportBrand() has read prefs.orgName and
+ * prefs.logo since the engine landed, but nothing ever WROTE them — so every
+ * export in the product was stamped with the hardcoded 'Project Matrix'
+ * fallback and the white-label seam was effectively dead code. This is the
+ * missing half. Staged in a module var so CANCEL genuinely cancels; only
+ * railSaveSettings persists it. Same UI-only tier as the export theme (see
+ * export.js EXPORT_PREFS_KEY) — deliberately NOT app state, so branding never
+ * travels in a backup or into a collab room. */
+var RAIL_LOGO_MAX=200*1024;
+var _railExportLogo='';
+function railRenderExportLogo(){
+  var img=G('set-export-logo-prev'), clr=G('set-export-logo-clear');
+  if(img){
+    if(_railExportLogo){ img.src=_railExportLogo; img.style.display=''; }
+    else { img.removeAttribute('src'); img.style.display='none'; }
+  }
+  if(clr) clr.style.display=_railExportLogo?'':'none';
+}
+function railPickExportLogo(){ var i=G('set-export-logo-input'); if(i) i.click(); }
+function railClearExportLogo(){ _railExportLogo=''; railRenderExportLogo(); }
+function railLoadExportLogo(input){
+  var f=input&&input.files&&input.files[0]; if(!f) return;
+  // The logo is inlined as a dataURL into every exported document AND into the
+  // prefs key, so localStorage's quota is the real ceiling here, not aesthetics.
+  if(f.size>RAIL_LOGO_MAX){ alert(t('Logo is too large — use an image under 200 KB.')); input.value=''; return; }
+  var rd=new FileReader();
+  rd.onload=function(){ _railExportLogo=String(rd.result||''); railRenderExportLogo(); };
+  rd.onerror=function(){ alert(t('Could not read that image.')); };
+  rd.readAsDataURL(f);
+  input.value='';
 }
 
 // Read the Settings modal, persist, apply, and close.
@@ -21054,7 +21863,12 @@ function railSaveSettings(){
   if(cp&&cp.value) railChartMode=(cp.value==='dropdown'?'dropdown':'hub');
   var bs=G('set-badgescope'); if(bs&&bs.value) railBadgeScope=(bs.value==='tasks'?'tasks':'all');
   var sbz=G('set-scrollbar'); if(sbz&&RAIL_SB[sbz.value]) railScrollbar=sbz.value;
-  var et=G('set-export-theme'); if(et){ var ep=exportLoadPrefs(); ep.theme=(et.value==='light'?'light':'app'); exportSavePrefs(ep); }
+  var et=G('set-export-theme'), eo=G('set-export-org');
+  var ep=exportLoadPrefs();
+  if(et) ep.theme=(et.value==='light'?'light':'app');
+  if(eo) ep.orgName=eo.value.trim();
+  ep.logo=_railExportLogo;
+  exportSavePrefs(ep);
   if(rw) railWidth=railClampWidth(rw.value);
   railApplyWidth();
   railApplyScrollbar();
@@ -26546,6 +27360,252 @@ function collabBootFromHash(){
 }
 /* ◄◄ END: sections/collab.js ►► */
 
+/* ►► SECTION: EXPORT-PACKS ◄◄ The global "Export" door + cross-view packs.
+ *
+ * Two things live here, both sitting ON TOP of the export engine
+ * (src/core/export.js) rather than inside it — the engine stays deliverable-
+ * agnostic and Node-testable, this file is where app knowledge is allowed:
+ *
+ *  1. exportDeliverables() — the ONE registry of everything exportable, used by
+ *     the rail's Export action. Each view still keeps its own Export button
+ *     (the door is where you are); this is the second door for people who know
+ *     WHAT they want but not WHERE it lives.
+ *
+ *  2. Packs — deliverables whose blocks are pulled from SEVERAL section
+ *     registries at once (talent review = nine-box + DISC + profiles). A pack
+ *     is not a new rendering path: it is the ordinary builder handed a merged
+ *     block list, so it inherits templates, theme, paper, layout, preview and
+ *     per-block error isolation for free.
+ *
+ * Why packs come after the per-view migrations: a pack can only compose blocks
+ * that already exist. Skills/SPOF and the cost dashboard are not migrated yet,
+ * so they are absent from the packs below — add them to the relevant pack's
+ * block list once their <prefix>ExportBlocks() functions land, nothing else
+ * needs to change.
+ */
+
+/* Re-labels and namespaces another section's blocks so several registries can
+ * be merged without id collisions, and so the picker chip reads "Nine-box —
+ * Grid" rather than a bare "Grid" with no clue which view it came from. */
+function packBlocksFrom(prefix, sourceLabel, list){
+  return (list||[]).map(function(b){
+    return {
+      id: prefix+'.'+b.id,
+      label: sourceLabel+' — '+b.label,
+      render: b.render
+    };
+  });
+}
+
+/* Profiles is the one registry that cannot be merged as-is: its "blocks" are
+ * per-person FIELD TOGGLES consumed through composeRender (one block applies to
+ * every card), not independent pages. So a pack takes the whole card grid as a
+ * single block instead — same renderer, fixed field set. */
+function packProfileCardsBlock(){
+  return {
+    id:'profiles.cards',
+    label:t('Profiles — team cards'),
+    render:function(ctx){
+      var engs=getProfileExportEngs();
+      if(!engs.length) return '';
+      var fields=prfCardBlocks().map(function(b){return b.id;});
+      var cards=buildProfileCardHTMLs(engs,fields);
+      var cols=ctx&&ctx.columns?ctx.columns:3;
+      return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Team profiles'))+'</h2>'
+        +'<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:12px">'
+        +cards.map(function(c){return '<div style="min-width:0;break-inside:avoid;page-break-inside:avoid">'+c+'</div>';}).join('')
+        +'</div>';
+    }
+  };
+}
+
+/* ── The packs ─────────────────────────────────────────────────────────── */
+
+// Talent review — the people conversation, end to end.
+function packTalentOpen(){
+  var blocks=[]
+    .concat(packBlocksFrom('nb',t('Nine-box'),nbExportBlocks()))
+    .concat(packBlocksFrom('disc','DISC',discExportBlocks()))
+    .concat([packProfileCardsBlock()]);
+  exportOpenBuilder({
+    deliverableId:'pack-talent',
+    title:t('Talent review pack'),
+    subtitleDefault:(G('res-title-input')?G('res-title-input').value:'')||'',
+    blocks:blocks,
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full review'), blocks:['nb.grid','nb.distribution','disc.quadrants','disc.mix','profiles.cards']},
+      {id:'matrices', name:t('Matrices only'), blocks:['nb.grid','disc.quadrants']},
+      {id:'calibration', name:t('Calibration'), blocks:['nb.grid','nb.distribution','nb.unplaced']},
+    ],
+    columns:{default:3, options:[2,3,4,5]},
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
+
+// Organisation — structure and shape of the team.
+function packOrgOpen(){
+  var blocks=[]
+    .concat(packBlocksFrom('org',t('Org'),orgExportBlocks()))
+    .concat([packProfileCardsBlock()]);
+  exportOpenBuilder({
+    deliverableId:'pack-org',
+    title:t('Organisation pack'),
+    subtitleDefault:(G('res-title-input')?G('res-title-input').value:'')||'',
+    blocks:blocks,
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Chart, headcount + profiles'), blocks:['org.chart','org.headcount','profiles.cards']},
+      {id:'structure', name:t('Structure only'), blocks:['org.chart','org.headcount']},
+    ],
+    columns:{default:3, options:[2,3,4,5]},
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
+
+// Board pack — the portfolio story plus the people headline behind it.
+function packBoardOpen(){
+  var months=getMonthRange();
+  var eco=ecDataset();
+  var blocks=[]
+    .concat(packBlocksFrom('xs',t('Exec'),xsExportBlocks()))
+    .concat(packBlocksFrom('org',t('Org'),orgExportBlocks().filter(function(b){return b.id==='headcount';})))
+    .concat(packBlocksFrom('nb',t('Nine-box'),nbExportBlocks().filter(function(b){return b.id==='distribution';})));
+  exportOpenBuilder({
+    deliverableId:'pack-board',
+    title:t('Board pack'),
+    subtitleDefault:(G('res-title-input')?G('res-title-input').value:'Resource Plan')
+      +(months.length?' · '+t('over {n} month(s)',{n:months.length}):''),
+    blocks:blocks,
+    ctx:{months:months, eco:eco},
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['xs.scorecard','xs.spendmap','xs.valuerisk','xs.burn','xs.attention','org.headcount','nb.distribution']},
+      {id:'short', name:t('Short form'), blocks:['xs.scorecard','xs.attention','org.headcount']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
+
+/* ── The registry behind the rail's Export action ──────────────────────── */
+
+/* `ready` gates a deliverable that would only open and immediately alert. The
+ * picker still SHOWS it (so the feature is discoverable before there's data)
+ * but greys it and explains what is missing.
+ *
+ * Project-scoped deliverables — the Gantt and the project brief — are
+ * deliberately NOT listed: they export whatever project you currently have
+ * open, which is meaningless from a global menu. They keep their button on
+ * their own view, where the scope is unambiguous. */
+function exportDeliverables(){
+  var anyPeople=engineers.filter(function(e){return !e.planningOnly;}).length;
+  return [
+    {id:'pack-talent', pack:true, label:t('Talent review pack'), domain:t('TALENT'),
+     hint:t('Nine-box, DISC and team profile cards in one document.'),
+     ready:!!(Object.keys(_nineBoxPlacements).length||Object.keys(_discPlacements).length),
+     missing:t('Place people on the nine-box or DISC first.'), open:packTalentOpen},
+
+    {id:'pack-org', pack:true, label:t('Organisation pack'), domain:t('TEAM'),
+     hint:t('Org chart, headcount breakdown and profile cards.'),
+     ready:!!anyPeople, missing:t('Add people first.'), open:packOrgOpen},
+
+    {id:'pack-board', pack:true, label:t('Board pack'), domain:t('INSIGHTS'),
+     hint:t('Executive scorecard, spend, risk and burn, plus headcount and talent mix.'),
+     ready:!!(projects.length||anyPeople), missing:t('Add projects and a team first.'), open:packBoardOpen},
+
+    {id:'exec', label:t('Executive summary'), domain:t('INSIGHTS'),
+     hint:t('Scorecard, spend map, value vs risk, cost burn, attention list.'),
+     ready:!!(projects.length||anyPeople), missing:t('Add projects and a team first.'), open:exportExecPack},
+
+    {id:'org', label:t('Org chart'), domain:t('TEAM'),
+     hint:t('The reporting structure, with an optional headcount breakdown.'),
+     ready:!!anyPeople, missing:t('Add people first.'), open:orgExportOpen},
+
+    {id:'ninebox', label:t('Nine-box talent matrix'), domain:t('TALENT'),
+     hint:t('The 3×3 grid, distribution and anyone not yet placed.'),
+     ready:!!Object.keys(_nineBoxPlacements).length,
+     missing:t('Place at least one person on the grid first.'), open:nineBoxExportOpen},
+
+    {id:'disc', label:t('DISC behavioral profile'), domain:t('TALENT'),
+     hint:t('The four quadrants, team mix and anyone not yet profiled.'),
+     ready:!!Object.keys(_discPlacements).length,
+     missing:t('Profile at least one person first.'), open:discExportOpen},
+
+    {id:'analytics', label:t('People Analytics'), domain:t('INSIGHTS'),
+     hint:t('KPI scorecard, insights and any of the ten story views — risk radar, pay equity, capacity, succession.'),
+     ready:!!anyPeople, missing:t('Add people first.'), open:anExportOpen},
+
+    {id:'profiles-dashboard', label:t('Team profiles'), domain:t('TALENT'),
+     hint:t('One card per person, in a grid you can set 2–5 columns wide.'),
+     ready:!!anyPeople, missing:t('Add people first.'), open:exportProfilesDashboardOpen},
+
+    {id:'profiles-all', label:t('Full profiles'), domain:t('TALENT'),
+     hint:t('One full page per person.'),
+     ready:!!anyPeople, missing:t('Add people first.'), open:profilesExportAllOpen},
+  ];
+}
+
+/* ── The picker ────────────────────────────────────────────────────────── */
+
+function exportOpenPicker(){
+  exportRenderPicker();
+  var ov=G('export-picker-overlay'); if(ov) ov.classList.add('show');
+}
+function exportClosePicker(){
+  var ov=G('export-picker-overlay'); if(ov) ov.classList.remove('show');
+}
+// picked a deliverable: close the menu, hand straight over to the shared builder
+function exportPickerGo(el){
+  var id=el&&el.getAttribute?el.getAttribute('data-id'):null;
+  if(!id) return;
+  var d=exportDeliverables().find(function(x){return x.id===id;});
+  if(!d||!d.ready) return;
+  exportClosePicker();
+  d.open();
+}
+
+function exportRenderPicker(){
+  var wrap=G('exp-picker-list'); if(!wrap) return;
+  var list=exportDeliverables();
+  var card=function(d){
+    var dis=!d.ready;
+    return '<div class="exp-pick"'+(dis?'':' onclick="exportPickerGo(this)"')
+      +' data-id="'+escH(d.id)+'"'
+      +' style="border:1px solid '+(d.pack?'var(--accent)':'var(--border)')+';border-radius:8px;padding:10px 12px;'
+      +'background:var(--bg);'+(dis?'opacity:.45;':'cursor:pointer;')+'display:flex;flex-direction:column;gap:3px">'
+      +'<div style="display:flex;align-items:baseline;gap:8px">'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text)">'+escH(d.label)+'</span>'
+      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+escH(d.domain)+'</span>'
+      +(d.pack?'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--bg);background:var(--accent);border-radius:3px;padding:1px 5px;letter-spacing:.06em">'+escH(t('PACK'))+'</span>':'')
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--muted);line-height:1.4">'+escH(dis?d.missing:d.hint)+'</div>'
+      +'</div>';
+  };
+  var packs=list.filter(function(d){return d.pack;});
+  var singles=list.filter(function(d){return !d.pack;});
+  var h='<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">'
+    +escH(t('PACKS — several views in one document'))+'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">'+packs.map(card).join('')+'</div>'
+    +'<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">'
+    +escH(t('SINGLE VIEWS'))+'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:7px">'+singles.map(card).join('')+'</div>'
+    +'<div style="font-size:10px;color:var(--dim);margin-top:12px;line-height:1.5">'
+    +escH(t('Project-specific exports (schedule, project brief) live on their own view, where the project is unambiguous.'))
+    +'</div>'
+  wrap.innerHTML=h;
+}
+/* ◄◄ END: sections/packs.js ►► */
+
 /* ►► SECTION: BOOT ◄◄ Global event wiring, keyboard shortcuts, and app init/boot sequence
  *
  * Functions defined in this file: (none — this is the entry point: top-level event
@@ -26566,6 +27626,11 @@ document.addEventListener('keydown',e=>{
     // A modal/popup on top of a view? Dismiss just that (don't navigate back).
     var modalWasOpen=(typeof railAnyModalOpen==='function')&&railAnyModalOpen();
     closeModal();closeEditor();closeQPanel();setDrawTool('none');closeCtx();closeProjTab();closeHelp();closeSnap();closeSkillsPdfDlg();if(typeof closeSkillDomainMgr==='function')closeSkillDomainMgr();
+    // Membership of RAIL_MODAL_OVERLAYS only suppresses the back-navigation
+    // below — it does NOT close anything. Each modal needs its closer here, and
+    // the two export overlays were missing (the builder ignored Esc entirely).
+    if(typeof exportBuilderClose==='function')exportBuilderClose();
+    if(typeof exportClosePicker==='function')exportClosePicker();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }
@@ -26696,6 +27761,18 @@ railInit();   // render the persistent nav rail + land on the initial view
 
 <!-- EXPORT BUILDER — drag-and-drop content/order/theme picker shared by every
      deliverable's Export button (src/core/export.js, exportOpenBuilder). -->
+<!-- GLOBAL EXPORT PICKER — the rail's Export action; hands off to the builder below -->
+
+<div id="export-picker-overlay" class="overlay">
+  <div class="modal-box" style="width:min(560px,95vw);max-height:88vh;overflow-y:auto">
+    <h2 data-i18n="EXPORT">EXPORT</h2>
+    <div id="exp-picker-list"></div>
+    <div class="modal-actions">
+      <button data-i18n="CANCEL" onclick="exportClosePicker()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
 <div id="export-builder-overlay" class="overlay">
   <div class="modal-box" style="width:min(760px,95vw);max-height:88vh;overflow-y:auto">
     <h2 id="exb-heading">EXPORT</h2>
@@ -26719,7 +27796,40 @@ railInit();   // render the persistent nav rail + land on the initial view
           <option value="light">Light (print-friendly)</option>
         </select>
       </div>
+      <div class="field" id="exb-format-row" style="flex:1;min-width:170px;display:none">
+        <label>FORMAT</label>
+        <select id="exb-format" onchange="exportBuilderSetFormat(this.value)"></select>
+      </div>
+      <div class="field" id="exb-columns-row" style="flex:1;min-width:170px;display:none">
+        <label>COLUMNS</label>
+        <select id="exb-columns" onchange="exportBuilderSetColumns(this.value)"></select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="LAYOUT">LAYOUT</label>
+        <select id="exb-layout" onchange="exportBuilderSetLayout(this.value)">
+          <option value="page" data-i18n="One section per page">One section per page</option>
+          <option value="flow" data-i18n="Continuous flow">Continuous flow</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="PAPER">PAPER</label>
+        <select id="exb-paper" onchange="exportBuilderSetPaper(this.value)"></select>
+      </div>
+      <div class="field" style="flex:1;min-width:170px">
+        <label data-i18n="COVER PAGE">COVER PAGE</label>
+        <!-- a plain div, not a nested <label> — `.field label` styling would
+             otherwise apply to it and blow the row apart -->
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding-top:5px">
+          <!-- explicit width: `.field input` sets width:100%, which stretches a
+               bare checkbox across the whole field and pushes its text off-panel -->
+          <input type="checkbox" id="exb-cover" checked onchange="exportBuilderSetCover(this.checked)"
+            style="accent-color:var(--accent);flex:0 0 auto;width:14px;height:14px;min-width:0;margin:0">
+          <span data-i18n="Include a title cover">Include a title cover</span>
+        </div>
+      </div>
     </div>
+    <!-- per-deliverable extra controls (People Analytics scope/dimensions/chart) -->
+    <div id="exb-controls" style="display:none;gap:12px;flex-wrap:wrap"></div>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
         <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:4px">AVAILABLE — drag or click to add</div>
@@ -26731,6 +27841,17 @@ railInit();   // render the persistent nav rail + land on the initial view
         <div id="exb-included" class="exb-list" ondragover="exportBuilderDragOver(event)" ondrop="exportBuilderDrop(event,'included')"
           style="min-height:120px;border:1px dashed var(--accent);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span data-i18n="PREVIEW" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">PREVIEW</span>
+        <span id="exb-preview-note" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim)"></span>
+      </div>
+      <!-- srcdoc executes inline script: exportHTML() is script-free by design
+           (autoprint was removed engine-wide) and sandbox withholds allow-scripts
+           so it stays that way — see export.js › exportBuilderRenderPreview -->
+      <iframe id="exb-preview" sandbox="allow-same-origin" title="Export preview"
+        style="width:100%;height:260px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></iframe>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <input type="text" id="exb-tpl-name" placeholder="Save current selection as…"
@@ -27212,8 +28333,7 @@ railInit();   // render the persistent nav rail + land on the initial view
       <button class="sm" id="org-detail-btn" onclick="orgToggleDetail()" data-i18n-title="Show nine-box rating & recommended next move on each card" title="Show nine-box rating &amp; recommended next move on each card" data-i18n="◔ DETAILS: OFF">◔ DETAILS: OFF</button>
 
       <div style="flex:1"></div>
-      <button class="sm" onclick="orgExportSVG()" data-i18n-title="Download SVG" title="Download SVG">↓ SVG</button>
-      <button class="sm" onclick="orgExportPNG()" data-i18n-title="Download PNG" title="Download PNG">↓ PNG</button>
+      <button class="sm" onclick="orgExportOpen()" data-i18n-title="Export the org chart" title="Export the org chart">📄 EXPORT</button>
 
 
       <div style="width:1px;background:var(--border);height:16px;flex-shrink:0"></div>
@@ -27286,8 +28406,7 @@ railInit();   // render the persistent nav rail + land on the initial view
   <div id="brief-header">
     <span id="brief-title">📄 PROJECT BRIEF</span>
     <div style="flex:1"></div>
-    <button class="sm primary" onclick="exportProjectBrief()">↓ EXPORT PDF</button>
-    <button class="sm" onclick="exportProjectBriefHTML()">↓ HTML</button>
+    <button class="sm primary" onclick="exportProjectBriefOpen()">📄 EXPORT</button>
     <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="brief-body">
@@ -27307,17 +28426,6 @@ railInit();   // render the persistent nav rail + land on the initial view
       </section>
 
       <div class="brief-2col">
-        <section class="brief-sec">
-          <div class="brief-sec-title">SECTIONS TO INCLUDE</div>
-          <div class="brief-opts">
-            <label class="brief-opt"><input type="checkbox" id="brief-include-team" checked> Team allocation</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-risks"> Project risks</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-todos" checked> Open todos</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-milestones" checked> Milestones</label>
-            <label class="brief-opt"><input type="checkbox" id="brief-include-actions" checked> Actions / Gantt</label>
-          </div>
-        </section>
-
         <section class="brief-sec">
           <div class="brief-sec-title">ALLOCATION PERIOD</div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">

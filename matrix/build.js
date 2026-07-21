@@ -66,6 +66,7 @@ const JS_FILES = [
   'sections/gate.js',
   'sections/engagement.js',
   'sections/collab.js',
+  'sections/packs.js',   // after every section: composes their *ExportBlocks() registries
   'sections/boot.js',
 ];
 

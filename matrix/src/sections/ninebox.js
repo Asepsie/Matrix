@@ -79,18 +79,22 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
     }
     var photo=photoCache&&photoCache.get&&photoCache.get(e.uid);
     var ini=(e.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    // `forExport` now forks on STRUCTURE only (no drag handles, no remove button,
+    // no "Drop here" placeholder). It used to fork on COLOUR too — hardcoded dark
+    // hexes — which predates the export engine's theming and made these chips print
+    // as dark-on-white under the light paper theme. Tokens work for both.
     var avSz=forExport?26:28;
-    var avBd=forExport?'2px solid #c8f135':'2px solid var(--accent)';
-    var avBg=forExport?'#1a1a1e':'var(--surface)';
-    var avCl=forExport?'#c8f135':'var(--accent)';
-    var txCl=forExport?'#e8e8ec':'var(--text)';
-    var muCl=forExport?'#888':'var(--muted)';
+    var avBd='2px solid var(--accent)';
+    var avBg='var(--surface)';
+    var avCl='var(--accent)';
+    var txCl='var(--text)';
+    var muCl='var(--muted)';
     var av=photo
       ?('<img src="'+photo+'" style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;object-fit:cover;border:'+avBd+';flex-shrink:0;">')
       :('<div style="width:'+avSz+'px;height:'+avSz+'px;border-radius:50%;background:'+avBg+';border:'+avBd+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+avCl+';flex-shrink:0;font-family:monospace">'+ini+'</div>');
     var nm='<div style="overflow:hidden"><div style="font-size:10px;font-weight:600;color:'+txCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">'+escH(e.name)+'</div><div style="font-size:8px;color:'+muCl+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">'+escH(e.role||'')+'</div></div>';
     if(forExport){
-      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:#0f0f11;margin:2px">'+av+nm+'</div>';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:5px;background:var(--bg);margin:2px">'+av+nm+'</div>';
     }
     return '<div draggable="true" ondragstart="nbDragStart(event,'+e.id+')"'
       +' title="'+escH(e.name)+' — drag to move"'
@@ -154,8 +158,7 @@ export function renderNineBox(){
     +' style="font-size:9px;padding:2px 7px;'+(_nbSwapAxes?'border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.12);font-weight:700':'')+'">Pot/Perf</button>'
     +'</div>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
-    +'<button class="add-row-btn" onclick="exportNineBoxPDF()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PDF">&#8595; PDF</button>'
-    +'<button class="add-row-btn" onclick="exportNineBoxPNG()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="Export PNG">&#8595; PNG</button>'
+    +'<button class="add-row-btn" onclick="nineBoxExportOpen()" style="border-color:#5be5c8;color:#5be5c8;font-size:9px;padding:2px 8px" title="'+escH(t('Export the nine-box'))+'">&#128196; '+escH(t('EXPORT'))+'</button>'
     +'<div style="width:1px;background:var(--border);height:16px"></div>'
     +'<button class="add-row-btn" onclick="nbClearYear()" title="Clear placements for the active year only" style="color:var(--muted);font-size:9px">&#8635; CLEAR '+escH(_nbYear)+'</button>'
     +'<button class="primary" style="font-size:10px;padding:3px 10px" onclick="saveState();flashSaved()">SAVE</button>'
@@ -280,14 +283,106 @@ function buildNineBoxHTML(){
     +'</body></html>';
 }
 
-// opens a print popup with the nine-box layout
-export function exportNineBoxPDF(){
-  var html=buildNineBoxHTML();
-  var win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
-  win.document.write(html);
-  win.document.write('<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,600);});<\/script>');
-  win.document.close();
+/* ►► SECTION: NINEBOX-EXPORT ◄◄ The nine-box on the shared export engine.
+ *
+ * `buildNineBoxHTML` above stays as-is only because the legacy PNG path still
+ * reads it; everything user-facing now goes through these blocks, which render
+ * in var(--…) tokens instead of that builder's hardcoded #666/#0a0a0c greys.
+ * That is what lets the SAME markup print on the light paper theme or the app
+ * theme, chosen per export (ARCHITECTURE › Export engine, "theming trick").
+ * The nine-box is plain HTML, not native SVG, so unlike org/gantt it uses the
+ * engine's own PNG rasteriser — no custom `run` handler needed.
+ */
+function nbExportBlocks(){
+  var axes=function(){
+    return {x:_nbSwapAxes?t('POTENTIAL'):t('PERFORMANCE'), y:_nbSwapAxes?t('PERFORMANCE'):t('POTENTIAL')};
+  };
+  return [
+    {id:'grid', label:t('Nine-box grid'), render:function(){
+      var CELLS=_nbCells();
+      var ordered=_nbOrderedCells(CELLS,_nbSwapAxes);
+      var A=axes();
+      var mono='font-family:IBM Plex Mono,monospace';
+      var cells=ordered.map(function(cell){
+        var people=_nbPeopleHTML(cell.key,_nineBoxPlacements,engineers,_photoCache,true);
+        // `color` (a translucent rgba tint) not `colorSolid` (an opaque DARK hex):
+        // the tint composites over whatever page background the chosen theme sets,
+        // so the same markup reads correctly on the app theme AND on light paper.
+        // colorSolid only ever worked on the dark theme — on paper it printed as a
+        // block of near-black, which is both wrong and a toner sink.
+        return '<div style="background:'+safeColor(cell.color)+';border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:5px;min-height:130px">'
+          +'<div style="display:flex;align-items:center;gap:5px">'
+          +'<div style="width:7px;height:7px;border-radius:50%;background:'+safeColor(cell.badge)+';flex-shrink:0"></div>'
+          +'<span style="'+mono+';font-size:9px;font-weight:700;color:'+safeColor(cell.badge)+';letter-spacing:.06em">'+escH(cell.label)+'</span></div>'
+          +'<div style="'+mono+';font-size:8px;color:var(--muted);margin-bottom:2px">'+escH(cell.sub)+'</div>'
+          +'<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0">'+(people||'<span style="font-size:9px;color:var(--dim)">—</span>')+'</div>'
+          +'<div style="padding:5px;background:var(--bg);border-radius:4px;border-left:2px solid '+safeColor(cell.badge)+'">'
+          +'<div style="font-size:8px;color:var(--muted);line-height:1.4;'+mono+'">'+escH(cell.rec)+'</div>'
+          +'</div></div>';
+      }).join('');
+      var tick=function(l){ return '<div style="'+mono+';font-size:8px;color:var(--muted)">'+escH(l)+'</div>'; };
+      return '<div style="display:flex;gap:0;min-height:620px">'
+        +'<div style="display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0">'
+        +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.1em;transform:rotate(-90deg);white-space:nowrap">'+escH(A.y)+' &#8594;</div></div>'
+        +'<div style="display:flex;flex-direction:column;flex:1;min-width:0">'
+        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);flex:1;gap:4px;padding-bottom:16px">'+cells+'</div>'
+        +'<div style="text-align:center;'+mono+';font-size:9px;color:var(--muted);letter-spacing:.1em">'+escH(A.x)+' &#8594;</div></div>'
+        +'<div style="display:flex;flex-direction:column;justify-content:space-around;width:48px;flex-shrink:0;padding:0 0 16px 6px">'
+        +[t('HIGH'),t('MED'),t('LOW')].map(tick).join('')
+        +'</div></div>';
+    }},
+    {id:'distribution', label:t('Distribution'), render:function(){
+      var ordered=_nbOrderedCells(_nbCells(),_nbSwapAxes);
+      var total=engineers.filter(function(e){return _nineBoxPlacements[e.uid];}).length;
+      if(!total) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Distribution'))+'</h2>'
+      ordered.forEach(function(cell){
+        var n=engineers.filter(function(e){return _nineBoxPlacements[e.uid]===cell.key;}).length;
+        var pct=Math.round(n/total*100);
+        h+='<div style="margin-bottom:5px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
+          +'<span style="color:'+safeColor(cell.badge)+'">'+escH(cell.label)+'</span>'
+          +'<span style="color:var(--text);font-weight:700">'+n+' <span style="color:var(--muted);font-weight:400">('+pct+'%)</span></span></div>'
+          +'<div style="background:var(--border);border-radius:2px;height:5px">'
+          +'<div style="background:'+safeColor(cell.badge)+';width:'+pct+'%;height:5px;border-radius:2px"></div></div></div>'
+      });
+      return h;
+    }},
+    {id:'unplaced', label:t('Unplaced people'), render:function(){
+      var un=engineers.filter(function(e){return !e.planningOnly&&!_nineBoxPlacements[e.uid];});
+      if(!un.length) return '';
+      return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Not yet placed'))+'</h2>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +un.map(function(e){
+          return '<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text)">'+escH(e.name)+'</span>';
+        }).join('')+'</div>';
+    }},
+  ];
+}
+// opens the shared export picker for the nine-box
+function nineBoxExportOpen(){
+  if(!Object.keys(_nineBoxPlacements).length){
+    alert(t('Place at least one person on the grid first.')); return;
+  }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'ninebox',
+    title:t('Nine-box talent matrix'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} placed',{n:Object.keys(_nineBoxPlacements).length}),
+    blocks:nbExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['grid','distribution','unplaced']},
+      {id:'grid', name:t('Grid only'), blocks:['grid']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'png', label:t('PNG (image)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // renders the nine-box to a PNG via SVG foreignObject

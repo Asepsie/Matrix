@@ -1575,9 +1575,19 @@ function orgToggleKPI(){
   if(btn){btn.style.borderColor=_orgKpiOpen?'var(--accent)':'';btn.style.color=_orgKpiOpen?'var(--accent)':'';}
   if(_orgKpiOpen)orgRenderKPI();
 }
-// renders the headcount KPI panel
+// renders the headcount KPI panel (on-screen shell + the shared body below)
 function orgRenderKPI(){
   var panel=G('org-kpi-panel');if(!panel)return;
+  panel.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+t('📊 HEADCOUNT')
+    +'<button onclick="orgToggleKPI()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>'
+    +orgKpiHTML();
+}
+/* The headcount body as a pure string, with no panel chrome and no close button,
+ * so the org export can reuse the EXACT same markup as a content block instead
+ * of a parallel implementation that would drift. Renders entirely through
+ * var(--…) tokens, so it themes itself inside an export popup for free (see
+ * ARCHITECTURE › Export engine, "theming trick"). */
+function orgKpiHTML(){
   var T=buildOrgTree();
   var engs=T.engs;
   // planning resources are excluded from all headcount KPIs (consistent with the cost dashboard)
@@ -1620,8 +1630,7 @@ function orgRenderKPI(){
     byLoc[l]=(byLoc[l]||0)+1;
   });
 
-  var h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+t('📊 HEADCOUNT')
-    +'<button onclick="orgToggleKPI()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button></div>';
+  var h='';
 
   h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">'
     +'<div style="font-size:22px;font-weight:700;color:var(--accent)">'+active.length+'</div>'
@@ -1721,12 +1730,64 @@ function orgRenderKPI(){
     });
   }
 
-  panel.innerHTML=h;
+  return h;
+}
+
+/* ►► SECTION: ORG-EXPORT ◄◄ The org chart on the shared export engine.
+ *
+ * Blocks are the chart itself + the headcount breakdown (`orgKpiHTML`, the same
+ * markup the on-screen panel uses). The NATIVE SVG and high-res PNG paths are
+ * kept as custom `run` format handlers rather than being routed through the
+ * engine's exportToSVG/exportRasterize: those wrap an HTML document in a
+ * foreignObject, whereas orgBuildExportSVG emits real vector shapes that
+ * rasterise cleanly up to 8x. Unifying the CHROME (picker, branding, theme,
+ * title, preview) without downgrading the OUTPUT is the whole point of the
+ * per-format `run` hook — see export.js › exportBuilderRun.
+ */
+function orgExportBlocks(){
+  return [
+    {id:'chart', label:t('Org chart'), render:function(){
+      var res=orgBuildExportSVG();
+      if(!res) return '';
+      // scale the native SVG to the page rather than letting it overflow
+      return '<div style="width:100%;overflow:hidden">'
+        +res.svgStr.replace(/^<svg width="([^"]*)" height="([^"]*)"/,
+          '<svg style="width:100%;height:auto;max-width:100%" viewBox="0 0 $1 $2"')
+        +'</div>';
+    }},
+    {id:'headcount', label:t('Headcount breakdown'), render:function(){
+      var h=orgKpiHTML();
+      return h?'<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Headcount'))+'</h2>'+h:'';
+    }},
+  ];
+}
+// opens the shared export picker for the org chart
+function orgExportOpen(){
+  if(!engineers.filter(function(e){return !e.planningOnly;}).length){
+    alert(t('Nothing to export yet — add people first.')); return;
+  }
+  exportOpenBuilder({
+    deliverableId:'org',
+    title:t('Org chart'),
+    subtitleDefault:(G('res-title-input')?G('res-title-input').value:'')||'',
+    blocks:orgExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3',
+    builtinTemplates:[
+      {id:'full', name:t('Chart + headcount'), blocks:['chart','headcount']},
+      {id:'chart', name:t('Chart only'), blocks:['chart']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'svg', label:t('SVG (vector)'), run:function(){ orgExportSVG(); }},
+      {id:'png', label:t('PNG (high-res)'), run:function(){ orgExportPNG(); }},
+    ],
+  });
 }
 
 // downloads the chart as an SVG file
 function orgExportSVG(){
-  var res=orgBuildExportSVG();if(!res){alert('No data to export.');return;}
+  var res=orgBuildExportSVG();if(!res){alert(t('No data to export.'));return;}
   var blob=new Blob([res.svgStr],{type:'image/svg+xml;charset=utf-8'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');a.href=url;a.download='org_chart.svg';a.click();
@@ -1734,7 +1795,7 @@ function orgExportSVG(){
 }
 // renders and downloads the chart as a high-res PNG
 function orgExportPNG(){
-  var res=orgBuildExportSVG();if(!res){alert('No data to export.');return;}
+  var res=orgBuildExportSVG();if(!res){alert(t('No data to export.'));return;}
 
   var LONG_EDGE=4000;
   var naturalLong=Math.max(res.W,res.H);

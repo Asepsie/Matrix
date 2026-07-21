@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import {
   exportField, exportHTML, exportBrand, EXPORT_PRINT_CSS, EXPORT_PAPER,
   exportLoadPrefs, exportSavePrefs, exportLoadCustomTemplates, exportSaveCustomTemplates,
-  EXPORT_TEMPLATES_KEY,
+  EXPORT_TEMPLATES_KEY, EXPORT_LAST_KEY,
+  exportHTMLParts, exportLoadLast, exportSaveLast,
 } from '../src/core/export.js';
 
 // exportLoadPrefs/exportSavePrefs/exportLoad(Save)CustomTemplates all touch
@@ -46,6 +47,10 @@ test('EXPORT_PRINT_CSS forces color-adjust so backgrounds/badges do not drop out
 test('EXPORT_PRINT_CSS paginates .export-page but not the last one', () => {
   assert.match(EXPORT_PRINT_CSS, /\.export-page\{page-break-after:always/);
   assert.match(EXPORT_PRINT_CSS, /\.export-page:last-child\{page-break-after:avoid/);
+});
+
+test('EXPORT_PRINT_CSS hides .no-print elements on the printed page', () => {
+  assert.match(EXPORT_PRINT_CSS, /\.no-print\{display:none!important\}/);
 });
 
 /* ── exportBrand — theme resolution ──────────────────────────────────────── */
@@ -141,6 +146,45 @@ test('exportHTML honours orientation:landscape for the @page rule', () => {
   assert.match(html, /@page\{size:A4 landscape;margin:14mm\}/);
 });
 
+test('exportHTML honours pageSize:A3 (wide grids like the profiles dashboard)', () => {
+  const html = exportHTML({ title: 'Dashboard', pages: [], orientation: 'landscape', pageSize: 'A3' });
+  assert.match(html, /@page\{size:A3 landscape;margin:14mm\}/);
+});
+
+test('exportHTML falls back to A4 for an unrecognised pageSize', () => {
+  const html = exportHTML({ title: 'X', pages: [], pageSize: 'Legal' });
+  assert.match(html, /@page\{size:A4 portrait;margin:14mm\}/);
+});
+
+test('exportHTML gives A3 pages a much wider .export-page than the A4 default', () => {
+  // real bug: a 5-column card grid squeezed into the 920px width meant for a single-column
+  // document made every card "small and tight" (field values wrapping mid-word for lack of
+  // room) even after the equal-column grid bug was fixed. A3 (currently only used by the
+  // profiles dashboard's multi-column grid) needs real extra width, not just a taller/wider
+  // print page size.
+  const a4 = exportHTML({ title: 'X', pages: [] });
+  const a3 = exportHTML({ title: 'X', pages: [], pageSize: 'A3' });
+  assert.match(a4, /\.export-page\{max-width:920px/);
+  assert.match(a3, /\.export-page\{max-width:1600px/);
+});
+
+test('exportHTML forces overflow-wrap/word-break globally so an unbreakable token (URL, etc.) cannot force a grid column wider than its share', () => {
+  // real bug: the profiles dashboard is a CSS grid of 1fr columns; one card with a long
+  // unbroken string (a URL in someone's notes) forced that grid track wider than the rest,
+  // visibly breaking the equal-column layout. Root cause was CSS grid items defaulting to
+  // min-width:auto (fixed per-deliverable, see profiles.js) PLUS text having no wrap hint at
+  // all (fixed here, once, for every deliverable).
+  const html = exportHTML({ title: 'X', pages: [] });
+  assert.match(html, /\*\{[^}]*overflow-wrap:break-word/);
+  assert.match(html, /\*\{[^}]*word-break:break-word/);
+});
+
+test('exportHTML embeds a manual print button (no more auto-triggered print)', () => {
+  const html = exportHTML({ title: 'X', pages: [] });
+  assert.match(html, /class="no-print"[^>]*onclick="window\.print\(\)"/);
+  assert.ok(!html.includes('window.addEventListener("load"'), 'no auto-print script should remain');
+});
+
 test('exportHTML defaults title/pages when spec is empty', () => {
   const html = exportHTML({});
   assert.ok(html.includes('<title>Export</title>'));
@@ -177,4 +221,105 @@ test('exportHTML clamps a hostile palette color via safeColor (CSS breakout)', (
   });
   assert.ok(!html.includes(attack), 'the raw CSS-injection payload must not reach the stylesheet');
   assert.ok(html.includes('--accent:var(--muted)'));
+});
+
+/* ── layout / cover / pagination — the page model ──────────────────────── */
+
+const PAPER_BRAND = { name: 'Org', logo: '', palette: EXPORT_PAPER };
+
+test('exportHTMLParts splits the document into css + body, and exportHTML composes exactly those', () => {
+  const spec = { title: 'Pack', brand: PAPER_BRAND, pages: ['<p>a</p>'] };
+  const parts = exportHTMLParts(spec);
+  assert.ok(parts.css.includes('.export-page'), 'css half carries the page rules');
+  assert.ok(parts.body.includes('<p>a</p>'), 'body half carries the page content');
+  assert.ok(!parts.body.includes('<style>'), 'the halves must not overlap');
+  const html = exportHTML(spec);
+  assert.ok(html.includes('<style>' + parts.css + '</style>'));
+  assert.ok(html.includes('<body>' + parts.body + '</body>'));
+});
+
+test('page layout stamps an accurate "N / M" on every page (Chromium has no @page margin boxes)', () => {
+  const html = exportHTML({ title: 'Pack', brand: PAPER_BRAND, pages: ['<p>a</p>', '<p>b</p>', '<p>c</p>'] });
+  assert.ok(html.includes('>1 / 3<'));
+  assert.ok(html.includes('>2 / 3<'));
+  assert.ok(html.includes('>3 / 3<'));
+});
+
+test('a single-page export claims no page number', () => {
+  const html = exportHTML({ title: 'One', brand: PAPER_BRAND, pages: ['<p>a</p>'] });
+  assert.ok(!html.includes('1 / 1'), 'numbering one page of one is noise');
+  assert.ok(html.includes('ex-pagehead'), 'the running head is still there');
+});
+
+test('flow layout runs sections continuously and claims no page numbers (the browser picks the breaks)', () => {
+  const pages = ['<p>a</p>', '<p>b</p>', '<p>c</p>'];
+  // the cover carries `class="export-page ex-cover"`, so count the class token,
+  // not the whole attribute
+  const countPages = (html) => html.split('class="export-page').length - 1;
+
+  const flow = exportHTMLParts({ title: 'Pack', brand: PAPER_BRAND, pages, layout: 'flow' }).body;
+  assert.equal(countPages(flow), 2, 'flow is the cover + ONE page container, not one page per block');
+  assert.equal(flow.split('class="ex-block"').length - 1, 3);
+  assert.ok(!/\d \/ 3/.test(flow), 'a stamped number would be a guess once the browser paginates');
+
+  const paged = exportHTMLParts({ title: 'Pack', brand: PAPER_BRAND, pages }).body;
+  assert.equal(countPages(paged), 4, 'page layout: cover + one page per block');
+  assert.ok(exportHTML({ title: 'Pack', brand: PAPER_BRAND, pages, layout: 'flow' }).includes('break-inside:avoid'),
+    'sections must not straddle a page boundary in flow layout');
+});
+
+test('cover:false drops the cover page (a one-section export should not be two pages)', () => {
+  // assert against the BODY — the stylesheet mentions .ex-cover either way
+  const spec = { title: 'Pack', brand: PAPER_BRAND, pages: ['<p>a</p>'] };
+  assert.ok(exportHTMLParts(spec).body.includes('ex-cover'), 'cover stays on by default (back-compat)');
+  assert.ok(!exportHTMLParts({ ...spec, cover: false }).body.includes('ex-cover'));
+});
+
+test('the footer actually repeats — fixed-positioned in print, not appended once after the last page', () => {
+  const html = exportHTML({ title: 'Pack', brand: PAPER_BRAND, pages: ['<p>a</p>', '<p>b</p>'] });
+  assert.ok(html.includes('.ex-foot{position:fixed'), 'ex-foot must be fixed under @media print to repeat');
+  assert.ok(html.includes('body{padding-bottom:16mm}'), 'body needs clearance or the footer covers the last lines');
+});
+
+/* ── exportSaveLast/exportLoadLast — the builder's implicit memory ─────── */
+
+test('exportSaveLast/exportLoadLast round-trip the whole picker state, per deliverable', () => {
+  globalThis.localStorage = fakeLocalStorage();
+  try {
+    exportSaveLast('exec', {
+      included: ['scorecard', 'burn'], theme: 'light', format: 'html',
+      columns: 4, layout: 'flow', paper: 'a3l', cover: false,
+    });
+    const got = exportLoadLast('exec');
+    assert.deepEqual(got.included, ['scorecard', 'burn']);
+    assert.equal(got.theme, 'light');
+    assert.equal(got.format, 'html');
+    assert.equal(got.columns, 4);
+    assert.equal(got.layout, 'flow');
+    assert.equal(got.paper, 'a3l');
+    assert.equal(got.cover, false);
+    assert.equal(exportLoadLast('profiles'), null, 'deliverables must not share one selection');
+  } finally { delete globalThis.localStorage; }
+});
+
+test('exportLoadLast rejects garbage values instead of feeding them to the shell', () => {
+  globalThis.localStorage = fakeLocalStorage();
+  try {
+    globalThis.localStorage.setItem(EXPORT_LAST_KEY, JSON.stringify({
+      exec: { included: 'not-an-array', theme: 'neon', layout: 'sideways', cover: 'yes' },
+    }));
+    const got = exportLoadLast('exec');
+    assert.equal(got.included, null);
+    assert.equal(got.theme, null);
+    assert.equal(got.layout, null);
+    assert.equal(got.cover, null);
+  } finally { delete globalThis.localStorage; }
+});
+
+test('exportLoadLast survives a corrupt store', () => {
+  globalThis.localStorage = fakeLocalStorage();
+  try {
+    globalThis.localStorage.setItem(EXPORT_LAST_KEY, '{not json');
+    assert.equal(exportLoadLast('exec'), null);
+  } finally { delete globalThis.localStorage; }
 });

@@ -32,11 +32,56 @@ export const AN_RATING_ORDER = ['U','D','M','M+','E','E+'];      // low → high
 export const AN_RATING_COLOR = {'U':'#f14335','D':'#f1a435','M':'#5be5c8','M+':'#3bd4b8','E':'#a8e820','E+':'#c8f135'};
 
 /* ── Chart palette (mirrors the dark theme / CSS vars) ── */
-export const AN_COLORS = {
+/* The analytics charts are SVG STRINGS whose colours land in `fill=`/`stroke=`
+ * PRESENTATION ATTRIBUTES, and CSS `var()` is not valid there (only in `style`
+ * attributes or stylesheets). So the export engine's usual theming trick —
+ * writing the brand palette onto the popup's :root and letting `var(--…)`
+ * resolve — cannot reach these charts, and dropping them onto the light paper
+ * theme would print near-white text on white.
+ *
+ * Instead the palette is swappable at this single definition point: all 115
+ * `AN_COLORS.x` call sites are untouched and keep emitting real hex, while
+ * `anWithPalette()` renders a block under the paper variant. AN_COLORS is used
+ * nowhere outside this file, so the swap is fully contained.
+ */
+const AN_SCREEN = {
   primary:'#c8f135', secondary:'#5be5c8', danger:'#f14335', warn:'#f1a435',
   purple:'#a78bfa', blue:'#60a5fa', muted:'#5a6380',
-  surface:'#0e1117', border:'#1e2330', text:'#e2e8f4',
+  surface:'#0e1117', border:'#1e2330', text:'#e2e8f4', onFill:'#0a0c10',
 };
+// Paper equivalents — same semantics, legible on white. Lime/teal in particular
+// are invisible on paper and become a deep green/teal rather than staying bright.
+// `onFill` is the ink used ON TOP of a saturated cell (the heatmap): dark on
+// both themes by design, which is why it is not simply `text` inverted.
+const AN_PAPER = {
+  primary:'#6d8f0a', secondary:'#0f8f78', danger:'#c62a1e', warn:'#b3780a',
+  purple:'#6d4fd0', blue:'#2563eb', muted:'#6b7280',
+  surface:'#f6f6f8', border:'#dcdce2', text:'#1a1a2e', onFill:'#14141f',
+};
+let _anPalette = null;   // null → the on-screen palette
+export const AN_COLORS = {
+  get primary(){   return (_anPalette||AN_SCREEN).primary; },
+  get secondary(){ return (_anPalette||AN_SCREEN).secondary; },
+  get danger(){    return (_anPalette||AN_SCREEN).danger; },
+  get warn(){      return (_anPalette||AN_SCREEN).warn; },
+  get purple(){    return (_anPalette||AN_SCREEN).purple; },
+  get blue(){      return (_anPalette||AN_SCREEN).blue; },
+  get muted(){     return (_anPalette||AN_SCREEN).muted; },
+  get surface(){   return (_anPalette||AN_SCREEN).surface; },
+  get border(){    return (_anPalette||AN_SCREEN).border; },
+  get text(){      return (_anPalette||AN_SCREEN).text; },
+  get onFill(){    return (_anPalette||AN_SCREEN).onFill; },
+};
+/* Renders `fn()` with the paper palette active when the export theme asks for
+ * it. try/finally is load-bearing: a throwing block must not leave the whole
+ * on-screen panel stuck in paper colours (the engine catches block errors, so
+ * a throw here is an ordinary, expected path). */
+function anWithPalette(theme, fn){
+  const prev = _anPalette;
+  _anPalette = (theme === 'light') ? AN_PAPER : null;
+  try { return fn(); }
+  finally { _anPalette = prev; }
+}
 
 /* ── Coded ordinal/boolean values → human-readable axis labels ── */
 export const AN_VALUE_LABELS = {
@@ -590,7 +635,7 @@ function anHeatmap(matrix, rowLabels, colLabels, opt){
       const cellIds = opt.ids && opt.ids[ri] ? opt.ids[ri][ci] : null;
       s += '<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cell-2)+'" height="'+(cell-2)+'" rx="2" '
          + 'fill="rgba(200,241,53,'+alpha+')" stroke="'+AN_COLORS.border+'"'+anTip(r+' × '+c+'\n'+v+' '+unit)+anIds(cellIds, r+' × '+c)+'></rect>';
-      if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? '#0a0c10' : AN_COLORS.text});
+      if (v) s += anTxt(x + cell/2, y + cell/2 + 4, String(v), {anchor:'middle', size:11, weight:600, pe:false, fill: alpha > 0.5 ? AN_COLORS.onFill : AN_COLORS.text});
     });
   });
   // row axis title (rotated, far left)
@@ -1118,7 +1163,9 @@ function anStorySkillCoverage(data){
 function anStoryDiscTeam(data){
   const withDisc = data.filter(d => d.discProfile);
   if (!withDisc.length) return anEmpty(t('No DISC placements yet (place engineers on the DISC tab)'));
-  const DCOL = {D:'#f14335', I:'#c8f135', S:'#5be5c8', C:'#9090f0'};
+  // via AN_COLORS, not literals — these were duplicating the palette, so they
+  // stayed dark-theme lime/teal even when a paper export swapped everything else
+  const DCOL = {D:AN_COLORS.danger, I:AN_COLORS.primary, S:AN_COLORS.secondary, C:AN_COLORS.purple};
   const teams = [...new Set(withDisc.map(d => d.group))].sort();
   const rows = teams.map(tm => {
     const members = withDisc.filter(d => d.group === tm);
@@ -1142,9 +1189,9 @@ function anStoryTrajectory(data){
   const groups = { up:[], down:[], 'new':[], same:[] };
   data.forEach(d => { const k = curMap[d.uid]; if (!k) return; const mv = nbMove(k, prevMap[d.uid]); if (groups[mv]) groups[mv].push({ d, from: prevMap[d.uid] || null, to: k }); });
   const order = [
-    { key:'up',   label:t('RISING ▲'),    color:'#c8f135' },
-    { key:'down', label:t('DECLINING ▼'), color:'#f14335' },
-    { key:'new',  label:t('NEW ✦'),       color:'#5be5c8' },
+    { key:'up',   label:t('RISING ▲'),    color:AN_COLORS.primary },
+    { key:'down', label:t('DECLINING ▼'), color:AN_COLORS.danger },
+    { key:'new',  label:t('NEW ✦'),       color:AN_COLORS.secondary },
     { key:'same', label:t('STABLE •'),    color:AN_COLORS.muted },
   ];
   let h = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+t('Movement')+' <b style="color:var(--text)">'+escH(prev)+'</b> → <b style="color:var(--accent)">'+escH(cur)+'</b></div>';
@@ -1403,8 +1450,7 @@ function anRenderMain(){
   // Export bar
   h += '<div style="display:flex;gap:8px;margin-top:12px">'
     + '<button onclick="anExportCSV()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ CSV</button>'
-    + '<button onclick="anExportPNG()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PNG</button>'
-    + '<button onclick="anExportPDF()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ PDF</button>'
+    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="background:var(--bg);border:1px solid var(--accent);color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">📄 '+escH(t('EXPORT'))+'</button>'
     + '</div>';
 
   main.innerHTML = h;
@@ -1457,6 +1503,140 @@ export function anExportCSV(){
   a.download = 'matrix-analytics.csv';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/* ►► SECTION: ANALYTICS-EXPORT ◄◄ People Analytics on the shared export engine.
+ *
+ * The app's first DATA-DERIVED block registry: one block per story view, built
+ * by walking ANALYTICS_TEMPLATES rather than hand-listing them, so a story view
+ * added there becomes exportable with no wiring here — the same
+ * "add a template, it auto-appears" contract the panel itself has.
+ *
+ * Two things make this panel unlike the other migrations:
+ *  - Its charts are hardcoded light-on-dark SVG in presentation attributes, so
+ *    theming goes through anWithPalette() (see AN_COLORS above), not var(--…).
+ *  - Its compare mode is combinatorial (dimension × dimension × template), so
+ *    it drives the engine's per-deliverable `controls` rather than exposing a
+ *    fixed block for every possible chart.
+ */
+
+// Dataset for an export, honouring (or ignoring) the panel's live filters per
+// the SCOPE control.
+function anExportData(ctx){
+  const all = buildAnalyticsDataset();
+  return (ctx && ctx.scope === 'all') ? all : anApplyFilters(all);
+}
+// One chart + its optional stats summary, laid out for a page.
+function anExportChart(title, out){
+  if (!out || !out.chart) return '';
+  let h = '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(title)+'</h2>'
+    + out.chart
+  const stats = out.stats && out.stats.length ? anSummaryStats(out.stats) : '';
+  if (stats) h += '<div style="margin-top:12px;max-width:320px">'+stats+'</div>'
+  return h;
+}
+// '— none —' + grouped dimension options, mirroring the panel's own dimension select
+function anExportDimOptions(){
+  const opts = [{ v:'', label:t('— none —') }];
+  ANALYTICS_DIMENSIONS.forEach(d => opts.push({ v:d.id, label:d.group+' · '+d.label }));
+  return opts;
+}
+
+function anExportBlocks(){
+  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  const blocks = [
+    { id:'scorecard', label:t('KPI scorecard'), render(ctx){
+        return anWithPalette(ctx.theme, () => anScorecard(anExportData(ctx))); } },
+    { id:'insights', label:t('Auto-insights'), render(ctx){
+        return anWithPalette(ctx.theme, () => anInsightsBar(anExportData(ctx))); } },
+    { id:'compare', label:t('Compare chart (your selection)'), render(ctx){
+        const dimA = anDim(ctx.anDimA), dimB = anDim(ctx.anDimB);
+        if (!dimA && !dimB) return '';
+        const tpl = ANALYTICS_TEMPLATES.find(x => x.id === ctx.anTemplate);
+        if (!tpl) return '';
+        const data = anExportData(ctx);
+        if (!data.length) return '';
+        return anWithPalette(ctx.theme, () =>
+          anExportChart(tpl.icon+' '+anTplName(tpl, dimA, dimB), tpl.render(data, dimA, dimB))); } },
+  ];
+  stories.forEach(s => blocks.push({
+    id:'story.'+s.id,
+    label:s.icon+' '+s.name,
+    render(ctx){
+      const data = anExportData(ctx);
+      if (!data.length) return '';
+      return anWithPalette(ctx.theme, () => anExportChart(s.icon+' '+s.name, s.render(data)));
+    },
+  }));
+  return blocks;
+}
+
+// Human-readable summary of the live filters, so the document says what it covers
+function anExportScopeLabel(){
+  const f = _anState.filters;
+  const parts = [];
+  if (f.group.size)     parts.push([...f.group].join(', '));
+  if (f.location.size)  parts.push([...f.location].join(', '));
+  if (f.seniority.size) parts.push([...f.seniority].join(', '));
+  return parts.join(' · ');
+}
+
+function anExportOpen(){
+  const all = buildAnalyticsDataset();
+  if (!all.length) { alert(t('No people to analyse yet.')); return; }
+  const filtered = anApplyFilters(all);
+  const scopeLabel = anExportScopeLabel();
+  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+
+  exportOpenBuilder({
+    deliverableId:'analytics',
+    title:t('People Analytics'),
+    subtitleDefault:(G('res-title-input') ? G('res-title-input').value : '') || '',
+    blocks:anExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    /* Function form: the CHART list depends on the two dimensions chosen above
+       it, exactly as the panel's own template cards do. Defaults mirror whatever
+       the panel is currently showing, so "export what I'm looking at" is the
+       zero-click path while still being overridable here. */
+    controls(v){
+      const dimA = anDim(v.anDimA), dimB = anDim(v.anDimB);
+      const avail = getAvailableTemplates(dimA, dimB);
+      return [
+        { id:'scope', label:t('SCOPE'), type:'select',
+          value: scopeLabel ? 'filtered' : 'all',
+          options:[
+            { v:'filtered', label:t('Panel filters — {n} people',{n:filtered.length}) },
+            { v:'all',      label:t('Whole team — {n} people',{n:all.length}) },
+          ] },
+        { id:'anDimA', label:t('COMPARE — A'), type:'select',
+          value:_anState.dimA || '', options:anExportDimOptions() },
+        { id:'anDimB', label:t('COMPARE — B'), type:'select',
+          value:_anState.dimB || '', options:anExportDimOptions() },
+        { id:'anTemplate', label:t('COMPARE — CHART'), type:'select',
+          value: (avail.find(x => x.id === _anState.template) || avail[0] || {}).id || '',
+          options: avail.length
+            ? avail.map(x => ({ v:x.id, label:x.icon+' '+anTplName(x, dimA, dimB) }))
+            : [{ v:'', label:t('— pick a dimension first —') }] },
+      ];
+    },
+    builtinTemplates:[
+      { id:'review', name:t('Talent review'),
+        blocks:['scorecard','insights','story.talent_risk','story.retention_risk','story.succession'] },
+      { id:'comp', name:t('Compensation'),
+        blocks:['scorecard','story.pay_equity_full','story.pay_progression'] },
+      { id:'capacity', name:t('Capacity & skills'),
+        blocks:['scorecard','story.capacity_health','story.skill_coverage'] },
+      { id:'all', name:t('Everything'),
+        blocks:['scorecard','insights','compare'].concat(stories.map(s => 'story.'+s.id)) },
+      { id:'current', name:t('Just my chart'), blocks:['compare'] },
+    ],
+    formats:[
+      { id:'pdf',  label:t('PDF (print)') },
+      { id:'html', label:t('HTML (standalone)') },
+      { id:'png',  label:t('PNG (image)') },
+    ],
+  });
 }
 
 // PDF — open a print-optimised window with the current chart + summary, then print.
