@@ -50,7 +50,7 @@ export var I18N_DICT = {
     'Heatmap':'Carte de chaleur', 'Nine-box':'Nine-box',
     'Team profiles':'Profils d\'équipe', 'Development':'Développement',
     'Portfolio analytics':'Analyse de portefeuille', 'Portfolio economics':'Économie de portefeuille', 'People analytics':'Analyse RH',
-    'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Compare':'Comparer',
+    'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Resource balancer':'Équilibrage des ressources', 'Compare':'Comparer',
     /* Nav rail — utility actions */
     'Snapshots':'Instantanés', 'Backup':'Sauvegarde', 'Restore':'Restaurer',
     'AI advisor':'Conseiller IA', 'Settings':'Paramètres', 'Help':'Aide',
@@ -520,7 +520,7 @@ export var I18N_DICT = {
     'Heatmap':'热力图', 'Nine-box':'九宫格',
     'Team profiles':'团队画像', 'Development':'发展',
     'Portfolio analytics':'组合分析', 'Portfolio economics':'组合经济', 'People analytics':'人员分析',
-    'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Compare':'对比',
+    'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Resource balancer':'资源平衡', 'Compare':'对比',
     /* Nav rail — utility actions */
     'Snapshots':'快照', 'Backup':'备份', 'Restore':'恢复',
     'AI advisor':'AI 顾问', 'Settings':'设置', 'Help':'帮助',

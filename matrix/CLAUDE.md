@@ -38,6 +38,8 @@ area.
 | Add a tab | src/sections/nav.js + new src/sections/mytab.js |
 | Change CSS | src/styles/*.css (don't touch dist/) |
 | Localization / translate a string (EN/FR/ZH) | src/core/i18n.js + **I18N.md** (status, how-to, TODO) |
+| Guided tour (hub menu + spotlight walkthrough, in Help) | src/sections/tour.js, src/styles/tour.css (+ ARCHITECTURE.md › Guided tour) |
+| Personal Home (customizable widget grid + cross-domain Action Queue) | src/sections/home.js, src/styles/home.css (+ ARCHITECTURE.md › Home; HOME-PLAN.md for the original spec/history) |
 
 ## Build
 node build.js → dist/matrix.html

@@ -15,6 +15,8 @@ const CSS_FILES = [
   'styles/nav.css',
   'styles/charter.css',
   'styles/dashboard.css',
+  'styles/tour.css',
+  'styles/home.css',
 ];
 const css = CSS_FILES
   .map(f => readFileSync(join(SRC, f), 'utf8').trim())
@@ -65,7 +67,9 @@ const JS_FILES = [
   'sections/exec.js',
   'sections/gate.js',
   'sections/engagement.js',
+  'sections/home.js',   // personal front door: reads analytics/gate/econ/engagement producers
   'sections/collab.js',
+  'sections/tour.js',    // guided tour (hub menu from RAIL_DOMAINS) — needs railnav + helpers
   'sections/packs.js',   // after every section: composes their *ExportBlocks() registries
   'sections/boot.js',
 ];

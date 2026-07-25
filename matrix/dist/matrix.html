@@ -200,6 +200,13 @@ select option{background:var(--surface);color:var(--text);}
 .help-row{display:flex;align-items:baseline;gap:8px;font-size:12px;}
 .help-key{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);background:rgba(91,229,200,.08);border:1px solid rgba(91,229,200,.2);border-radius:3px;padding:1px 6px;white-space:nowrap;flex-shrink:0;}
 .help-desc{color:var(--muted);font-size:11px;}
+#help-colophon{margin-top:4px;padding-top:12px;border-top:1px solid var(--border);text-align:center;display:flex;flex-direction:column;gap:3px;}
+.help-colophon-brand{font-size:9px;letter-spacing:.14em;color:var(--dim);}
+.help-colophon-copy{font-size:10px;color:var(--muted);}
+.help-colophon-links{font-size:10px;color:var(--dim);}
+.help-colophon-links a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
+.help-colophon-links a:hover{color:var(--accent);border-bottom-color:var(--accent);}
+.help-colophon-sep{margin:0 6px;color:var(--dim);}
 
 /* ── COMPARE VIEW ── */
 #compare-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;}
@@ -592,6 +599,43 @@ body{padding-left:var(--rail);}
 }
 .rn-sub.rn-drop-before::after{top:-1px;}
 .rn-sub.rn-drop-after::after{bottom:-1px;}
+/* domain-head drop target while dragging a page into another (collapsed) domain */
+.rn-dom.rn-drop-into>.rn-dom-head{background:rgba(200,241,53,.10); box-shadow:inset 0 0 0 1px rgba(200,241,53,.5);}
+.rn-dom.rn-drop-into>.rn-dom-head .rn-dom-ico{color:var(--accent); border-color:rgba(200,241,53,.5);}
+
+/* Rail layout organiser (Settings pop-up) — sits ABOVE the Settings modal (z1100) */
+#rail-layout-overlay{z-index:1160; left:var(--rail);}
+.rlo-board{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; align-items:start;}
+.rlo-col{border:1px solid var(--border); border-radius:9px; background:var(--bg);
+  display:flex; flex-direction:column; min-height:78px; transition:box-shadow .12s,border-color .12s;}
+.rlo-col.rlo-col-into{border-color:var(--accent); box-shadow:inset 0 0 0 1px rgba(200,241,53,.45), 0 0 0 3px rgba(200,241,53,.08);}
+.rlo-col-head{display:flex; align-items:center; gap:7px; padding:8px 10px; border-bottom:1px solid var(--border);}
+.rlo-col-ico{display:inline-flex; color:var(--muted);}
+.rlo-col-ico svg{width:15px; height:15px;}
+.rlo-col-name{flex:1; font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.rlo-col-count{font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--dim);
+  background:var(--surface); border-radius:9px; padding:1px 7px;}
+.rlo-col-body{padding:8px; display:flex; flex-direction:column; gap:7px; flex:1; min-height:36px;}
+.rlo-empty{font-size:10px; color:var(--dim); text-align:center; padding:8px 0;
+  border:1px dashed var(--border); border-radius:6px;}
+.rlo-card{position:relative; background:var(--surface); border:1px solid var(--border); border-radius:7px;
+  padding:7px 8px; cursor:grab; transition:border-color .12s, background .12s;}
+.rlo-card:hover{border-color:var(--dim);}
+.rlo-card.rlo-dragging{opacity:.4;}
+.rlo-card.rlo-drop-before::after,.rlo-card.rlo-drop-after::after{content:""; position:absolute;
+  left:6px; right:6px; height:2px; background:var(--accent); border-radius:2px; box-shadow:0 0 4px var(--accent);}
+.rlo-card.rlo-drop-before::after{top:-5px;}
+.rlo-card.rlo-drop-after::after{bottom:-5px;}
+.rlo-card-top{display:flex; align-items:center; gap:6px; margin-bottom:6px;}
+.rlo-grip{color:var(--dim); cursor:grab; font-size:11px;}
+.rlo-card-lbl{flex:1; font-size:11px; font-weight:600; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.rlo-card-ctl{display:flex; align-items:center; gap:4px;}
+.rlo-card-ctl .sm{padding:1px 6px; font-size:10px; line-height:1.5;}
+.rlo-card-ctl .sm:disabled{opacity:.3; cursor:default;}
+.rlo-move{flex:1; min-width:0; font-family:IBM Plex Mono,monospace; font-size:9.5px; padding:2px 4px;
+  background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:4px;}
 
 .rn-foot{border-top:1px solid var(--border); padding:8px 0;}
 .rn-util{
@@ -1280,6 +1324,252 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
   .db-hero{grid-template-columns:1fr}
   .db-ident{grid-template-columns:1fr}
 }
+/* Guided tour (tour.js) — hub menu + spotlight walkthrough.
+   Themed with the shell's CSS vars so it follows light/dark/paper. */
+
+#tour-overlay{
+  position:fixed; inset:0; z-index:1189;
+  background:rgba(0,0,0,.55);
+  opacity:0; pointer-events:none;
+  transition:opacity .2s;
+}
+#tour-overlay.show{ opacity:1; }
+
+#tour-spot{
+  position:fixed; z-index:1190; display:none;
+  border-radius:8px; pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.62), 0 0 0 2px var(--accent);
+  transition:left .28s cubic-bezier(.4,0,.2,1), top .28s cubic-bezier(.4,0,.2,1),
+             width .28s cubic-bezier(.4,0,.2,1), height .28s cubic-bezier(.4,0,.2,1);
+}
+
+#tour-pop{
+  position:fixed; z-index:1200; display:none;
+  width:min(380px,92vw);
+  background:var(--surface); color:var(--text);
+  border:1px solid var(--border); border-top:2px solid var(--accent);
+  border-radius:10px; padding:18px 20px 14px;
+  box-shadow:0 8px 40px rgba(0,0,0,.55);
+  font-size:13px; line-height:1.5;
+}
+#tour-pop.show{ display:block; }
+
+/* menu variant is wider + centered (steps set explicit inline left/top instead) */
+#tour-pop.tour-menu{
+  width:min(560px,94vw);
+  left:50%; top:50%; transform:translate(-50%,-50%);
+}
+
+.tour-tag{
+  font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:6px;
+}
+.tour-title{
+  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
+  color:var(--text); margin-bottom:8px; line-height:1.3;
+}
+.tour-lead, .tour-body{ font-size:12px; line-height:1.65; color:var(--muted); }
+.tour-body strong, .tour-lead strong{ color:var(--text); font-weight:600; }
+.tour-body code{
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  background:color-mix(in srgb,var(--accent) 14%,transparent);
+  color:var(--accent); padding:1px 5px; border-radius:3px;
+}
+
+.tour-lead{ margin-bottom:14px; }
+
+/* ── Menu (hub) ── */
+.tour-start-basics{
+  display:block; width:100%; text-align:left;
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700;
+  background:var(--accent); color:#0a0c10; border:none;
+  padding:11px 14px; border-radius:8px; cursor:pointer; margin-bottom:14px;
+  transition:filter .15s;
+}
+.tour-start-basics:hover{ filter:brightness(1.08); }
+
+.tour-cards{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+@media (max-width:520px){ .tour-cards{ grid-template-columns:1fr; } }
+
+.tour-card{
+  display:flex; align-items:center; gap:10px; text-align:left; min-width:0;
+  background:var(--bg); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; cursor:pointer; color:var(--text);
+  transition:border-color .15s, transform .1s;
+}
+.tour-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
+.tour-card-ico{ color:var(--accent); display:flex; flex:0 0 auto; }
+.tour-card-ico svg{ width:18px; height:18px; }
+.tour-card-body{ display:flex; flex-direction:column; min-width:0; }
+.tour-card-name{ font-size:11px; font-weight:700; letter-spacing:.04em; }
+.tour-card-sub{
+  font-size:9.5px; color:var(--dim); margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.tour-menu-foot{ margin-top:16px; text-align:right; }
+
+/* ── Step footer ── */
+.tour-foot{
+  display:flex; align-items:center; gap:8px;
+  margin-top:14px; padding-top:10px; border-top:1px solid var(--border);
+}
+.tour-prog{ font-size:9px; color:var(--dim); flex:1; }
+
+.tour-btn{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.04em;
+  padding:5px 12px; border-radius:5px; cursor:pointer;
+  border:1px solid var(--border); background:var(--bg); color:var(--muted);
+  transition:.15s;
+}
+.tour-btn:hover{ border-color:var(--muted); color:var(--text); }
+.tour-btn.tour-primary{
+  background:var(--accent); border-color:var(--accent); color:#0a0c10; font-weight:700;
+}
+.tour-btn.tour-primary:hover{ filter:brightness(1.08); }
+
+/* Help-panel launcher */
+#help-tour-launch{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  background:color-mix(in srgb,var(--accent) 8%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);
+  border-radius:8px; padding:12px 14px; margin-bottom:16px; cursor:pointer;
+  color:var(--text); transition:border-color .15s, background .15s;
+}
+#help-tour-launch:hover{ border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); }
+#help-tour-launch .htl-play{ font-size:18px; color:var(--accent); flex:0 0 auto; }
+#help-tour-launch .htl-t{ font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; }
+#help-tour-launch .htl-s{ font-size:10px; color:var(--muted); margin-top:2px; }
+/* ── HOME (personal front door — customizable widget grid) ──────────────────
+   #home-overlay is a rail-inset VIEW (like #brief-overlay): position:fixed;
+   inset:0; left:var(--rail); z-index:400. Everything is home-prefixed. */
+#home-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#home-overlay.show{ display:flex; }
+#home-header{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 18px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#home-header .home-h-title{
+  font-family:IBM Plex Mono,monospace; font-size:14px; color:var(--accent);
+  letter-spacing:.08em; font-weight:600;
+}
+#home-header .home-h-sub{ font-size:11px; color:var(--muted); }
+#home-body{ flex:1; overflow:auto; padding:16px 18px 40px; }
+
+/* top control bar (filters + customize/add/default) — NOTE: distinct class from the
+   inline `.home-bar` meter below (same name previously collided → 8px-tall clipped row). */
+.home-topbar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.home-bar-sp{ flex:1; }
+.home-filters{ display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:3px; }
+.home-fchip{
+  font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.04em;
+  color:var(--muted); background:transparent; border:0; border-radius:6px;
+  padding:5px 11px; cursor:pointer; text-transform:uppercase;
+}
+.home-fchip:hover{ color:var(--text); }
+.home-fchip.on{ background:var(--accent); color:#0a0a0a; font-weight:600; }
+
+.home-btn{
+  font-size:11px; color:var(--text); background:var(--surface);
+  border:1px solid var(--border); border-radius:6px; padding:6px 11px; cursor:pointer;
+  white-space:nowrap;
+}
+.home-btn:hover{ border-color:var(--accent); }
+.home-btn.primary{ border-color:var(--accent); color:var(--accent); }
+
+/* the grid — 3 flexible columns; widgets span 1–3 via inline grid-column */
+.home-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
+@media (max-width:1080px){ .home-grid{ grid-template-columns:repeat(2,1fr); } .home-w{ grid-column:span 1 !important; } .home-w.home-w-hero{ grid-column:span 2 !important; } }
+@media (max-width:680px){ .home-grid{ grid-template-columns:1fr; } .home-w, .home-w.home-w-hero{ grid-column:span 1 !important; } }
+
+.home-w{
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:0; min-width:0; overflow:hidden; display:flex; flex-direction:column;
+}
+.home-grid.editing .home-w{ border-style:dashed; cursor:grab; }
+.home-w-head{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px; border-bottom:1px solid var(--border);
+}
+.home-w-title{ font-size:12px; font-weight:600; color:var(--text); }
+.home-w-dom{
+  font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.05em;
+  color:var(--muted); text-transform:uppercase; border:1px solid var(--border);
+  border-radius:4px; padding:1px 5px;
+}
+.home-w-ctl{
+  font-size:11px; color:var(--muted); background:var(--bg);
+  border:1px solid var(--border); border-radius:4px; padding:2px 6px; cursor:pointer; line-height:1;
+}
+.home-w-ctl:hover{ color:var(--text); border-color:var(--accent); }
+.home-w-ctl.danger:hover{ color:var(--danger); border-color:var(--danger); }
+.home-wb{ padding:12px; display:flex; flex-direction:column; gap:8px; }
+
+/* empty / footer */
+.home-empty{ font-size:11px; color:var(--muted); line-height:1.5; padding:6px 2px; }
+.home-foot{ margin-top:4px; }
+
+/* KPI cluster */
+.home-kpis{ display:flex; flex-wrap:wrap; gap:8px; }
+.home-kpi{ flex:1; min-width:74px; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
+.home-kpi-v{ font-size:18px; font-weight:700; line-height:1.1; }
+.home-kpi-l{ font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.04em; color:var(--muted); text-transform:uppercase; margin-top:3px; }
+
+/* list rows + inline bar */
+.home-list{ display:flex; flex-direction:column; gap:5px; }
+.home-row{ display:flex; align-items:center; gap:8px; cursor:pointer; font-size:11px; }
+.home-row:hover .home-row-name{ color:var(--accent); }
+.home-row-name{ color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
+.home-row-name.done{ text-decoration:line-through; color:var(--muted); }
+.home-sp{ flex:1; }
+.home-row-val{ font-family:IBM Plex Mono,monospace; font-size:11px; color:var(--text); }
+.home-bar{ flex:1; height:8px; background:var(--bg); border-radius:4px; overflow:hidden; min-width:40px; }
+.home-bar.wide{ height:10px; }
+.home-bar > span{ display:block; height:100%; border-radius:4px; }
+
+/* chips / tags */
+.home-tags{ display:flex; flex-wrap:wrap; gap:5px; }
+.home-chip{
+  font-size:10px; color:var(--text); background:var(--bg);
+  border:1px solid var(--border); border-radius:5px; padding:2px 7px;
+}
+.home-chip.clk{ cursor:pointer; }
+.home-chip.clk:hover{ border-color:var(--accent); color:var(--accent); }
+
+/* action-queue cards */
+.home-aq{ background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:9px; }
+.home-aq:last-child{ margin-bottom:0; }
+.home-aq-top{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.home-aq-band{ font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.06em; font-weight:700; }
+.home-aq-title{ font-size:13px; font-weight:600; color:var(--text); }
+.home-aq-tag{
+  font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.03em;
+  color:var(--accent2); border:1px solid var(--accent2); border-radius:4px; padding:1px 5px;
+}
+.home-aq-sp{ flex:1; }
+.home-aq-impact{ font-family:IBM Plex Mono,monospace; font-size:12px; color:var(--accent); font-weight:600; }
+.home-aq-why{ display:flex; flex-direction:column; gap:2px; margin-top:6px; }
+.home-aq-why > span{ font-size:11px; color:var(--muted); line-height:1.4; }
+.home-aq-metrics{ display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.home-aq-metrics .home-chip b{ color:var(--text); }
+.home-aq-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.home-aq-more{ font-size:10px; color:var(--muted); text-align:center; padding:4px; }
+
+/* add-widget panel */
+.home-add{ background:var(--surface); border:1px solid var(--accent); border-radius:10px; padding:12px 14px; margin-bottom:16px; }
+.home-add-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:600; color:var(--text); margin-bottom:10px; }
+.home-add-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+.home-add-card{
+  display:flex; flex-direction:column; gap:3px; text-align:left;
+  background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:9px 11px; cursor:pointer;
+}
+.home-add-card:hover{ border-color:var(--accent); }
+.home-add-title{ font-size:12px; font-weight:600; color:var(--text); }
+.home-add-dom{ font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; }
+.home-add-desc{ font-size:10px; color:var(--muted); line-height:1.4; margin-top:2px; }
 </style>
 </head>
 <body>
@@ -1326,6 +1616,13 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
   <div id="help-box">
+    <button id="help-tour-launch" onclick="tourStart()">
+      <span class="htl-play">▶</span>
+      <span>
+        <span class="htl-t" data-i18n="Take a guided tour">Take a guided tour</span>
+        <span class="htl-s" data-i18n="A 3-minute walkthrough — then pick any section to explore in depth.">A 3-minute walkthrough — then pick any section to explore in depth.</span>
+      </span>
+    </button>
     <h2 data-i18n="⌨ KEYBOARD SHORTCUTS">⌨ KEYBOARD SHORTCUTS</h2>
     <div style="background:rgba(200,241,53,.06);border:1px solid rgba(200,241,53,.12);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
       <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px" data-i18n="WHAT IS PROJECT MATRIX?">WHAT IS PROJECT MATRIX?</strong><br>
@@ -1385,6 +1682,15 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       </div>
       <button class="danger" onclick="closeHelp();resetAll()" data-i18n-title="Reset all data — cannot be undone" title="Reset all data — cannot be undone" data-i18n="RESET ALL">RESET ALL</button>
       <button onclick="closeHelp()" data-i18n="CLOSE">CLOSE</button>
+    </div>
+    <div id="help-colophon">
+      <div class="help-colophon-brand mono">PROJECT MATRIX</div>
+      <div class="help-colophon-copy">© <span id="help-colophon-year">2026</span> Benoit&nbsp;TANI. All rights reserved.</div>
+      <div class="help-colophon-links">
+        <a href="mailto:benoit.tani@gmail.com">benoit.tani@gmail.com</a>
+        <span class="help-colophon-sep">·</span>
+        <a href="https://www.linkedin.com/in/benoit-tani-b90895103/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
     </div>
   </div>
 </div>
@@ -1680,6 +1986,11 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <span data-i18n="Width of the nav rail's scrollbar. Wider is easier to grab on small screens." style="font-size:10px;color:var(--muted)">Width of the nav rail's scrollbar. Wider is easier to grab on small screens.</span>
     </div>
     <div class="field">
+      <label data-i18n="RAIL LAYOUT">RAIL LAYOUT</label>
+      <span data-i18n="Reorder pages and move them between domains — set it up once, or drag pages directly in the open rail." style="font-size:10px;color:var(--muted);margin-bottom:6px">Reorder pages and move them between domains — set it up once, or drag pages directly in the open rail.</span>
+      <button class="sm" data-i18n="⚖ ORGANISE RAIL LAYOUT…" onclick="rloOpen()" style="align-self:flex-start">⚖ ORGANISE RAIL LAYOUT…</button>
+    </div>
+    <div class="field">
       <label data-i18n="EXPORT THEME">EXPORT THEME</label>
       <select id="set-export-theme">
         <option value="app" data-i18n="App theme — matches what you see on screen">App theme — matches what you see on screen</option>
@@ -1705,6 +2016,19 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
   </div>
 </div>
 
+<!-- RAIL LAYOUT ORGANISER (opened from Settings; wide board, drag pages between domains) -->
+<div id="rail-layout-overlay" class="overlay">
+  <div class="modal-box" style="width:min(920px,96vw);max-height:88vh;overflow-y:auto">
+    <h2 data-i18n="⚖ ORGANISE RAIL LAYOUT">⚖ ORGANISE RAIL LAYOUT</h2>
+    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <div id="rlo-board" class="rlo-board"></div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
+      <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+      <button class="primary" data-i18n="DONE" onclick="rloClose()">DONE</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIRST-RUN LANDING CHOOSER (shown once, until a default is stored) -->
 <div id="landing-firstrun" class="overlay">
   <div class="modal-box" style="width:min(440px,95vw)">
@@ -1714,8 +2038,11 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <strong style="color:var(--text)">Settings</strong> on the nav rail.
     </p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('roster')">
-        👥 <span data-i18n="Roster — start with the team">Roster — start with the team</span> <span style="color:var(--muted);font-weight:400;margin-left:6px" data-i18n="(recommended)">(recommended)</span>
+      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('home')">
+        🏠 <span data-i18n="Home — your customizable dashboard">Home — your customizable dashboard</span> <span style="color:var(--muted);font-weight:400;margin-left:6px" data-i18n="(recommended)">(recommended)</span>
+      </button>
+      <button style="justify-content:flex-start" onclick="railChooseLanding('roster')">
+        👥 <span data-i18n="Roster — start with the team">Roster — start with the team</span>
       </button>
       <button style="justify-content:flex-start" onclick="railChooseLanding('matrix')">
         ◎ <span data-i18n="Portfolio matrix — start with the project matrix">Portfolio matrix — start with the project matrix</span>
@@ -1776,7 +2103,7 @@ var I18N_DICT = {
     'Heatmap':'Carte de chaleur', 'Nine-box':'Nine-box',
     'Team profiles':'Profils d\'équipe', 'Development':'Développement',
     'Portfolio analytics':'Analyse de portefeuille', 'Portfolio economics':'Économie de portefeuille', 'People analytics':'Analyse RH',
-    'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Compare':'Comparer',
+    'Summary':'Synthèse', 'Cost dashboard':'Tableau de bord des coûts', 'Resource balancer':'Équilibrage des ressources', 'Compare':'Comparer',
     /* Nav rail — utility actions */
     'Snapshots':'Instantanés', 'Backup':'Sauvegarde', 'Restore':'Restaurer',
     'AI advisor':'Conseiller IA', 'Settings':'Paramètres', 'Help':'Aide',
@@ -2246,7 +2573,7 @@ var I18N_DICT = {
     'Heatmap':'热力图', 'Nine-box':'九宫格',
     'Team profiles':'团队画像', 'Development':'发展',
     'Portfolio analytics':'组合分析', 'Portfolio economics':'组合经济', 'People analytics':'人员分析',
-    'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Compare':'对比',
+    'Summary':'摘要', 'Cost dashboard':'成本仪表板', 'Resource balancer':'资源平衡', 'Compare':'对比',
     /* Nav rail — utility actions */
     'Snapshots':'快照', 'Backup':'备份', 'Restore':'恢复',
     'AI advisor':'AI 顾问', 'Settings':'设置', 'Help':'帮助',
@@ -8903,6 +9230,7 @@ function rgbaToHex(rgba){const m=rgba.match(/[\d.]+/g);if(!m||m.length<3)return 
 
 // opens the help overlay
 function openHelp(){
+  var yr=G('help-colophon-year'); if(yr) yr.textContent=new Date().getFullYear();
   setActivePill('HELP');G('help-overlay').classList.add('show');}
 // closes the help overlay
 function closeHelp(){
@@ -10392,12 +10720,12 @@ function addRowForProj(projId){
 }
 /* ◄◄ END: sections/plan.js ►► */
 
-/* ►► SECTION: DASHBOARD ◄◄ Resource dashboard: KPIs, cost charts, utilisation, filters
+/* ►► SECTION: DASHBOARD ◄◄ Resource balancer: capacity vitals, supply/demand, over/under-allocation, replacements
  *
  * Functions defined in this file:
  *   _dashMonths        — returns the full month range for dashboard calculations
  *   _buildCostMaps     — computes project cost maps with optional engineer/project filters
- *   renderResDashboard — renders the full resource dashboard: KPIs, charts, utilisation grid, financial analysis
+ *   renderResDashboard — renders the Resource Balancer: capacity supply/demand, availability, utilisation, over-allocation & rebalancing
  *   setEngDashGroup    — sets the engineer utilisation group-by mode and re-renders
  *   exportDashboardPDF — switches to the dashboard tab (if needed) then triggers PDF export
  *   _doExportDashboardPDF — builds and opens the print-ready dashboard HTML in a new window
@@ -10456,7 +10784,7 @@ function _dbSparkBars(values, opts){
   return '<svg width="'+w+'" height="'+h+'" style="display:block">'+out+'</svg>';
 }
 
-// Renders the full resource dashboard: KPI cards, monthly cost/FTE chart, cost by project, utilisation grid, financial analysis.
+// Renders the Resource Balancer: capacity supply/demand vitals, demand-vs-capacity chart, capacity by function, availability, utilisation grid and over-allocation with proactive rebalancing suggestions.
 function renderResDashboard(){
   var body=G('res-body');if(!body)return;
   var months=_dashMonths();
@@ -10472,7 +10800,7 @@ function renderResDashboard(){
   }
 
   var cm=_buildCostMaps(months,engDashFilterEng,engDashFilterProj);
-  var projCost=cm.projCost,totalCost=cm.totalCost,unassignedCost=cm.unassignedCost,filteredRows=cm.filteredRows;
+  var projCost=cm.projCost,filteredRows=cm.filteredRows;
   var engUtil=_buildEngUtil(months);
   var engById=_engByIdMap();
 
@@ -10511,41 +10839,32 @@ function renderResDashboard(){
     ?(countedUtil.reduce(function(s,eu){return s+eu.utilizationRate;},0)/totalActiveEngs*100).toFixed(0)
     :0;
 
-  // ── Financial totals: TEAM COST = ALLOCATED + UNALLOCATED ──────
-  // Hoisted so the header can lead with allocation efficiency (the meaningful
-  // "how much of what we pay is reaching projects" number) instead of the old
-  // calendar-driven "budget consumed". The Financial Analysis section below
-  // reuses these exact values — single source, so headline and detail never diverge.
-  var _finMonths=months, _nMonths=months.length;
-  // A month drops out of salary/period cost only when the engineer is fully
-  // medical/resigned that month (status m/r AND no working allocation) — a single
-  // 'm' row on one project must not zero a real allocation on another.
+  // ── Capacity supply vs demand (FTE·months over the period) ──────
+  // The balancing backbone: how much counted capacity exists (supply), how much
+  // is engaged (capped at 1.0 FTE), how much sits idle, and where raw demand runs
+  // past 1.0 FTE (over-capacity). Everything downstream — hero, gauge, chart and
+  // the capacity-by-function table — reads these, so the headline and detail agree.
+  var _nMonths=months.length;
+  // A month drops out of supply only when the engineer is fully medical/resigned
+  // that month (status m/r AND no working allocation) — a single 'm' row on one
+  // project must not zero a real availability on another.
   function _monthInactive(eu,m){
     var s=eu.monthStatus&&eu.monthStatus[m];
     return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0;
   }
-  var _teamCostIncl=0, _allocCostTotal=0, _noCostWarnings=[];
-  Object.values(engUtil).forEach(function(eu){
-    var mc=eu.eng.monthlyCost||0;
-    if(_finExclude.has(eu.eng.uid)||(eu.eng.planningOnly&&!eu.eng.includeInCost)||eu.eng.excludeFromCalc)return;
-    if(!mc)_noCostWarnings.push(eu.eng.name);
-    _finMonths.forEach(function(m){
+  var _supplyMo=0, _engagedMo=0, _demandMo=0;
+  countedUtil.forEach(function(eu){
+    months.forEach(function(m){
       if(_monthInactive(eu,m))return;
-      _teamCostIncl+=mc;
-      _allocCostTotal+=Math.min(eu.monthAllocs[m]||0,1)*mc;
+      _supplyMo+=1;
+      var a=eu.monthAllocs[m]||0;
+      _engagedMo+=Math.min(a,1);
+      _demandMo+=a;
     });
   });
-  var _unallocCost=Math.max(0,_teamCostIncl-_allocCostTotal);
-  var _allocPct=_teamCostIncl>0?Math.round(_allocCostTotal/_teamCostIncl*100):0;
-  var _unallocPct=100-_allocPct;
-
-  // Monthly peaks
-  var moCosts=months.map(function(m){return filteredRows.reduce(function(s,r){
-    var eng=engById.get(r.engId);
-    return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
-  },0);});
-  var peakCostIdx=moCosts.indexOf(Math.max(...moCosts));
-  var peakMonth=months[peakCostIdx]||curInRange;
+  var _utilPct=_supplyMo>0?Math.round(_engagedMo/_supplyMo*100):0;
+  var _idleMo=Math.max(0,_supplyMo-_engagedMo);   // free FTE·months (bench capacity)
+  var _overMo=Math.max(0,_demandMo-_engagedMo);   // demand beyond 1.0 FTE (over-capacity)
 
   // SPOF count from skill data
   var skillMap=buildSkillMap();
@@ -10570,29 +10889,25 @@ function renderResDashboard(){
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
 
-  // ── Hero band: total plan cost + allocation efficiency ─────────
-  var _dbEur=function(v){v=v||0;return v>=1e6?(v/1e6).toFixed(2)+'M€':Math.round(v/1000)+'k€';};
-  var _peakCost=moCosts[peakCostIdx]||0;
-  // hero cost area-sparkline over the monthly cost series
-  var _hsMax=Math.max.apply(null,moCosts.concat([1])),_hsW=600,_hsH=50;
-  var _hsPts=moCosts.map(function(v,i){return [(moCosts.length>1?i/(moCosts.length-1):0)*_hsW,(_hsH-(v/_hsMax)*(_hsH-6)-2)];});
-  var _hsArea='M0,'+_hsH+' '+_hsPts.map(function(p){return 'L'+p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+' L'+_hsW+','+_hsH+' Z';
-  var _hsLine='M'+_hsPts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L');
+  // ── Hero band: team capacity + how much of it is engaged ───────
   h+='<div class="db-hero">'
    +'<div class="db-card db-hero-cost">'
    +'<div>'
-   +'<div class="db-eyebrow">'+t('TOTAL PLAN COST')+' · '+t('{n} months',{n:months.length})+'</div>'
-   +'<div class="db-hero-big">'+_dbEur(totalCost)+'</div>'
-   +'<div class="db-hero-sub">'+t('Peak')+' <b>'+_dbEur(_peakCost)+'</b> · '+peakMonth+' · <b>'+projStaffedCount+'/'+projects.length+'</b> '+t('projects staffed')+'</div>'
-   +(unassignedCost>0?'<div class="db-warnpill">&#9888; '+_dbEur(unassignedCost)+' '+t('unassigned to a project')+'</div>':'')
+   +'<div class="db-eyebrow">'+t('TEAM CAPACITY')+' · '+t('{n} months',{n:_nMonths})+'</div>'
+   +'<div class="db-hero-big">'+totalActiveEngs+'</div>'
+   +'<div class="db-hero-sub">'+t('counted engineers')+' · <b>'+_supplyMo.toFixed(0)+'</b> '+t('FTE·months available')+' · <b>'+projStaffedCount+'/'+projects.length+'</b> '+t('projects staffed')+'</div>'
+   +(_overMo>0.5?'<div class="db-warnpill">&#9888; '+_overMo.toFixed(1)+' '+t('FTE·months over capacity')+'</div>':'')
+   +'<div style="margin-top:12px">'
+   +'<div style="height:8px;border-radius:5px;overflow:hidden;display:flex;background:var(--db-track)"><i style="width:'+_utilPct+'%;background:var(--accent2)"></i></div>'
+   +'<div style="display:flex;justify-content:space-between;font-family:var(--db-mono);font-size:9px;color:var(--muted);margin-top:5px"><span>'+_engagedMo.toFixed(0)+' '+t('engaged')+'</span><span>'+_idleMo.toFixed(0)+' '+t('idle')+'</span></div>'
    +'</div>'
-   +'<svg class="db-hero-spark" viewBox="0 0 '+_hsW+' '+_hsH+'" preserveAspectRatio="none" aria-hidden="true"><path d="'+_hsArea+'" fill="var(--accent)" opacity="0.16"/><path d="'+_hsLine+'" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.6"/></svg>'
+   +'</div>'
    +'</div>'
    +'<div class="db-card db-gauge">'
-   +'<div class="db-gauge-head"><span class="db-eyebrow">'+t('ALLOCATED TO PROJECTS')+'</span><span class="db-gauge-pct">'+_allocPct+'%</span></div>'
-   +'<div class="db-gauge-track"><div class="db-gauge-fill" style="width:'+_allocPct+'%"></div><div class="db-gauge-rest"></div></div>'
-   +'<div class="db-gauge-legend"><span><b>'+_dbEur(_allocCostTotal)+'</b> '+t('on projects')+'</span><span>'+t('of')+' <b>'+_dbEur(_teamCostIncl)+'</b> '+t('team cost')+'</span></div>'
-   +'<div class="db-gauge-legend" style="margin-top:-4px"><span class="db-muted">'+t('the rest is bench / overhead')+'</span></div>'
+   +'<div class="db-gauge-head"><span class="db-eyebrow">'+t('CAPACITY ENGAGED')+'</span><span class="db-gauge-pct">'+_utilPct+'%</span></div>'
+   +'<div class="db-gauge-track"><div class="db-gauge-fill" style="width:'+_utilPct+'%"></div><div class="db-gauge-rest"></div></div>'
+   +'<div class="db-gauge-legend"><span><b>'+_engagedMo.toFixed(0)+'</b> '+t('FTE·mo engaged')+'</span><span>'+t('of')+' <b>'+_supplyMo.toFixed(0)+'</b> '+t('available')+'</span></div>'
+   +'<div class="db-gauge-legend" style="margin-top:-4px"><span class="db-muted">'+t('the rest is bench capacity')+'</span></div>'
    +'</div>'
    +'</div>';
 
@@ -10610,7 +10925,7 @@ function renderResDashboard(){
    +(overCount?'<span class="db-chip db-chip--alert">'+t('needs rebalancing')+'</span>':'')+'</div>'
    +'<div class="db-stat db-stat--click'+(benchCount>0?' db-stat--info':'')+'" onclick="_availPanel.open=true;_availPanel.threshold=1;renderResDashboard()" title="'+t('Click to show bench resources')+'"><span class="db-sev"></span>'
    +'<div class="db-stat-v"'+(benchCount>0?'':' style="color:var(--accent)"')+'>'+benchCount+'</div><div class="db-stat-k">'+t('ON BENCH')+'</div>'
-   +'<div class="db-stat-d">'+t('Unallocated this month')+(_unallocCost>0?' · '+_dbEur(_unallocCost)+' '+t('idle'):'')+'</div>'
+   +'<div class="db-stat-d">'+t('Unallocated this month')+(_idleMo>0?' · '+_idleMo.toFixed(0)+' '+t('FTE·mo idle'):'')+'</div>'
    +(benchCount>0?'<span class="db-chip db-chip--info">'+benchEngs.map(function(eu){return escH(eu.name.split(' ')[0]);}).slice(0,3).join(', ')+(benchCount>3?'…':'')+'</span>':'')+'</div>'
    +'<div class="db-stat'+(spofSkills.length?' db-stat--warn':'')+'"><span class="db-sev"></span>'
    +'<div class="db-stat-v"'+(spofSkills.length?'':' style="color:var(--accent)"')+'>'+spofSkills.length+'</div><div class="db-stat-k">'+t('CRITICAL SPOF SKILLS')+'</div>'
@@ -10618,10 +10933,11 @@ function renderResDashboard(){
    +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="showResTab(\'skillrisk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
    +'</div>';
 
-  // ── Monthly cost & FTE chart ───────────────────────────────────
-  var maxMoCost=Math.max(...moCosts,1);
-  // Monthly FTE demand (same counted population as the cost bars)
-  var moFte=months.map(function(m){
+  // ── Monthly demand vs capacity chart ───────────────────────────
+  // Raw FTE demand per month (uncapped, so over-allocation shows) against the
+  // counted capacity line. Bars turn red where demand outruns capacity.
+  var curIdx=months.indexOf(cur);
+  var moDemand=months.map(function(m){
     var byE={};
     filteredRows.forEach(function(r){
       if(!r.engId)return;
@@ -10629,97 +10945,74 @@ function renderResDashboard(){
       var v=r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0;
       byE[r.engId]=(byE[r.engId]||0)+v;
     });
-    return Object.values(byE).reduce(function(s,v){return s+Math.min(v,1);},0);
+    return Object.values(byE).reduce(function(s,v){return s+v;},0);
   });
-  var maxFte=Math.max(...moFte,1);
-  var curIdx=months.indexOf(cur);
-  // geometry — faint grid, cost bars (past/current/future), single FTE line
+  var moSupply=months.map(function(m){return countedUtil.reduce(function(s,eu){return s+(_monthInactive(eu,m)?0:1);},0);});
+  var maxY=Math.max.apply(null,moDemand.concat(moSupply).concat([1]));
+  // geometry — faint grid, demand bars (accent/current/over), capacity line
   var _pL=44,_pR=16,_pT=14,_pB=26,_chH=130;
   var _slot=Math.max(26,Math.min(64,Math.floor((880-_pL-_pR)/months.length)));
   var _chW=_pL+_pR+_slot*months.length,_bw=Math.round(_slot*0.5);
   var _innerH=_chH-_pT-_pB,_baseY=_chH-_pB;
   var svg='';
   for(var _g=0;_g<=3;_g++){
-    var _gy=_pT+_innerH*_g/3, _gv=Math.round(maxMoCost*(1-_g/3)/1000);
+    var _gy=_pT+_innerH*_g/3, _gv=(maxY*(1-_g/3));
     svg+='<line x1="'+_pL+'" y1="'+_gy.toFixed(1)+'" x2="'+(_chW-_pR)+'" y2="'+_gy.toFixed(1)+'" stroke="var(--border)" stroke-width="'+(_g===3?1:0.6)+'" opacity="'+(_g===3?1:0.5)+'"/>'
-      +'<text x="'+(_pL-8)+'" y="'+(_gy+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--dim)" font-family="IBM Plex Mono,monospace">'+_gv+'k</text>';
+      +'<text x="'+(_pL-8)+'" y="'+(_gy+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--dim)" font-family="IBM Plex Mono,monospace">'+_gv.toFixed(0)+'</text>';
   }
-  moCosts.forEach(function(v,i){
-    var bh=Math.round(v/maxMoCost*_innerH), x=_pL+_slot*i+(_slot-_bw)/2, y=_baseY-bh;
-    var isCur=i===curIdx, isPast=curIdx>=0&&i<curIdx;
-    svg+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+_bw+'" height="'+bh+'" rx="2" fill="'+(isCur?'var(--accent)':'var(--accent2)')+'" opacity="'+(isCur?0.95:isPast?0.55:0.28)+'"/>';
+  moDemand.forEach(function(v,i){
+    var bh=Math.round(v/maxY*_innerH), x=_pL+_slot*i+(_slot-_bw)/2, y=_baseY-bh;
+    var isCur=i===curIdx, isOver=v>moSupply[i]+0.001;
+    var fill=isOver?'var(--danger)':(isCur?'var(--accent)':'var(--accent2)');
+    svg+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+_bw+'" height="'+bh+'" rx="2" fill="'+fill+'" opacity="'+(isOver?0.85:isCur?0.95:0.5)+'"/>';
     if(months[i].endsWith('-01')||i===0||months.length<=12)
       svg+='<text x="'+(_pL+_slot*i+_slot/2).toFixed(1)+'" y="'+(_chH-9)+'" text-anchor="middle" font-size="8.5" fill="'+(isCur?'var(--accent)':'var(--dim)')+'" font-family="IBM Plex Mono,monospace">'+(months.length<=12?months[i].slice(5):months[i].slice(0,4))+'</text>';
   });
-  var _fpts=moFte.map(function(v,i){return [_pL+_slot*i+_slot/2, _baseY-(v/maxFte)*_innerH];});
-  svg+='<path d="M'+_fpts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L')+'" fill="none" stroke="var(--warn)" stroke-width="1.8" opacity="0.85" stroke-linejoin="round"/>';
-  _fpts.forEach(function(p,i){ svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(i===curIdx?3.6:2)+'" fill="'+(i===curIdx?'var(--warn)':'var(--bg)')+'" stroke="var(--warn)" stroke-width="1.4"/>'; });
-  h+='<div class="db-sec"><div class="db-sec-title">'+t('MONTHLY COST &amp; FTE')
+  var _cpts=moSupply.map(function(v,i){return [_pL+_slot*i+_slot/2, _baseY-(v/maxY)*_innerH];});
+  svg+='<path d="M'+_cpts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L')+'" fill="none" stroke="var(--text)" stroke-width="1.6" stroke-dasharray="4 3" opacity="0.7" stroke-linejoin="round"/>';
+  h+='<div class="db-sec"><div class="db-sec-title">'+t('MONTHLY DEMAND vs CAPACITY')
    +'<span class="db-spacer"></span><span class="db-legend">'
-   +'<i><span class="db-swatch" style="background:var(--accent2)"></span>'+t('Cost')+'</i>'
-   +'<i><span class="db-swatch" style="background:var(--accent)"></span>'+t('Current month')+'</i>'
-   +'<i><span class="db-swatch" style="background:var(--warn)"></span>'+t('FTE demand')+'</i>'
+   +'<i><span class="db-swatch" style="background:var(--accent2)"></span>'+t('FTE demand')+'</i>'
+   +'<i><span class="db-swatch" style="background:var(--danger)"></span>'+t('Over capacity')+'</i>'
+   +'<i><span class="db-swatch" style="background:var(--text)"></span>'+t('Capacity')+'</i>'
    +'</span></div>'
-   +'<div class="db-card db-chart-card" style="overflow-x:auto"><svg class="db-chart" viewBox="0 0 '+_chW+' '+_chH+'" width="'+_chW+'" height="'+_chH+'" role="img" aria-label="'+t('Monthly cost bars with FTE demand line')+'">'+svg+'</svg></div></div>';
+   +'<div class="db-card db-chart-card" style="overflow-x:auto"><svg class="db-chart" viewBox="0 0 '+_chW+' '+_chH+'" width="'+_chW+'" height="'+_chH+'" role="img" aria-label="'+t('Monthly FTE demand bars against a capacity line')+'">'+svg+'</svg></div></div>';
 
-  // ── Cost by project ────────────────────────────────────────────
-  h+='<div class="db-sec"><div class="db-sec-title">'+t('COST BY PROJECT')+' <span class="db-hint">'+t('(by section)')+'</span></div>';
-  var secGrouped={};
-  Object.entries(projCost).forEach(function(kv){
-    var pid=kv[0],cost=kv[1];
-    var p=projects.find(function(p){return p.id===+pid;});if(!p)return;
-    var sec=sections.find(function(s){return s.id===p.sectionId;});
-    var grp=sec?sec.name:'Unsectioned';
-    var grpColor=sec?sec.color:'var(--muted)';
-    if(!secGrouped[grp])secGrouped[grp]={color:grpColor,rows:[]};
-    secGrouped[grp].rows.push({p:p,cost:cost});
+  // ── Capacity by function: supply vs demand ─────────────────────
+  // Structural over/under by group — the gap you can't see person-by-person.
+  var _sdGroups={};
+  countedUtil.forEach(function(eu){
+    var key=eu.grp||t('Ungrouped'), color=eu.grpColor||'var(--muted)';
+    if(!_sdGroups[key])_sdGroups[key]={color:color,supply:0,engaged:0,demand:0,n:0};
+    var g=_sdGroups[key];g.n++;
+    months.forEach(function(m){
+      if(_monthInactive(eu,m))return;
+      g.supply+=1;var a=eu.monthAllocs[m]||0;g.engaged+=Math.min(a,1);g.demand+=a;
+    });
   });
-  var _secKeys=Object.keys(secGrouped).sort(function(a,b){return a==='Unsectioned'?1:b==='Unsectioned'?-1:a.localeCompare(b);});
-  _secKeys.forEach(function(grpName){
-    var g=secGrouped[grpName];
-    var grpTotal=g.rows.reduce(function(s,r){return s+r.cost;},0);
-    var isOpen=!!_dashSectorOpen[grpName];
-    var safeId='dsec_'+grpName.replace(/[^a-zA-Z0-9]/g,'_');
-    h+='<div class="db-group">';
-    h+='<div class="db-group-head'+(isOpen?' db-open':'')
-      +'" onclick="toggleDashSector(this.dataset.grp,this.dataset.sid)" data-grp="'+escH(grpName)+'" data-sid="'+safeId+'">'
-      +'<span class="db-group-arrow" id="dsec-arrow-'+safeId+'">'+(isOpen?'▼':'▶')+'</span>'
-      +'<span class="db-dot" style="background:'+safeColor(g.color)+'"></span>'
-      +'<span class="db-group-name">'+escH(grpName==='Unsectioned'?t('Unsectioned'):grpName)+'</span>'
-      +'<span class="db-group-meta">'+t('{n} project(s)',{n:g.rows.length})+'</span>'
-      +'<span class="db-group-total">'+Math.round(grpTotal/1000)+'k€</span>'
-      +'</div>';
-    h+='<div id="'+safeId+'" style="display:'+(isOpen?'block':'none')+'">'
-      +'<table class="db-table"><thead><tr>'
-      +'<th>'+t('PROJECT')+'</th><th>'+t('COST')+'</th><th>%</th>'
-      +'<th>'+t('FTE PEAK')+'</th><th>'+t('MONTHLY')+'</th>'
+  var _sdKeys=Object.keys(_sdGroups).sort(function(a,b){return (_sdGroups[b].demand-_sdGroups[b].supply)-(_sdGroups[a].demand-_sdGroups[a].supply);});
+  if(_sdKeys.length){
+    h+='<div class="db-sec"><div class="db-sec-title">'+t('CAPACITY BY FUNCTION')+' <span class="db-hint">'+t('supply vs demand · FTE·months')+'</span></div>'
+      +'<div class="db-table-card"><table class="db-table"><thead><tr>'
+      +'<th>'+t('FUNCTION')+'</th><th>'+t('PEOPLE')+'</th><th>'+t('SUPPLY')+'</th><th>'+t('DEMAND')+'</th><th>'+t('BALANCE')+'</th><th>'+t('ENGAGED')+'</th>'
       +'</tr></thead><tbody>';
-    g.rows.sort(function(a,b){return b.cost-a.cost;}).forEach(function(row){
-      var p=row.p,cost=row.cost;
-      var pct=totalCost?Math.round(cost/totalCost*100):0;
-      var projRows=allocRows.filter(function(r){return r.projectId===p.id;});
-      var monthFtes=months.map(function(m){return projRows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);});
-      var peakFte=Math.max.apply(null,monthFtes.concat([0]));
-      var monthCosts=months.map(function(m){return projRows.reduce(function(s,r){
-        var eng=engById.get(r.engId);
-        return s+(eng&&_costCounts(eng)&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);
-      },0);});
-      var spark=_dbSparkBars(monthCosts,{w:110,h:16,curIdx:curIdx});
-      var statusBadge='';
-      if(p.currentGate)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(120,120,140,.12);color:var(--muted)">'+escH(p.currentGate)+'</span><span style="font-size:8px;color:var(--muted)"> →</span>';
-      if(p.gate)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.gate)+'</span>';
-      if(p.status)statusBadge+=' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(200,241,53,.1);color:var(--accent)">'+escH(p.status)+'</span>';
+    _sdKeys.forEach(function(k){
+      var g=_sdGroups[k], net=g.demand-g.supply;
+      var pct=g.supply>0?Math.min(100,Math.round(g.engaged/g.supply*100)):0;
+      var netCol=net>0.5?'var(--danger)':net<-0.5?'var(--accent2)':'var(--muted)';
+      var label=net>0.5?t('short'):net<-0.5?t('slack'):t('balanced');
+      var barCol=net>0.5?'var(--danger)':'var(--accent2)';
       h+='<tr>'
-       +'<td><span class="db-pname"><span class="db-dot" style="background:'+safeColor(p.color)+'"></span><span style="color:'+safeColor(p.color)+'">'+escH(p.name)+'</span></span>'+statusBadge+'</td>'
-       +'<td class="db-money">'+Math.round(cost/1000)+'k€</td>'
-       +'<td class="db-muted">'+pct+'%</td>'
-       +'<td class="db-num" style="color:var(--accent2)">'+peakFte.toFixed(1)+'</td>'
-       +'<td>'+spark+'</td>'
+       +'<td><span class="db-pname"><span class="db-dot" style="background:'+safeColor(g.color)+'"></span>'+escH(k)+'</span></td>'
+       +'<td class="db-num db-muted">'+g.n+'</td>'
+       +'<td class="db-num">'+g.supply.toFixed(0)+'</td>'
+       +'<td class="db-num">'+g.demand.toFixed(1)+'</td>'
+       +'<td><span style="color:'+netCol+';font-weight:600">'+(net>0?'+':'')+net.toFixed(1)+'</span> <span class="db-muted" style="font-size:9px">'+label+'</span></td>'
+       +'<td><div class="db-share-cell"><div class="db-share-bar"><i style="width:'+pct+'%;background:'+barCol+'"></i></div><span class="db-muted" style="min-width:28px">'+pct+'%</span></div></td>'
        +'</tr>';
     });
     h+='</tbody></table></div></div>';
-  });
-  h+='</div>';
+  }
 
 
   // ── Availability panel ──────────────────────────────────────────
@@ -10929,7 +11222,6 @@ function renderResDashboard(){
       var cls=isOver?' db-ucard--over':isBench?' db-ucard--bench':isSpof?' db-ucard--spof':'';
       var emv=months.map(function(m){return eu.monthAllocs&&eu.monthAllocs[m]?eu.monthAllocs[m]:0;});
       var eSpark=_dbSparkBars(emv,{w:88,h:18,curIdx:curIdx,overMax:1.005,overColor:'var(--danger)'});
-      var totalCostEng=eu.totAlloc*(eu.cost||0);
       h+='<div class="db-ucard'+cls+'">'
        +'<div class="db-uname">'+escH(eu.name)
        +(isOver?'<span class="db-tag db-tag--over">&#9888; '+t('OVER')+'</span>':'')
@@ -10941,104 +11233,13 @@ function renderResDashboard(){
        +'<div class="db-umeta">'+t('avg active')+' · '+utilPct+'% '+t('full period')+'</div>'
        +'<div style="margin-top:6px">'+eSpark+'</div>'
        +(isOver?'<div class="db-umeta" style="color:var(--danger)">&#9888; '+t('Over:')+' '+eu.overMonths.slice(0,3).map(function(m){return m.slice(0,7);}).join(', ')+(eu.overMonths.length>3?'…':'')+'</div>':'')
-       +'<div class="db-umeta">'+Math.round(totalCostEng/1000)+'k€ '+t('total')+' · '+eu.activeMonths+'/'+eu.months+' '+t('mo')+'</div>'
+       +'<div class="db-umeta">'+eu.activeMonths+'/'+eu.months+' '+t('active mo')+' · '+utilPct+'% '+t('full period')+'</div>'
        +(isOver?'<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+t('FIND REPLACEMENTS')+'</button>':'')
        +'</div>';
     });
     h+='</div></div>';
   }
   h+='</div>';
-
-
-  // ── Project spending detail (collapsible) ─────────────────────────
-  var _pdOpen = _dashProjDetailOpen;
-  h += '<div class="db-sec">'
-    + '<div class="db-sec-title" style="cursor:pointer"'
-    + ' onclick="(function(el){_dashProjDetailOpen=!_dashProjDetailOpen;'
-    + 'var s=document.getElementById(\'dash-proj-detail\');'
-    + 'if(s){s.style.display=_dashProjDetailOpen?\'block\':\'none\';}'
-    + 'el.querySelector(\'.dash-pd-arrow\').textContent=_dashProjDetailOpen?\'▼\':\'▶\';})(this)">'
-    + '<span class="dash-pd-arrow">' + (_pdOpen ? '▼' : '▶') + '</span> '+t('PROJECT SPENDING DETAIL')
-    + ' <span class="db-hint">— '+t('cost &amp; resources per project')+' · ' + t('{n} months',{n:months.length}) + '</span>'
-    + '</div>'
-    + '<div id="dash-proj-detail" style="display:' + (_pdOpen ? 'block' : 'none') + '">';
-
-  var _projDetail = Object.entries(projCost)
-    .map(function(kv) {
-      var pid = +kv[0], cost = kv[1];
-      var p = projects.find(function(p){ return p.id === pid; });
-      if (!p) return null;
-      var _rows = filteredRows.filter(function(r){ return r.projectId === pid && r.engId && _costCounts(engById.get(r.engId)); });
-      var _engMap = {};
-      _rows.forEach(function(r) {
-        if (!_engMap[r.engId]) _engMap[r.engId] = { fte: {}, eng: engById.get(r.engId) };
-        months.forEach(function(m) {
-          _engMap[r.engId].fte[m] = (_engMap[r.engId].fte[m] || 0) + (r.allocs && r.allocs[m] != null ? _allocNum(r.allocs[m]) : 0);
-        });
-      });
-      var _resources = Object.values(_engMap).filter(function(x){ return x.eng; }).map(function(x) {
-        var totalFte = months.reduce(function(s, m){ return s + (x.fte[m] || 0); }, 0);
-        var peakFte  = Math.max.apply(null, months.map(function(m){ return x.fte[m] || 0; }).concat([0]));
-        var engCost  = months.reduce(function(s, m){ return s + (x.fte[m] || 0) * (x.eng.monthlyCost || 0); }, 0);
-        var eg = engGroups.find(function(g){ return g.id === x.eng.groupId; });
-        return { eng: x.eng, fte: x.fte, totalFte: totalFte, peakFte: peakFte, cost: engCost, grpColor: eg ? eg.color : 'var(--muted)' };
-      }).sort(function(a, b){ return b.cost - a.cost; });
-      return { p: p, cost: cost, resources: _resources };
-    })
-    .filter(Boolean)
-    .sort(function(a, b){ return b.cost - a.cost; });
-
-  if (!_projDetail.length) {
-    h += '<div style="padding:16px;text-align:center;color:var(--muted);font-family:var(--db-mono);font-size:11px">'+t('No project allocation data in selected period.')+'</div>';
-  }
-
-  _projDetail.forEach(function(pd) {
-    var p = pd.p, pct = totalCost ? Math.round(pd.cost / totalCost * 100) : 0;
-    var _moCosts = months.map(function(m) {
-      return pd.resources.reduce(function(s, r){ return s + (r.fte[m] || 0) * (r.eng.monthlyCost || 0); }, 0);
-    });
-    var spark = _dbSparkBars(_moCosts, {w:160,h:20,curIdx:curIdx,minBar:1});
-
-    h += '<div class="db-group" style="border-left:3px solid ' + (p.color || 'var(--muted)') + '">';
-
-    h += '<div class="db-group-head" style="cursor:default;flex-wrap:wrap">'
-      + '<span class="db-group-name" style="color:var(--text);font-weight:600;font-size:11px">' + escH(p.name) + '</span>'
-      + (p.currentGate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(120,120,140,.12);color:var(--muted);font-family:var(--db-mono)">' + escH(p.currentGate) + ' →</span>' : '')
-      + (p.gate ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(200,241,53,.08);color:var(--accent);font-family:var(--db-mono)">' + escH(p.gate) + '</span>' : '')
-      + '<span style="flex:1"></span>'
-      + '<span class="db-group-total">' + Math.round(pd.cost/1000) + 'k€</span>'
-      + '<span class="db-group-meta">' + pct + '% '+t('of total')+'</span>'
-      + spark
-      + '</div>';
-
-    if (pd.resources.length) {
-      h += '<table class="db-table"><thead><tr>'
-        + '<th>'+t('RESOURCE')+'</th><th style="text-align:left">'+t('GROUP')+'</th><th>'+t('PEAK FTE')+'</th>'
-        + '<th>'+t('FTE·MO')+'</th><th>'+t('COST')+'</th><th>'+t('SHARE')+'</th>'
-        + '</tr></thead><tbody>';
-
-      pd.resources.forEach(function(r, i) {
-        var share = pd.cost ? Math.round(r.cost / pd.cost * 100) : 0;
-        var eg = engGroups.find(function(g){ return g.id === r.eng.groupId; });
-        h += '<tr>'
-          + '<td style="font-weight:600">' + escH(r.eng.name)
-          + (r.eng.role ? '<span style="font-weight:400;color:var(--muted);font-size:9px"> · ' + escH(r.eng.role) + '</span>' : '')
-          + '</td>'
-          + '<td style="text-align:left"><span style="font-size:9px;color:' + r.grpColor + '">' + escH(eg ? eg.name : '—') + '</span></td>'
-          + '<td class="db-num" style="color:var(--accent2)">' + r.peakFte.toFixed(1) + '</td>'
-          + '<td class="db-num db-muted">' + r.totalFte.toFixed(1) + '</td>'
-          + '<td class="db-num" style="font-weight:600">' + Math.round(r.cost/1000) + 'k€</td>'
-          + '<td><div class="db-share-cell"><div class="db-share-bar"><i style="width:' + share + '%;background:' + (p.color||'var(--accent)') + '"></i></div><span class="db-muted" style="min-width:26px">' + share + '%</span></div></td>'
-          + '</tr>';
-      });
-      h += '</tbody></table>';
-    } else {
-      h += '<div style="padding:8px 12px;font-size:9px;color:var(--muted);font-family:var(--db-mono)">'+t('No named resources in selected period.')+'</div>';
-    }
-    h += '</div>';
-  });
-
-  h += '</div></div>';
 
 
   // ── Overworked resources + conflict summary ───────────────────────
@@ -11095,106 +11296,23 @@ function renderResDashboard(){
         });
         h+='</div>';
       }
+      // Proactive rebalancing suggestion — the single best available substitute.
+      var _sug=_dashBestCandidate(eu.eng.id);
+      if(_sug){
+        h+='<div class="db-cflex" style="margin-top:6px;align-items:center">'
+          +'<span style="font-family:var(--db-mono);font-size:8px;color:var(--muted);letter-spacing:.04em">'+t('SUGGESTED SWAP:')+'</span>'
+          +'<span style="font-size:10px;color:var(--accent)">↔ '+escH(_sug.eng.name)+'</span>'
+          +'<span style="font-size:9px;color:var(--muted)">'+Math.round(_sug.headroom*100)+'% '+t('free')
+          +(_sug.total?' · '+_sug.skills+'/'+_sug.total+' '+t('skills'):'')
+          +(_sug.same?'':' · '+t('other group'))+'</span>'
+          +'</div>';
+      }
       h+='<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>';
       h+='</div>';
     });
     h+='</div></div>';
   }
 
-
-  // ── Financial analysis: team cost vs project allocation ─────────
-  // Totals (_teamCostIncl / _allocCostTotal / _unallocCost / _allocPct /
-  // _unallocPct / _noCostWarnings / _monthInactive) are computed once up top and
-  // reused here, so this section and the header hero never diverge.
-
-  h += '<div class="db-sec"><div class="db-sec-title">'+t('FINANCIAL ANALYSIS')
-    + ' <span class="db-hint">— '+t('{n} months',{n:_nMonths})+' · '+t('{n} engineers',{n:Object.values(engUtil).length})
-    + (_finExclude.size ? ' · '+t('{n} excluded',{n:_finExclude.size}) : '')
-    + '</span></div>';
-
-  // Warnings
-  if (_noCostWarnings.length) {
-    h += '<div style="margin-bottom:10px;padding:8px 12px;background:rgba(241,164,53,.08);'
-      + 'border:1px solid rgba(241,164,53,.3);border-radius:6px;display:flex;align-items:flex-start;gap:8px">'
-      + '<span style="font-size:14px;flex-shrink:0">⚠</span>'
-      + '<div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#f1a435;margin-bottom:3px">'+t('MISSING COST DATA')+'</div>'
-      + '<div style="font-size:10px;color:var(--muted)">'
-      + escH(_noCostWarnings.join(', '))
-      + ' '+t('— no monthly cost set. Excluded from calculation.')+'</div>'
-      + '</div></div>';
-  }
-
-  // KPI row — a clean reconciliation identity: TEAM COST = ALLOCATED + UNALLOCATED.
-  // (The uncapped per-project attribution total is the top "TOTAL PLAN COST" card;
-  // it is NOT repeated here because, unlike ALLOCATED, it is not capped at 1 FTE and
-  // so would not satisfy this identity. See ARCHITECTURE.md › Cost model.)
-  h += '<div class="db-ident">';
-  [
-    { val: _dbEur(_teamCostIncl),   label: t('TEAM COST PERIOD'), sub: t('{n} mo × salaries',{n:_nMonths}),   col: 'var(--accent2)' },
-    { val: _dbEur(_allocCostTotal), label: t('ALLOCATED TO PROJ'), sub: _allocPct + '% '+t('of team cost'),     col: 'var(--accent)' },
-    { val: _dbEur(_unallocCost),    label: t('UNALLOCATED'),       sub: _unallocPct + '% '+t('bench / overhead'), col: _unallocPct > 30 ? 'var(--warn)' : 'var(--muted)' },
-  ].forEach(function(k) {
-    h += '<div class="db-ident-box">'
-      + '<div class="db-ib-v" style="color:' + k.col + '">' + k.val + '</div>'
-      + '<div class="db-ib-k">' + k.label + '</div>'
-      + '<div class="db-ib-d">' + k.sub + '</div>'
-      + '</div>';
-  });
-  h += '</div>';
-
-  // Allocation bar (TEAM COST = ALLOCATED + UNALLOCATED)
-  h += '<div style="margin-bottom:14px">'
-    + '<div class="db-identbar-legend"><span>'+t('Allocated to projects:')+' <b>' + _allocPct + '%</b></span><span>'+t('Unallocated:')+' <b>' + _unallocPct + '%</b></span></div>'
-    + '<div class="db-identbar"><div class="db-ib-a" style="width:' + _allocPct + '%"></div><div class="db-ib-b"></div></div>'
-    + '</div>';
-
-  // Per-engineer breakdown
-  var _finRows = Object.values(engUtil)
-    .sort(function(a, b) { return (b.eng.monthlyCost||0) - (a.eng.monthlyCost||0); });
-
-  h += '<div class="db-table-card"><table class="db-table">'
-    + '<thead><tr>'
-    + '<th>'+t('ENGINEER')+'</th><th>'+t('MONTHLY')+'</th><th>'+t('PERIOD COST')+'</th>'
-    + '<th>'+t('ALLOC COST')+'</th><th>'+t('% ALLOC')+'</th><th style="text-align:center">'+t('EXCLUDE')+'</th>'
-    + '</tr></thead><tbody>';
-
-  _finRows.forEach(function(eu, i) {
-    var mc = eu.eng.monthlyCost || 0;
-    var excl = _finExclude.has(eu.eng.uid);
-    var engExcluded = eu.eng.excludeFromCalc;
-    var _activeMoEng = _finMonths.filter(function(m){ return !_monthInactive(eu,m); }).length;
-    var periodCost = mc * _activeMoEng;
-    var allocCostEng = _finMonths.reduce(function(s, m) {
-      return s + Math.min(eu.monthAllocs[m] || 0, 1) * mc;
-    }, 0);
-    var allocPctEng = periodCost > 0 ? Math.round(allocCostEng / periodCost * 100) : 0;
-    var eg = engGroups.find(function(g){ return g.id === eu.eng.groupId; });
-    h += '<tr style="' + ((excl||engExcluded) ? 'opacity:.4' : '') + '">'
-      + '<td><span style="font-weight:600;color:' + (engExcluded?'var(--muted)':'var(--text)') + '">' + escH(eu.eng.name) + '</span>'
-      + (engExcluded ? '<span style="font-size:9px;color:var(--warn);margin-left:6px">⊘ '+t('excluded')+'</span>' : '')
-      + (eg ? '<span style="font-size:9px;color:' + eg.color + ';margin-left:6px">' + escH(eg.name) + '</span>' : '')
-      + (!mc ? '<span style="font-size:9px;color:var(--warn);margin-left:6px">⚠ '+t('no cost')+'</span>' : '')
-      + '</td>'
-      + '<td class="db-num db-muted">' + (mc ? mc.toLocaleString() + '€' : '—') + '</td>'
-      + '<td class="db-num" style="font-weight:600">' + (periodCost ? Math.round(periodCost/1000) + 'k€' : '—') + '</td>'
-      + '<td class="db-num" style="color:var(--accent)">' + (allocCostEng ? Math.round(allocCostEng/1000) + 'k€' : '—') + '</td>'
-      + '<td>' + (mc ? '<div class="db-share-cell"><div class="db-share-bar"><i style="width:' + Math.min(allocPctEng,100) + '%;background:' + (allocPctEng < 50 ? 'var(--warn)' : 'var(--accent)') + '"></i></div><span class="db-muted" style="min-width:28px">' + allocPctEng + '%</span></div>' : '—') + '</td>'
-      + '<td style="text-align:center">'
-      + '<input type="checkbox" ' + (excl ? 'checked' : '') + ' '
-      + 'onchange="(function(id,cb){if(cb.checked)_finExclude.add(id);else _finExclude.delete(id);saveState();clearTimeout(window._finDebounce);window._finDebounce=setTimeout(renderResDashboard,200);})(\''+eu.eng.uid+'\',this)" '
-      + 'style="accent-color:var(--muted);cursor:pointer" title="'+t('Exclude from financial totals')+'">'
-      + '</td>'
-      + '</tr>';
-  });
-  h += '</tbody></table></div>';
-  h += '</div>';
-
-  // ── Transfer costs + actions ───────────────────────────────────
-  h+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-   +'<button class="primary" onclick="transferPlanCosts()">&#8658; '+t('TRANSFER PLAN COSTS TO PROJECTS')+'</button>'
-   +'<span style="font-size:11px;color:var(--muted)">'+t('Updates each project cost field from the resource plan.')+'</span>'
-   +'</div>';
 
   body.innerHTML=h;
 }
@@ -11223,7 +11341,7 @@ function _doExportDashboardPDF(){
   }
 
   var content=body.innerHTML;
-  var title=(G('res-title-input')?G('res-title-input').value:'Resource Plan')+' — Dashboard';
+  var title=(G('res-title-input')?G('res-title-input').value:'Resource Plan')+' — Resource Balancer';
   var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
 
   // Pull the live db-* class rules from the page so the print window renders the
@@ -11304,6 +11422,37 @@ function transferPlanCosts(){
 }
 
 /* ── Dashboard replacement finder + add-resource (monolith DASHBOARD section) ── */
+
+// Best available substitute for an overloaded engineer (current month):
+// most same-group headroom + skill overlap wins. Feeds the proactive
+// "suggested swap" line on each over-allocation card. Returns null if none.
+function _dashBestCandidate(engId){
+  var eng=engineers.find(function(e){return e.id===engId;});
+  if(!eng)return null;
+  var cur=_dashCur();
+  var wantSkills=(eng.skills||[]).map(function(s){return (s.name||'').toLowerCase();});
+  function headroom(e){
+    var fte=allocRows.filter(function(r){return r.engId===e.id;})
+      .reduce(function(s,r){return s+(r.allocs&&r.allocs[cur]!=null?_allocNum(r.allocs[cur]):0);},0);
+    return Math.max(0,1-fte);
+  }
+  function skillMatch(e){
+    var es=(e.skills||[]).map(function(s){return (s.name||'').toLowerCase();});
+    return wantSkills.filter(function(s){return es.indexOf(s)>=0;}).length;
+  }
+  var scored=engineers
+    .filter(function(e){return !e.vacant&&e.id!==engId&&_costCounts(e);})
+    .map(function(e){return {eng:e,headroom:headroom(e),skills:skillMatch(e),same:e.groupId===eng.groupId};})
+    .filter(function(c){return c.headroom>0.1;})
+    .sort(function(a,b){
+      if(b.same!==a.same)return (b.same?1:0)-(a.same?1:0);
+      if(b.skills!==a.skills)return b.skills-a.skills;
+      return b.headroom-a.headroom;
+    });
+  if(!scored.length)return null;
+  return {eng:scored[0].eng,headroom:scored[0].headroom,skills:scored[0].skills,total:wantSkills.length,same:scored[0].same};
+}
+
 /* ── Dashboard: replacement finder ─────────────────────────────────── */
 // Shows or hides the replacement candidate panel for an overloaded engineer.
 function showDashReplacements(engId, btn) {
@@ -21322,6 +21471,7 @@ function renderResActiveTab(){
 
 /* ── Inline SVG icons (currentColor; SVG only, no markup that breaks the bundle) ── */
 var RAIL_I = {
+  home:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.2 12 4l8 7.2"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-5.2h4V20"/></svg>',
   team:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.6 19c0-3 2.4-5 5.4-5s5.4 2 5.4 5"/><path d="M16 5.6a3 3 0 0 1 0 5.6"/><path d="M17.2 14c2.1.5 3.4 2.2 3.4 4.4"/></svg>',
   work:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg>',
   skills:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="1.4"/></svg>',
@@ -21351,6 +21501,9 @@ var RAIL_I = {
    before this file in the bundle). Every consumer — rail render, breadcrumb,
    the Settings landing dropdown — reads these, so this is the single point. */
 var RAIL_DOMAINS = [
+  { id:'home', name:t('HOME'), ico:RAIL_I.home, views:[
+    {id:'home',        label:t('Home')},
+  ]},
   { id:'team', name:t('TEAM'), ico:RAIL_I.team, views:[
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
@@ -21387,10 +21540,18 @@ var RAIL_DOMAINS = [
     {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
     {id:'summary',     label:t('Summary')},
-    {id:'dashboard',   label:t('Cost dashboard')},
+    {id:'dashboard',   label:t('Resource balancer')},
     {id:'compare',     label:t('Compare')},
   ]},
 ];
+
+/* Master view registry, captured ONCE from the declared defaults above — before
+   any layout mutation (railApplyLayout reassigns d.views in place). RAIL_VIEW_DEF_DOM
+   is each view's home domain; RAIL_ALL_VIEWS holds the live view objects by id. Both
+   are the fixed source that railApplyLayout rebuilds every domain from, so the layout
+   stays idempotent no matter how many times pages get moved/reordered. */
+var RAIL_VIEW_DEF_DOM={}, RAIL_ALL_VIEWS={};
+RAIL_DOMAINS.forEach(function(d){ d.views.forEach(function(v){ RAIL_VIEW_DEF_DOM[v.id]=d.id; RAIL_ALL_VIEWS[v.id]=v; }); });
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
@@ -21416,6 +21577,7 @@ var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
 var railViewOrder={};        // domId -> [viewId,...] custom page order within a domain (persisted)
+var railViewDomain={};       // viewId -> overridden domId (cross-domain page moves; persisted)
 var railScrollbar='thin';    // rail scrollbar width preset: thin|medium|wide (persisted)
 var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
 var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
@@ -21433,11 +21595,12 @@ function railLoadPrefs(){
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
+              if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -21445,15 +21608,150 @@ function railApplyScrollbar(){
   de.setProperty('--rail-sb',(RAIL_SB[railScrollbar]||RAIL_SB.thin)+'px');
   de.setProperty('--rail-sb-ff',railScrollbar==='wide'?'auto':'thin');   // Firefox: 'thin' caps ~11px
 }
-// apply the saved per-domain page order onto RAIL_DOMAINS (stable; unknown ids fall to the end)
-function railApplyOrder(){
+// Rebuild every domain's `views` from the master registry + the saved overrides:
+// (1) place each known view in its effective domain (railViewDomain override, else
+// its home), (2) order within the domain per railViewOrder. Both steps tolerate
+// stale ids: an override pointing at a removed domain falls home; an order entry for
+// an unknown id ranks last. Idempotent — always derived from the fixed registry, so
+// it can run any number of times after moves/reorders. Replaces railApplyOrder (which
+// only reordered within a domain and could never move a page between domains).
+function railEffectiveDom(viewId){
+  var d=railViewDomain[viewId];
+  if(d&&railDomainFor2(d)) return d;                 // override to a live domain
+  return RAIL_VIEW_DEF_DOM[viewId]||null;            // else home domain
+}
+function railApplyLayout(){
+  var byDom={};
+  RAIL_DOMAINS.forEach(function(d){ byDom[d.id]=[]; });
+  Object.keys(RAIL_ALL_VIEWS).forEach(function(vid){
+    var dom=railEffectiveDom(vid);
+    if(byDom[dom]) byDom[dom].push(RAIL_ALL_VIEWS[vid]);
+  });
   RAIL_DOMAINS.forEach(function(d){
+    var arr=byDom[d.id]||[];
     var ord=railViewOrder[d.id];
-    if(!ord||!ord.length) return;
-    var rank=function(id){ var i=ord.indexOf(id); return i<0?9999:i; };
-    d.views.sort(function(a,b){ return rank(a.id)-rank(b.id); });
+    if(ord&&ord.length){
+      var rank=function(id){ var i=ord.indexOf(id); return i<0?9999:i; };
+      // decorate-sort-undecorate keeps equal ranks in registry order (stable)
+      arr=arr.map(function(v,i){return {v:v,i:i};})
+             .sort(function(a,b){ return (rank(a.v.id)-rank(b.v.id))||(a.i-b.i); })
+             .map(function(x){return x.v;});
+    }
+    d.views=arr;
   });
 }
+// Reset all rail layout customisation (domain moves + ordering) back to defaults.
+function railResetLayout(){
+  railViewOrder={}; railViewDomain={};
+  railSavePrefs();
+  railApplyLayout();
+  railRender();
+  rloRenderBoard();                          // refresh the organiser if open
+}
+
+/* ══ RAIL LAYOUT ORGANISER (Settings pop-up; #rail-layout-overlay) ══════
+   A roomy board that mirrors the rail: one column per domain, pages as cards
+   you drag between columns (move) or within a column (reorder). ▲/▼ + a domain
+   <select> on each card do the same without dragging (touch / a11y fallback).
+   Everything routes through the SAME persisted model (railViewDomain +
+   railViewOrder) via railMoveView / railLayoutNudge, so the board, the live
+   rail and the DnD all stay in sync; changes apply immediately (like a drop). */
+function rloOpen(){ var ov=G('rail-layout-overlay'); if(!ov) return; rloRenderBoard(); ov.classList.add('show'); }
+function rloClose(){ var ov=G('rail-layout-overlay'); if(ov) ov.classList.remove('show'); }
+function rloRenderBoard(){
+  var host=G('rlo-board'); if(!host) return;
+  host.innerHTML=RAIL_DOMAINS.map(function(d){
+    var cards=d.views.map(function(v,idx){
+      var opts=RAIL_DOMAINS.map(function(o){
+        return '<option value="'+o.id+'"'+(o.id===d.id?' selected':'')+'>'+escH(o.name)+'</option>';
+      }).join('');
+      return '<div class="rlo-card" draggable="true" data-view="'+v.id+'"'
+        + ' ondragstart="rloDragStart(event,\''+v.id+'\')" ondragover="rloCardOver(event)"'
+        + ' ondragleave="rloCardLeave(event)" ondrop="rloCardDrop(event,\''+d.id+'\',\''+v.id+'\')"'
+        + ' ondragend="rloDragEnd(event)">'
+        + '<div class="rlo-card-top"><span class="rlo-grip" aria-hidden="true">⠿</span>'
+        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>'
+        + '<div class="rlo-card-ctl">'
+        +   '<button class="sm" '+(idx===0?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',-1)" title="'+t('Move up')+'">▲</button>'
+        +   '<button class="sm" '+(idx===d.views.length-1?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',1)" title="'+t('Move down')+'">▼</button>'
+        +   '<select class="rlo-move" onchange="railLayoutSetDomain(\''+v.id+'\',this.value)" title="'+t('Move to domain')+'">'+opts+'</select>'
+        + '</div></div>';
+    }).join('');
+    return '<div class="rlo-col" data-dom="'+d.id+'"'
+      + ' ondragover="rloColOver(event,\''+d.id+'\')" ondragleave="rloColLeave(event)" ondrop="rloColDrop(event,\''+d.id+'\')">'
+      + '<div class="rlo-col-head"><span class="rlo-col-ico">'+d.ico+'</span>'
+      +   '<span class="rlo-col-name">'+escH(d.name)+'</span><span class="rlo-col-count">'+d.views.length+'</span></div>'
+      + '<div class="rlo-col-body">'+(cards||'<div class="rlo-empty">'+t('(no pages)')+'</div>')+'</div>'
+      + '</div>';
+  }).join('');
+}
+// Move a page to another domain (organiser dropdown; lands at that domain's end).
+function railLayoutSetDomain(viewId,domId){
+  if(!domId||domId===railEffectiveDom(viewId)) return;
+  railMoveView(viewId,domId,null,false);    // persists + re-renders the rail
+  rloRenderBoard();
+}
+// Nudge a page up (-1) / down (+1) within its own domain (organiser ▲/▼ buttons).
+function railLayoutNudge(viewId,dir){
+  var domId=railEffectiveDom(viewId);
+  var dom=railDomainFor2(domId); if(!dom) return;
+  var ids=dom.views.map(function(v){return v.id;});
+  var i=ids.indexOf(viewId), j=i+dir;
+  if(i<0||j<0||j>=ids.length) return;
+  ids[i]=ids[j]; ids[j]=viewId;             // swap with neighbour
+  railViewOrder[domId]=ids;
+  railApplyLayout();
+  railSavePrefs();
+  railRender();
+  rloRenderBoard();
+}
+
+/* Organiser board DnD — its own scratch (rloDragView), separate DOM from the rail
+   strip. Drop on a card = position next to it; drop on a column = append to that
+   domain. Both route through railMoveView, then rebuild the board. */
+var rloDragView=null;
+function rloClearMarks(){
+  var host=G('rlo-board'); if(!host) return;
+  var m=host.querySelectorAll('.rlo-drop-before,.rlo-drop-after,.rlo-dragging,.rlo-col-into');
+  for(var i=0;i<m.length;i++) m[i].classList.remove('rlo-drop-before','rlo-drop-after','rlo-dragging','rlo-col-into');
+}
+function rloDragStart(ev,viewId){
+  rloDragView=viewId;
+  try{ ev.dataTransfer.effectAllowed='move'; ev.dataTransfer.setData('text/plain',viewId); }catch(e){}
+  if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rlo-dragging');
+}
+function rloCardOver(ev){
+  if(!rloDragView) return;
+  ev.preventDefault(); ev.stopPropagation();             // beat the column-level handler
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  var el=ev.currentTarget, r=el.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+  rloClearMarks();
+  el.classList.add(after?'rlo-drop-after':'rlo-drop-before');
+}
+function rloCardLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rlo-drop-before','rlo-drop-after'); }
+function rloCardDrop(ev,domId,targetId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(rloDragView&&rloDragView!==targetId){
+    var r=ev.currentTarget.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+    railMoveView(rloDragView,domId,targetId,after);
+    rloRenderBoard();
+  }
+  rloDragView=null; rloClearMarks();
+}
+function rloColOver(ev,domId){
+  if(!rloDragView) return;
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  rloClearMarks();
+  if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rlo-col-into');
+}
+function rloColLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rlo-col-into'); }
+function rloColDrop(ev,domId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(rloDragView){ railMoveView(rloDragView,domId,null,false); rloRenderBoard(); }   // append to end
+  rloDragView=null; rloClearMarks();
+}
+function rloDragEnd(){ rloDragView=null; rloClearMarks(); }
 // Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
 function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
 // Sidebar badge scope accessor (read by sidebar.js projItemHTML). 'all' | 'tasks'.
@@ -21495,7 +21793,7 @@ function railInit(){
   railLoadPrefs();
   railApplyWidth();                         // apply the saved collapsed width up front
   railApplyScrollbar();                     // apply the saved scrollbar-width preset
-  railApplyOrder();                         // apply the saved per-domain page order
+  railApplyLayout();                        // apply saved cross-domain moves + per-domain order
   if(railPinBtn) railPinBtn.innerHTML=RAIL_I.pin;
   railRender();
   // Hover-drawer: pointer over the always-visible rail expands it; leaving
@@ -21547,7 +21845,7 @@ function railRender(){
     var holds=d.id===activeDomId, exp=railIsOpen()&&holds;
     var subs=d.views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
-      return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" onclick="railGo(event,\''+v.id+'\')"'
+      return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" data-view="'+v.id+'" onclick="railGo(event,\''+v.id+'\')"'
            + ' ondragstart="railSubDragStart(event,\''+d.id+'\',\''+v.id+'\')"'
            + ' ondragover="railSubDragOver(event,\''+d.id+'\')"'
            + ' ondragleave="railSubDragLeave(event)"'
@@ -21558,7 +21856,8 @@ function railRender(){
     }).join('');
     return '<div class="rn-dom'+(holds?' active-dom':'')+(exp?' exp':'')+'" data-dom="'+d.id+'"'
          + ' onmouseenter="railFlyEnter(\''+d.id+'\',this)" onmouseleave="railFlyLeave()">'
-         + '<div class="rn-dom-head" onclick="railDomClick(event,\''+d.id+'\',this)">'
+         + '<div class="rn-dom-head" onclick="railDomClick(event,\''+d.id+'\',this)"'
+         +   ' ondragover="railDomDragOver(event,\''+d.id+'\')" ondragleave="railDomDragLeave(event)" ondrop="railDomDrop(event,\''+d.id+'\')">'
          +   '<span class="rn-dom-ico">'+d.ico+'</span>'
          +   '<span class="rn-dom-name mono">'+d.name+'</span>'
          +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
@@ -21595,6 +21894,7 @@ function closeAllOverlays(){
   if(typeof closeDtc==='function')        closeDtc();
   if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeHome==='function')       closeHome();
 }
 
 // Open the Resources overlay (if not already) and switch to the given tab.
@@ -21611,6 +21911,7 @@ function railOpenRes(tab){
   if(typeof closeDtc==='function')        closeDtc();
   if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeHome==='function')       closeHome();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
 }
@@ -21620,6 +21921,7 @@ function railRoute(viewId){
   if(RAIL_RES_TABS[viewId]){ railOpenRes(viewId); return; }
   closeAllOverlays();                       // org/summary/compare/matrix = single surface
   if(viewId==='matrix')       return;       // base canvas now revealed
+  else if(viewId==='home')    openHome();
   else if(viewId==='org')     openOrgChart();
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
@@ -21668,7 +21970,7 @@ function railEscMaybeBack(){
 // Modal/popup overlays that can sit ON TOP of a view — Esc must dismiss these
 // first (and NOT navigate back) so e.g. closing an ID card keeps you on the roster.
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
-  'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
+  'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
   'export-builder-overlay','export-picker-overlay'];
 function railAnyModalOpen(){
@@ -21699,16 +22001,21 @@ function railDomClick(ev,domId,el){
 // domain lookup by domain id (distinct from railDomainFor which takes a view id)
 function railDomainFor2(domId){ return RAIL_DOMAINS.find(function(d){return d.id===domId;})||null; }
 
-/* ══ PAGE DRAG-REORDER (within a domain only) ══════════════════════════
+/* ══ PAGE DRAG-REORDER + CROSS-DOMAIN MOVE ═════════════════════════════
    Native HTML5 DnD on the .rn-sub rows. A plain click still navigates (a
-   click has no drag movement); dragging reorders the pages inside the same
-   domain and persists the id order in railViewOrder. Cross-domain drops are
-   rejected — a page never leaves its domain. Re-render happens ONLY on drop
-   (mid-drag re-render would kill the drag). */
+   click has no drag movement). Dropping a page:
+     • onto a .rn-sub in the SAME domain  → reorders within that domain
+     • onto a .rn-sub in ANOTHER domain   → moves it there, next to that page
+     • onto a .rn-dom-head                → moves it to the END of that domain
+   Only the ACTIVE domain shows its pages (others are collapsed), so the
+   domain-head is the drop target for moving a page into a collapsed domain.
+   Order lives in railViewOrder, the home-domain override in railViewDomain;
+   both persist. Re-render happens ONLY on drop (a mid-drag railRender wipes
+   innerHTML and would kill the drag). */
 function railClearDropMarks(){
   if(!railScrollEl) return;
-  var m=railScrollEl.querySelectorAll('.rn-drop-before,.rn-drop-after,.rn-dragging');
-  for(var i=0;i<m.length;i++) m[i].classList.remove('rn-drop-before','rn-drop-after','rn-dragging');
+  var m=railScrollEl.querySelectorAll('.rn-drop-before,.rn-drop-after,.rn-dragging,.rn-drop-into');
+  for(var i=0;i<m.length;i++) m[i].classList.remove('rn-drop-before','rn-drop-after','rn-dragging','rn-drop-into');
 }
 function railSubDragStart(ev,domId,viewId){
   railDragDom=domId; railDragView=viewId; railDragging=true;
@@ -21716,7 +22023,7 @@ function railSubDragStart(ev,domId,viewId){
   if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rn-dragging');
 }
 function railSubDragOver(ev,domId){
-  if(railDragDom!==domId) return;             // only allow drops within the same domain
+  if(!railDragging) return;                    // only react to an in-flight page drag
   ev.preventDefault();
   try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
   var el=ev.currentTarget; if(!el||el===railScrollEl) return;
@@ -21727,24 +22034,57 @@ function railSubDragOver(ev,domId){
 function railSubDragLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rn-drop-before','rn-drop-after'); }
 function railSubDrop(ev,domId,targetId){
   ev.preventDefault(); ev.stopPropagation();
-  if(railDragDom===domId && railDragView && railDragView!==targetId){
+  if(railDragView && railDragView!==targetId){
     var r=ev.currentTarget.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
-    railReorderView(domId,railDragView,targetId,after);
+    railMoveView(railDragView,domId,targetId,after);   // same- or cross-domain
   }
   railClearDropMarks();
 }
 function railSubDragEnd(){ railDragging=false; railDragDom=null; railDragView=null; railClearDropMarks(); }
-// splice the dragged page next to the target, persist the new id order, re-render
-function railReorderView(domId,dragId,targetId,after){
-  var dom=railDomainFor2(domId); if(!dom) return;
-  var views=dom.views;
+
+// Domain-head drop target — lets a page be moved INTO a (usually collapsed)
+// domain, landing at its end. Highlights the whole domain while hovering.
+function railDomDragOver(ev,domId){
+  if(!railDragging) return;
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  railClearDropMarks();
+  var dom=ev.currentTarget&&ev.currentTarget.parentElement;
+  if(dom&&dom.classList) dom.classList.add('rn-drop-into');
+}
+function railDomDragLeave(ev){
+  var dom=ev.currentTarget&&ev.currentTarget.parentElement;
+  if(dom&&dom.classList) dom.classList.remove('rn-drop-into');
+}
+function railDomDrop(ev,domId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(railDragView) railMoveView(railDragView,domId,null,false);   // append to domain end
+  railClearDropMarks();
+}
+
+// Move a page to toDomId, positioned next to targetId (or appended when targetId
+// is null). Records the home-domain override when it crosses domains, rebuilds the
+// layout so the page is now in toDom, then splices it to the exact drop position and
+// persists the resulting order for both the source and target domains. Handles the
+// same-domain case too (reorder), so it's the single mutation path for the DnD.
+function railMoveView(dragId,toDomId,targetId,after){
+  if(!railDomainFor2(toDomId)) return;
+  var fromDomId=railEffectiveDom(dragId);
+  if(fromDomId!==toDomId) railViewDomain[dragId]=toDomId;   // cross-domain: pin new home
+  railApplyLayout();                                        // re-place dragId into toDom
+  var views=railDomainFor2(toDomId).views;
   var from=views.findIndex(function(v){return v.id===dragId;});
   if(from<0) return;
   var moved=views.splice(from,1)[0];
-  var to=views.findIndex(function(v){return v.id===targetId;});
-  if(to<0){ views.splice(from,0,moved); return; }   // target vanished — undo
-  views.splice(after?to+1:to,0,moved);
-  railViewOrder[domId]=views.map(function(v){return v.id;});
+  var to=targetId?views.findIndex(function(v){return v.id===targetId;}):-1;
+  if(to<0) views.push(moved);                               // no/vanished target → end
+  else     views.splice(after?to+1:to,0,moved);
+  railViewOrder[toDomId]=views.map(function(v){return v.id;});
+  if(fromDomId&&fromDomId!==toDomId){                       // keep the source order truthful
+    var src=railDomainFor2(fromDomId);
+    if(src) railViewOrder[fromDomId]=src.views.map(function(v){return v.id;});
+  }
+  railDragging=false; railDragDom=null; railDragView=null;  // render below removes the drag node
   railSavePrefs();
   railRender();
 }
@@ -26024,6 +26364,830 @@ function tegClearPlan(){
 }
 /* ◄◄ END: sections/engagement.js ►► */
 
+/* ►► SECTION: HOME ◄◄  The personal, customizable front door.
+ *
+ * "Everything is a widget": a per-device grid the user composes from a curated
+ * widget library. The hero widget is a cross-domain ACTION QUEUE ("what needs you,
+ * ranked by consequence") that fuses the people × portfolio join no other tab
+ * surfaces; every other widget is an optional, screen-sized read-out of an existing
+ * dataset. Nothing here mutates app state — the only thing written is the per-device
+ * pref key `eim_home_prefs` (layout + snooze/dismiss), like `eim_rail_prefs`. Never
+ * app state, never in backups/collab.
+ *
+ * TWO layers, kept apart on purpose:
+ *   1. ENGINE (pure, node-testable) — homeBuildActions + its classifiers. Takes plain
+ *      inputs, calls no DOM/producer globals, so tests/home-actions.test.js feeds it
+ *      fixtures. All the cross-domain merge/rank/state logic lives here.
+ *   2. GATHER + UI — reads the bundle producers (buildAnalyticsDataset, gtBuildSignalMap,
+ *      _buildEngUtil, tegThisWeekList …) and renders the grid. Depends on those files,
+ *      so home.js loads LATE in JS_FILES.
+ *
+ * All identifiers are home/_home/HOME_-prefixed (flat-bundle uniqueness). Synced data
+ * (names, project titles) is escH'd at every render sink; colours are static tokens.
+ * i18n of Home's dynamic action text is deliberately deferred (chrome uses t()).
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. ENGINE — pure classifiers, ranking, state (imported by the unit tests)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// One tunable object. retentionMin/Crit, overallocPct, benchPct, staleReviewMonths
+// reuse the existing anRiskModel/anRiskColor conventions; the rest start here.
+const HOME_THRESHOLDS = {
+  retentionMin:25, retentionCrit:50,
+  overallocPct:105, overallocCrit:130,
+  benchPct:10,
+  staleReviewMonths:15,
+  gateBehindPct:50,
+  marginPct:15,
+  hhi:0.6,
+  spofBoost:1.5,
+};
+
+// Severity ordering: lower rank sorts first / is "worse".
+const HOME_BAND_RANK = { critical:0, warn:1, watch:2 };
+
+// Which domain each concern belongs to (drives the top-bar filter chips).
+const HOME_CONCERN_DOMAIN = {
+  'retention-risk':'people', 'over-allocation':'people', 'bench':'people',
+  'stale-review':'people', 'engagement-due':'people',
+  'gate-blocked':'governance', 'gate-behind':'governance',
+  'charter-conflict':'portfolio', 'value-destroying':'portfolio',
+  'low-unit-margin':'portfolio', 'dtc-gap':'portfolio', 'channel-concentration':'portfolio',
+};
+function homeConcernDomain(c){ return HOME_CONCERN_DOMAIN[c] || 'action'; }
+
+// Short base36 rolling hash over a signal string → the resurface trigger.
+function homeHash(str){
+  str = String(str==null ? '' : str);
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
+
+// Coarse bucket so a tiny signal drift does NOT resurface a dismissed item.
+function homeBucket(n, step){ return Math.floor((+n||0) / (step||1)); }
+
+// Monday date key 'YYYY-MM-DD' for a date (pure; mirrors tegWeekKey, no globals).
+function homeMondayKey(d){
+  d = new Date(d);
+  const day = (d.getDay()+6) % 7;
+  d.setDate(d.getDate()-day); d.setHours(0,0,0,0);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Blast-radius impact for a PERSON = Σ over the projects they touch of that project's
+// risk-adjusted upside, ×spofBoost when they are a KT-less sole skill holder.
+function homeEngImpact(d, engProjects, projRiskAdj, thr){
+  thr = thr||HOME_THRESHOLDS; engProjects = engProjects||{}; projRiskAdj = projRiskAdj||{};
+  const pids = engProjects[d.id] || [];
+  let blast = 0;
+  pids.forEach(function(pid){ const v = projRiskAdj[pid]; if(v!=null && v>0) blast += v; });
+  const spof = !!(d.spofSkills && d.spofSkills.length && !d.hasKTPlan);
+  return spof ? blast*thr.spofBoost : blast;
+}
+
+// Human title (plain English — no t(); classifiers must stay node-pure).
+function homePersonTitle(concern, name){
+  const map = {
+    'retention-risk':' is a retention risk',
+    'over-allocation':' is over-allocated',
+    'bench':' is on the bench',
+    'stale-review':' is overdue a review',
+    'engagement-due':' has an engagement touchpoint due',
+  };
+  return (name||'Someone') + (map[concern]||' needs attention');
+}
+function homeProjectTitle(concern, name){
+  const map = {
+    'gate-blocked':' is blocked at its gate',
+    'gate-behind':' is behind on gate readiness',
+    'charter-conflict':' has charter conflicts',
+    'value-destroying':' is value-destroying',
+    'low-unit-margin':' has a thin unit margin',
+    'dtc-gap':' is over its cost target',
+    'channel-concentration':' is channel-concentrated',
+  };
+  return (name||'A project') + (map[concern]||' needs attention');
+}
+
+// Classify ONE analytics-dataset person row `d` into zero-or-more action items.
+// Pure: takes plain inputs, calls no producer/DOM globals.
+function homeClassifyPerson(d, o){
+  o = o||{};
+  const thr = o.thresholds||HOME_THRESHOLDS;
+  const now = o.now||new Date();
+  const engProjects = o.engProjects||{};
+  const projRiskAdj = o.projRiskAdj||{};
+  const eng = o.engagement||{ touchpoints:[] };
+  const impact = homeEngImpact(d, engProjects, projRiskAdj, thr);
+  const uid = d.uid, id = d.id, nm = d.name||'';
+  const items = [];
+  function mk(concern, band, why, metrics, action, hashIn){
+    return { id:concern+':engineer:'+uid, concern:concern, domain:'people', entityType:'engineer',
+      entityUid:uid, entityId:id, entityName:nm, band:band, impact:impact,
+      title:homePersonTitle(concern, nm), why:why, metrics:metrics, action:action,
+      hash:homeHash(concern+'|'+hashIn) };
+  }
+  // retention-risk (uses the composite riskScore already on the row)
+  if(d.riskScore!=null && d.riskScore >= thr.retentionMin){
+    const band = d.riskScore >= thr.retentionCrit ? 'critical' : 'warn';
+    const factors = (d.riskFactors||[]).map(function(f){ return f.k; });
+    items.push(mk('retention-risk', band, factors,
+      [{ label:'Risk score', val:d.riskScore, tone:band }],
+      'Open ID card · plan a retention touchpoint',
+      band+'|'+factors.slice().sort().join(',')));
+  }
+  // over-allocation
+  if(d.utilizationPct > thr.overallocPct){
+    const band = d.utilizationPct > thr.overallocCrit ? 'critical' : 'warn';
+    items.push(mk('over-allocation', band, ['Allocated '+d.utilizationPct+'% over the period'],
+      [{ label:'Utilisation', val:d.utilizationPct+'%', tone:band }],
+      'Rebalance in Resource plan',
+      String(homeBucket(d.utilizationPct,10))));
+  }
+  // bench — impact is the wasted loaded cost, not project value
+  if(d.utilizationPct < thr.benchPct){
+    items.push({ id:'bench:engineer:'+uid, concern:'bench', domain:'people', entityType:'engineer',
+      entityUid:uid, entityId:id, entityName:nm, band:'watch', impact:(d.monthlyCost||0),
+      title:homePersonTitle('bench', nm), why:['On the bench ('+d.utilizationPct+'% utilised)'],
+      metrics:[{ label:'Utilisation', val:d.utilizationPct+'%', tone:'watch' }],
+      action:'Assign in Resource plan', hash:homeHash('bench|1') });
+  }
+  // stale-review
+  const stale = d.reviewCurrencyMonths==null
+    ? (d.tenureMonths!=null && d.tenureMonths > 12)
+    : (d.reviewCurrencyMonths > thr.staleReviewMonths);
+  if(stale){
+    const lbl = d.reviewCurrencyMonths==null ? 'never reviewed' : (d.reviewCurrencyMonths+' mo since review');
+    items.push(mk('stale-review', 'watch', ['Performance review is stale — '+lbl],
+      [{ label:'Since review', val:d.reviewCurrencyMonths==null?'—':d.reviewCurrencyMonths+'mo', tone:'watch' }],
+      'Log a review on the ID card',
+      d.reviewCurrencyMonths==null ? 'never' : String(homeBucket(d.reviewCurrencyMonths,3))));
+  }
+  // engagement-due (undone touchpoint this week or earlier)
+  const curWk = homeMondayKey(now);
+  const due = (eng.touchpoints||[]).filter(function(tp){ return tp && !tp.done && tp.week && tp.week <= curWk; });
+  if(due.length){
+    const overdue = due.some(function(tp){ return tp.week < curWk; });
+    const earliest = due.map(function(tp){ return tp.week; }).sort()[0];
+    items.push(mk('engagement-due', overdue?'warn':'watch',
+      [(overdue?'Overdue':'Due this week')+' — '+due.length+' engagement touchpoint(s)'],
+      [{ label:'Touchpoints', val:due.length, tone:overdue?'warn':'watch' }],
+      'Work the week in Engagement planner',
+      due.length+'|'+earliest));
+  }
+  return items;
+}
+
+// Classify ONE project (its gate readiness + gtBuildSignalMap entry) into items.
+// Pure. `pj = { p:{id,uid,name}, sig:{…}, readiness:{blocked,pct,blockers[]} }`.
+function homeClassifyProject(pj, o){
+  o = o||{};
+  const thr = o.thresholds||HOME_THRESHOLDS;
+  const p = pj.p||{}, s = pj.sig||{}, rd = pj.readiness||{};
+  const uid = p.uid, id = p.id, nm = p.name||'Untitled';
+  const baseImpact = Math.max(0, (s.riskAdjNpv!=null ? s.riskAdjNpv : (s.npv!=null ? s.npv : 0)));
+  const items = [];
+  function mk(concern, band, why, metrics, action, hashIn){
+    return { id:concern+':project:'+uid, concern:concern, domain:homeConcernDomain(concern), entityType:'project',
+      entityUid:uid, entityId:id, entityName:nm, band:band, impact:baseImpact,
+      title:homeProjectTitle(concern, nm), why:why, metrics:metrics, action:action,
+      hash:homeHash(concern+'|'+hashIn) };
+  }
+  if(rd.blocked){
+    const blk = (rd.blockers||[]).map(function(c){ return c.id; }).sort();
+    items.push(mk('gate-blocked', 'critical',
+      ['Gate blocked — '+(rd.blockers?rd.blockers.length:0)+' mandatory criterion/criteria unmet'],
+      [{ label:'Readiness', val:(rd.pct==null?'—':rd.pct+'%'), tone:'critical' }],
+      'Clear blockers in Gate & PI', blk.join(',')));
+  } else if(rd.pct!=null && rd.pct < thr.gateBehindPct){
+    items.push(mk('gate-behind', 'watch',
+      ['Gate readiness low ('+rd.pct+'%)'],
+      [{ label:'Readiness', val:rd.pct+'%', tone:'watch' }],
+      'Progress criteria in Gate & PI', String(homeBucket(rd.pct,10))));
+  }
+  if(s.conflicts!=null && s.conflicts > 0){
+    items.push(mk('charter-conflict', 'warn',
+      [s.conflicts+' charter conflict(s) — a must-have on a sacrificed dimension'],
+      [{ label:'Conflicts', val:s.conflicts, tone:'warn' }],
+      'Resolve in Trade-off decision', String(s.conflicts)));
+  }
+  if(s.pi!=null && s.pi < 1){
+    items.push(mk('value-destroying', 'warn',
+      ['Profitability index below 1 (PI '+s.pi.toFixed(2)+')'],
+      [{ label:'PI', val:s.pi.toFixed(2), tone:'warn' }],
+      'Review financials', (s.pi<0?'neg':'pos')+String(homeBucket(s.pi*10,1))));
+  }
+  if(s.unitMargin!=null && s.unitMargin < thr.marginPct){
+    items.push(mk('low-unit-margin', 'watch',
+      ['Unit margin '+s.unitMargin.toFixed(1)+'% below target'],
+      [{ label:'Unit margin', val:s.unitMargin.toFixed(1)+'%', tone:'watch' }],
+      'Check pricing/cost in financials', String(homeBucket(s.unitMargin,5))));
+  }
+  if(s.dtcGap!=null && s.dtcGap > 0){
+    items.push(mk('dtc-gap', 'watch',
+      ['Unit cost over target by design-to-cost'],
+      [{ label:'DTC gap', val:Math.round(s.dtcGap)+'€/u', tone:'watch' }],
+      'Close the gap in Design to cost', String(homeBucket(s.dtcGap,50))));
+  }
+  if(s.chanHHI!=null && s.chanHHI > thr.hhi){
+    items.push(mk('channel-concentration', 'watch',
+      ['Channel concentration high (HHI '+s.chanHHI.toFixed(2)+')'],
+      [{ label:'HHI', val:s.chanHHI.toFixed(2), tone:'watch' }],
+      'Diversify in Channel mix', String(homeBucket(s.chanHHI*100,10))));
+  }
+  return items;
+}
+
+// Suppress a person's capacity/governance cards when they already have a CRITICAL
+// retention card (its why line already names them — avoids stacking one human's
+// problems). Over-allocation on a NON-risky person still shows.
+function homeSuppress(items){
+  const crit = {};
+  items.forEach(function(i){ if(i.concern==='retention-risk' && i.band==='critical') crit[i.entityUid]=1; });
+  const HIDE = { 'over-allocation':1, 'bench':1, 'stale-review':1, 'engagement-due':1 };
+  return items.filter(function(i){
+    return !(HIDE[i.concern] && i.entityType==='engineer' && crit[i.entityUid]);
+  });
+}
+
+// Apply per-device snooze + dismiss-until-signal-changes. Prunes stale dismissals
+// off the passed prefs object (caller persists). now = Date or ISO/ms.
+function homeApplyState(items, prefs, now){
+  prefs = prefs||{}; now = now||new Date();
+  const nowMs = (now instanceof Date) ? now.getTime() : new Date(now).getTime();
+  const snoozed = prefs.snoozed||{}, dismissed = prefs.dismissed||{};
+  const out = [];
+  items.forEach(function(it){
+    const sn = snoozed[it.id];
+    if(sn && sn.until && new Date(sn.until).getTime() > nowMs) return;   // still snoozed
+    const dm = dismissed[it.id];
+    if(dm){
+      if(dm.hash === it.hash) return;    // resolved and unchanged → stay hidden
+      delete dismissed[it.id];           // signal changed → resurface + prune
+    }
+    out.push(it);
+  });
+  return out;
+}
+
+// Domain + severity filter (pure; used by homeBuildActions and unit-tested directly).
+function homeFilterItems(items, domainFilter, minBand){
+  let out = items;
+  if(domainFilter && domainFilter!=='all') out = out.filter(function(i){ return i.domain===domainFilter; });
+  let mb = HOME_BAND_RANK[minBand!=null ? minBand : 'watch'];
+  if(mb==null) mb = HOME_BAND_RANK.watch;
+  return out.filter(function(i){ return HOME_BAND_RANK[i.band] <= mb; });
+}
+
+// Rank: severity band first, € impact second, then a deterministic title tiebreak.
+function homeRank(items){
+  return items.slice().sort(function(a,b){
+    return (HOME_BAND_RANK[a.band]-HOME_BAND_RANK[b.band])
+        || (b.impact-a.impact)
+        || (a.title<b.title ? -1 : (a.title>b.title ? 1 : 0));
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. GATHER — reads the live producers (bundle globals), delegates to the engine
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Defensive engagement accessor (never throws on un-sanitised data).
+function homeSafeEngagement(eng){
+  try{ if(typeof tegEng==='function') return tegEng(eng); }catch(e){}
+  const ic = eng && eng.idcard, en = ic && ic.engagement;
+  return (en && Array.isArray(en.touchpoints)) ? en : { touchpoints:[] };
+}
+
+// Assemble every raw item from the live datasets. Null-tolerant throughout — a
+// producer that throws or returns nothing simply contributes no items.
+function homeRawItems(o){
+  o = o||{};
+  const now = o.now||new Date();
+  const thr = o.thresholds||HOME_THRESHOLDS;
+  const items = [];
+
+  let ds = [];
+  try{ ds = (typeof buildAnalyticsDataset==='function') ? buildAnalyticsDataset() : []; }catch(e){ ds = []; }
+
+  // Reverse the people↔project join gtBuildSignalMap builds internally.
+  const engProjects = {};
+  try{
+    (typeof allocRows!=='undefined' ? allocRows : []).forEach(function(a){
+      if(a.engId==null || a.projectId==null) return;
+      (engProjects[a.engId] || (engProjects[a.engId]=[])).push(a.projectId);
+    });
+  }catch(e){}
+
+  let sig = {};
+  try{ sig = (typeof gtBuildSignalMap==='function') ? gtBuildSignalMap() : {}; }catch(e){ sig = {}; }
+  const projRiskAdj = {};
+  Object.keys(sig).forEach(function(pid){
+    const s = sig[pid]||{}; const v = (s.riskAdjNpv!=null ? s.riskAdjNpv : s.npv);
+    if(v!=null) projRiskAdj[pid] = v;
+  });
+
+  ds.forEach(function(d){
+    const engagement = d._eng ? homeSafeEngagement(d._eng) : { touchpoints:[] };
+    homeClassifyPerson(d, { engProjects:engProjects, projRiskAdj:projRiskAdj, thresholds:thr, now:now, engagement:engagement })
+      .forEach(function(it){ items.push(it); });
+  });
+
+  let stages = [];
+  try{ stages = (typeof gateConfig!=='undefined' && gateConfig.model && gateConfig.model.stages) || []; }catch(e){}
+  try{
+    (typeof projects!=='undefined' ? projects : []).forEach(function(p){
+      const s = sig[p.id]; if(!s) return;
+      let readiness = { blocked:false, pct:100, blockers:[] };
+      try{
+        const gp = p.gatePlan || (typeof makeGatePlan==='function' ? makeGatePlan() : {});
+        const idx = (typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0;
+        const st = stages[idx];
+        if(st && typeof gtStageReadiness==='function') readiness = gtStageReadiness(st, gp, s);
+      }catch(e){}
+      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness }, { thresholds:thr })
+        .forEach(function(it){ items.push(it); });
+    });
+  }catch(e){}
+
+  return items;
+}
+
+// Public engine entry: gather → suppress → state → filter → rank.
+// ctx = { now, domainFilter='all', minBand='watch', prefs=<per-device> }.
+function homeBuildActions(ctx){
+  ctx = ctx||{};
+  const now = ctx.now||new Date();
+  const prefs = ctx.prefs || (_homePrefs || homeLoadPrefs());
+  let items = homeRawItems({ now:now, thresholds:HOME_THRESHOLDS });
+  items = homeSuppress(items);
+  items = homeApplyState(items, prefs, now);
+  items = homeFilterItems(items, ctx.domainFilter||'all', ctx.minBand||'watch');
+  return homeRank(items);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. PER-DEVICE PREFS — layout + snooze/dismiss (own key, never app state/backups)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const HOME_PREFS_KEY = 'eim_home_prefs';
+let _homePrefs = null;      // loaded on openHome
+let _homeFilter = 'all';    // action-queue domain filter chip
+let _homeEdit = false;      // customize (edit) mode
+let _homeAddOpen = false;   // add-widget panel open
+let _homeDragId = null;     // widget id being dragged
+
+// One smart default layout (editable). Widths are 1–3 grid columns.
+function homeDefaultLayout(){
+  return [
+    { id:'action-queue', w:3 },
+    { id:'talent-risk',  w:1 },
+    { id:'gate-readiness', w:2 },
+    { id:'capacity',     w:1 },
+    { id:'headcount',    w:1 },
+    { id:'engagement',   w:1 },
+  ];
+}
+function homeClampW(w){ w = +w||1; return w<1 ? 1 : (w>3 ? 3 : w); }
+
+function homeLoadPrefs(){
+  const p = { layout:homeDefaultLayout(), snoozed:{}, dismissed:{} };
+  try{
+    const raw = localStorage.getItem(HOME_PREFS_KEY);
+    if(raw){
+      const o = JSON.parse(raw);
+      if(o && typeof o==='object'){
+        if(Array.isArray(o.layout)){
+          p.layout = o.layout
+            .filter(function(x){ return x && x.id && homeWidgetDef(x.id); })
+            .map(function(x){ return { id:x.id, w:homeClampW(x.w) }; });
+        }
+        if(o.snoozed && typeof o.snoozed==='object') p.snoozed = o.snoozed;
+        if(o.dismissed && typeof o.dismissed==='object') p.dismissed = o.dismissed;
+      }
+    }
+  }catch(e){}
+  if(!p.layout.length) p.layout = homeDefaultLayout();
+  return p;
+}
+function homeSavePrefs(p){ try{ localStorage.setItem(HOME_PREFS_KEY, JSON.stringify(p||_homePrefs)); }catch(e){} }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. WIDGET LIBRARY — curated, screen-sized read-outs of existing datasets
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Built as a FUNCTION (not a top-level const) so importing this module in Node for
+// the engine tests never runs t() at load — top level stays global-free.
+function homeWidgetDefs(){
+  return [
+    { id:'action-queue',   title:t('Action Queue'),        domain:'action',     defW:3, render:homeWqActionQueue,
+      desc:t('Ranked cross-domain "what needs you" list') },
+    { id:'talent-risk',    title:t('Talent Risk Radar'),   domain:'people',     defW:1, render:homeWqTalentRisk,
+      desc:t('Your highest-risk people') },
+    { id:'retention',      title:t('Retention Watch'),     domain:'people',     defW:1, render:homeWqRetention,
+      desc:t('Risk bands + who is critical') },
+    { id:'review-gov',     title:t('Review Governance'),   domain:'people',     defW:1, render:homeWqReviewGov,
+      desc:t('People overdue a performance review') },
+    { id:'engagement',     title:t('Engagement This Week'),domain:'people',     defW:1, render:homeWqEngagement,
+      desc:t("This week's retention touchpoints") },
+    { id:'headcount',      title:t('Headcount'),           domain:'people',     defW:1, render:homeWqHeadcount,
+      desc:t('People, managers, SPOF, avg compa-ratio') },
+    { id:'gate-readiness', title:t('Gate Readiness'),      domain:'governance', defW:2, render:homeWqGate,
+      desc:t('Projects blocked or behind at their gate') },
+    { id:'capacity',       title:t('Capacity & Bench'),    domain:'governance', defW:1, render:homeWqCapacity,
+      desc:t('FTE this month, bench, over-allocation') },
+    { id:'cost-burn',      title:t('Team Cost'),           domain:'governance', defW:2, render:homeWqCost,
+      desc:t('Loaded team cost, allocated %, bench €') },
+  ];
+}
+function homeWidgetDef(id){
+  const defs = homeWidgetDefs();
+  for(let i=0;i<defs.length;i++) if(defs[i].id===id) return defs[i];
+  return null;
+}
+
+// ── shared render helpers ─────────────────────────────────────────────────
+function homeEur(v){ return (typeof pfEur==='function') ? pfEur(v) : Math.round(+v||0)+'€'; }
+function homeEmpty(msg){ return '<div class="home-empty">'+escH(t(msg))+'</div>'; }
+function homeKpi(val, label, color){
+  return '<div class="home-kpi"><div class="home-kpi-v" style="color:'+(color||'var(--text)')+'">'+escH(String(val))+'</div>'
+    +'<div class="home-kpi-l">'+escH(t(label))+'</div></div>';
+}
+function homeBandColor(b){ return b==='critical' ? 'var(--danger)' : b==='warn' ? 'var(--warn)' : 'var(--accent2)'; }
+function homeBandLabel(b){ return b==='critical' ? t('CRITICAL') : b==='warn' ? t('WARN') : t('WATCH'); }
+function homeDomLabel(d){ return d==='people' ? t('People') : d==='governance' ? t('Gov') : d==='portfolio' ? t('Portfolio') : t('Action'); }
+function homeCurInRange(months){
+  const cur = (typeof _dashCur==='function') ? _dashCur() : '';
+  if(!months.length) return cur;
+  if(months.indexOf(cur)>=0) return cur;
+  return cur<months[0] ? months[0] : months[months.length-1];
+}
+// Escape a value for safe inclusion inside a single-quoted inline handler.
+function homeAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── the ACTION QUEUE hero widget ───────────────────────────────────────────
+function homeWqActionQueue(){
+  const items = homeBuildActions({ domainFilter:_homeFilter, prefs:_homePrefs, now:new Date() });
+  if(!items.length) return homeEmpty("Nothing needs you right now — you're clear. ✓");
+  const top = items.slice(0, 10);
+  let h = '';
+  top.forEach(function(it){ h += homeActionCard(it); });
+  if(items.length > top.length){
+    h += '<div class="home-aq-more">'+escH(t('+ {n} more', { n:(items.length-top.length) }))+'</div>';
+  }
+  return h;
+}
+function homeActionCard(it){
+  const col = homeBandColor(it.band);
+  const impact = (it.impact && it.impact>0) ? homeEur(it.impact) : '';
+  let h = '<div class="home-aq" style="border-left:3px solid '+col+'">';
+  h += '<div class="home-aq-top">'
+     + '<span class="home-aq-band" style="color:'+col+'">'+escH(homeBandLabel(it.band))+'</span>'
+     + '<span class="home-aq-title">'+escH(it.title)+'</span>'
+     + (it.entityType==='engineer' && it.impact>0 ? '<span class="home-aq-tag">'+escH(t('People × Portfolio'))+'</span>' : '')
+     + '<span class="home-aq-sp"></span>'
+     + (impact ? '<span class="home-aq-impact" title="'+escH(t('Value at stake'))+'">'+escH(impact)+'</span>' : '')
+     + '</div>';
+  if(it.why && it.why.length){
+    h += '<div class="home-aq-why">';
+    it.why.forEach(function(w){ h += '<span>• '+escH(w)+'</span>'; });
+    h += '</div>';
+  }
+  if(it.metrics && it.metrics.length){
+    h += '<div class="home-aq-metrics">';
+    it.metrics.forEach(function(m){ h += '<span class="home-chip">'+escH(m.label)+': <b>'+escH(String(m.val))+'</b></span>'; });
+    h += '</div>';
+  }
+  h += '<div class="home-aq-actions">'
+     + '<button class="home-btn primary" onclick="homeOpenFor(\''+homeAttr(it.concern)+'\','+(+it.entityId)+')">'+escH(it.action||t('Open'))+' →</button>'
+     + '<button class="home-btn" onclick="homeSnooze(\''+homeAttr(it.id)+'\')">'+escH(t('Snooze 1w'))+'</button>'
+     + '<button class="home-btn" onclick="homeDismiss(\''+homeAttr(it.id)+'\',\''+homeAttr(it.hash)+'\')">'+escH(t('Dismiss'))+'</button>'
+     + '</div></div>';
+  return h;
+}
+
+// ── people widgets ─────────────────────────────────────────────────────────
+function homeWqTalentRisk(){
+  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
+  const rows = ds.filter(function(d){ return d.riskScore>0; })
+    .sort(function(a,b){ return b.riskScore-a.riskScore; }).slice(0, 6);
+  if(!rows.length) return homeEmpty('No talent-risk signals yet — place people on the nine-box and log reviews.');
+  const max = rows[0].riskScore || 1;
+  let h = '';
+  rows.forEach(function(d){
+    const col = d.riskScore>=50 ? 'var(--danger)' : d.riskScore>=25 ? 'var(--warn)' : 'var(--accent2)';
+    h += '<div class="home-row" onclick="homeOpenFor(\'retention-risk\','+(+d.id)+')">'
+       + '<span class="home-row-name">'+escH(d.name||'')+'</span>'
+       + '<span class="home-bar"><span style="width:'+Math.round(d.riskScore/(max||1)*100)+'%;background:'+col+'"></span></span>'
+       + '<span class="home-row-val" style="color:'+col+'">'+escH(String(d.riskScore))+'</span></div>';
+  });
+  return h;
+}
+function homeWqRetention(){
+  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
+  const crit = ds.filter(function(d){ return d.riskScore>=50; });
+  const warn = ds.filter(function(d){ return d.riskScore>=25 && d.riskScore<50; });
+  let h = '<div class="home-kpis">'
+    + homeKpi(crit.length, 'Critical', 'var(--danger)')
+    + homeKpi(warn.length, 'At risk', 'var(--warn)')
+    + homeKpi(ds.length, 'Headcount', 'var(--text)')
+    + '</div>';
+  if(crit.length){
+    h += '<div class="home-tags">';
+    crit.slice(0, 8).forEach(function(d){ h += '<span class="home-chip clk" onclick="homeOpenFor(\'retention-risk\','+(+d.id)+')">'+escH(d.name||'')+'</span>'; });
+    h += '</div>';
+  }
+  return h;
+}
+function homeWqReviewGov(){
+  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
+  const stale = ds.filter(function(d){ return d.reviewCurrencyMonths==null ? (d.tenureMonths!=null && d.tenureMonths>12) : d.reviewCurrencyMonths>15; });
+  if(!stale.length) return homeEmpty('All performance reviews are current. ✓');
+  stale.sort(function(a,b){
+    const am = a.reviewCurrencyMonths==null ? 999 : a.reviewCurrencyMonths;
+    const bm = b.reviewCurrencyMonths==null ? 999 : b.reviewCurrencyMonths;
+    return bm-am;
+  });
+  let h = '<div class="home-kpis">'+homeKpi(stale.length, 'Overdue reviews', 'var(--warn)')+'</div><div class="home-list">';
+  stale.slice(0, 7).forEach(function(d){
+    const lbl = d.reviewCurrencyMonths==null ? 'never' : d.reviewCurrencyMonths+' mo';
+    h += '<div class="home-row" onclick="homeOpenFor(\'stale-review\','+(+d.id)+')"><span class="home-row-name">'+escH(d.name||'')+'</span>'
+       + '<span class="home-sp"></span><span class="home-row-val">'+escH(lbl)+'</span></div>';
+  });
+  return h + '</div>';
+}
+function homeWqEngagement(){
+  let list = []; try{ list = (typeof tegThisWeekList==='function') ? tegThisWeekList() : []; }catch(e){}
+  const open = '<button class="home-btn" onclick="railGo(null,\'engagement\')">'+escH(t('Planner →'))+'</button>';
+  if(!list.length) return homeEmpty('No touchpoints this week — set a cadence in the Engagement planner.') + '<div class="home-foot">'+open+'</div>';
+  const done = list.filter(function(x){ return x.tp.done; }).length;
+  let h = '<div class="home-kpis">'+homeKpi(list.length, 'This week', 'var(--accent2)')+homeKpi(done, 'Done', 'var(--accent)')+'</div><div class="home-list">';
+  list.slice(0, 7).forEach(function(x){
+    h += '<div class="home-row"><span class="home-row-name'+(x.tp.done?' done':'')+'">'+escH(x.eng.name||'')+'</span>'
+       + '<span class="home-sp"></span><span class="home-row-val">'+(x.tp.done?'✓':'•')+'</span></div>';
+  });
+  return h + '</div><div class="home-foot">'+open+'</div>';
+}
+function homeWqHeadcount(){
+  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
+  const mgrs = ds.filter(function(d){ return d.isManager; }).length;
+  const spof = ds.filter(function(d){ return d.spofSkills && d.spofSkills.length && !d.hasKTPlan; }).length;
+  const comps = ds.map(function(d){ return d.comparatio; }).filter(function(v){ return v!=null; });
+  const avgc = comps.length ? Math.round(comps.reduce(function(s,v){ return s+v; },0)/comps.length) : null;
+  return '<div class="home-kpis">'
+    + homeKpi(ds.length, 'People', 'var(--text)')
+    + homeKpi(mgrs, 'Managers', 'var(--text)')
+    + homeKpi(spof, 'SPOF', 'var(--warn)')
+    + homeKpi(avgc==null ? '—' : avgc+'%', 'Avg compa', 'var(--text)')
+    + '</div>';
+}
+
+// ── governance / capacity widgets ──────────────────────────────────────────
+function homeWqGate(){
+  if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
+  let sig = {}; try{ sig = gtBuildSignalMap(); }catch(e){}
+  let stages = []; try{ stages = (typeof gateConfig!=='undefined' && gateConfig.model && gateConfig.model.stages) || []; }catch(e){}
+  const rows = [];
+  projects.forEach(function(p){
+    const s = sig[p.id] || {};
+    let rd = { blocked:false, pct:100, blockers:[] };
+    try{
+      const gp = p.gatePlan || (typeof makeGatePlan==='function' ? makeGatePlan() : {});
+      const idx = (typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0;
+      const st = stages[idx];
+      if(st && typeof gtStageReadiness==='function') rd = gtStageReadiness(st, gp, s);
+    }catch(e){}
+    rows.push({ p:p, rd:rd });
+  });
+  const att = rows.filter(function(r){ return r.rd.blocked || (r.rd.pct!=null && r.rd.pct<50); });
+  if(!att.length) return homeEmpty('Every project is gate-ready. ✓');
+  att.sort(function(a,b){ return ((a.rd.blocked?0:1)-(b.rd.blocked?0:1)) || (a.rd.pct-b.rd.pct); });
+  let h = '';
+  att.slice(0, 7).forEach(function(r){
+    const col = r.rd.blocked ? 'var(--danger)' : 'var(--warn)';
+    h += '<div class="home-row" onclick="homeOpenFor(\'gate-blocked\','+(+r.p.id)+')">'
+       + '<span class="home-row-name">'+escH(r.p.name||'Untitled')+'</span>'
+       + '<span class="home-bar"><span style="width:'+Math.max(3,Math.min(100,r.rd.pct||0))+'%;background:'+col+'"></span></span>'
+       + '<span class="home-row-val" style="color:'+col+'">'+(r.rd.blocked ? escH(t('BLOCKED')) : (r.rd.pct+'%'))+'</span></div>';
+  });
+  return h;
+}
+function homeWqCapacity(){
+  const months = (typeof getMonthRange==='function') ? getMonthRange() : [];
+  let util = {}; try{ util = _buildEngUtil(months); }catch(e){}
+  const engs = Object.values(util);
+  if(!engs.length) return homeEmpty('Set a FROM/TO period and allocate people to see capacity.');
+  const cur = homeCurInRange(months);
+  let fte = 0, bench = 0, over = 0;
+  engs.forEach(function(eu){ const a = eu.monthAllocs[cur]||0; fte += a; if(a<0.1) bench++; if(a>1.05) over++; });
+  return '<div class="home-kpis">'
+    + homeKpi(fte.toFixed(1), 'FTE this month', 'var(--text)')
+    + homeKpi(bench, 'On bench', 'var(--accent2)')
+    + homeKpi(over, 'Over-allocated', 'var(--warn)')
+    + '</div>';
+}
+function homeWqCost(){
+  const months = (typeof getMonthRange==='function') ? getMonthRange() : [];
+  if(!months.length) return homeEmpty('Set a FROM/TO period to see team cost.');
+  let util = {}; try{ util = _buildEngUtil(months); }catch(e){}
+  const engs = Object.values(util);
+  let team = 0, alloc = 0;
+  engs.forEach(function(eu){
+    months.forEach(function(m){
+      team += (eu.cost||0);
+      alloc += Math.min(eu.monthAllocs[m]||0, 1) * (eu.cost||0);
+    });
+  });
+  const bench = Math.max(0, team-alloc);
+  const pct = team>0 ? Math.round(alloc/team*100) : 0;
+  let h = '<div class="home-kpis">'
+    + homeKpi(homeEur(team), 'Team cost', 'var(--text)')
+    + homeKpi(pct+'%', 'Allocated', 'var(--accent)')
+    + homeKpi(homeEur(bench), 'Bench €', 'var(--warn)')
+    + '</div>';
+  h += '<div class="home-bar wide"><span style="width:'+pct+'%;background:var(--accent)"></span></div>';
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. VIEW + CUSTOMIZATION UI
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function openHome(){
+  if(!G('home-overlay')) return;
+  _homePrefs = homeLoadPrefs();
+  G('home-overlay').classList.add('show');
+  renderHome();
+}
+function closeHome(){ const o = G('home-overlay'); if(o) o.classList.remove('show'); }
+
+function renderHome(){
+  const host = G('home-body'); if(!host) return;
+  if(!_homePrefs) _homePrefs = homeLoadPrefs();
+  const isDefault = (typeof railLanding!=='undefined' && railLanding==='home');
+  let h = '<div class="home-topbar"><div class="home-filters">';
+  [['all','All'],['people','People'],['portfolio','Portfolio'],['governance','Gov']].forEach(function(f){
+    h += '<button class="home-fchip'+(_homeFilter===f[0]?' on':'')+'" onclick="homeSetFilter(\''+f[0]+'\')">'+escH(t(f[1]))+'</button>';
+  });
+  h += '</div><span class="home-bar-sp"></span>'
+     + '<button class="home-btn" onclick="homeOpenAdd()">'+escH(t('＋ Add widget'))+'</button>'
+     + '<button class="home-btn'+(_homeEdit?' primary':'')+'" onclick="homeToggleEdit()">'+(_homeEdit?escH(t('✓ Done')):escH(t('⚙ Customize')))+'</button>'
+     + '<button class="home-btn'+(isDefault?' primary':'')+'" onclick="homeSetDefault()" title="'+escH(t('Open Home each time the app starts'))+'">'
+     +   (isDefault?escH(t('★ Default')):escH(t('☆ Set as default')))+'</button>'
+     + '</div>';
+  if(_homeAddOpen) h += homeAddPanel();
+  h += '<div id="home-grid" class="home-grid'+(_homeEdit?' editing':'')+'">'+homeGridHTML()+'</div>';
+  host.innerHTML = h;
+}
+
+function homeAddPanel(){
+  const have = {}; _homePrefs.layout.forEach(function(x){ have[x.id]=1; });
+  const avail = homeWidgetDefs().filter(function(d){ return !have[d.id]; });
+  let h = '<div class="home-add"><div class="home-add-head">'+escH(t('Add a widget'))
+    + '<button class="home-btn" onclick="homeOpenAdd()">'+escH(t('Close'))+'</button></div>';
+  if(!avail.length){ h += '<div class="home-empty">'+escH(t('Every widget is already on your page.'))+'</div>'; return h+'</div>'; }
+  h += '<div class="home-add-grid">';
+  avail.forEach(function(d){
+    h += '<button class="home-add-card" onclick="homeAddWidget(\''+homeAttr(d.id)+'\')">'
+       + '<span class="home-add-title">'+escH(d.title)+'</span>'
+       + '<span class="home-add-dom">'+escH(homeDomLabel(d.domain))+'</span>'
+       + '<span class="home-add-desc">'+escH(d.desc||'')+'</span></button>';
+  });
+  return h + '</div></div>';
+}
+
+function homeGridHTML(){
+  const ctx = { months:(typeof getMonthRange==='function')?getMonthRange():[], filter:_homeFilter, edit:_homeEdit };
+  return _homePrefs.layout.map(function(it){ return homeWidgetHTML(it, ctx); }).join('');
+}
+function homeWidgetHTML(item, ctx){
+  const def = homeWidgetDef(item.id); if(!def) return '';
+  const w = homeClampW(item.w);
+  let body = '';
+  try{ body = def.render(ctx); }catch(e){ body = homeEmpty('This widget failed to render.'); }
+  const hero = item.id==='action-queue' ? ' home-w-hero' : '';
+  let h = '<section class="home-w'+hero+'" style="grid-column:span '+w+'" data-wid="'+escH(item.id)+'"';
+  if(_homeEdit){
+    h += ' draggable="true"'
+      + ' ondragstart="homeDragStart(event,\''+homeAttr(item.id)+'\')"'
+      + ' ondragover="homeDragOver(event)"'
+      + ' ondrop="homeDrop(event,\''+homeAttr(item.id)+'\')"'
+      + ' ondragend="homeDragEnd(event)"';
+  }
+  h += '><header class="home-w-head">'
+     + '<span class="home-w-title">'+escH(def.title)+'</span>'
+     + '<span class="home-w-dom">'+escH(homeDomLabel(def.domain))+'</span>'
+     + '<span class="home-bar-sp"></span>';
+  if(_homeEdit){
+    h += '<button class="home-w-ctl" title="'+escH(t('Width'))+'" onclick="homeCycleWidth(\''+homeAttr(item.id)+'\')">'+w+'⤢</button>'
+       + '<button class="home-w-ctl" title="'+escH(t('Move earlier'))+'" onclick="homeNudge(\''+homeAttr(item.id)+'\',-1)">◀</button>'
+       + '<button class="home-w-ctl" title="'+escH(t('Move later'))+'" onclick="homeNudge(\''+homeAttr(item.id)+'\',1)">▶</button>'
+       + '<button class="home-w-ctl danger" title="'+escH(t('Remove'))+'" onclick="homeRemoveWidget(\''+homeAttr(item.id)+'\')">✕</button>';
+  }
+  h += '</header><div class="home-wb" id="home-wb-'+escH(item.id)+'">'+body+'</div></section>';
+  return h;
+}
+
+// Re-render ONE widget body in place (used by snooze/dismiss so the rest stays put).
+function homeRefreshWidget(wid){
+  const el = G('home-wb-'+wid); if(!el) return;
+  const def = homeWidgetDef(wid); if(!def) return;
+  const ctx = { months:(typeof getMonthRange==='function')?getMonthRange():[], filter:_homeFilter, edit:_homeEdit };
+  try{ el.innerHTML = def.render(ctx); }catch(e){ el.innerHTML = homeEmpty('This widget failed to render.'); }
+}
+
+// ── customization actions (all persist to eim_home_prefs) ──────────────────
+function homeSetFilter(f){ _homeFilter = f; renderHome(); }
+function homeToggleEdit(){ _homeEdit = !_homeEdit; _homeAddOpen = false; renderHome(); }
+function homeOpenAdd(){ _homeAddOpen = !_homeAddOpen; renderHome(); }
+function homeIdx(id){ for(let i=0;i<_homePrefs.layout.length;i++) if(_homePrefs.layout[i].id===id) return i; return -1; }
+function homeAddWidget(id){
+  const def = homeWidgetDef(id); if(!def) return;
+  if(homeIdx(id)>=0) return;
+  _homePrefs.layout.push({ id:id, w:homeClampW(def.defW) });
+  _homeAddOpen = false;
+  homeSavePrefs(_homePrefs); renderHome();
+}
+function homeRemoveWidget(id){
+  _homePrefs.layout = _homePrefs.layout.filter(function(x){ return x.id!==id; });
+  homeSavePrefs(_homePrefs); renderHome();
+}
+function homeCycleWidth(id){
+  const i = homeIdx(id); if(i<0) return;
+  _homePrefs.layout[i].w = (homeClampW(_homePrefs.layout[i].w) % 3) + 1;
+  homeSavePrefs(_homePrefs); renderHome();
+}
+function homeNudge(id, dir){
+  const i = homeIdx(id), j = i+dir, L = _homePrefs.layout;
+  if(i<0 || j<0 || j>=L.length) return;
+  const tmp = L[i]; L[i] = L[j]; L[j] = tmp;
+  homeSavePrefs(_homePrefs); renderHome();
+}
+function homeSetDefault(){
+  if(typeof railLanding!=='undefined'){ railLanding = 'home'; if(typeof railSavePrefs==='function') railSavePrefs(); }
+  renderHome();
+}
+
+// ── drag-reorder (native HTML5 DnD, edit mode only) ────────────────────────
+function homeDragStart(ev, id){
+  _homeDragId = id;
+  try{ ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', id); }catch(e){}
+}
+function homeDragOver(ev){ if(_homeDragId){ ev.preventDefault(); try{ ev.dataTransfer.dropEffect='move'; }catch(e){} } }
+function homeDrop(ev, targetId){
+  ev.preventDefault();
+  if(_homeDragId && _homeDragId!==targetId){
+    const L = _homePrefs.layout, from = homeIdx(_homeDragId);
+    if(from>=0){
+      const moved = L.splice(from, 1)[0];
+      const to = homeIdx(targetId);
+      L.splice(to<0 ? L.length : to, 0, moved);
+      homeSavePrefs(_homePrefs); renderHome();
+    }
+  }
+  _homeDragId = null;
+}
+function homeDragEnd(){ _homeDragId = null; }
+
+// ── snooze / dismiss on an action-queue item ───────────────────────────────
+function homeSnooze(id){
+  if(!_homePrefs.snoozed) _homePrefs.snoozed = {};
+  _homePrefs.snoozed[id] = { until:new Date(Date.now()+7*24*3600*1000).toISOString() };
+  homeSavePrefs(_homePrefs); homeRefreshWidget('action-queue');
+}
+function homeDismiss(id, hash){
+  if(!_homePrefs.dismissed) _homePrefs.dismissed = {};
+  _homePrefs.dismissed[id] = { hash:hash, ts:Date.now() };
+  homeSavePrefs(_homePrefs); homeRefreshWidget('action-queue');
+}
+
+// ── deep-link opener: one concern → exactly one target surface + entity ────
+function homeGoView(view, fn){
+  if(typeof closeHome==='function') closeHome();
+  if(typeof activeView!=='undefined') activeView = view;
+  try{ fn(); }catch(e){}
+  if(typeof railRender==='function') railRender();
+  if(typeof railUpdateCrumb==='function') railUpdateCrumb();
+}
+function homeOpenFor(concern, entityId){
+  const id = +entityId;
+  if(concern==='retention-risk' || concern==='stale-review'){ if(typeof openIdCardModal==='function') openIdCardModal(id); return; }
+  if(concern==='over-allocation' || concern==='bench'){ if(typeof railGo==='function') railGo(null,'plan'); return; }
+  if(concern==='engagement-due'){ if(typeof railGo==='function') railGo(null,'engagement'); return; }
+  if(concern==='gate-blocked' || concern==='gate-behind'){
+    if(typeof railGo==='function') railGo(null,'gate');
+    if(typeof gtOpenDetail==='function') gtOpenDetail(id);
+    return;
+  }
+  if(concern==='charter-conflict'){ homeGoView('decision', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
+  if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('charters', function(){ if(typeof openCharter==='function') openCharter(id); }); return; }
+  if(concern==='dtc-gap'){ homeGoView('dtc', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }
+  if(concern==='channel-concentration'){ homeGoView('channels', function(){ if(typeof openChannels==='function') openChannels(id); }); return; }
+}
+/* ◄◄ END: sections/home.js ►► */
+
 /* ►► SECTION: COLLAB ◄◄ Real-time multi-user sync (Yjs + y-websocket relay)
  *
  * Phase A of the multi-user roadmap (see ../matrix-relay/ARCHITECTURE.md and
@@ -27360,6 +28524,272 @@ function collabBootFromHash(){
 }
 /* ◄◄ END: sections/collab.js ►► */
 
+/* ►► SECTION: TOUR ◄◄ Guided tour, embedded in the Help panel
+ *
+ * A hub-and-spoke walkthrough: a MENU lists the app's domains (generated from
+ * RAIL_DOMAINS so new views auto-appear and the tour never drifts); picking one
+ * runs a short per-section walkthrough that drives railGo() to the real view and
+ * spotlights its rail entry, then returns to the menu so the user can pick another.
+ *
+ * All identifiers are tour-prefixed (flat-bundle no-duplicate-declaration rule).
+ * Themed with var(--…) and localized via t(), like the rest of the shell.
+ *
+ * Functions defined in this file:
+ *   tourStart        — open the hub menu (entry point; Help panel + `?`-less launcher)
+ *   tourStop         — close the tour and restore rail state
+ *   tourShowMenu     — render the section-picker hub
+ *   tourRunTrack     — begin a named walkthrough (basics | a domain id)
+ *   tourNext/tourPrev — step navigation
+ *   tourStep         — render the current step (spotlight + tooltip)
+ *   tourDomainTrack  — build the step list for one RAIL_DOMAINS domain
+ *
+ * Deliberately NOT persisted and NOT part of app state — it's pure UI help.
+ */
+
+/* ── Authored narration for the key views (others get a generated stub) ────────
+   Keyed by rail view id. Kept light; the menu/step scaffold is data-driven, this
+   copy is the actual value. Add a view id here to upgrade its stub to full copy. */
+var TOUR_COPY = {
+  matrix: { icon:'📊', body:
+    'Projects are plotted as bubbles: the <strong>X axis</strong> is effort/complexity, '
+    +'the <strong>Y axis</strong> is impact — switchable to <strong>visibility</strong> or '
+    +'<strong>enabler</strong> from the toolbar. <strong>Click</strong> a bubble to select, '
+    +'<strong>drag</strong> to reposition, <strong>scroll</strong> to zoom, drag empty space to pan. '
+    +'This is the portfolio front door — everything else describes the people and money behind it.' },
+  roster: { icon:'👥', body:
+    'Your team list. Add engineers and set monthly cost, group and role. '
+    +'Open any card’s <strong>ID Card</strong> for the full profile — photo, skills, '
+    +'nine-box placement, compa-ratio, succession and engagement cadence. '
+    +'Everyone here flows into cost, skills, talent and analytics.' },
+  plan: { icon:'📅', body:
+    'Allocate engineers to projects month by month (0–100% FTE). '
+    +'A cell can carry a status — <code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned — '
+    +'which changes how it costs. Group <strong>by engineer</strong> or <strong>by project</strong>. '
+    +'This is the single source every cost number is summed from.' },
+  dashboard: { icon:'⚖', body:
+    'The capacity cockpit: team supply vs demand, a monthly <strong>demand-vs-capacity</strong> chart, '
+    +'capacity balance by function, per-engineer utilisation and over/under-allocation alerts. '
+    +'Overloaded someone? A <strong>suggested swap</strong> and <strong>Find replacements</strong> '
+    +'surface available substitutes; the availability panel shows who is free and what they can do.' },
+  skillrisk: { icon:'🛡', body:
+    'Your <strong>Single Points of Failure</strong> — skills held by only one person. '
+    +'Shows coverage, holder count and whether a knowledge-transfer plan exists. '
+    +'This is where fragility becomes visible before someone resigns.' },
+  ninebox: { icon:'⊞', body:
+    'The classic <strong>Performance × Potential</strong> grid. Placements feed development '
+    +'priorities, salary signals and the org-chart KPI panel — and are tracked per year, so you '
+    +'can see a person’s trajectory over time.' },
+  exec: { icon:'◈', body:
+    'A one-page, read-only cockpit that crosses every layer — portfolio value (NPV / PI), cost & '
+    +'spend map, capacity, talent risk and channel concentration — with a <strong>week planner</strong> '
+    +'for the touchpoints and to-dos you’ve pinned. Start here when you want the whole picture at a glance.' },
+};
+
+/* ── Track: the "basics" starter (concept-level, before the section tours) ── */
+function tourBasicsTrack(){
+  return [
+    { kind:'center', tag:t('Welcome'), title:'👋 '+t('Welcome to Project Matrix'), body:
+        t('Your R&D portfolio tool — it connects projects, people, skills and money in one place. '
+        +'This quick tour explains the layout, then lets you dive into whichever section you like.')
+        +'<br><br>'+t('Use <strong>Next</strong> / <strong>Back</strong>, or the <code>→</code> / <code>←</code> arrow keys.') },
+    { kind:'rail', tag:t('Navigation'), title:'☰ '+t('The navigation rail'), body:
+        t('Everything lives on this left rail, grouped into domains — <strong>Team</strong>, '
+        +'<strong>Offer Mngt</strong>, <strong>Plan</strong>, <strong>Skills</strong>, <strong>Talent</strong> and '
+        +'<strong>Insights</strong>. Hover to expand it; click any page to open it. The foot holds actions: '
+        +'export, backup, AI advisor, settings and this help.') },
+    { kind:'view', view:'matrix', tag:t('Start'), title:(TOUR_COPY.matrix.icon)+' '+t('The portfolio matrix'), body:TOUR_COPY.matrix.body },
+    { kind:'center', tag:t('Your turn'), title:'✓ '+t('Now pick a section'), body:
+        t('That’s the shape of it. Back on the menu, choose any domain to walk through its pages — '
+        +'or just close this and explore. You can reopen the tour any time from <strong>Help</strong>.') },
+  ];
+}
+
+/* ── Track: one RAIL_DOMAINS domain → intro + a step per view ──────────────── */
+function tourDomainTrack(domId){
+  var dom=null;
+  for(var i=0;i<RAIL_DOMAINS.length;i++) if(RAIL_DOMAINS[i].id===domId) dom=RAIL_DOMAINS[i];
+  if(!dom) return [];
+  var steps=[ { kind:'center', tag:t('Section'), title:dom.name, body:
+      t('{n} page(s) in this section. We’ll open each one so you can see it live.',{n:dom.views.length}) } ];
+  dom.views.forEach(function(v){
+    var copy=TOUR_COPY[v.id];
+    steps.push({
+      kind:'view', view:v.id, tag:dom.name,
+      title:(copy?copy.icon+' ':'')+v.label,
+      body: copy ? copy.body
+                 : t('Opens <strong>{label}</strong>. Explore it now, or press Next to continue.',{label:v.label})
+    });
+  });
+  steps.push({ kind:'menu-end', tag:t('Done'), title:'✓ '+t('Section complete'), body:
+      t('Back to the menu — pick another section, or close the tour.') });
+  return steps;
+}
+
+/* ── State ─────────────────────────────────────────────────────────────────── */
+var _tourActive=false;
+var _tourSteps=[];        // current track
+var _tourIdx=0;
+var _tourRailPinPrev=null; // rail pin state to restore on close
+
+/* ── Build the tour DOM once (lazily; overlays sit after {{JS}} so build at use) ─ */
+function tourBuildDOM(){
+  if(G('tour-pop')) return;
+  var ov=document.createElement('div'); ov.id='tour-overlay';
+  var sp=document.createElement('div'); sp.id='tour-spot';
+  var pop=document.createElement('div'); pop.id='tour-pop';
+  document.body.appendChild(ov);
+  document.body.appendChild(sp);
+  document.body.appendChild(pop);
+}
+
+/* ── Entry: open the hub menu ────────────────────────────────────────────────── */
+function tourStart(){
+  if(typeof closeHelp==='function') closeHelp();   // launched from Help; get it out of the way
+  tourBuildDOM();
+  _tourActive=true;
+  // Pin the rail open so its page entries are visible to spotlight; remember prior state.
+  if(typeof railPinned!=='undefined'){
+    _tourRailPinPrev=railPinned;
+    if(!railPinned && typeof railTogglePin==='function') railTogglePin();
+  }
+  G('tour-overlay').classList.add('show');
+  tourShowMenu();
+}
+
+function tourStop(){
+  _tourActive=false;
+  ['tour-overlay','tour-spot','tour-pop'].forEach(function(id){ var e=G(id); if(e) e.classList.remove('show'); });
+  var sp=G('tour-spot'); if(sp) sp.style.display='none';
+  // Restore the rail's pre-tour pin state.
+  if(_tourRailPinPrev===false && typeof railPinned!=='undefined' && railPinned && typeof railTogglePin==='function') railTogglePin();
+  _tourRailPinPrev=null;
+}
+
+/* ── Hub: the section picker, generated from RAIL_DOMAINS ─────────────────────── */
+function tourShowMenu(){
+  _tourSteps=[]; _tourIdx=0;
+  var sp=G('tour-spot'); if(sp) sp.style.display='none';
+  var ov=G('tour-overlay'); if(ov) ov.classList.add('show');   // dim backdrop behind the menu card
+  var cards=RAIL_DOMAINS.map(function(d){
+    var pages=d.views.map(function(v){return escH(v.label);}).join(' · ');
+    return '<button class="tour-card" onclick="tourRunTrack(\''+d.id+'\')">'
+         + '<span class="tour-card-ico">'+d.ico+'</span>'
+         + '<span class="tour-card-body"><span class="tour-card-name mono">'+escH(d.name)+'</span>'
+         + '<span class="tour-card-sub">'+pages+'</span></span></button>';
+  }).join('');
+  var pop=G('tour-pop');
+  pop.className='tour-menu';
+  pop.innerHTML=
+      '<div class="tour-tag mono">'+escH(t('Guided tour'))+'</div>'
+    + '<div class="tour-title">'+escH(t('Where would you like to start?'))+'</div>'
+    + '<div class="tour-lead">'+escH(t('Take the quick basics tour, or jump straight into any section. You can come back to this menu any time.'))+'</div>'
+    + '<button class="tour-start-basics" onclick="tourRunTrack(\'basics\')">▶ '+escH(t('Start here — the basics'))+'</button>'
+    + '<div class="tour-cards">'+cards+'</div>'
+    + '<div class="tour-menu-foot"><button class="tour-btn" onclick="tourStop()">'+escH(t('Close'))+'</button></div>';
+  pop.classList.add('show');
+  // center it
+  pop.style.left=''; pop.style.top='';
+}
+
+/* ── Run a track by name: 'basics' or a domain id ────────────────────────────── */
+function tourRunTrack(name){
+  _tourSteps = (name==='basics') ? tourBasicsTrack() : tourDomainTrack(name);
+  _tourIdx=0;
+  if(!_tourSteps.length){ tourShowMenu(); return; }
+  tourStep();
+}
+
+function tourNext(){
+  if(_tourIdx>=_tourSteps.length-1){ tourShowMenu(); return; }  // end of track → hub
+  _tourIdx++; tourStep();
+}
+function tourPrev(){ if(_tourIdx>0){ _tourIdx--; tourStep(); } }
+
+/* ── Render the current step ─────────────────────────────────────────────────── */
+function tourStep(){
+  var step=_tourSteps[_tourIdx];
+  if(!step){ tourShowMenu(); return; }
+
+  // Drive the app to the right surface for 'view' steps, then spotlight the rail entry.
+  var anchor=null;
+  if(step.kind==='view' && step.view && typeof railGo==='function'){
+    try{ railGo(null, step.view); }catch(e){}
+    anchor=document.querySelector('.rn-sub[data-view="'+step.view+'"]');
+  } else if(step.kind==='rail'){
+    anchor=G('railnav');
+  }
+
+  var last=(_tourIdx===_tourSteps.length-1);
+  var pop=G('tour-pop');
+  pop.className='tour-step';
+  pop.innerHTML=
+      '<div class="tour-tag mono">'+escH(step.tag||'')+'</div>'
+    + '<div class="tour-title">'+escH(step.title||'')+'</div>'
+    + '<div class="tour-body">'+(step.body||'')+'</div>'
+    + '<div class="tour-foot">'
+    +   '<div class="tour-prog mono">'+escH(t('Step {a} of {b}',{a:_tourIdx+1,b:_tourSteps.length}))+'</div>'
+    +   '<button class="tour-btn" onclick="tourShowMenu()">'+escH(t('Menu'))+'</button>'
+    +   (_tourIdx>0?'<button class="tour-btn" onclick="tourPrev()">'+escH(t('Back'))+'</button>':'')
+    +   '<button class="tour-btn tour-primary" onclick="tourNext()">'+escH(last?('✓ '+t('Menu')):(t('Next')+' →'))+'</button>'
+    + '</div>';
+  pop.classList.add('show');
+  tourPlaceSpot(anchor);
+  tourPlacePop(anchor, step.kind);
+}
+
+/* ── Spotlight the anchor element (or a full dim backdrop for center steps) ─────
+   Exactly one dims the screen: the spot's box-shadow (anchored) OR the overlay
+   (center/menu). Showing both would dim the highlighted item too. */
+function tourPlaceSpot(anchor){
+  var sp=G('tour-spot'), ov=G('tour-overlay'); if(!sp) return;
+  if(!anchor){ sp.style.display='none'; if(ov) ov.classList.add('show'); return; }
+  if(ov) ov.classList.remove('show');
+  var r=anchor.getBoundingClientRect();
+  var pad=6;
+  sp.style.display='block';
+  sp.style.left=(r.left-pad)+'px';
+  sp.style.top=(r.top-pad)+'px';
+  sp.style.width=(r.width+pad*2)+'px';
+  sp.style.height=(r.height+pad*2)+'px';
+}
+
+/* ── Position the popup relative to the anchor (right of the rail), else center ─ */
+function tourPlacePop(anchor, kind){
+  var pop=G('tour-pop');
+  var vw=window.innerWidth, vh=window.innerHeight;
+  var pw=pop.offsetWidth||360, ph=pop.offsetHeight||240;
+  var gap=16;
+  if(!anchor){ pop.style.left=Math.round((vw-pw)/2)+'px'; pop.style.top=Math.round((vh-ph)/2)+'px'; return; }
+  var r=anchor.getBoundingClientRect();
+  var left=r.right+gap, top=r.top+r.height/2-ph/2;
+  if(left+pw>vw-16) left=Math.max(16, r.left-pw-gap);      // fall back to the left side
+  top=Math.max(16, Math.min(vh-ph-16, top));
+  pop.style.left=Math.round(left)+'px';
+  pop.style.top=Math.round(top)+'px';
+}
+
+/* ── Keyboard: capture arrows/esc while active so app shortcuts don't fire ────── */
+document.addEventListener('keydown', function(e){
+  if(!_tourActive) return;
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); tourStop(); return; }
+  // Menu state: let Escape close; ignore arrows.
+  if(G('tour-pop') && G('tour-pop').classList.contains('tour-menu')) return;
+  if(e.key==='ArrowRight'||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); tourNext(); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); e.stopPropagation(); tourPrev(); }
+  else { e.stopPropagation(); }   // keep the tour modal — no app shortcuts underneath
+}, true);
+
+/* Keep the spotlight/popup glued to the rail item if the viewport resizes mid-tour. */
+window.addEventListener('resize', function(){
+  if(!_tourActive) return;
+  var pop=G('tour-pop'); if(!pop||pop.classList.contains('tour-menu')) return;
+  var step=_tourSteps[_tourIdx]; if(!step) return;
+  var anchor=(step.kind==='view'&&step.view)?document.querySelector('.rn-sub[data-view="'+step.view+'"]')
+            :(step.kind==='rail'?G('railnav'):null);
+  tourPlaceSpot(anchor); tourPlacePop(anchor, step.kind);
+});
+/* ◄◄ END: sections/tour.js ►► */
+
 /* ►► SECTION: EXPORT-PACKS ◄◄ The global "Export" door + cross-view packs.
  *
  * Two things live here, both sitting ON TOP of the export engine
@@ -27631,6 +29061,7 @@ document.addEventListener('keydown',e=>{
     // the two export overlays were missing (the builder ignored Esc entirely).
     if(typeof exportBuilderClose==='function')exportBuilderClose();
     if(typeof exportClosePicker==='function')exportClosePicker();
+    if(typeof rloClose==='function')rloClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }
@@ -27758,6 +29189,17 @@ railInit();   // render the persistent nav rail + land on the initial view
 /* ◄◄ END: sections/boot.js ►► */
 
 </script>
+
+<!-- HOME — personal, customizable front door (rail-inset VIEW; src/sections/home.js).
+     Defined after {{JS}} like #brief-overlay: only touched by user-triggered openHome
+     well after boot, so the nav-rail boot-timing trap doesn't apply. -->
+<div id="home-overlay">
+  <div id="home-header">
+    <span class="home-h-title" data-i18n="HOME">HOME</span>
+    <span class="home-h-sub" data-i18n="Your page — the widgets and topics you need, ranked by what needs you.">Your page — the widgets and topics you need, ranked by what needs you.</span>
+  </div>
+  <div id="home-body"></div>
+</div>
 
 <!-- EXPORT BUILDER — drag-and-drop content/order/theme picker shared by every
      deliverable's Export button (src/core/export.js, exportOpenBuilder). -->

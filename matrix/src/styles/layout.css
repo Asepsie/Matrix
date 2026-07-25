@@ -171,6 +171,13 @@ select option{background:var(--surface);color:var(--text);}
 .help-row{display:flex;align-items:baseline;gap:8px;font-size:12px;}
 .help-key{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent2);background:rgba(91,229,200,.08);border:1px solid rgba(91,229,200,.2);border-radius:3px;padding:1px 6px;white-space:nowrap;flex-shrink:0;}
 .help-desc{color:var(--muted);font-size:11px;}
+#help-colophon{margin-top:4px;padding-top:12px;border-top:1px solid var(--border);text-align:center;display:flex;flex-direction:column;gap:3px;}
+.help-colophon-brand{font-size:9px;letter-spacing:.14em;color:var(--dim);}
+.help-colophon-copy{font-size:10px;color:var(--muted);}
+.help-colophon-links{font-size:10px;color:var(--dim);}
+.help-colophon-links a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
+.help-colophon-links a:hover{color:var(--accent);border-bottom-color:var(--accent);}
+.help-colophon-sep{margin:0 6px;color:var(--dim);}
 
 /* ── COMPARE VIEW ── */
 #compare-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;}

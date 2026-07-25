@@ -56,6 +56,13 @@
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
   <div id="help-box">
+    <button id="help-tour-launch" onclick="tourStart()">
+      <span class="htl-play">▶</span>
+      <span>
+        <span class="htl-t" data-i18n="Take a guided tour">Take a guided tour</span>
+        <span class="htl-s" data-i18n="A 3-minute walkthrough — then pick any section to explore in depth.">A 3-minute walkthrough — then pick any section to explore in depth.</span>
+      </span>
+    </button>
     <h2 data-i18n="⌨ KEYBOARD SHORTCUTS">⌨ KEYBOARD SHORTCUTS</h2>
     <div style="background:rgba(200,241,53,.06);border:1px solid rgba(200,241,53,.12);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
       <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px" data-i18n="WHAT IS PROJECT MATRIX?">WHAT IS PROJECT MATRIX?</strong><br>
@@ -115,6 +122,15 @@
       </div>
       <button class="danger" onclick="closeHelp();resetAll()" data-i18n-title="Reset all data — cannot be undone" title="Reset all data — cannot be undone" data-i18n="RESET ALL">RESET ALL</button>
       <button onclick="closeHelp()" data-i18n="CLOSE">CLOSE</button>
+    </div>
+    <div id="help-colophon">
+      <div class="help-colophon-brand mono">PROJECT MATRIX</div>
+      <div class="help-colophon-copy">© <span id="help-colophon-year">2026</span> Benoit&nbsp;TANI. All rights reserved.</div>
+      <div class="help-colophon-links">
+        <a href="mailto:benoit.tani@gmail.com">benoit.tani@gmail.com</a>
+        <span class="help-colophon-sep">·</span>
+        <a href="https://www.linkedin.com/in/benoit-tani-b90895103/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
     </div>
   </div>
 </div>
@@ -410,6 +426,11 @@
       <span data-i18n="Width of the nav rail's scrollbar. Wider is easier to grab on small screens." style="font-size:10px;color:var(--muted)">Width of the nav rail's scrollbar. Wider is easier to grab on small screens.</span>
     </div>
     <div class="field">
+      <label data-i18n="RAIL LAYOUT">RAIL LAYOUT</label>
+      <span data-i18n="Reorder pages and move them between domains — set it up once, or drag pages directly in the open rail." style="font-size:10px;color:var(--muted);margin-bottom:6px">Reorder pages and move them between domains — set it up once, or drag pages directly in the open rail.</span>
+      <button class="sm" data-i18n="⚖ ORGANISE RAIL LAYOUT…" onclick="rloOpen()" style="align-self:flex-start">⚖ ORGANISE RAIL LAYOUT…</button>
+    </div>
+    <div class="field">
       <label data-i18n="EXPORT THEME">EXPORT THEME</label>
       <select id="set-export-theme">
         <option value="app" data-i18n="App theme — matches what you see on screen">App theme — matches what you see on screen</option>
@@ -435,6 +456,19 @@
   </div>
 </div>
 
+<!-- RAIL LAYOUT ORGANISER (opened from Settings; wide board, drag pages between domains) -->
+<div id="rail-layout-overlay" class="overlay">
+  <div class="modal-box" style="width:min(920px,96vw);max-height:88vh;overflow-y:auto">
+    <h2 data-i18n="⚖ ORGANISE RAIL LAYOUT">⚖ ORGANISE RAIL LAYOUT</h2>
+    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <div id="rlo-board" class="rlo-board"></div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
+      <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+      <button class="primary" data-i18n="DONE" onclick="rloClose()">DONE</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIRST-RUN LANDING CHOOSER (shown once, until a default is stored) -->
 <div id="landing-firstrun" class="overlay">
   <div class="modal-box" style="width:min(440px,95vw)">
@@ -444,8 +478,11 @@
       <strong style="color:var(--text)">Settings</strong> on the nav rail.
     </p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('roster')">
-        👥 <span data-i18n="Roster — start with the team">Roster — start with the team</span> <span style="color:var(--muted);font-weight:400;margin-left:6px" data-i18n="(recommended)">(recommended)</span>
+      <button class="primary" style="justify-content:flex-start" onclick="railChooseLanding('home')">
+        🏠 <span data-i18n="Home — your customizable dashboard">Home — your customizable dashboard</span> <span style="color:var(--muted);font-weight:400;margin-left:6px" data-i18n="(recommended)">(recommended)</span>
+      </button>
+      <button style="justify-content:flex-start" onclick="railChooseLanding('roster')">
+        👥 <span data-i18n="Roster — start with the team">Roster — start with the team</span>
       </button>
       <button style="justify-content:flex-start" onclick="railChooseLanding('matrix')">
         ◎ <span data-i18n="Portfolio matrix — start with the project matrix">Portfolio matrix — start with the project matrix</span>
@@ -454,6 +491,17 @@
   </div>
 </div>
 <!-- {{JS}} -->
+
+<!-- HOME — personal, customizable front door (rail-inset VIEW; src/sections/home.js).
+     Defined after {{JS}} like #brief-overlay: only touched by user-triggered openHome
+     well after boot, so the nav-rail boot-timing trap doesn't apply. -->
+<div id="home-overlay">
+  <div id="home-header">
+    <span class="home-h-title" data-i18n="HOME">HOME</span>
+    <span class="home-h-sub" data-i18n="Your page — the widgets and topics you need, ranked by what needs you.">Your page — the widgets and topics you need, ranked by what needs you.</span>
+  </div>
+  <div id="home-body"></div>
+</div>
 
 <!-- EXPORT BUILDER — drag-and-drop content/order/theme picker shared by every
      deliverable's Export button (src/core/export.js, exportOpenBuilder). -->

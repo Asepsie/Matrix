@@ -28,6 +28,7 @@
 
 /* ── Inline SVG icons (currentColor; SVG only, no markup that breaks the bundle) ── */
 var RAIL_I = {
+  home:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.2 12 4l8 7.2"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-5.2h4V20"/></svg>',
   team:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.6 19c0-3 2.4-5 5.4-5s5.4 2 5.4 5"/><path d="M16 5.6a3 3 0 0 1 0 5.6"/><path d="M17.2 14c2.1.5 3.4 2.2 3.4 4.4"/></svg>',
   work:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg>',
   skills:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1.4"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1.4"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="1.4"/></svg>',
@@ -57,6 +58,9 @@ var RAIL_I = {
    before this file in the bundle). Every consumer — rail render, breadcrumb,
    the Settings landing dropdown — reads these, so this is the single point. */
 var RAIL_DOMAINS = [
+  { id:'home', name:t('HOME'), ico:RAIL_I.home, views:[
+    {id:'home',        label:t('Home')},
+  ]},
   { id:'team', name:t('TEAM'), ico:RAIL_I.team, views:[
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
@@ -93,10 +97,18 @@ var RAIL_DOMAINS = [
     {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
     {id:'summary',     label:t('Summary')},
-    {id:'dashboard',   label:t('Cost dashboard')},
+    {id:'dashboard',   label:t('Resource balancer')},
     {id:'compare',     label:t('Compare')},
   ]},
 ];
+
+/* Master view registry, captured ONCE from the declared defaults above — before
+   any layout mutation (railApplyLayout reassigns d.views in place). RAIL_VIEW_DEF_DOM
+   is each view's home domain; RAIL_ALL_VIEWS holds the live view objects by id. Both
+   are the fixed source that railApplyLayout rebuilds every domain from, so the layout
+   stays idempotent no matter how many times pages get moved/reordered. */
+var RAIL_VIEW_DEF_DOM={}, RAIL_ALL_VIEWS={};
+RAIL_DOMAINS.forEach(function(d){ d.views.forEach(function(v){ RAIL_VIEW_DEF_DOM[v.id]=d.id; RAIL_ALL_VIEWS[v.id]=v; }); });
 
 /* ── Utility foot — all ACTIONS (fire & forget; never change activeView) ── */
 var RAIL_UTIL = [
@@ -122,6 +134,7 @@ var railWidth=58;            // collapsed rail width (px, persisted, clamped)
 var railChartMode='hub';     // charter project picker: 'hub' (card grid) | 'dropdown' (persisted)
 var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 'tasks' only (persisted)
 var railViewOrder={};        // domId -> [viewId,...] custom page order within a domain (persisted)
+var railViewDomain={};       // viewId -> overridden domId (cross-domain page moves; persisted)
 var railScrollbar='thin';    // rail scrollbar width preset: thin|medium|wide (persisted)
 var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
 var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
@@ -139,11 +152,12 @@ function railLoadPrefs(){
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
+              if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -151,15 +165,150 @@ function railApplyScrollbar(){
   de.setProperty('--rail-sb',(RAIL_SB[railScrollbar]||RAIL_SB.thin)+'px');
   de.setProperty('--rail-sb-ff',railScrollbar==='wide'?'auto':'thin');   // Firefox: 'thin' caps ~11px
 }
-// apply the saved per-domain page order onto RAIL_DOMAINS (stable; unknown ids fall to the end)
-function railApplyOrder(){
+// Rebuild every domain's `views` from the master registry + the saved overrides:
+// (1) place each known view in its effective domain (railViewDomain override, else
+// its home), (2) order within the domain per railViewOrder. Both steps tolerate
+// stale ids: an override pointing at a removed domain falls home; an order entry for
+// an unknown id ranks last. Idempotent — always derived from the fixed registry, so
+// it can run any number of times after moves/reorders. Replaces railApplyOrder (which
+// only reordered within a domain and could never move a page between domains).
+function railEffectiveDom(viewId){
+  var d=railViewDomain[viewId];
+  if(d&&railDomainFor2(d)) return d;                 // override to a live domain
+  return RAIL_VIEW_DEF_DOM[viewId]||null;            // else home domain
+}
+function railApplyLayout(){
+  var byDom={};
+  RAIL_DOMAINS.forEach(function(d){ byDom[d.id]=[]; });
+  Object.keys(RAIL_ALL_VIEWS).forEach(function(vid){
+    var dom=railEffectiveDom(vid);
+    if(byDom[dom]) byDom[dom].push(RAIL_ALL_VIEWS[vid]);
+  });
   RAIL_DOMAINS.forEach(function(d){
+    var arr=byDom[d.id]||[];
     var ord=railViewOrder[d.id];
-    if(!ord||!ord.length) return;
-    var rank=function(id){ var i=ord.indexOf(id); return i<0?9999:i; };
-    d.views.sort(function(a,b){ return rank(a.id)-rank(b.id); });
+    if(ord&&ord.length){
+      var rank=function(id){ var i=ord.indexOf(id); return i<0?9999:i; };
+      // decorate-sort-undecorate keeps equal ranks in registry order (stable)
+      arr=arr.map(function(v,i){return {v:v,i:i};})
+             .sort(function(a,b){ return (rank(a.v.id)-rank(b.v.id))||(a.i-b.i); })
+             .map(function(x){return x.v;});
+    }
+    d.views=arr;
   });
 }
+// Reset all rail layout customisation (domain moves + ordering) back to defaults.
+function railResetLayout(){
+  railViewOrder={}; railViewDomain={};
+  railSavePrefs();
+  railApplyLayout();
+  railRender();
+  rloRenderBoard();                          // refresh the organiser if open
+}
+
+/* ══ RAIL LAYOUT ORGANISER (Settings pop-up; #rail-layout-overlay) ══════
+   A roomy board that mirrors the rail: one column per domain, pages as cards
+   you drag between columns (move) or within a column (reorder). ▲/▼ + a domain
+   <select> on each card do the same without dragging (touch / a11y fallback).
+   Everything routes through the SAME persisted model (railViewDomain +
+   railViewOrder) via railMoveView / railLayoutNudge, so the board, the live
+   rail and the DnD all stay in sync; changes apply immediately (like a drop). */
+function rloOpen(){ var ov=G('rail-layout-overlay'); if(!ov) return; rloRenderBoard(); ov.classList.add('show'); }
+function rloClose(){ var ov=G('rail-layout-overlay'); if(ov) ov.classList.remove('show'); }
+function rloRenderBoard(){
+  var host=G('rlo-board'); if(!host) return;
+  host.innerHTML=RAIL_DOMAINS.map(function(d){
+    var cards=d.views.map(function(v,idx){
+      var opts=RAIL_DOMAINS.map(function(o){
+        return '<option value="'+o.id+'"'+(o.id===d.id?' selected':'')+'>'+escH(o.name)+'</option>';
+      }).join('');
+      return '<div class="rlo-card" draggable="true" data-view="'+v.id+'"'
+        + ' ondragstart="rloDragStart(event,\''+v.id+'\')" ondragover="rloCardOver(event)"'
+        + ' ondragleave="rloCardLeave(event)" ondrop="rloCardDrop(event,\''+d.id+'\',\''+v.id+'\')"'
+        + ' ondragend="rloDragEnd(event)">'
+        + '<div class="rlo-card-top"><span class="rlo-grip" aria-hidden="true">⠿</span>'
+        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>'
+        + '<div class="rlo-card-ctl">'
+        +   '<button class="sm" '+(idx===0?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',-1)" title="'+t('Move up')+'">▲</button>'
+        +   '<button class="sm" '+(idx===d.views.length-1?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',1)" title="'+t('Move down')+'">▼</button>'
+        +   '<select class="rlo-move" onchange="railLayoutSetDomain(\''+v.id+'\',this.value)" title="'+t('Move to domain')+'">'+opts+'</select>'
+        + '</div></div>';
+    }).join('');
+    return '<div class="rlo-col" data-dom="'+d.id+'"'
+      + ' ondragover="rloColOver(event,\''+d.id+'\')" ondragleave="rloColLeave(event)" ondrop="rloColDrop(event,\''+d.id+'\')">'
+      + '<div class="rlo-col-head"><span class="rlo-col-ico">'+d.ico+'</span>'
+      +   '<span class="rlo-col-name">'+escH(d.name)+'</span><span class="rlo-col-count">'+d.views.length+'</span></div>'
+      + '<div class="rlo-col-body">'+(cards||'<div class="rlo-empty">'+t('(no pages)')+'</div>')+'</div>'
+      + '</div>';
+  }).join('');
+}
+// Move a page to another domain (organiser dropdown; lands at that domain's end).
+function railLayoutSetDomain(viewId,domId){
+  if(!domId||domId===railEffectiveDom(viewId)) return;
+  railMoveView(viewId,domId,null,false);    // persists + re-renders the rail
+  rloRenderBoard();
+}
+// Nudge a page up (-1) / down (+1) within its own domain (organiser ▲/▼ buttons).
+function railLayoutNudge(viewId,dir){
+  var domId=railEffectiveDom(viewId);
+  var dom=railDomainFor2(domId); if(!dom) return;
+  var ids=dom.views.map(function(v){return v.id;});
+  var i=ids.indexOf(viewId), j=i+dir;
+  if(i<0||j<0||j>=ids.length) return;
+  ids[i]=ids[j]; ids[j]=viewId;             // swap with neighbour
+  railViewOrder[domId]=ids;
+  railApplyLayout();
+  railSavePrefs();
+  railRender();
+  rloRenderBoard();
+}
+
+/* Organiser board DnD — its own scratch (rloDragView), separate DOM from the rail
+   strip. Drop on a card = position next to it; drop on a column = append to that
+   domain. Both route through railMoveView, then rebuild the board. */
+var rloDragView=null;
+function rloClearMarks(){
+  var host=G('rlo-board'); if(!host) return;
+  var m=host.querySelectorAll('.rlo-drop-before,.rlo-drop-after,.rlo-dragging,.rlo-col-into');
+  for(var i=0;i<m.length;i++) m[i].classList.remove('rlo-drop-before','rlo-drop-after','rlo-dragging','rlo-col-into');
+}
+function rloDragStart(ev,viewId){
+  rloDragView=viewId;
+  try{ ev.dataTransfer.effectAllowed='move'; ev.dataTransfer.setData('text/plain',viewId); }catch(e){}
+  if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rlo-dragging');
+}
+function rloCardOver(ev){
+  if(!rloDragView) return;
+  ev.preventDefault(); ev.stopPropagation();             // beat the column-level handler
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  var el=ev.currentTarget, r=el.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+  rloClearMarks();
+  el.classList.add(after?'rlo-drop-after':'rlo-drop-before');
+}
+function rloCardLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rlo-drop-before','rlo-drop-after'); }
+function rloCardDrop(ev,domId,targetId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(rloDragView&&rloDragView!==targetId){
+    var r=ev.currentTarget.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
+    railMoveView(rloDragView,domId,targetId,after);
+    rloRenderBoard();
+  }
+  rloDragView=null; rloClearMarks();
+}
+function rloColOver(ev,domId){
+  if(!rloDragView) return;
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  rloClearMarks();
+  if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rlo-col-into');
+}
+function rloColLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rlo-col-into'); }
+function rloColDrop(ev,domId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(rloDragView){ railMoveView(rloDragView,domId,null,false); rloRenderBoard(); }   // append to end
+  rloDragView=null; rloClearMarks();
+}
+function rloDragEnd(){ rloDragView=null; rloClearMarks(); }
 // Charter project-picker mode accessor (read by charter.js). 'hub' | 'dropdown'.
 function railChartPicker(){ return railChartMode==='dropdown' ? 'dropdown' : 'hub'; }
 // Sidebar badge scope accessor (read by sidebar.js projItemHTML). 'all' | 'tasks'.
@@ -201,7 +350,7 @@ function railInit(){
   railLoadPrefs();
   railApplyWidth();                         // apply the saved collapsed width up front
   railApplyScrollbar();                     // apply the saved scrollbar-width preset
-  railApplyOrder();                         // apply the saved per-domain page order
+  railApplyLayout();                        // apply saved cross-domain moves + per-domain order
   if(railPinBtn) railPinBtn.innerHTML=RAIL_I.pin;
   railRender();
   // Hover-drawer: pointer over the always-visible rail expands it; leaving
@@ -253,7 +402,7 @@ function railRender(){
     var holds=d.id===activeDomId, exp=railIsOpen()&&holds;
     var subs=d.views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
-      return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" onclick="railGo(event,\''+v.id+'\')"'
+      return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" data-view="'+v.id+'" onclick="railGo(event,\''+v.id+'\')"'
            + ' ondragstart="railSubDragStart(event,\''+d.id+'\',\''+v.id+'\')"'
            + ' ondragover="railSubDragOver(event,\''+d.id+'\')"'
            + ' ondragleave="railSubDragLeave(event)"'
@@ -264,7 +413,8 @@ function railRender(){
     }).join('');
     return '<div class="rn-dom'+(holds?' active-dom':'')+(exp?' exp':'')+'" data-dom="'+d.id+'"'
          + ' onmouseenter="railFlyEnter(\''+d.id+'\',this)" onmouseleave="railFlyLeave()">'
-         + '<div class="rn-dom-head" onclick="railDomClick(event,\''+d.id+'\',this)">'
+         + '<div class="rn-dom-head" onclick="railDomClick(event,\''+d.id+'\',this)"'
+         +   ' ondragover="railDomDragOver(event,\''+d.id+'\')" ondragleave="railDomDragLeave(event)" ondrop="railDomDrop(event,\''+d.id+'\')">'
          +   '<span class="rn-dom-ico">'+d.ico+'</span>'
          +   '<span class="rn-dom-name mono">'+d.name+'</span>'
          +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
@@ -301,6 +451,7 @@ function closeAllOverlays(){
   if(typeof closeDtc==='function')        closeDtc();
   if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeHome==='function')       closeHome();
 }
 
 // Open the Resources overlay (if not already) and switch to the given tab.
@@ -317,6 +468,7 @@ function railOpenRes(tab){
   if(typeof closeDtc==='function')        closeDtc();
   if(typeof closeChannels==='function')   closeChannels();
   if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeHome==='function')       closeHome();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
 }
@@ -326,6 +478,7 @@ function railRoute(viewId){
   if(RAIL_RES_TABS[viewId]){ railOpenRes(viewId); return; }
   closeAllOverlays();                       // org/summary/compare/matrix = single surface
   if(viewId==='matrix')       return;       // base canvas now revealed
+  else if(viewId==='home')    openHome();
   else if(viewId==='org')     openOrgChart();
   else if(viewId==='summary') openSummary();
   else if(viewId==='compare') openCompare();
@@ -374,7 +527,7 @@ function railEscMaybeBack(){
 // Modal/popup overlays that can sit ON TOP of a view — Esc must dismiss these
 // first (and NOT navigate back) so e.g. closing an ID card keeps you on the roster.
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
-  'landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
+  'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
   'export-builder-overlay','export-picker-overlay'];
 function railAnyModalOpen(){
@@ -405,16 +558,21 @@ function railDomClick(ev,domId,el){
 // domain lookup by domain id (distinct from railDomainFor which takes a view id)
 function railDomainFor2(domId){ return RAIL_DOMAINS.find(function(d){return d.id===domId;})||null; }
 
-/* ══ PAGE DRAG-REORDER (within a domain only) ══════════════════════════
+/* ══ PAGE DRAG-REORDER + CROSS-DOMAIN MOVE ═════════════════════════════
    Native HTML5 DnD on the .rn-sub rows. A plain click still navigates (a
-   click has no drag movement); dragging reorders the pages inside the same
-   domain and persists the id order in railViewOrder. Cross-domain drops are
-   rejected — a page never leaves its domain. Re-render happens ONLY on drop
-   (mid-drag re-render would kill the drag). */
+   click has no drag movement). Dropping a page:
+     • onto a .rn-sub in the SAME domain  → reorders within that domain
+     • onto a .rn-sub in ANOTHER domain   → moves it there, next to that page
+     • onto a .rn-dom-head                → moves it to the END of that domain
+   Only the ACTIVE domain shows its pages (others are collapsed), so the
+   domain-head is the drop target for moving a page into a collapsed domain.
+   Order lives in railViewOrder, the home-domain override in railViewDomain;
+   both persist. Re-render happens ONLY on drop (a mid-drag railRender wipes
+   innerHTML and would kill the drag). */
 function railClearDropMarks(){
   if(!railScrollEl) return;
-  var m=railScrollEl.querySelectorAll('.rn-drop-before,.rn-drop-after,.rn-dragging');
-  for(var i=0;i<m.length;i++) m[i].classList.remove('rn-drop-before','rn-drop-after','rn-dragging');
+  var m=railScrollEl.querySelectorAll('.rn-drop-before,.rn-drop-after,.rn-dragging,.rn-drop-into');
+  for(var i=0;i<m.length;i++) m[i].classList.remove('rn-drop-before','rn-drop-after','rn-dragging','rn-drop-into');
 }
 function railSubDragStart(ev,domId,viewId){
   railDragDom=domId; railDragView=viewId; railDragging=true;
@@ -422,7 +580,7 @@ function railSubDragStart(ev,domId,viewId){
   if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.add('rn-dragging');
 }
 function railSubDragOver(ev,domId){
-  if(railDragDom!==domId) return;             // only allow drops within the same domain
+  if(!railDragging) return;                    // only react to an in-flight page drag
   ev.preventDefault();
   try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
   var el=ev.currentTarget; if(!el||el===railScrollEl) return;
@@ -433,24 +591,57 @@ function railSubDragOver(ev,domId){
 function railSubDragLeave(ev){ if(ev.currentTarget&&ev.currentTarget.classList) ev.currentTarget.classList.remove('rn-drop-before','rn-drop-after'); }
 function railSubDrop(ev,domId,targetId){
   ev.preventDefault(); ev.stopPropagation();
-  if(railDragDom===domId && railDragView && railDragView!==targetId){
+  if(railDragView && railDragView!==targetId){
     var r=ev.currentTarget.getBoundingClientRect(), after=(ev.clientY-r.top)>r.height/2;
-    railReorderView(domId,railDragView,targetId,after);
+    railMoveView(railDragView,domId,targetId,after);   // same- or cross-domain
   }
   railClearDropMarks();
 }
 function railSubDragEnd(){ railDragging=false; railDragDom=null; railDragView=null; railClearDropMarks(); }
-// splice the dragged page next to the target, persist the new id order, re-render
-function railReorderView(domId,dragId,targetId,after){
-  var dom=railDomainFor2(domId); if(!dom) return;
-  var views=dom.views;
+
+// Domain-head drop target — lets a page be moved INTO a (usually collapsed)
+// domain, landing at its end. Highlights the whole domain while hovering.
+function railDomDragOver(ev,domId){
+  if(!railDragging) return;
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  railClearDropMarks();
+  var dom=ev.currentTarget&&ev.currentTarget.parentElement;
+  if(dom&&dom.classList) dom.classList.add('rn-drop-into');
+}
+function railDomDragLeave(ev){
+  var dom=ev.currentTarget&&ev.currentTarget.parentElement;
+  if(dom&&dom.classList) dom.classList.remove('rn-drop-into');
+}
+function railDomDrop(ev,domId){
+  ev.preventDefault(); ev.stopPropagation();
+  if(railDragView) railMoveView(railDragView,domId,null,false);   // append to domain end
+  railClearDropMarks();
+}
+
+// Move a page to toDomId, positioned next to targetId (or appended when targetId
+// is null). Records the home-domain override when it crosses domains, rebuilds the
+// layout so the page is now in toDom, then splices it to the exact drop position and
+// persists the resulting order for both the source and target domains. Handles the
+// same-domain case too (reorder), so it's the single mutation path for the DnD.
+function railMoveView(dragId,toDomId,targetId,after){
+  if(!railDomainFor2(toDomId)) return;
+  var fromDomId=railEffectiveDom(dragId);
+  if(fromDomId!==toDomId) railViewDomain[dragId]=toDomId;   // cross-domain: pin new home
+  railApplyLayout();                                        // re-place dragId into toDom
+  var views=railDomainFor2(toDomId).views;
   var from=views.findIndex(function(v){return v.id===dragId;});
   if(from<0) return;
   var moved=views.splice(from,1)[0];
-  var to=views.findIndex(function(v){return v.id===targetId;});
-  if(to<0){ views.splice(from,0,moved); return; }   // target vanished — undo
-  views.splice(after?to+1:to,0,moved);
-  railViewOrder[domId]=views.map(function(v){return v.id;});
+  var to=targetId?views.findIndex(function(v){return v.id===targetId;}):-1;
+  if(to<0) views.push(moved);                               // no/vanished target → end
+  else     views.splice(after?to+1:to,0,moved);
+  railViewOrder[toDomId]=views.map(function(v){return v.id;});
+  if(fromDomId&&fromDomId!==toDomId){                       // keep the source order truthful
+    var src=railDomainFor2(fromDomId);
+    if(src) railViewOrder[fromDomId]=src.views.map(function(v){return v.id;});
+  }
+  railDragging=false; railDragDom=null; railDragView=null;  // render below removes the drag node
   railSavePrefs();
   railRender();
 }

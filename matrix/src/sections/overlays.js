@@ -14,6 +14,7 @@
 
 // opens the help overlay
 function openHelp(){
+  var yr=G('help-colophon-year'); if(yr) yr.textContent=new Date().getFullYear();
   setActivePill('HELP');G('help-overlay').classList.add('show');}
 // closes the help overlay
 function closeHelp(){

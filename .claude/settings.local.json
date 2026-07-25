@@ -154,7 +154,9 @@
       "Bash(python -)",
       "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\")",
       "PowerShell(cd C:\\\\Users\\\\pyro3\\\\Documents\\\\Matrix\\\\matrix; Copy-Item dist\\\\matrix.html dist\\\\_verify.html -Force; \\(Get-Item dist\\\\_verify.html\\).Length)",
-      "Bash(tail -12 \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/output-layer-export-engine.md\")"
+      "Bash(tail -12 \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/output-layer-export-engine.md\")",
+      "Bash(grep -n \"replace.*export\\\\|replace.*import\\\\|/\\\\^export\\\\|stripExport\\\\|\\\\\\\\bexport\\\\\\\\b\" build.js)",
+      "Bash(node --test tests/home-actions.test.js)"
     ]
   }
 }

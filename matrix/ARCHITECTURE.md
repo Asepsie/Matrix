@@ -5,6 +5,107 @@ keep entries short — record what is *non-obvious from the code*, not a full to
 
 ---
 
+## Personal Home — customizable widget grid + Action Queue (`home.js`)
+
+The default front door: `HOME › Home` ([src/sections/home.js](src/sections/home.js) +
+[src/styles/home.css](src/styles/home.css), all `home`/`_home`/`HOME_`-prefixed). A rail-inset
+VIEW (`#home-overlay`, `left:var(--rail)`, z400, like `#brief-overlay`). **"Everything is a
+widget"** — a per-device grid the user *composes* from a curated library; the ranked cross-domain
+**Action Queue** is the hero widget (on by default) but is itself removable/movable/resizable like
+any other. This is a deliberate change from HOME-PLAN.md's original "fixed Action-Queue hero" —
+the user chose the fully-customizable model (build history in [HOME-PLAN.md](HOME-PLAN.md)).
+
+### Two layers, kept apart (the testability split)
+
+1. **Engine (pure, node-testable)** — `homeBuildActions(ctx)` + its classifiers (`homeClassifyPerson`
+   / `homeClassifyProject`), `homeSuppress`/`homeApplyState`/`homeFilterItems`/`homeRank`/`homeHash`/
+   `homeEngImpact`. These take **plain inputs**, call NO producer/DOM globals, and are the only things
+   the tests import. **home.js top level must stay global-free** (no top-level `t()`/`G()` calls) so
+   `import`ing it in Node runs only declarations — that's why `HOME_THRESHOLDS`/`HOME_BAND_RANK` are
+   plain consts and the widget registry is a **function** (`homeWidgetDefs()`), not a top-level const.
+   Classifier titles/why are **plain English literals** (no `t()`) — Home's dynamic action text is
+   deliberately un-i18n'd for now; only the chrome (widget titles, buttons) goes through `t()`.
+2. **Gather + UI** — `homeRawItems` reads the live producers (`buildAnalyticsDataset`,
+   `gtBuildSignalMap`+`gtStageReadiness`/`gtCurStageIdx`, `_buildEngUtil`, `tegThisWeekList`,
+   `allocRows`/`projects`/`gateConfig`), so `home.js` loads LATE in `JS_FILES` (after
+   analytics/gate/econ/charter/engagement, before collab). Null-tolerant throughout (every producer
+   call guarded — a talent-only dataset yields only people items, a no-charter project yields no
+   portfolio items, never throws).
+
+### Action Queue engine (the people × portfolio join)
+
+One item per **entity × concern** (11 concerns: retention-risk/over-allocation/bench/stale-review/
+engagement-due · gate-blocked/gate-behind · charter-conflict/value-destroying/low-unit-margin/
+dtc-gap/channel-concentration). Item id `= concern:entityType:entityUid`. Carries **both** `entityUid`
+(durable — state/resurface key, survives reload+merge) **and** `entityId` (numeric — deep-link openers).
+Ranking = **severity band (critical/warn/watch) then € impact** (no composite score). Impact: a project
+uses `max(0, riskAdjNpv)`; a **person's is blast-radius** = Σ over the projects they touch of that
+project's risk-adjusted upside, **×`spofBoost` (1.5) if a KT-less sole skill holder** — the reverse of
+the `allocRows` join `gtBuildSignalMap` builds internally. **Suppression:** a person's capacity/gov
+cards are dropped when they already have a *critical* retention card (its why already names them; avoids
+stacking one human's problems) — over-alloc on a *non-risky* person still shows. Thresholds live in one
+tunable `HOME_THRESHOLDS`.
+
+### State: snooze + dismiss-until-signal-changes
+
+`homeApplyState` drops snoozed items (`snoozed[id].until > now`) and dismissed-and-unchanged items
+(`dismissed[id].hash === item.hash`); a **materially worse signal changes the content hash** →
+`homeHash` differs → the item **resurfaces** and the stale dismissal is pruned. Hash inputs are coarse
+buckets so tiny drift doesn't resurface. All hashing is on `entityUid`, never numeric `id`.
+
+### Persistence & customization (per-device, never app state/backups)
+
+`eim_home_prefs = { layout:[{id,w}], snoozed:{}, dismissed:{} }` — own key, like `eim_rail_prefs`
+(NOT `SK`, not in backups/collab). `homeLoadPrefs` reconciles-don't-migrate: drops unknown widget ids,
+falls back to `homeDefaultLayout()` (the one smart default). Customize mode (`homeToggleEdit`) reveals
+per-widget controls: **width cycle** (1→2→3 grid cols, `homeCycleWidth`), **◀▶ reorder** (`homeNudge`)
+and **✕ remove** (`homeRemoveWidget`), plus native **HTML5 drag-reorder** (`homeDragStart/Over/Drop`,
+same idiom as the rail page-reorder). **＋ Add widget** (`homeOpenAdd`) shows an inline panel of
+not-yet-added library widgets. Every mutation persists immediately. **★ Set as default** writes
+`railLanding='home'` via the rail's own `railSavePrefs` (reuses the existing landing mechanism; Home is
+also the recommended first-run choice). The top-bar **filter chips** (All/People/Portfolio/Gov) filter
+the Action Queue widget's domain only — they do NOT hide other widgets (add/remove owns that).
+
+### Widget library
+
+`homeWidgetDefs()` = `{id,title,domain,defW,render(ctx),desc}`. First library covers the three chosen
+domains: **action** (Action Queue) · **people** (Talent Risk Radar, Retention Watch, Review Governance,
+Engagement This Week, Headcount) · **governance/capacity** (Gate Readiness, Capacity & Bench, Team Cost).
+Portfolio-value widgets aren't in the library yet (the Action Queue still surfaces those concerns);
+adding one = append to `homeWidgetDefs()` (auto-appears in the Add panel — reconcile-don't-migrate).
+
+### Deep-links & gotchas
+
+`homeOpenFor(concern, entityId)` maps each concern to exactly one target surface: idcard modal
+(retention/stale-review, opens over Home) · `railGo(null,'plan'|'engagement'|'gate')` (capacity/gate —
+`railGo` closes Home via `closeAllOverlays` + sets `activeView`) · `homeGoView(view, fn)` for the
+project overlays that self-show (`openCharter`/`chtOpenDecision`/`openChannels`/`openDtc`+
+`dtcSelectProject`) — it closes Home, sets `activeView`, calls the opener, then `railRender`s so the
+rail highlight stays truthful. **`railGo(ev, viewId)` is two-arg** — the engine's openers pass `null`
+as the event.
+
+- **CLASS-NAME COLLISION (bit us):** the control bar and the inline progress meters were BOTH
+  `.home-bar` — the meter's `height:8px;overflow:hidden` collapsed the topbar to 8px and clipped its
+  buttons. The topbar is now `.home-topbar`; keep the two distinct. (Verify layout via DOM geometry,
+  not screenshots — the `file://` preview snapshot lags on repaints; `getBoundingClientRect` is ground
+  truth, same lesson as the charter/gate sections.)
+- **Rail wiring:** `home` is a domain at the TOP of `RAIL_DOMAINS` (single view); `railRoute` opens it
+  (`openHome`); `closeAllOverlays`/`railOpenRes` close it; NOT in `railWrapClosers` (no ✕/back on the
+  front door). `#home-overlay` is defined after `{{JS}}` in index.html (only touched by user-triggered
+  `openHome`, so the boot-timing trap doesn't apply).
+- Registered in `build.js` (`JS_FILES` + `CSS_FILES`). Tests:
+  [tests/home-actions.test.js](tests/home-actions.test.js) (band mapping, suppression, impact/SPOF
+  boost, rank, hash-resurface, snooze, null-tolerance, domain/minBand filter). Verified in-browser
+  against a seeded dataset: queue ranks correctly, suppression holds, widgets/filters/deep-links/
+  set-default all work, no console errors.
+
+Distinct from the Executive summary (which aggregates but does not compose or act) — the two coexist.
+Exec's *personal* pieces (`xsPlannerPins`/`xsScheduleSection` "my week") migrating onto Home is the
+remaining Phase-4 polish, along with the optional AI brief (`Brief me` → `ai.js`) and per-user-in-room
+layouts.
+
+---
+
 ## Multi-user collaboration (collab.js)
 
 `OFFER MNGT`-independent — it's a **rail utility action** (`Collaborate`, in `RAIL_UTIL`)
@@ -662,14 +763,36 @@ canvas is no longer the front door — it's one view under OFFER MNGT (the renam
   UI-only prefs — `{hoverMode, landing, railWidth, chartPicker, badgeScope, scrollbar, viewOrder}` —
   persist in **`localStorage 'eim_rail_prefs'`**, deliberately separate from app state (`SK='eim_v4'`)
   and **not** part of the data model or backups. First run shows `#landing-firstrun` to pick the default view.
-- **Page drag-reorder (within a domain).** Each `.rn-sub` is `draggable`; native HTML5 DnD reorders
-  pages inside their own domain and persists the id order in `railViewOrder` (`{domId:[viewId,…]}`).
-  Cross-domain drops are rejected (the `dragover`/`drop` guard checks `railDragDom===domId`). A plain
-  click still navigates (no drag movement → no `dragstart`). `railApplyOrder()` (called in `railInit`)
-  re-sorts `RAIL_DOMAINS[].views` by the saved id order with a **stable sort where unknown ids fall to
-  the end** — so a build that adds/removes a view reconciles cleanly (same idea as `sanitise*`), no
-  migration. Re-render happens **only on drop** (a mid-drag `railRender` wipes `innerHTML` → kills the
-  drag); the rail `mouseleave` auto-collapse is suppressed while `railDragging`.
+- **Configurable page placement (reorder + cross-domain move).** Each `.rn-sub` is `draggable`; native
+  HTML5 DnD both reorders pages within a domain AND **moves them between domains**. Two persisted override
+  maps (in `eim_rail_prefs`, UI-only — never app state/backups): `railViewOrder` (`{domId:[viewId,…]}`,
+  order within a domain) and `railViewDomain` (`{viewId:domId}`, a page's overridden home domain). A
+  **master registry captured once from the declared `RAIL_DOMAINS`** — `RAIL_VIEW_DEF_DOM` (home domain)
+  + `RAIL_ALL_VIEWS` (live view objects) — is the fixed source that **`railApplyLayout()`** (called in
+  `railInit`, replaces the old `railApplyOrder`) rebuilds every domain's `views` from each call: place
+  each view in its effective domain (`railViewDomain` else home), then order within (stable; unknown ids
+  fall to the end). It's **idempotent** and self-heals stale prefs — an override pointing at a removed
+  domain falls home; a build adding/removing a view reconciles with no migration (same idea as `sanitise*`).
+  `railMoveView(dragId,toDomId,targetId,after)` is the single DnD mutation path (same-domain reorder AND
+  cross-domain move), persisting both the source and target domain orders. **Drop targets:** a `.rn-sub`
+  (precise position, only possible in the one expanded/active domain) OR a **`.rn-dom-head`** (appends to
+  that domain — the only way to reach a *collapsed* domain, since non-active domains hide their pages;
+  the head highlights `.rn-drop-into` while hovering). A plain click still navigates (no drag movement →
+  no `dragstart`). Re-render happens **only on drop** (a mid-drag `railRender` wipes `innerHTML` → kills
+  the drag); the rail `mouseleave` auto-collapse is suppressed while `railDragging`.
+  - **Organiser pop-up** (`#rail-layout-overlay`, opened from a Settings button via `rloOpen`; `z1160`,
+    above the Settings modal's `z1100`): a wide board that MIRRORS the rail — one column per domain
+    (`rloRenderBoard`), pages as draggable cards. It has its OWN DnD (scratch `rloDragView`, separate DOM
+    from the rail strip): drop a card on another card = position next to it (`rloCardDrop`), drop on a
+    column = append to that domain (`rloColDrop`). Each card also carries a domain `<select>`
+    (`railLayoutSetDomain` → `railMoveView` to the domain's end) and ▲/▼ nudges (`railLayoutNudge`, adjacent
+    swap) as the no-drag/touch fallback. Everything routes through the SAME persisted model + `railMoveView`
+    as the rail DnD, then calls `railRender` (live rail) AND `rloRenderBoard` (the board) — so the board,
+    the rail and the persisted prefs never diverge; edits apply **immediately** (like a drop), NOT on
+    Settings SAVE. `railResetLayout` (the organiser's **↺ RESET LAYOUT** button) clears both override maps.
+    Esc closes it (its closer is wired in boot.js's keydown handler; it's in `RAIL_MODAL_OVERLAYS` so Esc
+    dismisses it without back-navigating). This replaced an earlier cramped inline list inside the Settings
+    column — the board is roomier and reads as the rail it configures.
 - **Short-viewport compact mode (the real fix for "tiny scrollbar on small screens").** The open rail
   (6 domain rows + an expanded domain's pages + the 7-row utility foot) overflows a short screen and
   forces the scrollbar. `@media (max-height:780px){#railnav.open …}` in nav.css tightens the domain
@@ -1463,6 +1586,57 @@ Wrap the literal: `t('My label')`. Add its value under `fr` and `zh` in `I18N_DI
 ([i18n.js](src/core/i18n.js)). `node build.js` prints the audit (0 missing = done);
 `node --test tests/i18n.test.js` checks parity. Keys with `{name}` placeholders must keep the
 same placeholders in every translation (the parity test enforces this).
+
+---
+
+## Guided tour (src/sections/tour.js + styles/tour.css)
+
+A **hub-and-spoke** onboarding walkthrough embedded in the Help panel. All `tour`/`_tour`-prefixed
+(flat-bundle rule); themed with `var(--…)` and localized via `t()`, so it follows the app theme and
+EN/FR/ZH. Registered in build.js (`JS_FILES` after railnav.js — it needs `RAIL_DOMAINS`/`railGo`/
+`railPinned`/`railTogglePin`/`escH`/`t` — and `CSS_FILES`). **Not persisted, not app state, not in
+backups** — pure UI help.
+
+### Key facts (non-obvious)
+
+- **The menu is DATA-DERIVED from `RAIL_DOMAINS`.** `tourShowMenu` renders one card per domain
+  (icon + page list) straight off the rail's own domain table, so a new view/domain auto-appears in
+  the tour with **zero tour wiring** — same reconcile-don't-migrate philosophy as `railApplyOrder`.
+  Picking a card runs `tourDomainTrack(domId)` = an intro step + one step per `dom.views[]` + a
+  `menu-end` step; **end of any track returns to the hub** (not close), so the user can pick another
+  section — this is the "select specific sections to explore" model.
+- **Hand-authored copy lives in `TOUR_COPY`, keyed by view id** (matrix/roster/plan/dashboard/
+  skillrisk/ninebox/exec so far — the "key sections" scope). A view id **without** a `TOUR_COPY`
+  entry falls back to a generated stub (`Opens <label>. Explore it now…`). **To flesh out the rest of
+  the tour, add entries to `TOUR_COPY`** — that's the whole remaining task; the scaffold already
+  reaches every view. `tourBasicsTrack()` is a separate concept-level intro (welcome → rail → matrix).
+- **View steps drive `railGo(null, viewId)`** to open the REAL surface, then spotlight the rail entry
+  via a `data-view="<id>"` attribute **added to the `.rn-sub` markup in `railRender`** (railnav.js) —
+  a stable anchor, unlike the dead early-version tour that keyed off `button[onclick="…"]` on a header
+  and res-tab strip that no longer exist. `railGo` accepts a null event (`if(ev&&ev.stopPropagation)`).
+- **The rail is PINNED OPEN for the duration** (so page entries are visible to spotlight); the
+  pre-tour pin state is captured in `_tourRailPinPrev` and **restored on `tourStop`** via `railTogglePin`.
+- **Exactly one element dims the screen at a time.** Anchored steps use `#tour-spot`'s giant
+  `box-shadow` (transparent hole over the item — works regardless of the rail's z-index because the
+  cutout is genuinely transparent); center/menu steps hide the spot and show `#tour-overlay` (a flat
+  backdrop). Showing both would dim the highlighted item too — `tourPlaceSpot` toggles between them.
+- **Keyboard is a CAPTURE-phase listener** (`addEventListener('keydown',…,true)`): while active it
+  handles ←/→/Esc/Enter and **`stopPropagation()`s every key** so boot.js's bubble-phase app
+  shortcuts (n/s/p/o/1/2/3/…) don't fire underneath the tour. Capture + stopPropagation is what
+  blocks the later bubble listener on the same `document` target.
+- **DOM built lazily** (`tourBuildDOM` on first `tourStart`) — its overlay/spot/pop are appended at
+  use, so the nav-rail boot-timing trap (overlays after `{{JS}}` not yet in the DOM at boot) doesn't
+  apply. z-index: overlay 1189 < spot 1190 < pop 1200 (above the rail's 1000 and modals' 1100).
+- **Grid blow-out gotcha (bit this build):** the menu's 2-col card grid overflowed the popup because
+  a long nowrap page-list has `min-width:auto` intrinsic width — same trap the export section
+  documents. Fixed with `min-width:0` on `.tour-card` (+ `overflow:hidden;text-overflow:ellipsis` on
+  the sub-line). Launched from a `#help-tour-launch` button at the top of `#help-overlay`; `?` still
+  opens Help (the tour is one click inside it), not the tour directly.
+
+Verified in-browser end to end (real UI): hub renders 6 cards, basics + domain tracks navigate via
+`railGo` and spotlight the correct rail item, res-tab views (nine-box) open, end-of-track returns to
+the menu, `tourStop` restores the rail pin, the Help launcher opens the tour + closes Help, app
+shortcuts are suppressed while active, ←/→/Esc work, no console errors.
 
 ---
 

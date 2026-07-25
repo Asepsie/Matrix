@@ -23,6 +23,7 @@ document.addEventListener('keydown',e=>{
     // the two export overlays were missing (the builder ignored Esc entirely).
     if(typeof exportBuilderClose==='function')exportBuilderClose();
     if(typeof exportClosePicker==='function')exportClosePicker();
+    if(typeof rloClose==='function')rloClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }
