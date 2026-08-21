@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matrix — Backup Comparator / Merger</title>
+<style>
+:root{
+  --bg:#0e0f11; --surface:#17191c; --surface2:#1e2126; --border:#2a2e34;
+  --text:#e7e9ec; --muted:#9aa2ad; --dim:#5b636e;
+  --accent:#c8f135; --accent2:#5be5c8; --danger:#f14335; --warn:#f1a435;
+  --Aclr:#5be5c8; --Bclr:#c8f135;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+h1{font-size:16px;margin:0}
+h2{font-size:13px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+code,.mono{font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace}
+a{color:var(--accent2)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:5}
+header .sub{color:var(--dim);font-size:11px}
+.wrap{padding:16px 18px;max-width:1240px;margin:0 auto}
+.drops{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.drop{border:1.5px dashed var(--border);border-radius:10px;padding:16px;text-align:center;background:var(--surface);cursor:pointer;transition:.12s}
+.drop.hasfile{border-style:solid}
+.drop.A{border-color:var(--Aclr)}.drop.B{border-color:var(--Bclr)}
+.drop.over{background:var(--surface2)}
+.drop .tag{display:inline-block;font-weight:700;font-size:11px;padding:1px 7px;border-radius:4px;color:#0e0f11}
+.drop.A .tag{background:var(--Aclr)}.drop.B .tag{background:var(--Bclr)}
+.drop .fname{margin-top:8px;font-size:12px;color:var(--text);word-break:break-all}
+.drop .fmeta{margin-top:4px;font-size:11px;color:var(--muted)}
+.nav{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--border);margin:10px 0 14px}
+.nav button{background:none;border:none;color:var(--muted);padding:8px 12px;cursor:pointer;font:inherit;border-bottom:2px solid transparent;position:relative}
+.nav button.active{color:var(--text);border-bottom-color:var(--accent)}
+.nav .badge{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;font-size:10px;border-radius:8px;background:var(--surface2);color:var(--muted);font-family:monospace}
+.nav .badge.diff{background:var(--warn);color:#0e0f11}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px}
+.controls label{color:var(--muted);font-size:11px;display:flex;gap:6px;align-items:center}
+select,input[type=text]{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:4px 6px;font:inherit}
+.btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:#0e0f11;border-color:var(--accent);font-weight:700}
+.btn.sm{padding:2px 8px;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:var(--bg)}
+tr.same td{color:var(--dim)}
+.badge2{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600}
+.st-same{background:#22262b;color:var(--dim)}
+.st-changed{background:rgba(241,164,53,.18);color:var(--warn)}
+.st-Aonly{background:rgba(91,229,200,.16);color:var(--Aclr)}
+.st-Bonly{background:rgba(200,241,53,.16);color:var(--Bclr)}
+.pick{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.pick button{background:var(--surface);border:none;color:var(--muted);padding:3px 9px;cursor:pointer;font:inherit;font-size:11px;border-right:1px solid var(--border)}
+.pick button:last-child{border-right:none}
+.pick button.on[data-val=A]{background:var(--Aclr);color:#0e0f11}
+.pick button.on[data-val=B]{background:var(--Bclr);color:#0e0f11}
+.pick button.on[data-val=drop]{background:var(--danger);color:#fff}
+.val{max-width:340px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.val.diff{color:var(--warn)}
+.mut{color:var(--muted)} .dim{color:var(--dim)}
+details.fx{margin-top:4px}
+details.fx summary{cursor:pointer;color:var(--accent2);font-size:11px}
+.editor{width:100%;min-height:70px;background:#101216;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px;font-family:monospace;font-size:11px;margin-top:6px}
+.thumb{width:38px;height:38px;object-fit:cover;border-radius:5px;border:1px solid var(--border);background:var(--surface2)}
+.warns{margin-bottom:14px}
+.warn-item{background:var(--surface);border-left:3px solid var(--warn);border-radius:0 6px 6px 0;padding:7px 12px;margin-bottom:6px;font-size:12px}
+.warn-item.err{border-left-color:var(--danger)}
+.warn-item.ok{border-left-color:var(--accent)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.card.A{border-top:3px solid var(--Aclr)}.card.B{border-top:3px solid var(--Bclr)}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:8px 0 0}
+.card dt{color:var(--dim);font-size:11px}.card dd{margin:0;font-size:12px}
+.empty{color:var(--dim);padding:30px;text-align:center}
+.sectionbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.count-pill{font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2px 10px}
+pre.out{background:#101216;border:1px solid var(--border);border-radius:8px;padding:12px;max-height:420px;overflow:auto;font-size:11px}
+.hide{display:none}
+.cell{font-family:monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Matrix · Backup Comparator + Merger</h1>
+  <span class="sub">compare two full-backup JSON files · resolve conflicts · export a merged backup</span>
+</header>
+
+<div class="wrap">
+  <div class="drops">
+    <label class="drop A" id="dropA">
+      <span class="tag">A</span> <b>Backup A</b> <span class="mut">(base / left)</span>
+      <div class="fname mut">drop a .json here or click to choose</div>
+      <div class="fmeta"></div>
+      <input type="file" accept=".json,application/json" class="hide" id="fileA">
+    </label>
+    <label class="drop B" id="dropB">
+      <span class="tag">B</span> <b>Backup B</b> <span class="mut">(incoming / right)</span>
+      <div class="fname mut">drop a .json here or click to choose</div>
+      <div class="fmeta"></div>
+      <input type="file" accept=".json,application/json" class="hide" id="fileB">
+    </label>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="controls">
+      <label>On conflict prefer
+        <select id="pref-conflict"><option value="A">A</option><option value="B" selected>B</option></select>
+      </label>
+      <label>Membership
+        <select id="pref-membership">
+          <option value="union" selected>Union (keep all)</option>
+          <option value="A">Only in A</option>
+          <option value="B">Only in B</option>
+          <option value="intersection">Intersection (matched only)</option>
+        </select>
+      </label>
+      <label>Match engineers by
+        <select id="pref-matchEng"><option value="auto" selected>auto</option><option value="uid">uid</option><option value="name">name</option><option value="id">id</option></select>
+      </label>
+      <label>Match projects by
+        <select id="pref-matchProj"><option value="auto" selected>auto</option><option value="uid">uid</option><option value="name">name</option><option value="id">id</option></select>
+      </label>
+      <button class="btn sm" id="applyDefaults" title="Re-apply the defaults above, discarding manual per-row picks">↻ Re-apply defaults</button>
+    </div>
+
+    <div class="nav" id="nav"></div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   Matrix backup comparator / merger — standalone, offline, no dependencies.
+   Understands both the modern (uid-keyed, per-year nineBoxHistory, photos)
+   and the legacy (id-keyed, flat nineBoxPlacements, no uid) full-backup
+   formats produced by matrix.html's rail Backup button (exportFullBackup).
+   ───────────────────────────────────────────────────────────────────────── */
+const M = { A:null, B:null, dec:{}, edit:{}, units:[], orphans:{nb:[],photo:[]}, diff:{},
+  pref:{conflict:'B', membership:'union', matchEng:'auto', matchProj:'auto'},
+  active:'overview', showSame:false };
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone = v => v==null?v:JSON.parse(JSON.stringify(v));
+function sortKeys(v){ if(Array.isArray(v)) return v.map(sortKeys);
+  if(v&&typeof v==='object'){const o={};Object.keys(v).sort().forEach(k=>o[k]=sortKeys(v[k]));return o;} return v; }
+const canon = v => JSON.stringify(sortKeys(v));
+const nbKey = e => e ? (e.uid ? String(e.uid) : (e.id!=null ? String(e.id) : null)) : null;
+const engLabel = e => e ? (e.name || (e.id!=null?('#'+e.id):'(unnamed)') ) : '—';
+const projLabel = p => p ? (p.name || p.title || (p.id!=null?('#'+p.id):'(untitled)')) : '—';
+const decOf = (id,def) => M.dec[id]!==undefined ? M.dec[id] : def;
+const membKeepA = () => M.pref.membership==='union' || M.pref.membership==='A';
+const membKeepB = () => M.pref.membership==='union' || M.pref.membership==='B';
+
+function defDec(status){
+  if(status==='same') return 'A';
+  if(status==='changed') return M.pref.conflict;
+  if(status==='A-only') return membKeepA()?'A':'drop';
+  if(status==='B-only') return membKeepB()?'B':'drop';
+  return 'A';
+}
+function statusOf(p){ // p = {a,b}
+  if(p.a!=null && p.b!=null) return canon(p.a)===canon(p.b) ? 'same':'changed';
+  return p.a!=null ? 'A-only':'B-only';
+}
+
+/* ── file loading + normalisation ────────────────────────────────────── */
+function normalize(raw, name){
+  let state, photos={}, fmt;
+  if(raw && raw._type==='full_backup' && raw.state){ state=raw.state; photos=raw._photos||{}; fmt='full backup'; }
+  else if(raw && raw._type==='roster_v1'){ state={engineers:raw.engineers||[],engGroups:raw.engGroups||[],nextEngId:raw.nextEngId,nextEngGroupId:raw.nextEngGroupId}; fmt='roster'; }
+  else if(raw && raw.state){ state=raw.state; photos=raw._photos||{}; fmt='backup (no _type)'; }
+  else if(raw && raw.projects){ state=raw; photos=raw._photos||{}; fmt='legacy projects export'; }
+  else { state=raw||{}; fmt='unknown'; }
+  const hasUid = (state.engineers||[]).some(e=>e&&e.uid);
+  const nb = nineHistoryOf(state);
+  const nbCount = Object.values(nb).reduce((n,m)=>n+Object.keys(m||{}).length,0);
+  return { raw, name, state, photos, fmt, hasUid,
+    meta:{ exportedAt: raw&&raw._exportedAt, version: raw&&raw._version,
+      engineers:(state.engineers||[]).length, projects:(state.projects||[]).length,
+      allocRows:(state.allocRows||[]).length, photos:Object.keys(photos).length,
+      nineboxYears:Object.keys(nb).length, nineboxPlacements:nbCount } };
+}
+function nineHistoryOf(st){
+  if(st.nineBoxHistory && typeof st.nineBoxHistory==='object' && Object.keys(st.nineBoxHistory).length) return st.nineBoxHistory;
+  const yr = st.nbYear || '(all)';
+  if(st.nineBoxPlacements && typeof st.nineBoxPlacements==='object' && Object.keys(st.nineBoxPlacements).length) return {[yr]:st.nineBoxPlacements};
+  return {};
+}
+
+function loadFile(slot, file){
+  const r = new FileReader();
+  r.onload = e => {
+    try{ const raw = JSON.parse(e.target.result); M[slot] = normalize(raw, file.name); paintDrop(slot); if(M.A&&M.B){ computeDiffs(); showApp(); } }
+    catch(err){ alert('Could not parse '+file.name+':\n'+err.message); }
+  };
+  r.readAsText(file);
+}
+function paintDrop(slot){
+  const f=M[slot], d=document.getElementById('drop'+slot);
+  d.classList.add('hasfile');
+  d.querySelector('.fname').innerHTML='<b>'+esc(f.name)+'</b>';
+  d.querySelector('.fname').classList.remove('mut');
+  d.querySelector('.fmeta').textContent =
+    f.fmt+' · '+f.meta.engineers+' eng · '+f.meta.projects+' proj · '+f.meta.nineboxPlacements+' nine-box · '+f.meta.photos+' photos';
+}
+['A','B'].forEach(slot=>{
+  const d=document.getElementById('drop'+slot), inp=document.getElementById('file'+slot);
+  inp.addEventListener('change',e=>{ if(e.target.files[0]) loadFile(slot,e.target.files[0]); });
+  d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over');});
+  d.addEventListener('dragleave',()=>d.classList.remove('over'));
+  d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');const f=e.dataTransfer.files[0];if(f)loadFile(slot,f);});
+});
+
+/* ── matching ────────────────────────────────────────────────────────── */
+function keyFns(mode, kind){
+  const uid=x=>x&&x.uid?('u:'+x.uid):null; uid.label='uid';
+  const id =x=>x&&x.id!=null?('i:'+x.id):null; id.label='id';
+  const nm =kind==='proj'
+    ? (x=>x&&(x.name||x.title)?('n:'+String(x.name||x.title).trim().toLowerCase()):null)
+    : (x=>x&&x.name?('n:'+String(x.name).trim().toLowerCase()):null);
+  nm.label='name';
+  if(mode==='uid') return [uid];
+  if(mode==='name') return [nm];
+  if(mode==='id') return [id];
+  return kind==='alloc' ? [uid,id] : [uid,nm,id];
+}
+function matchLists(listA, listB, fns){
+  const bIdx = fns.map(()=>new Map());
+  listB.forEach((b,i)=>fns.forEach((fn,ki)=>{const k=fn(b);if(k&&!bIdx[ki].has(k))bIdx[ki].set(k,i);}));
+  const used=new Set(), pairs=[];
+  listA.forEach(a=>{
+    let mi=-1, via=null;
+    for(let ki=0;ki<fns.length;ki++){ const k=fns[ki](a); if(!k)continue; const idx=bIdx[ki].get(k); if(idx!=null&&!used.has(idx)){mi=idx;via=fns[ki].label;break;} }
+    if(mi>=0){ used.add(mi); pairs.push({a,b:listB[mi],via}); } else pairs.push({a,b:null,via:null});
+  });
+  listB.forEach((b,i)=>{ if(!used.has(i)) pairs.push({a:null,b,via:null}); });
+  return pairs;
+}
+
+/* ── build the full diff model ───────────────────────────────────────── */
+function computeDiffs(){
+  M.dec={}; M.edit={};
+  const A=M.A, B=M.B;
+  M.diff.engineers = matchLists(A.state.engineers||[], B.state.engineers||[], keyFns(M.pref.matchEng,'eng'));
+  M.diff.projects  = matchLists(A.state.projects||[],  B.state.projects||[],  keyFns(M.pref.matchProj,'proj'));
+  M.diff.allocRows = matchLists(A.state.allocRows||[],  B.state.allocRows||[],  keyFns('auto','alloc'));
+
+  const Ah=nineHistoryOf(A.state), Bh=nineHistoryOf(B.state);
+  const Ad=A.state.discPlacements||{}, Bd=B.state.discPlacements||{};
+  const Ap=A.photos||{}, Bp=B.photos||{};
+  const years=[...new Set([...Object.keys(Ah),...Object.keys(Bh)])].sort();
+  const cNb=new Set(), cDisc=new Set(), cPh=new Set(); // consumed "side|..."
+
+  M.units = M.diff.engineers.map((p,i)=>{
+    const u={i, a:p.a, b:p.b, via:p.via};
+    u.engStatus=statusOf(p); u.engDef=defDec(u.engStatus);
+    const aRef=nbKey(p.a), bRef=nbKey(p.b);
+    u.nb=[];
+    years.forEach(y=>{
+      const av=aRef?(Ah[y]||{})[aRef]:undefined, bv=bRef?(Bh[y]||{})[bRef]:undefined;
+      if(aRef&&av!==undefined)cNb.add('A|'+y+'|'+aRef);
+      if(bRef&&bv!==undefined)cNb.add('B|'+y+'|'+bRef);
+      if(av===undefined&&bv===undefined)return;
+      const st=(av!==undefined&&bv!==undefined)?(av===bv?'same':'changed'):(av!==undefined?'A-only':'B-only');
+      u.nb.push({year:y,a:av,b:bv,status:st,def:defDec(st)});
+    });
+    const da=aRef?Ad[aRef]:undefined, db=bRef?Bd[bRef]:undefined;
+    if(aRef&&da!==undefined)cDisc.add('A|'+aRef); if(bRef&&db!==undefined)cDisc.add('B|'+bRef);
+    if(da!==undefined||db!==undefined){const st=(da!==undefined&&db!==undefined)?(da===db?'same':'changed'):(da!==undefined?'A-only':'B-only');u.disc={a:da,b:db,status:st,def:defDec(st)};}
+    const pa=aRef?Ap[aRef]:undefined, pb=bRef?Bp[bRef]:undefined;
+    if(aRef&&pa!==undefined)cPh.add('A|'+aRef); if(bRef&&pb!==undefined)cPh.add('B|'+bRef);
+    if(pa!==undefined||pb!==undefined){const st=(pa!==undefined&&pb!==undefined)?(pa===pb?'same':'changed'):(pa!==undefined?'A-only':'B-only');u.photo={a:pa,b:pb,status:st,def:defDec(st)};}
+    return u;
+  });
+
+  M.orphans={nb:[],photo:[]};
+  Object.keys(Ah).forEach(y=>Object.keys(Ah[y]||{}).forEach(ref=>{ if(!cNb.has('A|'+y+'|'+ref)) M.orphans.nb.push({side:'A',year:y,ref,cell:Ah[y][ref]}); }));
+  Object.keys(Bh).forEach(y=>Object.keys(Bh[y]||{}).forEach(ref=>{ if(!cNb.has('B|'+y+'|'+ref)) M.orphans.nb.push({side:'B',year:y,ref,cell:Bh[y][ref]}); }));
+  Object.keys(Ap).forEach(ref=>{ if(!cPh.has('A|'+ref)) M.orphans.photo.push({side:'A',ref,dataURL:Ap[ref]}); });
+  Object.keys(Bp).forEach(ref=>{ if(!cPh.has('B|'+ref)) M.orphans.photo.push({side:'B',ref,dataURL:Bp[ref]}); });
+
+  // "other" state fields — everything not owned by a dedicated section
+  const owned=new Set(['engineers','projects','allocRows','nineBoxHistory','nineBoxPlacements','nbYear','discPlacements']);
+  const keys=[...new Set([...Object.keys(A.state),...Object.keys(B.state)])].filter(k=>!owned.has(k)).sort();
+  M.diff.fields = keys.map(k=>{
+    const a=A.state[k], b=B.state[k];
+    const st=(k in A.state && k in B.state)?(canon(a)===canon(b)?'same':'changed'):((k in A.state)?'A-only':'B-only');
+    let def=defDec(st);
+    if(st==='changed' && /^next[A-Z]/.test(k) && typeof a==='number' && typeof b==='number') def = b>a?'B':'A'; // id counters: keep the max
+    return {key:k, a, b, status:st, def};
+  });
+}
+
+/* ── counts for nav badges ───────────────────────────────────────────── */
+function diffCount(pairs){ return pairs.filter(p=>statusOf(p)!=='same').length; }
+function unitDiffCount(sel){ let n=0; M.units.forEach(u=>{ if(sel(u)) n++; }); return n; }
+function nbDiffCount(){ let n=M.orphans.nb.length; M.units.forEach(u=>u.nb.forEach(r=>{if(r.status!=='same')n++;})); return n; }
+function photoDiffCount(){ let n=M.orphans.photo.length; M.units.forEach(u=>{if(u.photo&&u.photo.status!=='same')n++;}); return n; }
+
+/* ── navigation ──────────────────────────────────────────────────────── */
+const SECTIONS=[
+  ['overview','Overview',()=>0],
+  ['engineers','Engineers',()=>diffCount(M.diff.engineers)],
+  ['ninebox','Nine-box',nbDiffCount],
+  ['photos','Photos',photoDiffCount],
+  ['projects','Projects',()=>diffCount(M.diff.projects)],
+  ['allocRows','Allocations',()=>diffCount(M.diff.allocRows)],
+  ['fields','Other fields',()=>M.diff.fields.filter(f=>f.status!=='same').length],
+  ['export','Export ▸',()=>0],
+];
+function renderNav(){
+  const nav=document.getElementById('nav');
+  nav.innerHTML=SECTIONS.map(([id,label,cnt])=>{
+    const c=id==='overview'||id==='export'?0:cnt();
+    const b=c>0?'<span class="badge diff">'+c+'</span>':'';
+    return '<button data-sec="'+id+'" class="'+(M.active===id?'active':'')+'">'+esc(label)+b+'</button>';
+  }).join('');
+  nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{M.active=b.dataset.sec;render();});
+}
+function showApp(){ document.getElementById('app').classList.remove('hide'); render(); }
+function render(){ renderNav(); const c=document.getElementById('content');
+  c.innerHTML = ({overview:vOverview, engineers:vEngineers, ninebox:vNinebox, photos:vPhotos,
+    projects:vProjects, allocRows:vAllocs, fields:vFields, export:vExport}[M.active]||vOverview)();
+  wire(c);
+}
+
+/* ── shared row bits ─────────────────────────────────────────────────── */
+function stBadge(st){ const m={'same':['st-same','identical'],'changed':['st-changed','conflict'],'A-only':['st-Aonly','A only'],'B-only':['st-Bonly','B only']}[st]||['st-same',st];
+  return '<span class="badge2 '+m[0]+'">'+m[1]+'</span>'; }
+function picker(id,status,def){
+  if(status==='same') return '<span class="dim">— identical —</span>';
+  const cur=decOf(id,def);
+  const opts = status==='changed' ? [['A','A'],['B','B'],['drop','Drop']]
+    : status==='A-only' ? [['A','Keep A'],['drop','Drop']]
+    : [['B','Keep B'],['drop','Drop']];
+  return '<span class="pick" data-pickid="'+esc(id)+'">'+opts.map(([v,l])=>
+    '<button data-val="'+v+'" class="'+(cur===v?'on':'')+'">'+l+'</button>').join('')+'</span>';
+}
+function valCell(v,diff){ if(v===undefined) return '<span class="dim">∅</span>';
+  const s=typeof v==='object'?JSON.stringify(v):String(v);
+  return '<div class="val'+(diff?' diff':'')+'">'+esc(s.length>400?s.slice(0,400)+'…':s)+'</div>'; }
+
+/* ── views ───────────────────────────────────────────────────────────── */
+function vOverview(){
+  const A=M.A,B=M.B;
+  const cardFor=(f,slot)=>'<div class="card '+slot+'"><h2><span class="badge2 st-'+(slot==='A'?'Aonly':'Bonly')+'">'+slot+'</span> '+esc(f.name)+'</h2>'
+    +'<dl>'
+    +'<dt>Format</dt><dd>'+esc(f.fmt)+(f.meta.version?' · v'+f.meta.version:'')+'</dd>'
+    +'<dt>Exported</dt><dd>'+(f.meta.exportedAt?esc(new Date(f.meta.exportedAt).toLocaleString()):'—')+'</dd>'
+    +'<dt>Engineers</dt><dd>'+f.meta.engineers+(f.hasUid?' <span class="dim">(uid-keyed)</span>':' <span class="dim">(id-keyed, legacy)</span>')+'</dd>'
+    +'<dt>Projects</dt><dd>'+f.meta.projects+'</dd>'
+    +'<dt>Allocations</dt><dd>'+f.meta.allocRows+'</dd>'
+    +'<dt>Nine-box</dt><dd>'+f.meta.nineboxPlacements+' placements · '+f.meta.nineboxYears+' year(s)</dd>'
+    +'<dt>Photos</dt><dd>'+f.meta.photos+'</dd>'
+    +'</dl></div>';
+  const warns=[];
+  if(!A.meta.nineboxPlacements) warns.push(['err','Backup A contains <b>no nine-box data</b>. If A is your target, pull nine-box from B.']);
+  if(!B.meta.nineboxPlacements) warns.push(['err','Backup B contains <b>no nine-box data</b>. If B is your target, pull nine-box from A.']);
+  const viaName=M.units.filter(u=>u.via==='name').length, viaUid=M.units.filter(u=>u.via==='uid').length, viaId=M.units.filter(u=>u.via==='id').length;
+  const unmatchedA=M.units.filter(u=>u.a&&!u.b).length, unmatchedB=M.units.filter(u=>!u.a&&u.b).length;
+  if(viaName&&!viaUid) warns.push(['warn','Engineers matched by <b>name</b> (no uids present) — rename-safe only if names are unique and unchanged.']);
+  if(unmatchedA||unmatchedB) warns.push(['warn',unmatchedA+' engineer(s) only in A, '+unmatchedB+' only in B could not be matched. Check the Engineers tab; try a different “Match by”.']);
+  if(M.orphans.nb.length) warns.push(['warn',M.orphans.nb.length+' nine-box placement(s) reference an engineer not found in their file (deleted person?). See the Nine-box tab → Unmatched.']);
+  if((A.meta.version||1)!==(B.meta.version||1)) warns.push(['warn','Backup format versions differ (A v'+(A.meta.version||1)+' vs B v'+(B.meta.version||1)+').']);
+  if(!warns.length) warns.push(['ok','No structural red flags. Matched '+viaUid+' by uid, '+viaName+' by name, '+viaId+' by id.']);
+  return '<div class="cards">'+cardFor(A,'A')+cardFor(B,'B')+'</div>'
+    +'<div class="warns">'+warns.map(([k,t])=>'<div class="warn-item '+k+'">'+t+'</div>').join('')+'</div>'
+    +'<p class="mut">Set your global strategy above, fine-tune per-row in each tab, then go to <b>Export ▸</b>. '
+    +'Nine-box, DISC and photos follow their engineer: pick the engineer side in <b>Engineers</b>, pick each placement value in <b>Nine-box</b>.</p>';
+}
+
+function entityTable(pairs, prefix, labelFn, fieldView){
+  const rows=pairs.map((p,i)=>({p,i,st:statusOf(p)})).filter(r=>M.showSame||r.st!=='same');
+  const bar='<div class="sectionbar">'
+    +'<span class="count-pill">'+pairs.length+' total · '+pairs.filter(p=>statusOf(p)!=='same').length+' differ</span>'
+    +'<button class="btn sm" data-all="'+prefix+':A">All → A</button>'
+    +'<button class="btn sm" data-all="'+prefix+':B">All → B</button>'
+    +'<label class="mut" style="margin-left:auto"><input type="checkbox" id="showSame" '+(M.showSame?'checked':'')+'> show identical</label>'
+    +'</div>';
+  if(!rows.length) return bar+'<div class="empty">Nothing differs here.</div>';
+  let h=bar+'<table><thead><tr><th style="width:26%">Item</th><th>Status</th><th style="width:34%">A</th><th style="width:34%">B</th><th>Resolve</th></tr></thead><tbody>';
+  rows.forEach(({p,i,st})=>{
+    const id=prefix+':'+i, lbl=labelFn(p.a||p.b);
+    h+='<tr class="'+(st==='same'?'same':'')+'"><td><b>'+esc(lbl)+'</b>'
+      +(p.via?' <span class="dim mono">·'+p.via+'</span>':'')
+      +(st==='changed'&&fieldView?fieldView(p):'')
+      +'</td><td>'+stBadge(st)+'</td>'
+      +'<td>'+(p.a?valCell(summ(p.a)):'<span class="dim">∅</span>')+'</td>'
+      +'<td>'+(p.b?valCell(summ(p.b)):'<span class="dim">∅</span>')+'</td>'
+      +'<td>'+picker(id,st,defDec(st))+editToggle(id)+'</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+function summ(o){ if(!o)return o; const c={}; ['name','title','role','location','monthlyCost','engId','projectId','budgetLine','gate','sector'].forEach(k=>{if(o[k]!==undefined)c[k]=o[k];}); return Object.keys(c).length?c:o; }
+function fieldDiff(p){ // list differing keys for an entity
+  const keys=[...new Set([...Object.keys(p.a||{}),...Object.keys(p.b||{})])].filter(k=>canon((p.a||{})[k])!==canon((p.b||{})[k]));
+  if(!keys.length) return '';
+  return '<details class="fx"><summary>'+keys.length+' field(s) differ</summary><table>'
+    +keys.map(k=>'<tr><td class="mono dim">'+esc(k)+'</td><td>'+valCell((p.a||{})[k],1)+'</td><td>'+valCell((p.b||{})[k],1)+'</td></tr>').join('')
+    +'</table></details>';
+}
+function editToggle(id){ return ' <button class="btn sm" data-edit="'+esc(id)+'">✎</button>'
+  +'<div class="editor hide" data-editor="'+esc(id)+'"></div>'; }
+
+function vEngineers(){ return entityTable(M.diff.engineers,'eng',engLabel,fieldDiff); }
+function vProjects(){ return entityTable(M.diff.projects,'proj',projLabel,fieldDiff); }
+function vAllocs(){ return entityTable(M.diff.allocRows,'alloc',
+  a=>'alloc '+(a.uid?('·'+String(a.uid).slice(0,6)):(a.id!=null?('#'+a.id):''))+(a.engId!=null?(' eng '+a.engId):'')+(a.projectId!=null?(' proj '+a.projectId):''),
+  fieldDiff); }
+
+function vNinebox(){
+  const bar='<div class="sectionbar">'
+    +'<span class="count-pill">'+nbDiffCount()+' placement conflict(s)/additions</span>'
+    +'<button class="btn sm" data-all="nb:A">All → A</button>'
+    +'<button class="btn sm" data-all="nb:B">All → B</button>'
+    +'<span class="count-pill">key = <span class="mono">'+(M.A.hasUid||M.B.hasUid?'uid':'id')+'</span></span>'
+    +'</div>';
+  let rows='';
+  M.units.forEach(u=>{
+    const diffRows=u.nb.filter(r=>M.showSame||r.status!=='same');
+    if(!diffRows.length) return;
+    const engDrop=decOf('eng:'+u.i,u.engDef)==='drop';
+    rows+='<tr><td colspan="5" style="background:var(--surface);border-top:1px solid var(--border)"><b>'+esc(engLabel(u.a||u.b))+'</b> '
+      +stBadge(u.engStatus)+(u.via?' <span class="dim mono">·'+u.via+'</span>':'')
+      +(engDrop?' <span class="badge2 st-changed">engineer dropped → placements excluded</span>':'')+'</td></tr>';
+    diffRows.forEach(r=>{
+      const id='nb:'+u.i+':'+r.year;
+      rows+='<tr class="'+(r.status==='same'?'same':'')+'"><td class="dim mono">'+esc(r.year)+'</td><td>'+stBadge(r.status)+'</td>'
+        +'<td class="cell">'+(r.a!==undefined?esc(r.a):'<span class="dim">∅</span>')+'</td>'
+        +'<td class="cell">'+(r.b!==undefined?esc(r.b):'<span class="dim">∅</span>')+'</td>'
+        +'<td>'+picker(id,r.status,r.def)+(r.status==='same'?'':nbEditToggle(id,decOf(id,r.def)==='B'?r.b:r.a))+'</td></tr>';
+    });
+  });
+  let orphans='';
+  if(M.orphans.nb.length){
+    orphans='<h2 style="margin-top:18px">Unmatched placements ('+M.orphans.nb.length+')</h2>'
+      +'<p class="mut">These reference an engineer id/uid not present in that file. Kept under the raw key so the app can re-link on import.</p>'
+      +'<table><thead><tr><th>Side</th><th>Year</th><th>Ref key</th><th>Cell</th><th>Resolve</th></tr></thead><tbody>'
+      +M.orphans.nb.map(o=>{const id='nborph:'+o.side+':'+o.year+':'+o.ref;const def=o.side==='A'?(membKeepA()?'A':'drop'):(membKeepB()?'B':'drop');
+        return '<tr><td>'+stBadge(o.side==='A'?'A-only':'B-only')+'</td><td class="dim mono">'+esc(o.year)+'</td><td class="mono dim">'+esc(String(o.ref).slice(0,12))+'</td><td class="cell">'+esc(o.cell)+'</td>'
+        +'<td>'+picker(id,o.side==='A'?'A-only':'B-only',def)+'</td></tr>';}).join('')+'</tbody></table>';
+  }
+  const head='<table><thead><tr><th style="width:16%">Year</th><th>Status</th><th style="width:18%">A cell</th><th style="width:18%">B cell</th><th>Resolve</th></tr></thead><tbody>';
+  return bar+(rows?head+rows+'</tbody></table>':'<div class="empty">No nine-box differences.</div>')+orphans;
+}
+function nbEditToggle(id,cur){ return ' <button class="btn sm" data-nbedit="'+esc(id)+'">✎</button>'
+  +'<input type="text" class="hide" data-nbeditor="'+esc(id)+'" value="'+esc(M.edit[id]!=null?M.edit[id]:(cur||''))+'" placeholder="e.g. 3-2" style="width:70px;margin-left:4px">'; }
+
+function vPhotos(){
+  const bar='<div class="sectionbar">'
+    +'<span class="count-pill">'+photoDiffCount()+' photo conflict(s)/additions</span>'
+    +'<button class="btn sm" data-all="photo:A">All → A</button>'
+    +'<button class="btn sm" data-all="photo:B">All → B</button></div>';
+  let rows='';
+  M.units.forEach(u=>{ if(!u.photo || (!M.showSame && u.photo.status==='same')) return;
+    const id='photo:'+u.i, st=u.photo.status;
+    rows+='<tr class="'+(st==='same'?'same':'')+'"><td><b>'+esc(engLabel(u.a||u.b))+'</b></td><td>'+stBadge(st)+'</td>'
+      +'<td>'+(u.photo.a?'<img class="thumb" src="'+esc(u.photo.a)+'">':'<span class="dim">∅</span>')+'</td>'
+      +'<td>'+(u.photo.b?'<img class="thumb" src="'+esc(u.photo.b)+'">':'<span class="dim">∅</span>')+'</td>'
+      +'<td>'+picker(id,st,u.photo.def)+'</td></tr>';
+  });
+  let orphans='';
+  if(M.orphans.photo.length){
+    orphans='<h2 style="margin-top:18px">Unmatched photos ('+M.orphans.photo.length+')</h2>'
+      +'<table><thead><tr><th>Side</th><th>Ref key</th><th>Photo</th><th>Resolve</th></tr></thead><tbody>'
+      +M.orphans.photo.map(o=>{const id='photorph:'+o.side+':'+o.ref;const def=o.side==='A'?(membKeepA()?'A':'drop'):(membKeepB()?'B':'drop');
+        return '<tr><td>'+stBadge(o.side==='A'?'A-only':'B-only')+'</td><td class="mono dim">'+esc(String(o.ref).slice(0,12))+'</td><td><img class="thumb" src="'+esc(o.dataURL)+'"></td><td>'+picker(id,o.side==='A'?'A-only':'B-only',def)+'</td></tr>';}).join('')+'</tbody></table>';
+  }
+  const head='<table><thead><tr><th style="width:34%">Engineer</th><th>Status</th><th>A</th><th>B</th><th>Resolve</th></tr></thead><tbody>';
+  return bar+(rows?head+rows+'</tbody></table>':'<div class="empty">No photo differences.</div>')+orphans;
+}
+
+function vFields(){
+  const rows=M.diff.fields.filter(f=>M.showSame||f.status!=='same');
+  const bar='<div class="sectionbar"><span class="count-pill">'+M.diff.fields.length+' fields · '+M.diff.fields.filter(f=>f.status!=='same').length+' differ</span>'
+    +'<button class="btn sm" data-all="field:A">All → A</button><button class="btn sm" data-all="field:B">All → B</button>'
+    +'<label class="mut" style="margin-left:auto"><input type="checkbox" id="showSame" '+(M.showSame?'checked':'')+'> show identical</label></div>';
+  if(!rows.length) return bar+'<div class="empty">All other fields identical.</div>';
+  let h=bar+'<table><thead><tr><th style="width:20%">Field</th><th>Status</th><th style="width:32%">A</th><th style="width:32%">B</th><th>Resolve</th></tr></thead><tbody>';
+  rows.forEach(f=>{ const id='field:'+f.key;
+    h+='<tr class="'+(f.status==='same'?'same':'')+'"><td class="mono">'+esc(f.key)+'</td><td>'+stBadge(f.status)+'</td>'
+      +'<td>'+valCell(f.a,f.status==='changed')+'</td><td>'+valCell(f.b,f.status==='changed')+'</td>'
+      +'<td>'+picker(id,f.status,f.def)+editToggle(id)+'</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+/* ── build merged output ─────────────────────────────────────────────── */
+function chosenEnt(id, p){
+  const st=statusOf(p), dec=decOf(id,defDec(st));
+  if(dec==='drop') return undefined;
+  if(M.edit[id]!=null){ try{ return JSON.parse(M.edit[id]); }catch(e){ alert('Ignoring invalid JSON edit for '+id); } }
+  return dec==='B'?p.b:(dec==='A'?p.a:(p.a||p.b));
+}
+function collectEnt(pairs,prefix){ const out=[]; pairs.forEach((p,i)=>{const v=chosenEnt(prefix+':'+i,p); if(v!==undefined) out.push(clone(v));}); return out; }
+
+function buildMerged(){
+  const s={};
+  // other fields
+  M.diff.fields.forEach(f=>{ const id='field:'+f.key; const dec=decOf(id,f.def); if(dec==='drop')return;
+    let v=dec==='B'?f.b:f.a; if(M.edit[id]!=null){try{v=JSON.parse(M.edit[id]);}catch(e){alert('Ignoring invalid JSON edit for '+f.key);}}
+    if(v!==undefined) s[f.key]=clone(v);
+  });
+  s.engineers = collectEnt(M.diff.engineers,'eng');
+  s.projects  = collectEnt(M.diff.projects,'proj');
+  s.allocRows = collectEnt(M.diff.allocRows,'alloc');
+
+  const hist={}, disc={}, photos={};
+  M.units.forEach(u=>{
+    const eid='eng:'+u.i; if(decOf(eid,u.engDef)==='drop') return;
+    const me=chosenEnt(eid,{a:u.a,b:u.b}); const key=nbKey(me); if(!key) return;
+    u.nb.forEach(r=>{ const id='nb:'+u.i+':'+r.year; const dec=decOf(id,r.def); if(dec==='drop')return;
+      let cell = M.edit[id]!=null ? M.edit[id] : (dec==='B'?r.b:r.a);
+      if(cell) (hist[r.year]=hist[r.year]||{})[key]=cell; });
+    if(u.disc){ const id='disc:'+u.i; const dec=decOf(id,u.disc.def); if(dec!=='drop'){ const c=dec==='B'?u.disc.b:u.disc.a; if(c) disc[key]=c; } }
+    if(u.photo){ const id='photo:'+u.i; const dec=decOf(id,u.photo.def); if(dec!=='drop'){ const c=dec==='B'?u.photo.b:u.photo.a; if(c) photos[key]=c; } }
+  });
+  M.orphans.nb.forEach(o=>{ const id='nborph:'+o.side+':'+o.year+':'+o.ref; const def=o.side==='A'?(membKeepA()?'A':'drop'):(membKeepB()?'B':'drop');
+    if(decOf(id,def)!=='drop') (hist[o.year]=hist[o.year]||{})[o.ref]=o.cell; });
+  M.orphans.photo.forEach(o=>{ const id='photorph:'+o.side+':'+o.ref; const def=o.side==='A'?(membKeepA()?'A':'drop'):(membKeepB()?'B':'drop');
+    if(decOf(id,def)!=='drop') photos[o.ref]=o.dataURL; });
+
+  s.nineBoxHistory = hist;
+  const years=Object.keys(hist).sort();
+  s.nbYear = (M.A.state.nbYear && hist[M.A.state.nbYear]) ? M.A.state.nbYear
+    : (years[years.length-1] || M.A.state.nbYear || String(new Date().getFullYear()));
+  s.nineBoxPlacements = hist[s.nbYear] || {};
+  s.discPlacements = disc;
+
+  const nonVacant = s.engineers.filter(e=>e && !e.vacant).length;
+  const backup={ _type:'full_backup', _version:1, _exportedAt:new Date().toISOString(),
+    _photoCount:Object.keys(photos).length, _engineerCount:nonVacant, _projectCount:(s.projects||[]).length,
+    state:s, _photos:photos };
+  return backup;
+}
+
+function vExport(){
+  return '<div class="sectionbar">'
+    +'<button class="btn primary" id="doBuild">Build merged backup</button>'
+    +'<button class="btn" id="doDownload">↓ Download .json</button>'
+    +'<span class="count-pill" id="buildStat">not built yet</span></div>'
+    +'<p class="mut">Merged file is a valid <span class="mono">full_backup</span> — import it via the app’s rail <b>Restore</b> button. '
+    +'Nine-box is written as both <span class="mono">nineBoxHistory</span> (per year) and <span class="mono">nineBoxPlacements</span> (active year); the app reconciles id/uid keys on import.</p>'
+    +'<pre class="out" id="out">Click “Build merged backup” to preview.</pre>';
+}
+
+/* ── wiring (event delegation) ───────────────────────────────────────── */
+function wire(c){
+  c.querySelectorAll('[data-pickid]').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    M.dec[g.dataset.pickid]=b.dataset.val;
+    g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  }));
+  c.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const [prefix,val]=b.dataset.all.split(':'); setAll(prefix,val); render(); });
+  const ss=c.querySelector('#showSame'); if(ss) ss.onchange=()=>{ M.showSame=ss.checked; render(); };
+  c.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.edit, ed=c.querySelector('[data-editor="'+CSS.escape(id)+'"]');
+    if(ed.classList.contains('hide')){ const p=findPair(id); const cur=M.edit[id]!=null?M.edit[id]:JSON.stringify(chosenEnt(id,p)||{},null,2);
+      ed.value=cur; ed.classList.remove('hide'); ed.focus();
+      ed.onblur=()=>{ M.edit[id]=ed.value; };
+    } else { M.edit[id]=ed.value; ed.classList.add('hide'); }
+  });
+  c.querySelectorAll('[data-nbedit]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.nbedit, inp=c.querySelector('[data-nbeditor="'+CSS.escape(id)+'"]');
+    if(inp.classList.contains('hide')){ inp.classList.remove('hide'); inp.focus(); inp.onblur=()=>{ M.edit[id]=inp.value.trim()||undefined; }; }
+    else { M.edit[id]=inp.value.trim()||undefined; inp.classList.add('hide'); }
+  });
+  const build=c.querySelector('#doBuild'), dl=c.querySelector('#doDownload');
+  if(build) build.onclick=()=>{ const b=buildMerged(); window.__merged=b;
+    const json=JSON.stringify(b,null,2);
+    c.querySelector('#out').textContent=json.length>60000?json.slice(0,60000)+'\n… (truncated preview; full file downloads intact)':json;
+    c.querySelector('#buildStat').textContent=b._engineerCount+' eng · '+b._projectCount+' proj · '
+      +Object.values(b.state.nineBoxHistory).reduce((n,m)=>n+Object.keys(m).length,0)+' nine-box · '+b._photoCount+' photos · '+Math.round(json.length/1024)+'KB';
+  };
+  if(dl) dl.onclick=()=>{ const b=window.__merged||buildMerged();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(b)],{type:'application/json'}));
+    a.download='matrix_merged_'+new Date().toISOString().slice(0,10)+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  };
+}
+function findPair(id){ const [k,i]=id.split(':');
+  if(k==='eng'){const u=M.units[+i];return {a:u.a,b:u.b};}
+  if(k==='proj')return M.diff.projects[+i];
+  if(k==='alloc')return M.diff.allocRows[+i];
+  const f=M.diff.fields.find(x=>('field:'+x.key)===id); if(f)return {a:f.a,b:f.b};
+  return {a:undefined,b:undefined};
+}
+function setAll(prefix,val){
+  if(prefix==='eng'||prefix==='proj'||prefix==='alloc'){ const arr={eng:M.diff.engineers,proj:M.diff.projects,alloc:M.diff.allocRows}[prefix];
+    arr.forEach((p,i)=>{ const st=statusOf(p); if(st==='same')return; if(canPick(st,val)) M.dec[prefix+':'+i]=val; }); }
+  else if(prefix==='field'){ M.diff.fields.forEach(f=>{ if(f.status!=='same'&&canPick(f.status,val)) M.dec['field:'+f.key]=val; }); }
+  else if(prefix==='nb'){ M.units.forEach(u=>u.nb.forEach(r=>{ if(r.status!=='same'&&canPick(r.status,val)) M.dec['nb:'+u.i+':'+r.year]=val; }));
+    M.orphans.nb.forEach(o=>{ const st=o.side==='A'?'A-only':'B-only'; if(canPick(st,val)) M.dec['nborph:'+o.side+':'+o.year+':'+o.ref]=val; }); }
+  else if(prefix==='photo'){ M.units.forEach(u=>{ if(u.photo&&u.photo.status!=='same'&&canPick(u.photo.status,val)) M.dec['photo:'+u.i]=val; });
+    M.orphans.photo.forEach(o=>{ const st=o.side==='A'?'A-only':'B-only'; if(canPick(st,val)) M.dec['photorph:'+o.side+':'+o.ref]=val; }); }
+}
+function canPick(st,val){ if(val==='drop')return true; if(st==='A-only')return val==='A'; if(st==='B-only')return val==='B'; return true; }
+
+/* ── global prefs ────────────────────────────────────────────────────── */
+['conflict','membership','matchEng','matchProj'].forEach(k=>{
+  document.getElementById('pref-'+k).addEventListener('change',e=>{
+    M.pref[k]=e.target.value;
+    if(k==='matchEng'||k==='matchProj'){ computeDiffs(); } // re-match (clears manual picks)
+    render();
+  });
+});
+document.getElementById('applyDefaults').onclick=()=>{ M.dec={}; render(); };
+</script>
+</body>
+</html>

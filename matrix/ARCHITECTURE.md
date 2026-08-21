@@ -34,9 +34,13 @@ the user chose the fully-customizable model (build history in [HOME-PLAN.md](HOM
 
 ### Action Queue engine (the people × portfolio join)
 
-One item per **entity × concern** (11 concerns: retention-risk/over-allocation/bench/stale-review/
-engagement-due · gate-blocked/gate-behind · charter-conflict/value-destroying/low-unit-margin/
-dtc-gap/channel-concentration). Item id `= concern:entityType:entityUid`. Carries **both** `entityUid`
+One item per **entity × concern** (13 concerns across 4 domains: **people** — retention-risk/
+over-allocation/bench/stale-review/engagement-due · **governance** — gate-blocked/gate-behind ·
+**portfolio** — charter-conflict/value-destroying/low-unit-margin/dtc-gap/channel-concentration ·
+**planner** — task-overdue/task-pinned). The **planner** concerns (`homeClassifyTask` over every
+project's `p.todos`/`p.actions` via `homeProjectTasks`) exist because the first cut was all
+project-signal-derived — the user's own to-dos/actions (overdue = warn, pinned `execPin` = watch,
+`entityUid = pid-kind-taskid`) were missing. Item id `= concern:entityType:entityUid`. Carries **both** `entityUid`
 (durable — state/resurface key, survives reload+merge) **and** `entityId` (numeric — deep-link openers).
 Ranking = **severity band (critical/warn/watch) then € impact** (no composite score). Impact: a project
 uses `max(0, riskAdjNpv)`; a **person's is blast-radius** = Σ over the projects they touch of that
@@ -68,11 +72,14 @@ the Action Queue widget's domain only — they do NOT hide other widgets (add/re
 
 ### Widget library
 
-`homeWidgetDefs()` = `{id,title,domain,defW,render(ctx),desc}`. First library covers the three chosen
-domains: **action** (Action Queue) · **people** (Talent Risk Radar, Retention Watch, Review Governance,
-Engagement This Week, Headcount) · **governance/capacity** (Gate Readiness, Capacity & Bench, Team Cost).
-Portfolio-value widgets aren't in the library yet (the Action Queue still surfaces those concerns);
-adding one = append to `homeWidgetDefs()` (auto-appears in the Add panel — reconcile-don't-migrate).
+`homeWidgetDefs()` = `{id,title,domain,defW,render(ctx),desc}`. Library: **action** (Action Queue) ·
+**people** (Talent Risk Radar, Retention Watch, Review Governance, Engagement This Week, Headcount) ·
+**planner** (My Tasks — overdue & pinned to-dos/actions, `homeWqTasks` over the same `homeProjectTasks`
+source as the queue) · **governance/capacity** (Gate Readiness, Capacity & Bench, Team Cost).
+Portfolio-value widgets aren't in the library yet (the queue still surfaces those concerns); adding one
+= append to `homeWidgetDefs()` (auto-appears in the Add panel — reconcile-don't-migrate; existing saved
+layouts are NOT retro-injected, so a new widget shows up only via ＋ Add widget). The top-bar filter
+chips are **All / People / Planner / Portfolio / Gov**.
 
 ### Deep-links & gotchas
 
@@ -84,11 +91,27 @@ project overlays that self-show (`openCharter`/`chtOpenDecision`/`openChannels`/
 rail highlight stays truthful. **`railGo(ev, viewId)` is two-arg** — the engine's openers pass `null`
 as the event.
 
+- **GATE-BLOCKED noise (fixed):** `gtStageReadiness` marks a project blocked on any *mandatory*
+  criterion that isn't `pass`/`na` — which includes `pending` (never-assessed) ones, so EVERY fresh
+  project showed "blocked" and flooded the queue. The gather now (a) only counts a **HARD block** — a
+  blocker whose `gtCritStatus` is explicitly `fail` (manual fail or a failing auto criterion with real
+  data), never `pending` — and (b) only emits **gate-behind** for a project that has actually *engaged*
+  the gate (`gp.history`, advanced past the first stage, or any non-pending criterion). Fresh/untouched
+  projects contribute no gate items.
+- **BUTTON CONTRAST (bit us):** the app's global `button.primary` is a filled-lime button with DARK
+  text; `.home-btn.primary` overrode only `color:var(--accent)` → lime text on lime fill = invisible
+  until focus. Any `.primary` variant MUST set the background too — `.home-btn.primary` is now
+  `background:var(--accent);color:#0f0f11`.
 - **CLASS-NAME COLLISION (bit us):** the control bar and the inline progress meters were BOTH
   `.home-bar` — the meter's `height:8px;overflow:hidden` collapsed the topbar to 8px and clipped its
   buttons. The topbar is now `.home-topbar`; keep the two distinct. (Verify layout via DOM geometry,
   not screenshots — the `file://` preview snapshot lags on repaints; `getBoundingClientRect` is ground
   truth, same lesson as the charter/gate sections.)
+- **Drag-reorder is always on via a header grip** (`.home-grip`, `draggable`), NOT gated to Customize
+  mode (that was undiscoverable — "there is no drag and drop"). The grip is the drag SOURCE; each
+  `.home-w` section is the drop TARGET (`homeDragOver`/`homeDrop`, before/after by pointer-X vs
+  midpoint, same insertion technique as the export builder). Width/reorder-nudge/remove controls stay
+  behind Customize.
 - **Rail wiring:** `home` is a domain at the TOP of `RAIL_DOMAINS` (single view); `railRoute` opens it
   (`openHome`); `closeAllOverlays`/`railOpenRes` close it; NOT in `railWrapClosers` (no ✕/back on the
   front door). `#home-overlay` is defined after `{{JS}}` in index.html (only touched by user-triggered
@@ -1722,6 +1745,18 @@ don't collide as `pack (1).pdf`.
   same deliverable isn't a fresh setup every time. A restored selection **drops block ids that
   no longer exist** and falls back to the deliverable's default template if nothing survives —
   the same reconcile-don't-migrate idea as `railApplyOrder`.
+- **`vh`/viewport units are poison in the raster (PNG) and SVG paths — `EXPORT_RASTER_CSS_FIXUP`
+  neutralises them.** Those paths render the export document inside an SVG `<foreignObject>`
+  whose height is the WHOLE document, so a `vh` unit resolves against the entire image, not one
+  page. The cover's `min-height:70vh` (correct on screen/print) therefore ballooned to ~70% of
+  the image and shoved the content below it off the bottom — a landscape-A3 analytics chart lost
+  ~35–40% of its height, i.e. *"the PNG shows only half the page"*. It compounds: `_exportMeasure`
+  measures inside a **10px-tall** iframe, where the same 70vh instead collapses to ~7px, so the
+  captured canvas height is wrong in the OTHER direction too. `_exportMeasure` appends
+  `EXPORT_RASTER_CSS_FIXUP` (`.ex-cover{min-height:200px!important}`) to the shared CSS so the
+  cover is a fixed px height and measure/render agree. **Any future export CSS that reaches these
+  paths must stay free of `vh`/`vw`/`vmin`/`vmax`** — a single image has no page-viewport to
+  resolve them against. Guarded by a test in [tests/export.test.js](tests/export.test.js).
 - **Unlike every other section file, `export.js` genuinely `import`/`export`s** (`escH`/
   `safeColor` from [helpers.js](src/core/helpers.js), `t` from [i18n.js](src/core/i18n.js))
   instead of relying on bundle-scope bare globals. The `export` keywords are stripped by

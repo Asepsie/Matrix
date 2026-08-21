@@ -156,7 +156,9 @@
       "PowerShell(cd C:\\\\Users\\\\pyro3\\\\Documents\\\\Matrix\\\\matrix; Copy-Item dist\\\\matrix.html dist\\\\_verify.html -Force; \\(Get-Item dist\\\\_verify.html\\).Length)",
       "Bash(tail -12 \"/c/Users/pyro3/.claude/projects/C--Users-pyro3-Documents-Matrix/memory/output-layer-export-engine.md\")",
       "Bash(grep -n \"replace.*export\\\\|replace.*import\\\\|/\\\\^export\\\\|stripExport\\\\|\\\\\\\\bexport\\\\\\\\b\" build.js)",
-      "Bash(node --test tests/home-actions.test.js)"
+      "Bash(node --test tests/home-actions.test.js)",
+      "Bash(node -e \"const b=require\\('./matrix/demo/matrix_demo_backup.json'\\); console.log\\('top:',Object.keys\\(b\\)\\); console.log\\('state:',Object.keys\\(b.state\\)\\); console.log\\('engineers:',b.state.engineers.length,'sample keys:',Object.keys\\(b.state.engineers[0]\\)\\); console.log\\('nineBoxHistory years:',Object.keys\\(b.state.nineBoxHistory||{}\\)\\); const y=Object.keys\\(b.state.nineBoxHistory||{}\\)[0]; console.log\\('nineBox sample entries:',Object.entries\\(\\(b.state.nineBoxHistory||{}\\)[y]||{}\\).slice\\(0,3\\)\\); console.log\\('photos count:',Object.keys\\(b._photos||{}\\).length\\); console.log\\('photo key sample:',Object.keys\\(b._photos||{}\\)[0]\\);\")",
+      "Bash(node \"C:/Users/pyro3/AppData/Local/Temp/claude/C--Users-pyro3-Documents-Matrix/c7e8ff6e-c862-4263-9b8a-62de60f42edb/scratchpad/gen-fixtures.js\")"
     ]
   }
 }

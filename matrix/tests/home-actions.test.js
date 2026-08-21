@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import {
   HOME_THRESHOLDS, HOME_BAND_RANK,
   homeHash, homeMondayKey, homeEngImpact,
-  homeClassifyPerson, homeClassifyProject,
+  homeClassifyPerson, homeClassifyProject, homeClassifyTask,
   homeSuppress, homeApplyState, homeFilterItems, homeRank,
 } from '../src/sections/home.js';
 
@@ -117,6 +117,32 @@ test('snooze: future snooze hides, past snooze shows', () => {
   const past   = { snoozed:{ x:{ until:new Date(NOW.getTime()-864e5).toISOString() } }, dismissed:{} };
   assert.equal(homeApplyState([item], future, NOW).length, 0);
   assert.equal(homeApplyState([item], past, NOW).length, 1);
+});
+
+test('gate-behind only fires for an ENGAGED project (fresh projects are not "behind")', () => {
+  const base = { p:{id:5,uid:'p5',name:'Fresh'}, sig:{riskAdjNpv:100}, readiness:{blocked:false,pct:10,blockers:[]} };
+  const fresh = homeClassifyProject(base, {thresholds:HOME_THRESHOLDS});
+  const engaged = homeClassifyProject(Object.assign({}, base, {gateEngaged:true}), {thresholds:HOME_THRESHOLDS});
+  assert.equal(fresh.some(i=>i.concern==='gate-behind'), false);
+  assert.equal(engaged.some(i=>i.concern==='gate-behind'), true);
+});
+
+test('gate-blocked still fires on a real (hard) block regardless of engagement', () => {
+  const items = homeClassifyProject({ p:{id:6,uid:'p6',name:'Stuck'}, sig:{riskAdjNpv:500}, readiness:{blocked:true,pct:20,blockers:[{id:'c1'}]} }, {thresholds:HOME_THRESHOLDS});
+  assert.ok(items.some(i=>i.concern==='gate-blocked' && i.band==='critical'));
+});
+
+test('planner tasks: overdue is warn, pinned is watch, done yields nothing', () => {
+  const over = homeClassifyTask({ pid:1, pname:'P', kind:'todo', id:9, text:'Ship', done:false, due:'2020-01-01', execPin:false, overdue:true }, {});
+  const pin  = homeClassifyTask({ pid:1, pname:'P', kind:'action', id:8, text:'Call', done:false, due:'', execPin:true, overdue:false }, {});
+  const done = homeClassifyTask({ pid:1, pname:'P', kind:'todo', id:7, text:'x', done:true, overdue:true, execPin:true }, {});
+  assert.equal(over[0].concern, 'task-overdue');
+  assert.equal(over[0].band, 'warn');
+  assert.equal(over[0].domain, 'planner');
+  assert.equal(over[0].entityUid, '1-todo-9');
+  assert.equal(pin[0].concern, 'task-pinned');
+  assert.equal(pin[0].band, 'watch');
+  assert.equal(done.length, 0);
 });
 
 test('null-tolerance: an all-null project signal yields no items', () => {

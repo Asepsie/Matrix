@@ -4,7 +4,7 @@ import {
   exportField, exportHTML, exportBrand, EXPORT_PRINT_CSS, EXPORT_PAPER,
   exportLoadPrefs, exportSavePrefs, exportLoadCustomTemplates, exportSaveCustomTemplates,
   EXPORT_TEMPLATES_KEY, EXPORT_LAST_KEY,
-  exportHTMLParts, exportLoadLast, exportSaveLast,
+  exportHTMLParts, exportLoadLast, exportSaveLast, EXPORT_RASTER_CSS_FIXUP,
 } from '../src/core/export.js';
 
 // exportLoadPrefs/exportSavePrefs/exportLoad(Save)CustomTemplates all touch
@@ -273,6 +273,18 @@ test('cover:false drops the cover page (a one-section export should not be two p
   const spec = { title: 'Pack', brand: PAPER_BRAND, pages: ['<p>a</p>'] };
   assert.ok(exportHTMLParts(spec).body.includes('ex-cover'), 'cover stays on by default (back-compat)');
   assert.ok(!exportHTMLParts({ ...spec, cover: false }).body.includes('ex-cover'));
+});
+
+test('the raster/SVG fixup pins the cover height with NO viewport unit (else the PNG clips)', () => {
+  // The on-screen/print cover legitimately uses 70vh (inline on the ex-cover div)...
+  assert.match(exportHTMLParts({ title: 'P', brand: PAPER_BRAND, pages: ['<p>a</p>'] }).body,
+    /ex-cover[^>]*min-height:70vh/, 'screen/print cover fills the page via 70vh');
+  // ...but the fixup appended for the single-image paths must override it with a
+  // fixed px height. A `vh` here resolves against the whole foreignObject (the
+  // entire image), ballooning the cover and clipping the chart below it — the
+  // exact "PNG shows only half the page" bug this guards.
+  assert.match(EXPORT_RASTER_CSS_FIXUP, /\.ex-cover\{min-height:\d+px!important\}/);
+  assert.ok(!/vh/.test(EXPORT_RASTER_CSS_FIXUP), 'the raster fixup must never reintroduce viewport units');
 });
 
 test('the footer actually repeats — fixed-positioned in print, not appended once after the last page', () => {

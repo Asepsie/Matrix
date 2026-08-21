@@ -48,6 +48,7 @@ const HOME_CONCERN_DOMAIN = {
   'gate-blocked':'governance', 'gate-behind':'governance',
   'charter-conflict':'portfolio', 'value-destroying':'portfolio',
   'low-unit-margin':'portfolio', 'dtc-gap':'portfolio', 'channel-concentration':'portfolio',
+  'task-overdue':'planner', 'task-pinned':'planner',
 };
 function homeConcernDomain(c){ return HOME_CONCERN_DOMAIN[c] || 'action'; }
 
@@ -192,10 +193,10 @@ export function homeClassifyProject(pj, o){
   if(rd.blocked){
     const blk = (rd.blockers||[]).map(function(c){ return c.id; }).sort();
     items.push(mk('gate-blocked', 'critical',
-      ['Gate blocked — '+(rd.blockers?rd.blockers.length:0)+' mandatory criterion/criteria unmet'],
+      ['Gate blocked — '+(rd.blockers?rd.blockers.length:0)+' mandatory criterion/criteria failing'],
       [{ label:'Readiness', val:(rd.pct==null?'—':rd.pct+'%'), tone:'critical' }],
       'Clear blockers in Gate & PI', blk.join(',')));
-  } else if(rd.pct!=null && rd.pct < thr.gateBehindPct){
+  } else if(pj.gateEngaged && rd.pct!=null && rd.pct < thr.gateBehindPct){
     items.push(mk('gate-behind', 'watch',
       ['Gate readiness low ('+rd.pct+'%)'],
       [{ label:'Readiness', val:rd.pct+'%', tone:'watch' }],
@@ -231,6 +232,26 @@ export function homeClassifyProject(pj, o){
       [{ label:'HHI', val:s.chanHHI.toFixed(2), tone:'watch' }],
       'Diversify in Channel mix', String(homeBucket(s.chanHHI*100,10))));
   }
+  return items;
+}
+
+// Classify ONE planner task (a project to-do or action) into items. Pure.
+// `tk = { pid, puid, pname, kind:'todo'|'action', id, text, done, due, execPin, overdue }`.
+// This is the PLANNER half of the queue — without it every action is project-signal-derived.
+export function homeClassifyTask(tk, o){
+  o = o||{};
+  if(tk.done) return [];
+  const key = tk.pid+'-'+tk.kind+'-'+tk.id;
+  const items = [];
+  function mk(concern, band, why, action){
+    return { id:concern+':task:'+key, concern:concern, domain:'planner', entityType:'task',
+      entityUid:key, entityId:tk.pid, entityName:tk.pname||'', band:band, impact:0,
+      title:(tk.text||'(untitled task)')+' — '+(tk.pname||''),
+      why:why, metrics:[{ label:'Type', val:tk.kind, tone:band }],
+      action:action, hash:homeHash(concern+'|'+(tk.due||'')+'|'+(tk.done?'1':'0')) };
+  }
+  if(tk.overdue) items.push(mk('task-overdue', 'warn', ['Overdue'+(tk.due?' since '+tk.due:'')], 'Open in Backlog & planner'));
+  else if(tk.execPin) items.push(mk('task-pinned', 'watch', ['Pinned for your week'], 'Open in Backlog & planner'));
   return items;
 }
 
@@ -335,18 +356,67 @@ function homeRawItems(o){
     (typeof projects!=='undefined' ? projects : []).forEach(function(p){
       const s = sig[p.id]; if(!s) return;
       let readiness = { blocked:false, pct:100, blockers:[] };
+      let gateEngaged = false;
       try{
         const gp = p.gatePlan || (typeof makeGatePlan==='function' ? makeGatePlan() : {});
         const idx = (typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0;
         const st = stages[idx];
-        if(st && typeof gtStageReadiness==='function') readiness = gtStageReadiness(st, gp, s);
+        // "Engaged" = the team has actually started gating this project (advanced a
+        // stage, recorded a manual criterion, or logged a transition). A fresh project
+        // sitting at the default first stage with all-pending criteria is NOT usefully
+        // "blocked" — that flooded the queue with one card per project.
+        gateEngaged = !!(gp && (
+          (Array.isArray(gp.history) && gp.history.length) ||
+          (stages.length && stages[0] && gp.stageId && gp.stageId !== stages[0].id) ||
+          (gp.criteria && Object.keys(gp.criteria).some(function(k){ const c=gp.criteria[k]; return c && c.status && c.status!=='pending'; }))
+        ));
+        if(st && typeof gtStageReadiness==='function'){
+          const rd = gtStageReadiness(st, gp, s);
+          // Only a HARD block (a mandatory criterion explicitly FAILING — a manual
+          // 'fail', or a failing auto criterion with real data) counts here; a merely
+          // 'pending' (never-assessed) mandatory criterion does not.
+          const hard = (rd.blockers||[]).filter(function(c){
+            return (typeof gtCritStatus==='function' ? gtCritStatus(c, gp, s) : '') === 'fail';
+          });
+          readiness = { blocked:hard.length>0, pct:rd.pct, blockers:hard };
+        }
       }catch(e){}
-      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness }, { thresholds:thr })
+      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness, gateEngaged:gateEngaged }, { thresholds:thr })
         .forEach(function(it){ items.push(it); });
     });
   }catch(e){}
 
+  // PLANNER — open to-dos & actions (overdue or pinned) across projects.
+  try{
+    homeProjectTasks(now).forEach(function(tk){
+      homeClassifyTask(tk, { now:now }).forEach(function(it){ items.push(it); });
+    });
+  }catch(e){}
+
   return items;
+}
+
+// Flatten every project's open to-dos + actions into plain task rows (for the queue
+// classifier AND the My Tasks widget — one source, so they never diverge).
+function homeProjectTasks(now){
+  const out = [];
+  const today = now ? new Date(now) : new Date(); today.setHours(0,0,0,0);
+  function overdue(due, done){ return !!due && !done && (new Date(due) < today); }
+  (typeof projects!=='undefined' ? projects : []).forEach(function(p){
+    (p.todos||[]).forEach(function(td){
+      out.push({ pid:p.id, puid:p.uid, pname:p.name||'Untitled', kind:'todo', id:td.id,
+        text:td.text||'', done:!!td.done, due:td.due||'', execPin:!!td.execPin,
+        priority:td.priority||'', overdue:overdue(td.due, td.done) });
+    });
+    (p.actions||[]).forEach(function(a){
+      const done = /done|complete|closed/i.test(a.status||'');
+      const due = a.due || a.end || '';
+      out.push({ pid:p.id, puid:p.uid, pname:p.name||'Untitled', kind:'action', id:a.id,
+        text:a.desc||'', done:done, due:due, execPin:!!a.execPin,
+        priority:a.priority||'', overdue:overdue(due, done) });
+    });
+  });
+  return out;
 }
 
 // Public engine entry: gather → suppress → state → filter → rank.
@@ -377,8 +447,9 @@ let _homeDragId = null;     // widget id being dragged
 function homeDefaultLayout(){
   return [
     { id:'action-queue', w:3 },
+    { id:'my-tasks',     w:1 },
     { id:'talent-risk',  w:1 },
-    { id:'gate-readiness', w:2 },
+    { id:'gate-readiness', w:1 },
     { id:'capacity',     w:1 },
     { id:'headcount',    w:1 },
     { id:'engagement',   w:1 },
@@ -428,6 +499,8 @@ function homeWidgetDefs(){
       desc:t("This week's retention touchpoints") },
     { id:'headcount',      title:t('Headcount'),           domain:'people',     defW:1, render:homeWqHeadcount,
       desc:t('People, managers, SPOF, avg compa-ratio') },
+    { id:'my-tasks',       title:t('My Tasks'),            domain:'planner',    defW:1, render:homeWqTasks,
+      desc:t('Overdue & pinned to-dos and actions') },
     { id:'gate-readiness', title:t('Gate Readiness'),      domain:'governance', defW:2, render:homeWqGate,
       desc:t('Projects blocked or behind at their gate') },
     { id:'capacity',       title:t('Capacity & Bench'),    domain:'governance', defW:1, render:homeWqCapacity,
@@ -451,7 +524,7 @@ function homeKpi(val, label, color){
 }
 function homeBandColor(b){ return b==='critical' ? 'var(--danger)' : b==='warn' ? 'var(--warn)' : 'var(--accent2)'; }
 function homeBandLabel(b){ return b==='critical' ? t('CRITICAL') : b==='warn' ? t('WARN') : t('WATCH'); }
-function homeDomLabel(d){ return d==='people' ? t('People') : d==='governance' ? t('Gov') : d==='portfolio' ? t('Portfolio') : t('Action'); }
+function homeDomLabel(d){ return d==='people' ? t('People') : d==='governance' ? t('Gov') : d==='portfolio' ? t('Portfolio') : d==='planner' ? t('Planner') : t('Action'); }
 function homeCurInRange(months){
   const cur = (typeof _dashCur==='function') ? _dashCur() : '';
   if(!months.length) return cur;
@@ -578,6 +651,33 @@ function homeWqHeadcount(){
     + '</div>';
 }
 
+// ── planner widget ─────────────────────────────────────────────────────────
+function homeWqTasks(){
+  let tasks = []; try{ tasks = homeProjectTasks(new Date()).filter(function(t){ return !t.done; }); }catch(e){}
+  const open = '<button class="home-btn" onclick="railGo(null,\'backlog\')">'+escH(t('Backlog & planner →'))+'</button>';
+  if(!tasks.length) return homeEmpty('No open tasks — capture to-dos/actions on a project or in Backlog & planner.') + '<div class="home-foot">'+open+'</div>';
+  const overdue = tasks.filter(function(t){ return t.overdue; });
+  const pinned = tasks.filter(function(t){ return t.execPin && !t.overdue; });
+  let h = '<div class="home-kpis">'
+    + homeKpi(tasks.length, 'Open', 'var(--text)')
+    + homeKpi(overdue.length, 'Overdue', 'var(--danger)')
+    + homeKpi(pinned.length, 'Pinned', 'var(--accent2)')
+    + '</div>';
+  const show = overdue.concat(pinned).slice(0, 7);
+  if(show.length){
+    h += '<div class="home-list">';
+    show.forEach(function(tk){
+      const col = tk.overdue ? 'var(--danger)' : 'var(--accent2)';
+      h += '<div class="home-row" onclick="railGo(null,\'backlog\')" title="'+escH(tk.pname||'')+'">'
+         + '<span class="home-row-name">'+escH(tk.text||'(untitled)')+'</span>'
+         + '<span class="home-sp"></span>'
+         + '<span class="home-row-val" style="color:'+col+'">'+escH(tk.overdue ? (tk.due||'overdue') : 'pinned')+'</span></div>';
+    });
+    h += '</div>';
+  }
+  return h + '<div class="home-foot">'+open+'</div>';
+}
+
 // ── governance / capacity widgets ──────────────────────────────────────────
 function homeWqGate(){
   if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
@@ -662,7 +762,7 @@ function renderHome(){
   if(!_homePrefs) _homePrefs = homeLoadPrefs();
   const isDefault = (typeof railLanding!=='undefined' && railLanding==='home');
   let h = '<div class="home-topbar"><div class="home-filters">';
-  [['all','All'],['people','People'],['portfolio','Portfolio'],['governance','Gov']].forEach(function(f){
+  [['all','All'],['people','People'],['planner','Planner'],['portfolio','Portfolio'],['governance','Gov']].forEach(function(f){
     h += '<button class="home-fchip'+(_homeFilter===f[0]?' on':'')+'" onclick="homeSetFilter(\''+f[0]+'\')">'+escH(t(f[1]))+'</button>';
   });
   h += '</div><span class="home-bar-sp"></span>'
@@ -702,15 +802,15 @@ function homeWidgetHTML(item, ctx){
   let body = '';
   try{ body = def.render(ctx); }catch(e){ body = homeEmpty('This widget failed to render.'); }
   const hero = item.id==='action-queue' ? ' home-w-hero' : '';
-  let h = '<section class="home-w'+hero+'" style="grid-column:span '+w+'" data-wid="'+escH(item.id)+'"';
-  if(_homeEdit){
-    h += ' draggable="true"'
-      + ' ondragstart="homeDragStart(event,\''+homeAttr(item.id)+'\')"'
-      + ' ondragover="homeDragOver(event)"'
-      + ' ondrop="homeDrop(event,\''+homeAttr(item.id)+'\')"'
-      + ' ondragend="homeDragEnd(event)"';
-  }
-  h += '><header class="home-w-head">'
+  // Section is always a drop TARGET; the header grip is the always-available drag
+  // SOURCE (draggable anytime, no need to enter Customize — that was undiscoverable).
+  let h = '<section class="home-w'+hero+'" style="grid-column:span '+w+'" data-wid="'+escH(item.id)+'"'
+     + ' ondragover="homeDragOver(event,\''+homeAttr(item.id)+'\')"'
+     + ' ondragleave="homeDragLeave(event)"'
+     + ' ondrop="homeDrop(event,\''+homeAttr(item.id)+'\')">';
+  h += '<header class="home-w-head">'
+     + '<span class="home-grip" draggable="true" title="'+escH(t('Drag to reorder'))+'"'
+     +   ' ondragstart="homeDragStart(event,\''+homeAttr(item.id)+'\')" ondragend="homeDragEnd(event)">⠿</span>'
      + '<span class="home-w-title">'+escH(def.title)+'</span>'
      + '<span class="home-w-dom">'+escH(homeDomLabel(def.domain))+'</span>'
      + '<span class="home-bar-sp"></span>';
@@ -764,26 +864,46 @@ function homeSetDefault(){
   renderHome();
 }
 
-// ── drag-reorder (native HTML5 DnD, edit mode only) ────────────────────────
+// ── drag-reorder (native HTML5 DnD; grip handle is the source, always available) ──
 function homeDragStart(ev, id){
   _homeDragId = id;
   try{ ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', id); }catch(e){}
+  const sec = ev.currentTarget && ev.currentTarget.closest('.home-w');
+  if(sec) sec.classList.add('home-dragging');
 }
-function homeDragOver(ev){ if(_homeDragId){ ev.preventDefault(); try{ ev.dataTransfer.dropEffect='move'; }catch(e){} } }
+function homeClearDropMarks(){
+  const m = document.querySelectorAll('.home-w.home-drop-before,.home-w.home-drop-after');
+  for(let i=0;i<m.length;i++) m[i].classList.remove('home-drop-before','home-drop-after');
+}
+function homeDragOver(ev, overId){
+  if(!_homeDragId || _homeDragId===overId) return;
+  ev.preventDefault();
+  try{ ev.dataTransfer.dropEffect='move'; }catch(e){}
+  const sec = ev.currentTarget; if(!sec || !sec.classList) return;
+  const r = sec.getBoundingClientRect(), after = (ev.clientX - r.left) > r.width/2;
+  homeClearDropMarks();
+  sec.classList.add(after ? 'home-drop-after' : 'home-drop-before');
+}
+function homeDragLeave(ev){ if(ev.currentTarget && ev.currentTarget.classList) ev.currentTarget.classList.remove('home-drop-before','home-drop-after'); }
 function homeDrop(ev, targetId){
   ev.preventDefault();
   if(_homeDragId && _homeDragId!==targetId){
+    const sec = ev.currentTarget;
+    const r = sec ? sec.getBoundingClientRect() : null;
+    const after = r ? ((ev.clientX - r.left) > r.width/2) : false;
     const L = _homePrefs.layout, from = homeIdx(_homeDragId);
     if(from>=0){
       const moved = L.splice(from, 1)[0];
-      const to = homeIdx(targetId);
-      L.splice(to<0 ? L.length : to, 0, moved);
+      let to = homeIdx(targetId);            // recompute after the splice
+      if(to<0) to = L.length; else if(after) to += 1;
+      L.splice(to, 0, moved);
       homeSavePrefs(_homePrefs); renderHome();
     }
   }
-  _homeDragId = null;
+  _homeDragId = null; homeClearDropMarks();
 }
-function homeDragEnd(){ _homeDragId = null; }
+function homeDragEnd(){ _homeDragId = null; homeClearDropMarks();
+  const d = document.querySelector('.home-w.home-dragging'); if(d) d.classList.remove('home-dragging'); }
 
 // ── snooze / dismiss on an action-queue item ───────────────────────────────
 function homeSnooze(id){
@@ -809,6 +929,7 @@ function homeOpenFor(concern, entityId){
   const id = +entityId;
   if(concern==='retention-risk' || concern==='stale-review'){ if(typeof openIdCardModal==='function') openIdCardModal(id); return; }
   if(concern==='over-allocation' || concern==='bench'){ if(typeof railGo==='function') railGo(null,'plan'); return; }
+  if(concern==='task-overdue' || concern==='task-pinned'){ if(typeof railGo==='function') railGo(null,'backlog'); return; }
   if(concern==='engagement-due'){ if(typeof railGo==='function') railGo(null,'engagement'); return; }
   if(concern==='gate-blocked' || concern==='gate-behind'){
     if(typeof railGo==='function') railGo(null,'gate');

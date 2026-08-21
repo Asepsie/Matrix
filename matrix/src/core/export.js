@@ -45,6 +45,18 @@ export var EXPORT_PREFS_KEY='eim_export_prefs';        // tiny UI-only key — o
 export var EXPORT_TEMPLATES_KEY='eim_export_templates'; // { [deliverableId]: [{id,name,blocks:[blockId,...]}] } — custom templates only
 export var EXPORT_LAST_KEY='eim_export_last';           // { [deliverableId]: {included,theme,format,columns,layout,paper,cover} } — "what I picked last time"
 
+/* CSS appended ONLY for the single-image raster (PNG) and SVG paths. Those
+ * render the export document inside an SVG <foreignObject> whose height is the
+ * WHOLE document, so any `vh` unit resolves against the entire image rather than
+ * one page: the cover's `min-height:70vh` (fine on screen/print) balloons to
+ * ~70% of the image and pushes everything below it — a tall analytics chart —
+ * off the bottom, which is why "PNG with a custom chart showed only half the
+ * page". It is measured in a 10px-tall iframe too, where the same 70vh collapses
+ * to ~7px, so the captured canvas height is wrong in the OTHER direction — a
+ * double mismatch. Pinning the cover to a fixed px height makes measure and
+ * render agree. MUST stay free of viewport units for the same reason. */
+export var EXPORT_RASTER_CSS_FIXUP='.ex-cover{min-height:200px!important}';
+
 // load persisted export branding prefs (org name + optional logo dataURL + default theme)
 export function exportLoadPrefs(){
   try{
@@ -351,8 +363,10 @@ function exportDownloadBlob(content,mime,filename){
 function _exportMeasure(spec,width,cb){
   var parts=exportHTMLParts(spec);
   // .no-print covers the print button; the captured image is the deliverable,
-  // not the interactive affordance around it.
-  var css=parts.css+'.no-print{display:none!important}';
+  // not the interactive affordance around it. EXPORT_RASTER_CSS_FIXUP pins the
+  // cover height so the foreignObject's `vh` units can't balloon/clip it (see
+  // that constant for the full story).
+  var css=parts.css+'.no-print{display:none!important}'+EXPORT_RASTER_CSS_FIXUP;
   var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'+parts.body+'</body></html>';
 
   var iframe=document.createElement('iframe');
