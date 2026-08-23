@@ -1774,6 +1774,19 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
           <option value="Diversify">Diversify</option>
         </select>
       </div>
+      <div class="field"><label>LIFECYCLE</label>
+        <select id="e-lifecycle" title="Project disposition — funding & end-of-life state. Held/cancelled/withdrawn/EoL projects stop consuming team capacity.">
+          <option value="proposed">Proposed</option>
+          <option value="active">Funded / Active</option>
+          <option value="on_hold">On Hold</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="in_service">In Service</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="maint_cancelled">Maintenance Cancelled</option>
+          <option value="withdrawn">Withdrawn</option>
+          <option value="eol">End of Life</option>
+        </select>
+      </div>
       <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
       <div class="field"><label>NOTE</label><input type="text" id="e-note" placeholder="Optional"></div>
       <div class="field"><label>COLOR</label>
@@ -3306,6 +3319,9 @@ function makeProject(overrides = {}) {
     status:      '',
     sector:      '',
     tacticalIntent: '',   // strategic posture: '' | Defend | Grow | Adapt | Diversify
+    lifecycle:    'proposed',  // disposition (see PROJECT_LIFECYCLE): proposed | active | on_hold | cancelled | in_service | maintenance | maint_cancelled | withdrawn | eol — a fresh project sits at the initial gate = intake, so it starts Proposed (fund it to go Active)
+    lifecycleReason: '',     // free-text note on the CURRENT disposition (why held/cancelled/etc.)
+    lifecycleHistory: [],    // append-only decision log: [{ts, from, to, reason}]
     impactEur:   null,
     costSource:  'plan',
     planCost:    0,
@@ -3442,8 +3458,21 @@ function makeCharter(overrides = {}) {
     decision:   makeDecisionCard(),
     costModel:  makeCostModel(),
     channelModel: makeChannelModel(),
+    demand:     makeCharterDemand(),   // resource-demand ESTIMATE for pipeline feasibility (see pipeline.js)
     ...overrides,
   };
+}
+
+// Resource-demand ESTIMATE for a candidate project — captured BEFORE it is
+// staffed month-by-month in the allocation plan, so a pipeline of new projects
+// can be weighed against available capacity. `peakFte` = concurrent engineers at
+// peak (the headcount feel); `fteMonths` = total effort in FTE·months (compared
+// against free FTE·months capacity in the pipeline frontier). `byGroup` is a
+// reserved map (engGroup id → FTE·months) for a future per-discipline breakdown.
+// A committed project draws its real demand from allocRows; this is the pre-staff
+// forecast only. All numbers are plain (null → not estimated yet).
+function makeCharterDemand(overrides = {}) {
+  return { peakFte: null, fteMonths: null, byGroup: {}, ...overrides };
 }
 
 // Go-to-market CHANNEL model (on the charter). The go-to-market synoptic:
@@ -3716,6 +3745,23 @@ var _devFormula = {
   cr_high_hold:       115,
   cr_new_hold:        110,
 };
+/* ── Project lifecycle — the one source of truth for a project's disposition ──
+   A project's overall state, distinct from its gate stage (forward development
+   position) and tacticalIntent (strategic posture). `consumes` = its allocations
+   count against team capacity; `activePortfolio` = it belongs to the LIVE portfolio
+   (terminal states are history only). Ordered roughly by lifecycle progression.
+   Read via projLifecycle()/projLifecycleDef()/projConsumesCapacity() (helpers.js). */
+const PROJECT_LIFECYCLE=[
+  { id:'proposed',        label:'Proposed',              phase:'pipeline',    consumes:false, activePortfolio:false, color:'var(--accent2)' },
+  { id:'active',          label:'Funded / Active',       phase:'development', consumes:true,  activePortfolio:true,  color:'var(--accent)'  },
+  { id:'on_hold',         label:'On Hold',               phase:'development', consumes:false, activePortfolio:true,  color:'var(--warn)'    },
+  { id:'cancelled',       label:'Cancelled',             phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--danger)'  },
+  { id:'in_service',      label:'In Service',            phase:'service',     consumes:true,  activePortfolio:true,  color:'var(--accent)'  },
+  { id:'maintenance',     label:'Maintenance',           phase:'service',     consumes:true,  activePortfolio:true,  color:'#5be5c8'        },
+  { id:'maint_cancelled', label:'Maintenance Cancelled', phase:'service',     consumes:false, activePortfolio:true,  color:'var(--warn)'    },
+  { id:'withdrawn',       label:'Withdrawn',             phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
+  { id:'eol',             label:'End of Life',           phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
+];
 let _planRowOrder=[];
 let _planDragSrc=null;
 let planFilterEng=new Set(),planFilterProj=new Set(),planHideEmpty=false;
@@ -3879,6 +3925,35 @@ function _costCounts(eng){
   return !!eng && !eng.excludeFromCalc && !(eng.planningOnly && !eng.includeInCost);
 }
 
+/* ── Project lifecycle accessors (see PROJECT_LIFECYCLE in globals.js) ──── */
+function projLifecycleDef(idOrProj){
+  var id=(idOrProj&&typeof idOrProj==='object')?idOrProj.lifecycle:idOrProj;
+  return PROJECT_LIFECYCLE.find(function(s){return s.id===id;})||PROJECT_LIFECYCLE[1]; // fallback: active
+}
+function projLifecycle(p){ return (p&&p.lifecycle)||'active'; }
+// Do this project's allocations count against team capacity? (active/in-service/maintenance)
+function projConsumesCapacity(p){ return !!projLifecycleDef(p).consumes; }
+// Is this project part of the LIVE portfolio (vs. terminal/history-only)?
+function projIsActivePortfolio(p){ return !!projLifecycleDef(p).activePortfolio; }
+// Memoised set of project ids whose demand counts — the choke point for suppression.
+function _projCapacitySet(){
+  return _memo('projCapSet', function(){
+    var s=new Set(); projects.forEach(function(p){ if(projConsumesCapacity(p)) s.add(p.id); }); return s;
+  });
+}
+// Record a lifecycle transition (writes state + reason + appends to the decision log).
+// Returns true if the state actually changed. Caller owns saveState()/re-render.
+function projSetLifecycle(p, next, reason){
+  if(!p || !PROJECT_LIFECYCLE.some(function(s){return s.id===next;})) return false;
+  var from=projLifecycle(p);
+  if(next===from && (reason==null || reason===p.lifecycleReason)) return false;
+  if(!Array.isArray(p.lifecycleHistory)) p.lifecycleHistory=[];
+  p.lifecycleHistory.push({ ts:Date.now(), from:from, to:next, reason:(reason||'') });
+  p.lifecycle=next;
+  if(reason!=null) p.lifecycleReason=reason;
+  return true;
+}
+
 /* ── Effective project revenue (M€) ─────────────────────────────────
    User-entered `impactEur` wins. When the user hasn't entered one, fall back
    to a DERIVED default = impact (y) + enabler (ena), but only when both are
@@ -3929,6 +4004,11 @@ function _computeEngUtil(months){
   var cur=_dashCur();
   var util={};
   var rowsByEng=_rowsByEngMap();
+  // Suppressed-project allocations don't count as demand/utilisation (a cancelled or
+  // held project must not make its ex-team look allocated). Unassigned rows (no
+  // projectId) always count. Default lifecycle is 'active', so this is a no-op until
+  // a project is actually held/cancelled/withdrawn/EoL.
+  var capSet=_projCapacitySet();
   engineers.filter(function(e){return !e.vacant&&(!e.planningOnly||e.includeInCost);}).forEach(function(eng){
     var rows=rowsByEng.get(eng.id)||[];
     var eg=engGroups.find(function(g){return g.id===eng.groupId;});
@@ -3936,6 +4016,7 @@ function _computeEngUtil(months){
     var monthStatus={};
     months.forEach(function(m){
       monthAllocs[m]=rows.reduce(function(s,r){
+        if(r.projectId!=null && !capSet.has(r.projectId)) return s;   // suppressed project
         var v=r.allocs&&r.allocs[m]!=null?r.allocs[m]:0;
         // Status letters: m/r = not active (no cost), p = on leave but counts as allocated
         if(v==='m'||v==='r')return s;
@@ -5806,6 +5887,17 @@ function loadState(){
     return true;
   }catch(e){return false;}
 }
+// Is a project still at the INITIAL gate? = its gate stage is unset (defaults to the
+// first stage) OR equals the first stage id of the active methodology (custom-safe: we
+// read the first stage whatever it's named). No methodology configured → treat as intake.
+// Used only by the one-time lifecycle migration in sanitiseProjects.
+function _projAtInitialGate(p){
+  var sid=p&&p.gatePlan&&p.gatePlan.stageId;
+  if(!sid) return true;
+  var stages=(typeof gateConfig!=='undefined'&&gateConfig&&gateConfig.model&&Array.isArray(gateConfig.model.stages))?gateConfig.model.stages:[];
+  if(!stages.length) return true;
+  return !!stages[0] && stages[0].id===sid;
+}
 function sanitiseProjects(){
   projects.forEach(p=>{
     if(!p.todos||!Array.isArray(p.todos))       p.todos=[];
@@ -5829,6 +5921,16 @@ function sanitiseProjects(){
     if(p.planCost===undefined)  p.planCost=0;
     if(!p.costSource)        p.costSource='plan';
     if(!p.status)            p.status='';
+    // Lifecycle (added later). A project with no (or invalid) lifecycle is normalised
+    // by GATE POSITION: one still sitting at the INITIAL gate (the first stage of the
+    // active — possibly custom — methodology, or no gate set) is intake → 'proposed';
+    // anything advanced past it is assumed already funded → 'active'. Runs once per
+    // project (once lifecycle is set it's never re-derived), so a funded proposal
+    // stays funded. See PIPELINE-PLAN.md item 2.
+    if(p.lifecycle===undefined || !PROJECT_LIFECYCLE.some(s=>s.id===p.lifecycle))
+      p.lifecycle = _projAtInitialGate(p) ? 'proposed' : 'active';
+    if(p.lifecycleReason==null) p.lifecycleReason='';
+    if(!Array.isArray(p.lifecycleHistory)) p.lifecycleHistory=[];
     p.risks.forEach(r=>{
       if(!r.status)   r.status='open';
       if(r.sev==null) r.sev=1;
@@ -5891,6 +5993,13 @@ function sanitiseCharter(p){
     if(!Array.isArray(s.items)) s.items=[];
     s.items.forEach(it=>{ if(it.include==null) it.include=true; if(it.cost==null) it.cost=0; });
   });
+  // Resource-demand estimate (added later; back-fill for older charters).
+  if(!c.demand||typeof c.demand!=='object'){ c.demand=makeCharterDemand(); }
+  else{ const dd=makeCharterDemand();
+    if(c.demand.peakFte===undefined)   c.demand.peakFte=dd.peakFte;
+    if(c.demand.fteMonths===undefined) c.demand.fteMonths=dd.fteMonths;
+    if(!c.demand.byGroup||typeof c.demand.byGroup!=='object') c.demand.byGroup=dd.byGroup;
+  }
   // Go-to-market channel model (added later; back-fill for older charters).
   // A missing model is seeded with the default channels; an intentionally
   // emptied one stays empty (we only replace when absent/invalid).
@@ -7410,16 +7519,20 @@ function renderWithAnim(W,H,pw,ph,isAnim){
       const pcol=safeColor(p.color);
       const sec=sections.find(s=>s.id===p.sectionId);
       const ringColor=isSel?'#fff':safeColor(sec?sec.color:p.color);
-      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}"
+      // Lifecycle cue: terminal (cancelled/withdrawn/eol) → dimmed; on_hold → dashed warn ring.
+      const lcOp=projIsActivePortfolio(p)?1:0.3;
+      const lcHeld=projLifecycle(p)==='on_hold';
+      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}" opacity="${lcOp}"
             style="cursor:${drawTool==='none'&&!isAnim?'grab':(isAnim?'default':'crosshair')}"
             onmousedown="${drawTool==='none'&&!isAnim?`startProjDrag(event,${p.id})`:''}"
             oncontextmenu="openCtx(event,${p.id})"
             onmouseover="showTip(event,${p.id})" onmouseout="hideTip()"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}" />`;
-      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${pcol}" pointer-events="none"/>`;
+      if(lcHeld) h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R+3}" fill="none" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.9" pointer-events="none"/>`;
+      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${pcol}" pointer-events="none" opacity="${lcOp}"/>`;
       const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
       if(tt) h+=`<text font-family="IBM Plex Mono,monospace" font-size="8" fill="${pcol}88"
-                   text-anchor="middle" x="${cx}" y="${cy+22}" pointer-events="none">${td}/${tt}</text>`;
+                   text-anchor="middle" x="${cx}" y="${cy+22}" pointer-events="none" opacity="${lcOp}">${td}/${tt}</text>`;
     }
   }
 
@@ -7434,6 +7547,7 @@ function renderWithAnim(W,H,pw,ph,isAnim){
       const {p,cx,cy,lbl,lw}=nd;
       const isSel=p.id===selId;
       const pcol=safeColor(p.color);
+      const lcOp=projIsActivePortfolio(p)?1:0.3;   // match the dot pass: dim terminal projects
       const angle=-Math.PI/2+i*step;
       const r=N===1?(DOT_R+8):fanR;
       // Label centre point
@@ -7452,10 +7566,10 @@ function renderWithAnim(W,H,pw,ph,isAnim){
         h+=`<line x1="${lx0.toFixed(1)}" y1="${ly0.toFixed(1)}"
                   x2="${lxe.toFixed(1)}" y2="${(ly-2).toFixed(1)}"
               stroke="${pcol}" stroke-width="0.9" stroke-dasharray="3,2"
-              opacity="0.5" pointer-events="none"/>`;
+              opacity="${(0.5*lcOp).toFixed(2)}" pointer-events="none"/>`;
       }
       h+=`<text font-family="IBM Plex Sans,sans-serif" font-size="10" font-weight="${isSel?700:600}"
-            fill="${pcol}" text-anchor="${anchor}" dominant-baseline="auto"
+            fill="${pcol}" text-anchor="${anchor}" dominant-baseline="auto" opacity="${lcOp}"
             x="${lx.toFixed(1)}" y="${ly.toFixed(1)}"
             style="cursor:${drawTool==='none'&&!isAnim?'pointer':'default'};paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}"
@@ -7782,7 +7896,7 @@ function populateEditor(){
   SV('e-name',p.name);SV('e-x',p.x);SV('e-y',p.y);
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
-  SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
+  SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-lifecycle',projLifecycle(p));SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
   // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
   var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
   G('e-impacteur').placeholder=(_rd!=null)?t('default {n} = impact+enabler',{n:_rd}):t('e.g. 2.5');
@@ -7806,6 +7920,7 @@ function saveEdit(){
   p.currentGate=V('e-current-gate');p.gate=V('e-gate');p.eta=V('e-eta');
   p.sector=V('e-sector');
   p.tacticalIntent=V('e-intent');
+  projSetLifecycle(p, V('e-lifecycle')||'active');   // logs the transition if it changed
   p.impactEur=V('e-impacteur')!==''?+V('e-impacteur'):null;
   const sid=V('e-section');p.sectionId=sid?+sid:null;
   renderList();render();saveState();
@@ -7996,10 +8111,16 @@ function closeModal(){G('add-overlay').classList.remove('show');}
 function confirmAdd(){
   const name=V('m-name').trim();if(!name){G('m-name').focus();return;}
   const sid=V('m-section');
-  const p={uid:newUid(),id:nextId++,name,x:+V('m-x')||5,y:+V('m-y')||5,vis:5,ena:5,
-    note:V('m-note'),color:V('m-color'),gate:'',eta:'',todos:[],risks:[],milestones:[],actions:[],
-    vis:+V('m-vis')||5,ena:+V('m-ena')||5,costSource:'manual',planCost:null,
-    sectionId:sid?+sid:null,visible:true};
+  // Build via the factory so new fields (charter, gatePlan, lifecycle, …) are present at
+  // creation instead of relying on the next load's sanitise to back-fill them.
+  const p=makeProject({
+    id:nextId++, name,
+    x:+V('m-x')||5, y:+V('m-y')||5,
+    vis:+V('m-vis')||5, ena:+V('m-ena')||5,
+    note:V('m-note'), color:V('m-color'),
+    costSource:'manual', planCost:null,
+    sectionId:sid?+sid:null,
+  });
   projects.push(p);closeModal();selectProject(p.id);renderList();render();saveState();
 }
 
@@ -10777,14 +10898,53 @@ function _computeCostMaps(months,filterEng,filterProj){
     if(filterProj&&filterProj.size){var p=projById.get(r.projectId);if(!p||!filterProj.has(p.name))return false;}
     return true;
   });
+  var capSet=_projCapacitySet();
   filtered.forEach(function(r){
     var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
+    if(r.projectId!=null && !capSet.has(r.projectId))return;   // suppressed-lifecycle project: no cost
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     if(r.projectId){projCost[r.projectId]=(projCost[r.projectId]||0)+cost;}
     else{unassignedCost+=cost;}
     totalCost+=cost;
   });
   return {projCost:projCost,totalCost:totalCost,unassignedCost:unassignedCost,filteredRows:filtered};
+}
+
+/* ── Capacity supply/free — the one source of truth for "how much room" ──
+   A pure, memoised roll-up of the same supply math the Resource Balancer hero
+   computes inline (counted engineers, minus months an engineer is fully
+   medical/resigned, minus the FTE already engaged). Extracted so the Pipeline
+   board can weigh candidate demand against real free capacity WITHOUT the
+   dashboard render. Returns FTE·months over the given range, plus a per-group
+   breakdown. `free` = idle FTE·months = the bench headroom new projects can draw. */
+function pipelineCapacity(months){
+  months=months||[];
+  return _memo('pipeCap:'+_monthsKey(months), function(){
+    var engUtil=_buildEngUtil(months);
+    var counted=Object.values(engUtil).filter(function(eu){return _costCounts(eu.eng);});
+    function inactive(eu,m){ var s=eu.monthStatus&&eu.monthStatus[m]; return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0; }
+    var supply=0, engaged=0, demand=0, byGroup={};
+    counted.forEach(function(eu){
+      var key=eu.grp||t('Ungrouped'), color=eu.grpColor||'var(--muted)';
+      var g=byGroup[eu.grpId||key]||(byGroup[eu.grpId||key]={name:key,color:color,supply:0,engaged:0,demand:0,people:0});
+      g.people++;
+      months.forEach(function(m){
+        if(inactive(eu,m))return;
+        supply+=1; g.supply+=1;
+        var a=eu.monthAllocs[m]||0;
+        engaged+=Math.min(a,1); g.engaged+=Math.min(a,1);
+        demand+=a; g.demand+=a;
+      });
+    });
+    Object.keys(byGroup).forEach(function(k){ var g=byGroup[k]; g.free=Math.max(0,g.supply-g.engaged); });
+    return {
+      months:months.length, people:counted.length,
+      supply:supply, engaged:engaged, demand:demand,
+      free:Math.max(0,supply-engaged),        // idle FTE·months = bench headroom
+      over:Math.max(0,demand-engaged),
+      byGroup:byGroup,
+    };
+  });
 }
 
 /* Shared mini bar-sparkline used by cost-by-project, project-detail and the
@@ -20300,6 +20460,12 @@ function importFullBackup(){
 
         takeSnap('Auto: before full backup restore','full','',true);
 
+        // gateConfig MUST load before sanitiseProjects: the one-time lifecycle migration
+        // (_projAtInitialGate) reads the active methodology's first stage to decide
+        // proposed-vs-active. A PRE-lifecycle backup carrying a CUSTOM methodology would
+        // otherwise be migrated against the CURRENT session's config (wrong first stage).
+        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
+
         if(d.projects)       {projects=d.projects;sanitiseProjects();}
         if(d.sections)       sections=d.sections;
         if(d.engineers)      {
@@ -20314,7 +20480,7 @@ function importFullBackup(){
         // per-dataset eng.id) so a stale set can't bleed onto colliding new ids.
         _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
         if(d.ktPlans)        _ktPlans=d.ktPlans;
-        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
+        // (gateConfig already loaded above, before sanitiseProjects)
         if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
         if(d.orgPositions)   _orgPositions=d.orgPositions;
         if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;
@@ -21298,7 +21464,7 @@ function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','econ','exec','gate','engagement','backlog'].forEach(function(t){
+  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','econ','exec','gate','pipeline','engagement','backlog'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -21326,6 +21492,7 @@ function showResTab(tab){
   else if(tab==='econ')        renderEconTab();
   else if(tab==='exec')        renderExecTab();
   else if(tab==='gate')        renderGateTab();
+  else if(tab==='pipeline')    renderPipelineTab();
   else if(tab==='engagement')  renderEngagement();
   else if(tab==='backlog')     renderBacklogTab();
   else                         renderResDashboard();
@@ -21559,6 +21726,7 @@ var RAIL_DOMAINS = [
   { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
     {id:'exec',        label:t('Executive summary')},
     {id:'gate',        label:t('Gate & PI')},
+    {id:'pipeline',    label:t('Pipeline')},
     {id:'portfolio',   label:t('Portfolio analytics')},
     {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
@@ -21900,7 +22068,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,engagement:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -25268,7 +25436,7 @@ function gtStageCard(s,i,n){
   let h='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+sw+';border-radius:8px;padding:10px 12px">';
   // header row
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
-  h+='<button onclick="gtToggleFold('+JSON.stringify(s.id)+')" title="'+escH(t('Fold / unfold criteria'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;width:16px">'+(folded?'▸':'▾')+'</button>';
+  h+='<button onclick="gtToggleFold('+JSON.stringify(s.id).replace(/"/g,'&quot;')+')" title="'+escH(t('Fold / unfold criteria'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;width:16px">'+(folded?'▸':'▾')+'</button>';
   h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim);width:20px">'+(i+1)+'</span>';
   h+='<input value="'+escH(s.name||'')+'" onchange="gtSetStage('+i+',\'name\',this.value)" placeholder="'+escH(t('Stage name'))+'" style="'+gtInStyle('150px')+';font-weight:700">';
   h+='<input value="'+escH(s.desc||'')+'" onchange="gtSetStage('+i+',\'desc\',this.value)" placeholder="'+escH(t('short description'))+'" style="'+gtInStyle('220px')+'">';
@@ -25572,6 +25740,8 @@ function gtProjectDetail(p,m,signals){
   h+=gtBtn('← '+t('Back'),'gtRegress('+p.id+')',false,t('Move to the previous stage'));
   h+=gtBtn(t('Advance')+' →','gtAdvance('+p.id+')',true,t('Advance to the next stage'));
   h+='</div>';
+  // gate decision — the classic Go / Hold / Kill disposition (writes project.lifecycle)
+  h+=gtDecisionBar(p);
   // blockers banner
   if(rd.blocked){
     h+='<div style="background:rgba(241,164,53,.10);border:1px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text)">'
@@ -25630,7 +25800,7 @@ function gtCritDetailRow(p,c,status,signals){
       +gtStatusBtn(p.id,c.id,'fail','✕',status==='fail','var(--danger)')
       +gtStatusBtn(p.id,c.id,'na','–',status==='na','var(--dim)')
       +'</div>';
-    h+='<input value="'+escH(note)+'" onchange="gtSetNote('+p.id+','+JSON.stringify(c.id)+',this.value)" placeholder="'+escH(t('note'))+'" style="'+gtInStyle('130px')+'">';
+    h+='<input value="'+escH(note)+'" onchange="gtSetNote('+p.id+','+JSON.stringify(c.id).replace(/"/g,'&quot;')+',this.value)" placeholder="'+escH(t('note'))+'" style="'+gtInStyle('130px')+'">';
   }
   h+='</div>';
   return h;
@@ -25641,7 +25811,7 @@ function gtStatusChip(status){
   return '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid '+s[1]+';color:'+s[1]+';font-size:11px;flex-shrink:0">'+s[0]+'</span>';
 }
 function gtStatusBtn(projId,critId,status,glyph,active,color){
-  return '<button onclick="gtSetManual('+projId+','+JSON.stringify(critId)+',\''+status+'\')" title="'+escH(status)+'" '
+  return '<button onclick="gtSetManual('+projId+','+JSON.stringify(critId).replace(/"/g,'&quot;')+',\''+status+'\')" title="'+escH(status)+'" '
     +'style="width:24px;height:22px;border:1px solid '+(active?color:'var(--border)')+';border-radius:4px;cursor:pointer;font-size:11px;'
     +'background:'+(active?color:'var(--bg)')+';color:'+(active?'var(--bg)':'var(--muted)')+'">'+glyph+'</button>';
 }
@@ -25689,6 +25859,51 @@ function gtStepStage(projId,dir){
 }
 function gtAdvance(projId){ gtStepStage(projId,1); }
 function gtRegress(projId){ gtStepStage(projId,-1); }
+
+/* ── Gate decision — Go / Hold / Kill (the disposition axis) ──────────────────
+   The classic stage-gate verdict, sitting where reviewers already are. Distinct
+   from the stage move (forward position): a decision writes project.lifecycle via
+   projSetLifecycle (logged), NOT gatePlan. Go additionally passes the gate — it
+   funds (Active) AND tries to advance the stage through gtStepStage, so stage
+   moves keep a single source of truth (blocked-override + history stay there).
+   The two axes are independent: if you decline the blocked-override, the project
+   is still funded but stays at its stage. */
+function gtDecisionBar(p){
+  const def=projLifecycleDef(p);
+  const col=safeColor(def.color||'var(--muted)');
+  let h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">';
+  h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">'+t('GATE DECISION')+'</span>';
+  h+='<span title="'+escH(t('Current disposition'))+'" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:IBM Plex Mono,monospace;color:'+col+';border:1px solid '+col+';border-radius:10px;padding:2px 9px">'
+    +'<span style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0"></span>'+escH(t(def.label))+'</span>';
+  h+='<span style="flex:1"></span>';
+  h+=gtDecBtn(p.id,'go','✓ '+t('Go'),'var(--accent)',t('Pass the gate: fund (Active) and advance to the next stage'));
+  h+=gtDecBtn(p.id,'hold','⏸ '+t('Hold'),'var(--warn)',t('Pause: set On Hold — stops consuming capacity but stays in the portfolio'));
+  h+=gtDecBtn(p.id,'kill','✕ '+t('Kill'),'var(--danger)',t('Stop: set Cancelled (terminal)'));
+  h+='</div>';
+  return h;
+}
+function gtDecBtn(projId,decision,label,color,title){
+  return '<button onclick="gtDecide('+projId+',\''+decision+'\')" title="'+escH(title)+'" '
+    +'style="background:var(--bg);border:1px solid '+color+';color:'+color+';font-family:IBM Plex Mono,monospace;'
+    +'font-size:10px;font-weight:700;padding:4px 11px;border-radius:4px;cursor:pointer;letter-spacing:.03em">'+escH(label)+'</button>';
+}
+// Record a Go / Hold / Kill verdict. Reason prompt (cancel aborts the whole action).
+function gtDecide(projId,decision){
+  const p=projects.find(x=>x.id===Number(projId)); if(!p) return;
+  const map={go:'active',hold:'on_hold',kill:'cancelled'};
+  const next=map[decision]; if(!next) return;
+  const verb={go:t('Go'),hold:t('Hold'),kill:t('Kill')}[decision];
+  const reason=prompt(t('“{d}” decision — reason (optional):',{d:verb}),''); if(reason===null) return;
+  projSetLifecycle(p,next,reason);
+  if(decision==='go'){
+    // Pass the gate → advance, but only when a next stage exists (funding a project already
+    // at the final gate must not pop gtStepStage's "already at the final stage" alert).
+    const stages=gtModel().stages, gp=p.gatePlan||makeGatePlan();
+    let ci=stages.findIndex(s=>s.id===gp.stageId); if(ci<0) ci=0;
+    if(ci < stages.length-1) gtStepStage(projId,1);   // gtStepStage handles the blocked-override confirm
+  }
+  saveState(); renderGateTab();                 // persist the disposition regardless of the advance outcome
+}
 
 /* ══ Phase 3 — the KANBAN PIPELINE (maturity axis) ════════════════════════
    The portfolio overview: one column per stage, each project as a card in its
@@ -25894,7 +26109,7 @@ function gtOverviewRow(p,stages,incs){
     const selStage=stages.find(s=>s.id===sel);
     const bd=selStage?safeColor(selStage.color||'var(--accent)'):'var(--border)';
     h+='<td style="padding:5px 8px;border-bottom:1px solid var(--border);border-left:3px solid '+bd+';text-align:center">'
-      +'<select onchange="gtSetRoadmap('+p.id+','+JSON.stringify(iv.id)+',this.value)" style="'+gtInStyle('105px')+'">'
+      +'<select onchange="gtSetRoadmap('+p.id+','+JSON.stringify(iv.id).replace(/"/g,'&quot;')+',this.value)" style="'+gtInStyle('105px')+'">'
       +'<option value="">'+escH(t('—'))+'</option>'
       +stages.map(s=>'<option value="'+escH(s.id)+'"'+(s.id===sel?' selected':'')+'>'+escH(s.name||'—')+'</option>').join('')
       +'</select></td>';
@@ -26106,6 +26321,504 @@ function gtSetRoadmap(projId,incId,stageId){
   renderGateTab();  // re-render so the cell's stage-colour border updates
 }
 /* ◄◄ END: sections/gate.js ►► */
+
+/* ►► SECTION: PIPELINE ◄◄ INSIGHTS › Pipeline — new-project intake & feasibility.
+ *
+ * A read-only decision AID for the front of the funnel: which CANDIDATE projects
+ * (still in the early gate stages) should we green-light, given a fixed money
+ * budget AND a fixed pool of engineers? It joins three engines the rest of the
+ * app keeps apart:
+ *   · value/return  — ecDataset() (NPV / risk-adj NPV / IRR / PI / investment)
+ *   · people        — pipelineCapacity() (free FTE·months = bench headroom)
+ *   · lifecycle     — the stage-gate (gtCurStageIdx / gtStageReadiness): a project
+ *                     is a candidate while it sits BEFORE the commit gate.
+ *
+ * The one piece of genuinely new data is the per-candidate resource-demand
+ * ESTIMATE on the charter (charter.demand: peakFte / fteMonths) — a candidate is
+ * not staffed month-by-month yet, so its demand is forecast, editable inline here.
+ *
+ * Ranks candidates by bang-for-buck, then walks the ranked list accumulating
+ * € and FTE·months; the first candidate that would breach EITHER ceiling is the
+ * fund/defer cut line (a greedy frontier). Nothing here mutates state except the
+ * inline demand inputs (→ saveState). Board controls (budget/sort/commit gate)
+ * are session-only. Functions use the pipe / _pipe / PIPE_ name prefixes.
+ */
+
+// ── Session-only board state (never persisted) ──────────────────────────
+var _pipeBudgetEur=null;     // € budget ceiling for candidate investment (null → no limit)
+var _pipeCommitIdx=null;     // stage index a project must REACH to be committed (null → auto)
+var _pipeSort='npvPerFte';   // ranking metric: 'npvPerFte' | 'npvPerEur' | 'npv'
+var _pipeExpanded={};        // pid → true when its per-discipline demand editor is open
+
+// The active methodology's stages (empty array if none configured).
+function pipeStages(){ var m=(typeof gtModel==='function')?gtModel():null; return (m&&Array.isArray(m.stages))?m.stages:[]; }
+
+// Stage index a project must reach to count as COMMITTED (out of the pipeline).
+// Default = 2 (past OPEN + SELECT in the seed methodology), clamped to [1, nStages].
+function pipeCommitIdx(){
+  var n=pipeStages().length;
+  var d=(_pipeCommitIdx==null)?2:_pipeCommitIdx;
+  return Math.max(1,Math.min(d,Math.max(1,n)));
+}
+
+// A project is a CANDIDATE (awaiting a funding decision) while its lifecycle is
+// 'proposed' or 'on_hold'. Funding it flips lifecycle to 'active' (→ it leaves the
+// board and starts consuming capacity). The gate stage still drives go/no-go
+// readiness, but no longer defines candidacy.
+function pipeIsCandidate(p){
+  var lc=projLifecycle(p);
+  return lc==='proposed' || lc==='on_hold';
+}
+
+function _pipeProjById(pid){ return projects.find(function(p){return p.id===Number(pid);})||null; }
+
+// The demand estimate off a project's charter (nulls preserved, negatives clamped).
+// `byGroup` is the optional per-discipline (engGroup id → FTE·months) breakdown; only
+// positive entries are kept, so an empty/absent map means "no per-discipline estimate".
+function pipeDemand(p){
+  var c=(p&&p.charter&&typeof p.charter==='object')?p.charter:makeCharter();
+  var d=(c.demand&&typeof c.demand==='object')?c.demand:makeCharterDemand();
+  function num(v){ if(v==null||v==='') return null; var n=+v; return (Number.isFinite(n)&&n>=0)?n:null; }
+  var bg={}; var src=(d.byGroup&&typeof d.byGroup==='object')?d.byGroup:{};
+  Object.keys(src).forEach(function(gid){ var n=+src[gid]; if(Number.isFinite(n)&&n>0) bg[gid]=n; });
+  return { peakFte:num(d.peakFte), fteMonths:num(d.fteMonths), byGroup:bg };
+}
+
+// Build the ranked candidate rows, joining ecDataset() economics with demand.
+function pipeRows(){
+  var eco=(typeof ecDataset==='function')?ecDataset():[];
+  var byId={}; eco.forEach(function(r){ byId[r.p.id]=r; });
+  var stages=pipeStages();
+  var rows=[];
+  projects.forEach(function(p){
+    if(!pipeIsCandidate(p)) return;
+    var e=byId[p.id]||{};
+    var dem=pipeDemand(p);
+    var npv=(e.npv==null)?null:e.npv;
+    var radj=(e.riskAdjNpv==null)?npv:e.riskAdjNpv;
+    rows.push({
+      p:p, name:p.name||t('Untitled'), color:safeColor(p.color||'var(--accent)'),
+      npv:npv, riskAdjNpv:radj, pi:(e.pi==null?null:e.pi), irr:(e.irr==null?null:e.irr),
+      invested:(e.invested==null?0:e.invested), rev:(e.chanRev||0),
+      intent:(p.tacticalIntent||''), conflicts:(e.conflicts||0),
+      alignMin:(e.alignMin==null?null:e.alignMin), rpnMax:(e.rpnMax||0),
+      peakFte:dem.peakFte, fteMonths:dem.fteMonths, byGroup:dem.byGroup,
+      stageIdx:stages.length?gtCurStageIdx(p,stages):0,
+    });
+  });
+  rows.forEach(function(r){ r.score=pipeScore(r); });
+  rows.sort(function(a,b){ return b.score-a.score; });
+  return rows;
+}
+
+// Bang-for-buck score by the active metric. Candidates with no NPV sink last.
+// `sort` defaults to the session metric so callers stay unchanged; passing it
+// explicitly keeps the function global-free (unit-testable without _pipeSort).
+function pipeScore(r,sort){
+  sort=sort||_pipeSort;
+  var v=r.riskAdjNpv;
+  if(v==null) return -Infinity;
+  if(sort==='npv') return v;
+  if(sort==='npvPerEur') return r.invested>0 ? v/r.invested : (v>0?Infinity:v);
+  // default: NPV per FTE·month (people are the scarce constraint)
+  return (r.fteMonths&&r.fteMonths>0) ? v/r.fteMonths : (v>0?-Infinity:v);
+}
+
+// Greedy frontier: walk ranked rows, fund while cumulative € AND FTE·months both
+// stay under their ceilings; the first breach is the cut (rest deferred).
+// `capByGroup` (optional: engGroup id → free FTE·months) adds a per-discipline ceiling —
+// a row whose `byGroup` demand would push ANY one discipline over its free capacity is
+// deferred even when the € and total-FTE ceilings still fit, and gets `r.groupBreach=[gid…]`.
+// Omit it (or a row with no `byGroup`) to keep the plain total-only behaviour.
+function pipeFrontier(rows,budgetEur,freeCap,capByGroup){
+  var cumInv=0, cumFte=0, cut=false, cumG={};
+  rows.forEach(function(r){
+    var inv=r.invested||0, fte=r.fteMonths||0;
+    var bg=(r.byGroup&&typeof r.byGroup==='object')?r.byGroup:null;
+    var tentInv=cumInv+inv, tentFte=cumFte+fte;
+    var okBudget=(budgetEur==null)||(tentInv<=budgetEur);
+    var okCap=(freeCap==null||freeCap<=0)?true:(tentFte<=freeCap);
+    // per-discipline ceiling (only when both a byGroup demand and a group-free map exist)
+    var okGrp=true, breach=null;
+    if(bg && capByGroup){
+      Object.keys(bg).forEach(function(gid){
+        var need=(+bg[gid])||0; if(need<=0) return;
+        var freeG=capByGroup[gid]; if(freeG==null) return;   // unknown discipline → no ceiling
+        if(((cumG[gid]||0)+need) > freeG){ okGrp=false; (breach||(breach=[])).push(gid); }
+      });
+    }
+    if(!cut && okBudget && okCap && okGrp){
+      r.funded=true; cumInv=tentInv; cumFte=tentFte;
+      if(bg) Object.keys(bg).forEach(function(gid){ cumG[gid]=(cumG[gid]||0)+((+bg[gid])||0); });
+    } else {
+      r.funded=false; cut=true;
+      if(breach) r.groupBreach=breach;
+    }
+    r.cumInv=cumInv; r.cumFte=cumFte;
+  });
+  return { cumInv:cumInv, cumFte:cumFte, cumByGroup:cumG };
+}
+
+/* ── Inline demand editors (the only state mutation) ─────────────────── */
+function pipeSetDemand(pid,field,val){
+  var p=_pipeProjById(pid); if(!p) return;
+  if(!p.charter||typeof p.charter!=='object') p.charter=makeCharter();
+  if(!p.charter.demand||typeof p.charter.demand!=='object') p.charter.demand=makeCharterDemand();
+  var n=(val===''||val==null)?null:Math.max(0,+val);
+  if(n!=null&&!Number.isFinite(n)) n=null;
+  p.charter.demand[field]=n;
+  saveState();
+  renderPipelineTab();
+}
+// Per-discipline demand input (engGroup id → FTE·months). Empty/0 clears the entry.
+function pipeSetGroupDemand(pid,gid,val){
+  var p=_pipeProjById(pid); if(!p) return;
+  if(!p.charter||typeof p.charter!=='object') p.charter=makeCharter();
+  if(!p.charter.demand||typeof p.charter.demand!=='object') p.charter.demand=makeCharterDemand();
+  if(!p.charter.demand.byGroup||typeof p.charter.demand.byGroup!=='object') p.charter.demand.byGroup={};
+  var n=(val===''||val==null)?null:Math.max(0,+val);
+  if(n==null||!Number.isFinite(n)||n===0) delete p.charter.demand.byGroup[gid];
+  else p.charter.demand.byGroup[gid]=n;
+  saveState();
+  renderPipelineTab();
+}
+function pipeToggleExpand(pid){ if(_pipeExpanded[pid]) delete _pipeExpanded[pid]; else _pipeExpanded[pid]=true; renderPipelineTab(); }
+// Encode an engGroup id for a single-quoted JS-string arg inside a double-quoted HTML
+// attribute (JS-escape backslash/quote first, then HTML-escape). JSON.stringify would
+// emit double quotes that terminate the onchange="" attribute — so never use it here.
+function _pipeGidArg(gid){ return escH(String(gid).replace(/\\/g,'\\\\').replace(/'/g,"\\'")); }
+function pipeSetBudget(v){ var n=(v===''||v==null)?null:+v; _pipeBudgetEur=(n!=null&&Number.isFinite(n)&&n>=0)?n*1e6:null; renderPipelineTab(); }
+function pipeSetSort(v){ _pipeSort=String(v||'npvPerFte'); renderPipelineTab(); }
+function pipeSetCommit(v){ _pipeCommitIdx=Number(v); renderPipelineTab(); }
+
+// Open a candidate's charter (deep-link, closes the res overlay like other openers).
+function pipeOpenCharter(pid){ var p=_pipeProjById(pid); if(p&&typeof openCharter==='function') openCharter(p.id); }
+
+/* ── Funding decisions — the persisted fund/hold/kill actions ─────────── */
+// Record a lifecycle transition on a candidate (Fund → active, Hold → on_hold,
+// Kill → cancelled). `ask` prompts for an optional reason (logged in the decision
+// history). A cancelled prompt aborts the whole action.
+function pipeDecide(pid,next,ask){
+  var p=_pipeProjById(pid); if(!p) return;
+  var reason=null;
+  if(ask){ reason=prompt(t('Reason (optional):'),''); if(reason===null) return; }
+  if(projSetLifecycle(p,next,reason)){ saveState(); renderPipelineTab(); }
+}
+// Create a fresh candidate (lifecycle 'proposed') from a name prompt.
+function pipeAddCandidate(){
+  var name=(prompt(t('New candidate project name:'),'')||'').trim(); if(!name) return;
+  var p=makeProject({ name:name, id:nextId++, lifecycle:'proposed', costSource:'manual', planCost:null });
+  projects.push(p);
+  saveState(); renderPipelineTab();
+}
+// Bulk-activate every current candidate (proposed/on_hold) in one step — the antidote to
+// the item-2 migration funding a large existing portfolio one row at a time. Confirm first;
+// each transition is logged via projSetLifecycle so the decision history stays complete.
+function pipeFundAll(){
+  var cands=projects.filter(pipeIsCandidate);
+  if(!cands.length){ alert(t('No candidates to fund.')); return; }
+  if(!confirm(t('Fund all {n} candidate(s)? Each is set to Active and starts consuming capacity.',{n:cands.length}))) return;
+  var reason=t('Bulk-funded from Pipeline board');
+  var changed=0;
+  cands.forEach(function(p){ if(projSetLifecycle(p,'active',reason)) changed++; });
+  if(changed) saveState();
+  renderPipelineTab();
+}
+
+/* ── Render ──────────────────────────────────────────────────────────── */
+function renderPipelineTab(){
+  var body=G('res-body'); if(!body) return;
+  var months=getMonthRange();
+  var cap=(typeof pipelineCapacity==='function')?pipelineCapacity(months):{free:0,supply:0,people:0};
+  var stages=pipeStages();
+  var rows=pipeRows();
+
+  var h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
+  h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('⛛ PIPELINE — INTAKE & FEASIBILITY')+'</span>'
+    +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
+    +(months.length?t('capacity over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for capacity'))
+    +'</span>';
+  var candCount=projects.filter(pipeIsCandidate).length;
+  if(candCount) h+='<button onclick="pipeFundAll()" title="'+escH(t('Set every candidate to Active in one step'))+'" style="margin-left:auto;background:var(--bg);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer">'+t('⚡ Fund all ({n})',{n:candCount})+'</button>';
+  h+='<button onclick="pipeAddCandidate()" style="'+(candCount?'':'margin-left:auto;')+'background:var(--accent);color:#0f0f11;border:none;border-radius:6px;font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer">'+t('＋ Add candidate')+'</button>'
+    +'</div>';
+
+  if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — ＋ Add candidate above, or add projects on the matrix and set their lifecycle to Proposed.'))+'</div>'; return; }
+
+  // Portfolio disposition — where every project sits, candidates or not.
+  h+=pipeLifecycleBreakdown();
+
+  h+=pipeControls(stages);
+
+  if(!rows.length){ body.innerHTML=h+pfEmpty(t('No candidates awaiting a decision — no project is Proposed or On Hold. ＋ Add candidate above, or set a project’s lifecycle to Proposed in its edit panel to evaluate it here.'))+'</div>'; return; }
+
+  var capG={}; if(cap.byGroup) Object.keys(cap.byGroup).forEach(function(k){ capG[k]=cap.byGroup[k].free; });
+  var fr=pipeFrontier(rows,_pipeBudgetEur,cap.free,capG);
+  h+=pipeScorecard(rows,cap,fr);
+  h+=pfSection(t('CANDIDATE RANKING'),
+      t('Candidates (Proposed or On Hold), ranked by the metric above. Peak FTE and effort (FTE·months) are your pre-staffing ESTIMATE — edit inline; everything else comes from the charter financials. Rows above the cut line fit the budget and free-capacity ceilings. Use Fund / Hold / Kill to record the decision.'),
+      pipeTable(rows,cap));
+  h+=pfSection(t('EFFICIENT FRONTIER — money vs people'),
+      t('Cumulative investment (€, teal) and cumulative effort (FTE·months, lime) as you fund candidates down the ranking, each shown against its ceiling (100%). Whichever curve hits 100% first is the binding constraint; the dashed line is the fund/defer cut.'),
+      pipeFrontierSVG(rows,cap,_pipeBudgetEur));
+  if(stages.length){
+    h+=pfSection(t('GO / NO-GO — commit-gate readiness'),
+      t('Weighted readiness of each candidate against the commit gate’s criteria (from Gate & PI). A blocked mandatory criterion means the investment decision cannot pass yet, however attractive the return.'),
+      pipeGoNoGo(rows,stages));
+  }
+  h+='</div>';
+  body.innerHTML=h;
+}
+
+// Controls: budget, ranking metric, commit-gate selector.
+function pipeControls(stages){
+  var budgetM=(_pipeBudgetEur==null)?'':(_pipeBudgetEur/1e6);
+  var sortOpt=function(v,lbl){ return '<option value="'+v+'"'+(_pipeSort===v?' selected':'')+'>'+escH(lbl)+'</option>'; };
+  var commitOpts='';
+  var n=stages.length, ci=pipeCommitIdx();
+  for(var i=1;i<=Math.max(1,n);i++){
+    var nm=(stages[i-1]?stages[i-1].name:('#'+i));
+    commitOpts+='<option value="'+i+'"'+(i===ci?' selected':'')+'>'+escH(t('committed once past {s}',{s:nm}))+'</option>';
+  }
+  var box='background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:5px 7px';
+  var lab='font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px';
+  var h='<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">';
+  h+='<div style="display:flex;flex-direction:column"><span style="'+lab+'">'+t('Budget (M€)')+'</span>'
+    +'<input type="number" min="0" step="0.1" value="'+budgetM+'" placeholder="'+t('no limit')+'" onchange="pipeSetBudget(this.value)" style="'+box+';width:120px"></div>';
+  h+='<div style="display:flex;flex-direction:column"><span style="'+lab+'">'+t('Rank by')+'</span>'
+    +'<select onchange="pipeSetSort(this.value)" style="'+box+'">'
+    +sortOpt('npvPerFte',t('NPV per FTE·month'))+sortOpt('npvPerEur',t('NPV per € invested'))+sortOpt('npv',t('Risk-adj NPV'))
+    +'</select></div>';
+  if(stages.length){
+    h+='<div style="display:flex;flex-direction:column"><span style="'+lab+'">'+t('Commit gate')+'</span>'
+      +'<select onchange="pipeSetCommit(this.value)" style="'+box+'">'+commitOpts+'</select></div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+// Portfolio disposition strip — a chip per lifecycle state present, with counts
+// and a total-investment read. The single place to see fund/hold/kill/EoL spread.
+function pipeLifecycleBreakdown(){
+  var by={}; projects.forEach(function(p){ var id=projLifecycle(p); (by[id]||(by[id]={n:0})).n++; });
+  var chips=PROJECT_LIFECYCLE.filter(function(s){return by[s.id];}).map(function(s){
+    return '<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:11px">'
+      +'<span style="width:8px;height:8px;border-radius:2px;background:'+safeColor(s.color)+'"></span>'
+      +escH(t(s.label))+' <b style="font-family:IBM Plex Mono,monospace">'+by[s.id].n+'</b></span>';
+  }).join('');
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-right:2px">'+t('PORTFOLIO DISPOSITION')+'</span>'+chips+'</div>';
+}
+
+function pipeScorecard(rows,cap,fr){
+  var sumNpv=rows.reduce(function(s,r){return s+(r.riskAdjNpv||0);},0);
+  var sumInv=rows.reduce(function(s,r){return s+(r.invested||0);},0);
+  var sumFte=rows.reduce(function(s,r){return s+(r.fteMonths||0);},0);
+  var funded=rows.filter(function(r){return r.funded;});
+  var fundedNpv=funded.reduce(function(s,r){return s+(r.riskAdjNpv||0);},0);
+  var noEst=rows.filter(function(r){return r.fteMonths==null;}).length;
+  var capColor=(cap.free>0 && sumFte>cap.free)?'var(--danger)':'var(--accent)';
+  var h='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+  h+=pfKpi(rows.length, t('CANDIDATES'), t('{n} non-candidate excluded',{n:projects.length-rows.length}));
+  h+=pfKpi(pfEur(sumNpv), t('Σ RISK-ADJ NPV'), t('all candidates'), sumNpv>=0?'var(--accent2)':'var(--danger)');
+  h+=pfKpi(pfEur(sumInv), t('Σ INVESTMENT'), _pipeBudgetEur==null?t('no budget set'):t('budget {b}',{b:pfEur(_pipeBudgetEur)}), (_pipeBudgetEur!=null&&sumInv>_pipeBudgetEur)?'var(--danger)':'var(--text)');
+  h+=pfKpi(sumFte.toFixed(0)+' ', t('Σ FTE·MONTHS'), t('free capacity {f}',{f:cap.free.toFixed(0)}), capColor);
+  h+=pfKpi(funded.length, t('FUNDABLE NOW'), t('{v} of Σ NPV captured',{v:pfEur(fundedNpv)}), 'var(--accent)');
+  if(noEst) h+=pfKpi(noEst, t('NO ESTIMATE'), t('add peak / FTE·months'), 'var(--warn)');
+  h+='</div>';
+  return h;
+}
+
+function pipeTable(rows,cap){
+  var thStyle='text-align:right;padding:7px 8px;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap';
+  var thL=thStyle+';text-align:left';
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+  h+='<thead><tr>'
+    +'<th style="'+thL+'">'+t('#')+'</th>'
+    +'<th style="'+thL+'">'+t('Candidate')+'</th>'
+    +'<th style="'+thStyle+'">'+t('Risk-adj NPV')+'</th>'
+    +'<th style="'+thStyle+'">'+t('IRR')+'</th>'
+    +'<th style="'+thStyle+'">'+t('PI')+'</th>'
+    +'<th style="'+thStyle+'">'+t('Investment')+'</th>'
+    +'<th style="'+thStyle+'">'+t('Peak FTE')+'</th>'
+    +'<th style="'+thStyle+'">'+t('FTE·months')+'</th>'
+    +'<th style="'+thStyle+'">'+t('NPV / FTE·mo')+'</th>'
+    +'<th style="'+thStyle+'">'+t('Fit')+'</th>'
+    +'<th style="'+thStyle+'">'+t('Decision')+'</th>'
+    +'</tr></thead><tbody>';
+  var cutShown=false;
+  var inStyle='width:58px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;padding:3px 5px;text-align:right';
+  rows.forEach(function(r,i){
+    // Draw the fund/defer divider before the first deferred row.
+    if(!r.funded && !cutShown){
+      cutShown=true;
+      h+='<tr><td colspan="11" style="padding:3px 8px;border-top:2px dashed var(--warn)">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--warn);letter-spacing:.06em">'+t('— CUT LINE · below = defer to next cycle —')+'</span></td></tr>';
+    }
+    var pid=r.p.id;
+    var npvColor=(r.riskAdjNpv==null)?'var(--muted)':(r.riskAdjNpv>=0?'var(--accent2)':'var(--danger)');
+    var perFte=(r.riskAdjNpv!=null&&r.fteMonths&&r.fteMonths>0)?pfEur(r.riskAdjNpv/r.fteMonths):'—';
+    var fit=pipeFitBadge(r,cap);
+    var lc=projLifecycle(r.p);
+    var rec=r.funded
+      ? '<span style="color:var(--accent);font-weight:700" title="'+escH(t('recommended: fits budget & capacity'))+'">'+t('FUND')+'</span>'
+      : '<span style="color:var(--muted)" title="'+escH(t('recommended: defer — beyond a ceiling or negative return'))+'">'+t('Defer')+'</span>';
+    var btn='display:inline-block;font-size:9px;font-weight:700;border-radius:4px;padding:2px 6px;margin:1px 0 0 3px;cursor:pointer;border:1px solid';
+    var acts='<div style="margin-top:2px;white-space:nowrap">'
+      +'<a onclick="pipeDecide('+pid+',\'active\')" title="'+escH(t('Fund — mark Active, starts consuming capacity'))+'" style="'+btn+' var(--accent);color:var(--accent)">'+t('Fund')+'</a>'
+      +(lc==='on_hold'?'':'<a onclick="pipeDecide('+pid+',\'on_hold\',true)" title="'+escH(t('Hold — pause, keep in pipeline'))+'" style="'+btn+' var(--warn);color:var(--warn)">'+t('Hold')+'</a>')
+      +'<a onclick="pipeDecide('+pid+',\'cancelled\',true)" title="'+escH(t('Kill — cancel this candidate'))+'" style="'+btn+' var(--danger);color:var(--danger)">'+t('Kill')+'</a>'
+      +'</div>';
+    var decide=rec+(lc==='on_hold'?'<div style="font-size:9px;color:var(--warn);font-family:IBM Plex Mono,monospace">'+t('ON HOLD')+'</div>':'')+acts;
+    var td='padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap';
+    var tdL='padding:6px 8px;border-bottom:1px solid var(--border);text-align:left';
+    var rowBg=r.funded?'':'opacity:.62';
+    h+='<tr style="'+rowBg+'">'
+      +'<td style="'+tdL+';color:var(--muted);font-family:IBM Plex Mono,monospace">'+(i+1)+'</td>'
+      +'<td style="'+tdL+'"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:'+r.color+';margin-right:7px;vertical-align:middle"></span>'
+        +'<a onclick="pipeOpenCharter('+pid+')" style="cursor:pointer;color:var(--text);text-decoration:none;border-bottom:1px dotted var(--muted)">'+escH(r.name)+'</a></td>'
+      +'<td style="'+td+';color:'+npvColor+';font-family:IBM Plex Mono,monospace">'+(r.riskAdjNpv==null?'—':pfEur(r.riskAdjNpv))+'</td>'
+      +'<td style="'+td+';font-family:IBM Plex Mono,monospace">'+(r.irr==null?'—':fmtPct(r.irr*100))+'</td>'
+      +'<td style="'+td+';font-family:IBM Plex Mono,monospace">'+(r.pi==null?'—':(+r.pi).toFixed(2))+'</td>'
+      +'<td style="'+td+';font-family:IBM Plex Mono,monospace">'+(r.invested?pfEur(r.invested):'—')+'</td>'
+      +'<td style="'+td+'"><input type="number" min="0" step="0.5" value="'+(r.peakFte==null?'':r.peakFte)+'" onchange="pipeSetDemand('+pid+',\'peakFte\',this.value)" style="'+inStyle+'"></td>'
+      +'<td style="'+td+'"><input type="number" min="0" step="1" value="'+(r.fteMonths==null?'':r.fteMonths)+'" onchange="pipeSetDemand('+pid+',\'fteMonths\',this.value)" style="'+inStyle+'">'+pipeGroupToggle(r)+'</td>'
+      +'<td style="'+td+';font-family:IBM Plex Mono,monospace;color:'+npvColor+'">'+perFte+'</td>'
+      +'<td style="'+td+'">'+fit+'</td>'
+      +'<td style="'+td+'">'+decide+'</td>'
+      +'</tr>';
+    if(_pipeExpanded[pid] && engGroups.length) h+=pipeGroupRow(r,cap);
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+// Strategic-fit badge from tactical intent + charter conflicts + discipline breach.
+function pipeFitBadge(r,cap){
+  var out='';
+  if(r.intent){
+    var ic={Defend:'🛡️',Grow:'📈',Adapt:'🔄',Diversify:'🧭'}[r.intent]||'•';
+    out+='<span title="'+escH(t('Tactical intent'))+'" style="font-size:11px">'+ic+'</span> ';
+  }
+  if(r.conflicts>0) out+='<span title="'+escH(t('unresolved trade-off conflicts'))+'" style="color:var(--danger);font-family:IBM Plex Mono,monospace;font-size:10px">⚠'+r.conflicts+'</span>';
+  else if(r.alignMin!=null&&r.alignMin>0) out+='<span title="'+escH(t('lowest function alignment'))+'" style="color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:10px">'+r.alignMin+'/10</span>';
+  // Per-discipline capacity breach — a function over its free FTE·months even if the total fits.
+  if(r.groupBreach && r.groupBreach.length){
+    var bg=(cap&&cap.byGroup)||{};
+    var names=r.groupBreach.map(function(gid){ return (bg[gid]&&bg[gid].name)||gid; });
+    out+=' <span title="'+escH(t('Over free capacity in: {g}',{g:names.join(', ')}))+'" style="color:var(--warn);font-family:IBM Plex Mono,monospace;font-size:10px">⛔'+names.length+'</span>';
+  }
+  return out||'<span style="color:var(--dim)">—</span>';
+}
+
+// The "▾ by function" toggle shown under the FTE·months input (only when groups exist).
+function pipeGroupToggle(r){
+  if(!engGroups.length) return '';
+  var pid=r.p.id, open=!!_pipeExpanded[pid];
+  var n=r.byGroup?Object.keys(r.byGroup).length:0;
+  var lbl=(open?'▾ ':'▸ ')+t('by function')+(n?(' ('+n+')'):'');
+  return '<div style="margin-top:3px"><a onclick="pipeToggleExpand('+pid+')" style="cursor:pointer;font-size:9px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--dim)" title="'+escH(t('Split this candidate’s effort across disciplines'))+'">'+lbl+'</a></div>';
+}
+
+// The expanded detail row: one small FTE·months input per engGroup, each with a
+// free-capacity hint. Sum vs the headline total is shown so mismatches are visible.
+function pipeGroupRow(r,cap){
+  var pid=r.p.id, bg=r.byGroup||{}, capG=(cap&&cap.byGroup)||{};
+  var inS='width:52px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;padding:2px 4px;text-align:right';
+  var sum=0; Object.keys(bg).forEach(function(g){ sum+=(+bg[g])||0; });
+  var cells=engGroups.map(function(g){
+    var val=bg[g.id]==null?'':bg[g.id];
+    var freeG=capG[g.id]?capG[g.id].free:null;
+    var over=(freeG!=null && (+bg[g.id]||0)>freeG);
+    var hint=(freeG!=null)?(t('free')+' '+freeG.toFixed(0)):t('n/a');
+    return '<div style="display:flex;flex-direction:column;gap:2px;min-width:74px">'
+      +'<span style="font-size:9px;color:'+safeColor(g.color)+';font-family:IBM Plex Mono,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px" title="'+escH(g.name)+'">'+escH(g.name)+'</span>'
+      +'<input type="number" min="0" step="1" value="'+val+'" onchange="pipeSetGroupDemand('+pid+',\''+_pipeGidArg(g.id)+'\',this.value)" style="'+inS+(over?';border-color:var(--warn);color:var(--warn)':'')+'">'
+      +'<span style="font-size:8px;color:'+(over?'var(--warn)':'var(--dim)')+';font-family:IBM Plex Mono,monospace">'+escH(hint)+'</span></div>';
+  }).join('');
+  var mism=(r.fteMonths!=null && sum>0 && Math.abs(sum-r.fteMonths)>0.5);
+  return '<tr><td colspan="11" style="padding:8px 10px 10px 34px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)">'
+    +'<div style="display:flex;gap:6px;align-items:baseline;margin-bottom:6px">'
+      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase">'+t('DEMAND BY DISCIPLINE (FTE·months)')+'</span>'
+      +'<span style="font-size:9px;color:'+(mism?'var(--warn)':'var(--dim)')+';font-family:IBM Plex Mono,monospace">'+t('Σ {s}',{s:sum.toFixed(0)})+(mism?(' ≠ '+t('total {t}',{t:(r.fteMonths==null?'—':r.fteMonths)})):'')+'</span>'
+    +'</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'+cells+'</div></td></tr>';
+}
+
+// Two cumulative curves (€ and FTE·months), each normalised to its ceiling.
+function pipeFrontierSVG(rows,cap,budgetEur){
+  var n=rows.length;
+  if(!n) return pfEmpty(t('No candidates to plot.'));
+  var totInv=rows.reduce(function(s,r){return s+(r.invested||0);},0);
+  var budgetRef=(budgetEur!=null&&budgetEur>0)?budgetEur:(totInv>0?totInv:1);   // € normaliser
+  var capRef=(cap.free>0)?cap.free:0;                                            // FTE normaliser
+  var W=760,H=200,pL=44,pR=90,pT=16,pB=30, iW=W-pL-pR, iH=H-pT-pB;
+  // cumulative (normalised) series
+  var cInv=0,cFte=0, ptsInv=[], ptsFte=[], maxY=1.2, cutIdx=-1;
+  rows.forEach(function(r,i){
+    cInv+=(r.invested||0); cFte+=(r.fteMonths||0);
+    var yi=cInv/budgetRef, yf=capRef>0?cFte/capRef:0;
+    ptsInv.push(yi); ptsFte.push(yf);
+    maxY=Math.max(maxY,yi,yf);
+    if(r.funded) cutIdx=i;
+  });
+  function X(i){ return pL+(n<=1?iW/2:iW*i/(n-1)); }
+  function Y(v){ return pT+iH-(v/maxY)*iH; }
+  var svg='';
+  // ceiling line at 100%
+  var yC=Y(1);
+  svg+='<line x1="'+pL+'" y1="'+yC.toFixed(1)+'" x2="'+(W-pR)+'" y2="'+yC.toFixed(1)+'" stroke="var(--warn)" stroke-width="1" stroke-dasharray="5 3" opacity="0.8"/>';
+  svg+='<text x="'+(W-pR+6)+'" y="'+(yC+3).toFixed(1)+'" font-size="9" fill="var(--warn)" font-family="IBM Plex Mono,monospace">'+t('ceiling')+'</text>';
+  // grid baseline
+  svg+='<line x1="'+pL+'" y1="'+(pT+iH)+'" x2="'+(W-pR)+'" y2="'+(pT+iH)+'" stroke="var(--border)" stroke-width="1"/>';
+  // cut vertical
+  if(cutIdx>=0 && cutIdx<n-1){
+    var xc=(X(cutIdx)+X(cutIdx+1))/2;
+    svg+='<line x1="'+xc.toFixed(1)+'" y1="'+pT+'" x2="'+xc.toFixed(1)+'" y2="'+(pT+iH)+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>';
+    svg+='<text x="'+(xc+4).toFixed(1)+'" y="'+(pT+10)+'" font-size="9" fill="var(--muted)" font-family="IBM Plex Mono,monospace">'+t('cut')+'</text>';
+  }
+  function path(pts,color){
+    var d=pts.map(function(v,i){ return (i?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1); }).join(' ');
+    return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round"/>';
+  }
+  if(capRef>0) svg+=path(ptsFte,'var(--accent)');
+  svg+=path(ptsInv,'var(--accent2)');
+  // end dots
+  svg+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(ptsInv[n-1]).toFixed(1)+'" r="3" fill="var(--accent2)"/>';
+  if(capRef>0) svg+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(ptsFte[n-1]).toFixed(1)+'" r="3" fill="var(--accent)"/>';
+  // y labels 0 / 100%
+  svg+='<text x="'+(pL-6)+'" y="'+(yC+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--dim)" font-family="IBM Plex Mono,monospace">100%</text>';
+  svg+='<text x="'+(pL-6)+'" y="'+(pT+iH+3)+'" text-anchor="end" font-size="9" fill="var(--dim)" font-family="IBM Plex Mono,monospace">0</text>';
+  var legend='<div style="display:flex;gap:16px;margin-top:8px;font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--muted)">'
+    +'<span><span style="display:inline-block;width:14px;height:3px;background:var(--accent2);vertical-align:middle;margin-right:5px"></span>'+t('cumulative € invested')+'</span>'
+    +'<span><span style="display:inline-block;width:14px;height:3px;background:var(--accent);vertical-align:middle;margin-right:5px"></span>'+t('cumulative FTE·months')+'</span>'
+    +(capRef<=0?'<span style="color:var(--warn)">'+t('· no free capacity in this period')+'</span>':'')
+    +'</div>';
+  return '<div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+t('Cumulative investment and effort against their ceilings')+'">'+svg+'</svg></div>'+legend;
+}
+
+// Commit-gate readiness per candidate (go / no-go).
+function pipeGoNoGo(rows,stages){
+  var gateStage=stages[pipeCommitIdx()-1]; if(!gateStage) return pfEmpty(t('No commit gate configured.'));
+  var signals=(typeof gtBuildSignalMap==='function')?gtBuildSignalMap():{};
+  var h='<div style="display:flex;flex-direction:column;gap:8px">';
+  h+='<div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+t('Gate: {g}',{g:escH(gateStage.name)})+'</div>';
+  rows.forEach(function(r){
+    var gp=(r.p.gatePlan&&typeof r.p.gatePlan==='object')?r.p.gatePlan:makeGatePlan();
+    var rd=(typeof gtStageReadiness==='function')?gtStageReadiness(gateStage,gp,signals[r.p.id]||{}):{pct:0,blocked:false};
+    var col=rd.blocked?'var(--danger)':(rd.pct>=100?'var(--accent)':'var(--warn)');
+    var status=rd.blocked?t('NO-GO'):(rd.pct>=100?t('GO'):t('{p}% ready',{p:rd.pct}));
+    h+='<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="width:170px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escH(r.name)+'">'
+        +'<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+r.color+';margin-right:6px"></span>'+escH(r.name)+'</div>'
+      +'<div style="flex:1;height:12px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.max(0,Math.min(100,rd.pct))+'%;background:'+col+'"></div></div>'
+      +'<div style="width:90px;text-align:right;font-family:IBM Plex Mono,monospace;font-size:10px;color:'+col+'">'+status+'</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+/* ◄◄ END: sections/pipeline.js ►► */
 
 /* ►► SECTION: TALENT-ENGAGEMENT ◄◄ TALENT › Engagement.
  *
@@ -26425,6 +27138,7 @@ const HOME_THRESHOLDS = {
   marginPct:15,
   hhi:0.6,
   spofBoost:1.5,
+  holdStaleDays:90,
 };
 
 // Severity ordering: lower rank sorts first / is "worse".
@@ -26434,8 +27148,8 @@ const HOME_BAND_RANK = { critical:0, warn:1, watch:2 };
 const HOME_CONCERN_DOMAIN = {
   'retention-risk':'people', 'over-allocation':'people', 'bench':'people',
   'stale-review':'people', 'engagement-due':'people',
-  'gate-blocked':'governance', 'gate-behind':'governance',
-  'charter-conflict':'portfolio', 'value-destroying':'portfolio',
+  'gate-blocked':'governance', 'gate-behind':'governance', 'hold-stale':'governance',
+  'charter-conflict':'portfolio', 'value-destroying':'portfolio', 'candidate-stale':'portfolio',
   'low-unit-margin':'portfolio', 'dtc-gap':'portfolio', 'channel-concentration':'portfolio',
   'task-overdue':'planner', 'task-pinned':'planner',
 };
@@ -26491,6 +27205,8 @@ function homeProjectTitle(concern, name){
     'low-unit-margin':' has a thin unit margin',
     'dtc-gap':' is over its cost target',
     'channel-concentration':' is channel-concentrated',
+    'hold-stale':' has been on hold too long',
+    'candidate-stale':' is a value-destroying candidate',
   };
   return (name||'A project') + (map[concern]||' needs attention');
 }
@@ -26569,7 +27285,10 @@ function homeClassifyPerson(d, o){
 function homeClassifyProject(pj, o){
   o = o||{};
   const thr = o.thresholds||HOME_THRESHOLDS;
+  const now = o.now||new Date();
+  const nowMs = (now instanceof Date) ? now.getTime() : new Date(now).getTime();
   const p = pj.p||{}, s = pj.sig||{}, rd = pj.readiness||{};
+  const lc = pj.lifecycle || 'active';                    // disposition (defaults active, mirrors projLifecycle)
   const uid = p.uid, id = p.id, nm = p.name||'Untitled';
   const baseImpact = Math.max(0, (s.riskAdjNpv!=null ? s.riskAdjNpv : (s.npv!=null ? s.npv : 0)));
   const items = [];
@@ -26597,7 +27316,9 @@ function homeClassifyProject(pj, o){
       [{ label:'Conflicts', val:s.conflicts, tone:'warn' }],
       'Resolve in Trade-off decision', String(s.conflicts)));
   }
-  if(s.pi!=null && s.pi < 1){
+  // A funded/active project with PI<1 is a "review financials" flag; the SAME signal on
+  // a still-Proposed candidate is instead a decide-to-kill nudge (candidate-stale below).
+  if(lc!=='proposed' && s.pi!=null && s.pi < 1){
     items.push(mk('value-destroying', 'warn',
       ['Profitability index below 1 (PI '+s.pi.toFixed(2)+')'],
       [{ label:'PI', val:s.pi.toFixed(2), tone:'warn' }],
@@ -26620,6 +27341,34 @@ function homeClassifyProject(pj, o){
       ['Channel concentration high (HHI '+s.chanHHI.toFixed(2)+')'],
       [{ label:'HHI', val:s.chanHHI.toFixed(2), tone:'watch' }],
       'Diversify in Channel mix', String(homeBucket(s.chanHHI*100,10))));
+  }
+  // ── Lifecycle nudges (disposition axis) ────────────────────────────────────
+  // On hold too long: a paused project no one has resumed or retired. Age from the
+  // most-recent transition INTO on_hold in lifecycleHistory.
+  if(lc==='on_hold'){
+    const hist = Array.isArray(pj.lifecycleHistory) ? pj.lifecycleHistory : [];
+    let sinceMs = null;
+    for(let k=hist.length-1;k>=0;k--){ if(hist[k] && hist[k].to==='on_hold'){ sinceMs = hist[k].ts; break; } }
+    if(sinceMs!=null){
+      const days = Math.floor((nowMs - sinceMs)/86400000);
+      if(days >= thr.holdStaleDays){
+        items.push(mk('hold-stale', 'warn',
+          ['On hold '+days+' days — decide to resume or retire it'],
+          [{ label:'On hold', val:days+'d', tone:'warn' }],
+          'Resume or kill in Gate & PI', String(homeBucket(days,30))));
+      }
+    }
+  }
+  // Value-destroying candidate still Proposed: a negative-value proposal awaiting a
+  // fund/kill call. Fires on PI<1 OR a negative risk-adjusted NPV.
+  if(lc==='proposed'){
+    const npv = (s.riskAdjNpv!=null ? s.riskAdjNpv : s.npv);
+    if((s.pi!=null && s.pi < 1) || (npv!=null && npv < 0)){
+      items.push(mk('candidate-stale', 'warn',
+        ['Proposed candidate is value-destroying — decide to fund or kill'],
+        [{ label:'PI', val:(s.pi!=null ? s.pi.toFixed(2) : '—'), tone:'warn' }],
+        'Decide in Pipeline', (s.pi!=null ? 'pi'+String(homeBucket(s.pi*10,1)) : 'npvneg')));
+    }
   }
   return items;
 }
@@ -26770,7 +27519,8 @@ function homeRawItems(o){
           readiness = { blocked:hard.length>0, pct:rd.pct, blockers:hard };
         }
       }catch(e){}
-      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness, gateEngaged:gateEngaged }, { thresholds:thr })
+      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness, gateEngaged:gateEngaged,
+          lifecycle:(p.lifecycle||'active'), lifecycleHistory:(Array.isArray(p.lifecycleHistory)?p.lifecycleHistory:[]) }, { thresholds:thr, now:now })
         .forEach(function(it){ items.push(it); });
     });
   }catch(e){}
@@ -27320,11 +28070,12 @@ function homeOpenFor(concern, entityId){
   if(concern==='over-allocation' || concern==='bench'){ if(typeof railGo==='function') railGo(null,'plan'); return; }
   if(concern==='task-overdue' || concern==='task-pinned'){ if(typeof railGo==='function') railGo(null,'backlog'); return; }
   if(concern==='engagement-due'){ if(typeof railGo==='function') railGo(null,'engagement'); return; }
-  if(concern==='gate-blocked' || concern==='gate-behind'){
+  if(concern==='gate-blocked' || concern==='gate-behind' || concern==='hold-stale'){
     if(typeof railGo==='function') railGo(null,'gate');
     if(typeof gtOpenDetail==='function') gtOpenDetail(id);
     return;
   }
+  if(concern==='candidate-stale'){ if(typeof railGo==='function') railGo(null,'pipeline'); return; }
   if(concern==='charter-conflict'){ homeGoView('decision', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
   if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('charters', function(){ if(typeof openCharter==='function') openCharter(id); }); return; }
   if(concern==='dtc-gap'){ homeGoView('dtc', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }

@@ -60,6 +60,35 @@ export function _costCounts(eng){
   return !!eng && !eng.excludeFromCalc && !(eng.planningOnly && !eng.includeInCost);
 }
 
+/* ── Project lifecycle accessors (see PROJECT_LIFECYCLE in globals.js) ──── */
+export function projLifecycleDef(idOrProj){
+  var id=(idOrProj&&typeof idOrProj==='object')?idOrProj.lifecycle:idOrProj;
+  return PROJECT_LIFECYCLE.find(function(s){return s.id===id;})||PROJECT_LIFECYCLE[1]; // fallback: active
+}
+export function projLifecycle(p){ return (p&&p.lifecycle)||'active'; }
+// Do this project's allocations count against team capacity? (active/in-service/maintenance)
+export function projConsumesCapacity(p){ return !!projLifecycleDef(p).consumes; }
+// Is this project part of the LIVE portfolio (vs. terminal/history-only)?
+export function projIsActivePortfolio(p){ return !!projLifecycleDef(p).activePortfolio; }
+// Memoised set of project ids whose demand counts — the choke point for suppression.
+export function _projCapacitySet(){
+  return _memo('projCapSet', function(){
+    var s=new Set(); projects.forEach(function(p){ if(projConsumesCapacity(p)) s.add(p.id); }); return s;
+  });
+}
+// Record a lifecycle transition (writes state + reason + appends to the decision log).
+// Returns true if the state actually changed. Caller owns saveState()/re-render.
+export function projSetLifecycle(p, next, reason){
+  if(!p || !PROJECT_LIFECYCLE.some(function(s){return s.id===next;})) return false;
+  var from=projLifecycle(p);
+  if(next===from && (reason==null || reason===p.lifecycleReason)) return false;
+  if(!Array.isArray(p.lifecycleHistory)) p.lifecycleHistory=[];
+  p.lifecycleHistory.push({ ts:Date.now(), from:from, to:next, reason:(reason||'') });
+  p.lifecycle=next;
+  if(reason!=null) p.lifecycleReason=reason;
+  return true;
+}
+
 /* ── Effective project revenue (M€) ─────────────────────────────────
    User-entered `impactEur` wins. When the user hasn't entered one, fall back
    to a DERIVED default = impact (y) + enabler (ena), but only when both are
@@ -110,6 +139,11 @@ function _computeEngUtil(months){
   var cur=_dashCur();
   var util={};
   var rowsByEng=_rowsByEngMap();
+  // Suppressed-project allocations don't count as demand/utilisation (a cancelled or
+  // held project must not make its ex-team look allocated). Unassigned rows (no
+  // projectId) always count. Default lifecycle is 'active', so this is a no-op until
+  // a project is actually held/cancelled/withdrawn/EoL.
+  var capSet=_projCapacitySet();
   engineers.filter(function(e){return !e.vacant&&(!e.planningOnly||e.includeInCost);}).forEach(function(eng){
     var rows=rowsByEng.get(eng.id)||[];
     var eg=engGroups.find(function(g){return g.id===eng.groupId;});
@@ -117,6 +151,7 @@ function _computeEngUtil(months){
     var monthStatus={};
     months.forEach(function(m){
       monthAllocs[m]=rows.reduce(function(s,r){
+        if(r.projectId!=null && !capSet.has(r.projectId)) return s;   // suppressed project
         var v=r.allocs&&r.allocs[m]!=null?r.allocs[m]:0;
         // Status letters: m/r = not active (no cost), p = on leave but counts as allocated
         if(v==='m'||v==='r')return s;

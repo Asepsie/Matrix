@@ -121,7 +121,7 @@ function gtStageCard(s,i,n){
   let h='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid '+sw+';border-radius:8px;padding:10px 12px">';
   // header row
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
-  h+='<button onclick="gtToggleFold('+JSON.stringify(s.id)+')" title="'+escH(t('Fold / unfold criteria'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;width:16px">'+(folded?'▸':'▾')+'</button>';
+  h+='<button onclick="gtToggleFold('+JSON.stringify(s.id).replace(/"/g,'&quot;')+')" title="'+escH(t('Fold / unfold criteria'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;width:16px">'+(folded?'▸':'▾')+'</button>';
   h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim);width:20px">'+(i+1)+'</span>';
   h+='<input value="'+escH(s.name||'')+'" onchange="gtSetStage('+i+',\'name\',this.value)" placeholder="'+escH(t('Stage name'))+'" style="'+gtInStyle('150px')+';font-weight:700">';
   h+='<input value="'+escH(s.desc||'')+'" onchange="gtSetStage('+i+',\'desc\',this.value)" placeholder="'+escH(t('short description'))+'" style="'+gtInStyle('220px')+'">';
@@ -425,6 +425,8 @@ function gtProjectDetail(p,m,signals){
   h+=gtBtn('← '+t('Back'),'gtRegress('+p.id+')',false,t('Move to the previous stage'));
   h+=gtBtn(t('Advance')+' →','gtAdvance('+p.id+')',true,t('Advance to the next stage'));
   h+='</div>';
+  // gate decision — the classic Go / Hold / Kill disposition (writes project.lifecycle)
+  h+=gtDecisionBar(p);
   // blockers banner
   if(rd.blocked){
     h+='<div style="background:rgba(241,164,53,.10);border:1px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text)">'
@@ -483,7 +485,7 @@ function gtCritDetailRow(p,c,status,signals){
       +gtStatusBtn(p.id,c.id,'fail','✕',status==='fail','var(--danger)')
       +gtStatusBtn(p.id,c.id,'na','–',status==='na','var(--dim)')
       +'</div>';
-    h+='<input value="'+escH(note)+'" onchange="gtSetNote('+p.id+','+JSON.stringify(c.id)+',this.value)" placeholder="'+escH(t('note'))+'" style="'+gtInStyle('130px')+'">';
+    h+='<input value="'+escH(note)+'" onchange="gtSetNote('+p.id+','+JSON.stringify(c.id).replace(/"/g,'&quot;')+',this.value)" placeholder="'+escH(t('note'))+'" style="'+gtInStyle('130px')+'">';
   }
   h+='</div>';
   return h;
@@ -494,7 +496,7 @@ function gtStatusChip(status){
   return '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid '+s[1]+';color:'+s[1]+';font-size:11px;flex-shrink:0">'+s[0]+'</span>';
 }
 function gtStatusBtn(projId,critId,status,glyph,active,color){
-  return '<button onclick="gtSetManual('+projId+','+JSON.stringify(critId)+',\''+status+'\')" title="'+escH(status)+'" '
+  return '<button onclick="gtSetManual('+projId+','+JSON.stringify(critId).replace(/"/g,'&quot;')+',\''+status+'\')" title="'+escH(status)+'" '
     +'style="width:24px;height:22px;border:1px solid '+(active?color:'var(--border)')+';border-radius:4px;cursor:pointer;font-size:11px;'
     +'background:'+(active?color:'var(--bg)')+';color:'+(active?'var(--bg)':'var(--muted)')+'">'+glyph+'</button>';
 }
@@ -542,6 +544,51 @@ function gtStepStage(projId,dir){
 }
 function gtAdvance(projId){ gtStepStage(projId,1); }
 function gtRegress(projId){ gtStepStage(projId,-1); }
+
+/* ── Gate decision — Go / Hold / Kill (the disposition axis) ──────────────────
+   The classic stage-gate verdict, sitting where reviewers already are. Distinct
+   from the stage move (forward position): a decision writes project.lifecycle via
+   projSetLifecycle (logged), NOT gatePlan. Go additionally passes the gate — it
+   funds (Active) AND tries to advance the stage through gtStepStage, so stage
+   moves keep a single source of truth (blocked-override + history stay there).
+   The two axes are independent: if you decline the blocked-override, the project
+   is still funded but stays at its stage. */
+function gtDecisionBar(p){
+  const def=projLifecycleDef(p);
+  const col=safeColor(def.color||'var(--muted)');
+  let h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">';
+  h+='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">'+t('GATE DECISION')+'</span>';
+  h+='<span title="'+escH(t('Current disposition'))+'" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:IBM Plex Mono,monospace;color:'+col+';border:1px solid '+col+';border-radius:10px;padding:2px 9px">'
+    +'<span style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0"></span>'+escH(t(def.label))+'</span>';
+  h+='<span style="flex:1"></span>';
+  h+=gtDecBtn(p.id,'go','✓ '+t('Go'),'var(--accent)',t('Pass the gate: fund (Active) and advance to the next stage'));
+  h+=gtDecBtn(p.id,'hold','⏸ '+t('Hold'),'var(--warn)',t('Pause: set On Hold — stops consuming capacity but stays in the portfolio'));
+  h+=gtDecBtn(p.id,'kill','✕ '+t('Kill'),'var(--danger)',t('Stop: set Cancelled (terminal)'));
+  h+='</div>';
+  return h;
+}
+function gtDecBtn(projId,decision,label,color,title){
+  return '<button onclick="gtDecide('+projId+',\''+decision+'\')" title="'+escH(title)+'" '
+    +'style="background:var(--bg);border:1px solid '+color+';color:'+color+';font-family:IBM Plex Mono,monospace;'
+    +'font-size:10px;font-weight:700;padding:4px 11px;border-radius:4px;cursor:pointer;letter-spacing:.03em">'+escH(label)+'</button>';
+}
+// Record a Go / Hold / Kill verdict. Reason prompt (cancel aborts the whole action).
+function gtDecide(projId,decision){
+  const p=projects.find(x=>x.id===Number(projId)); if(!p) return;
+  const map={go:'active',hold:'on_hold',kill:'cancelled'};
+  const next=map[decision]; if(!next) return;
+  const verb={go:t('Go'),hold:t('Hold'),kill:t('Kill')}[decision];
+  const reason=prompt(t('“{d}” decision — reason (optional):',{d:verb}),''); if(reason===null) return;
+  projSetLifecycle(p,next,reason);
+  if(decision==='go'){
+    // Pass the gate → advance, but only when a next stage exists (funding a project already
+    // at the final gate must not pop gtStepStage's "already at the final stage" alert).
+    const stages=gtModel().stages, gp=p.gatePlan||makeGatePlan();
+    let ci=stages.findIndex(s=>s.id===gp.stageId); if(ci<0) ci=0;
+    if(ci < stages.length-1) gtStepStage(projId,1);   // gtStepStage handles the blocked-override confirm
+  }
+  saveState(); renderGateTab();                 // persist the disposition regardless of the advance outcome
+}
 
 /* ══ Phase 3 — the KANBAN PIPELINE (maturity axis) ════════════════════════
    The portfolio overview: one column per stage, each project as a card in its
@@ -747,7 +794,7 @@ function gtOverviewRow(p,stages,incs){
     const selStage=stages.find(s=>s.id===sel);
     const bd=selStage?safeColor(selStage.color||'var(--accent)'):'var(--border)';
     h+='<td style="padding:5px 8px;border-bottom:1px solid var(--border);border-left:3px solid '+bd+';text-align:center">'
-      +'<select onchange="gtSetRoadmap('+p.id+','+JSON.stringify(iv.id)+',this.value)" style="'+gtInStyle('105px')+'">'
+      +'<select onchange="gtSetRoadmap('+p.id+','+JSON.stringify(iv.id).replace(/"/g,'&quot;')+',this.value)" style="'+gtInStyle('105px')+'">'
       +'<option value="">'+escH(t('—'))+'</option>'
       +stages.map(s=>'<option value="'+escH(s.id)+'"'+(s.id===sel?' selected':'')+'>'+escH(s.name||'—')+'</option>').join('')
       +'</select></td>';

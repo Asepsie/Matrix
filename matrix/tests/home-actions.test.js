@@ -132,6 +132,62 @@ test('gate-blocked still fires on a real (hard) block regardless of engagement',
   assert.ok(items.some(i=>i.concern==='gate-blocked' && i.band==='critical'));
 });
 
+// ── Lifecycle nudges (disposition axis) ─────────────────────────────────────
+const NOW2 = new Date('2026-08-22T12:00:00Z');
+const daysAgoMs = (n) => NOW2.getTime() - n*86400000;
+const popj = (o) => Object.assign({ thresholds:HOME_THRESHOLDS, now:NOW2 }, o||{});
+
+test('hold-stale: on_hold beyond holdStaleDays fires warn; under threshold is quiet', () => {
+  const mk = (days) => ({ p:{id:1,uid:'p1',name:'Paused'}, sig:{riskAdjNpv:100},
+    lifecycle:'on_hold', lifecycleHistory:[{from:'active',to:'on_hold',ts:daysAgoMs(days)}] });
+  const stale = homeClassifyProject(mk(120), popj());
+  const fresh = homeClassifyProject(mk(30), popj());
+  const s = stale.find(i=>i.concern==='hold-stale');
+  assert.ok(s && s.band==='warn' && s.domain==='governance');
+  assert.match(s.why[0], /120 days/);
+  assert.equal(fresh.some(i=>i.concern==='hold-stale'), false);
+});
+
+test('hold-stale: exactly at the threshold fires (>=), and uses the LATEST hold transition', () => {
+  const at = homeClassifyProject({ p:{id:1,uid:'p1',name:'P'}, sig:{},
+    lifecycle:'on_hold', lifecycleHistory:[{to:'on_hold',ts:daysAgoMs(90)}] }, popj());
+  assert.ok(at.some(i=>i.concern==='hold-stale'));
+  // a re-hold resets the clock: an old hold + a recent re-hold → measured from the recent one
+  const rehold = homeClassifyProject({ p:{id:1,uid:'p1',name:'P'}, sig:{}, lifecycle:'on_hold',
+    lifecycleHistory:[{to:'on_hold',ts:daysAgoMs(200)},{to:'active',ts:daysAgoMs(150)},{to:'on_hold',ts:daysAgoMs(10)}] }, popj());
+  assert.equal(rehold.some(i=>i.concern==='hold-stale'), false);   // only 10 days since latest hold
+});
+
+test('hold-stale: on_hold with no history entry (or not on_hold) does not fire', () => {
+  const noHist = homeClassifyProject({ p:{id:1,uid:'p1',name:'P'}, sig:{}, lifecycle:'on_hold', lifecycleHistory:[] }, popj());
+  assert.equal(noHist.some(i=>i.concern==='hold-stale'), false);
+  const active = homeClassifyProject({ p:{id:1,uid:'p1',name:'P'}, sig:{}, lifecycle:'active' }, popj());
+  assert.equal(active.some(i=>i.concern==='hold-stale'), false);
+});
+
+test('candidate-stale: a Proposed project with PI<1 or negative NPV fires warn (portfolio)', () => {
+  const byPi  = homeClassifyProject({ p:{id:2,uid:'p2',name:'Weak'}, sig:{pi:0.6, riskAdjNpv:5}, lifecycle:'proposed' }, popj());
+  const byNpv = homeClassifyProject({ p:{id:3,uid:'p3',name:'Neg'},  sig:{riskAdjNpv:-1000},     lifecycle:'proposed' }, popj());
+  const cp = byPi.find(i=>i.concern==='candidate-stale');
+  assert.ok(cp && cp.band==='warn' && cp.domain==='portfolio');
+  assert.ok(byNpv.some(i=>i.concern==='candidate-stale'));
+});
+
+test('candidate-stale: a healthy Proposed candidate does not fire', () => {
+  const good = homeClassifyProject({ p:{id:2,uid:'p2',name:'Strong'}, sig:{pi:1.8, riskAdjNpv:9000}, lifecycle:'proposed' }, popj());
+  assert.equal(good.some(i=>i.concern==='candidate-stale'), false);
+});
+
+test('proposed value-destroyer emits candidate-stale INSTEAD of the generic value-destroying', () => {
+  const proposed = homeClassifyProject({ p:{id:2,uid:'p2',name:'Weak'}, sig:{pi:0.6}, lifecycle:'proposed' }, popj());
+  assert.equal(proposed.some(i=>i.concern==='candidate-stale'), true);
+  assert.equal(proposed.some(i=>i.concern==='value-destroying'), false);   // not double-counted
+  // a funded/active project with the same PI keeps the generic flag
+  const active = homeClassifyProject({ p:{id:2,uid:'p2',name:'Weak'}, sig:{pi:0.6}, lifecycle:'active' }, popj());
+  assert.equal(active.some(i=>i.concern==='value-destroying'), true);
+  assert.equal(active.some(i=>i.concern==='candidate-stale'), false);
+});
+
 test('planner tasks: overdue is warn, pinned is watch, done yields nothing', () => {
   const over = homeClassifyTask({ pid:1, pname:'P', kind:'todo', id:9, text:'Ship', done:false, due:'2020-01-01', execPin:false, overdue:true }, {});
   const pin  = homeClassifyTask({ pid:1, pname:'P', kind:'action', id:8, text:'Call', done:false, due:'', execPin:true, overdue:false }, {});

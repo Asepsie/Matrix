@@ -32,14 +32,53 @@ function _computeCostMaps(months,filterEng,filterProj){
     if(filterProj&&filterProj.size){var p=projById.get(r.projectId);if(!p||!filterProj.has(p.name))return false;}
     return true;
   });
+  var capSet=_projCapacitySet();
   filtered.forEach(function(r){
     var eng=engById.get(r.engId);if(!eng||!_costCounts(eng))return;
+    if(r.projectId!=null && !capSet.has(r.projectId))return;   // suppressed-lifecycle project: no cost
     var cost=months.reduce(function(s,m){return s+(r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],eng.monthlyCost):0);},0);
     if(r.projectId){projCost[r.projectId]=(projCost[r.projectId]||0)+cost;}
     else{unassignedCost+=cost;}
     totalCost+=cost;
   });
   return {projCost:projCost,totalCost:totalCost,unassignedCost:unassignedCost,filteredRows:filtered};
+}
+
+/* ── Capacity supply/free — the one source of truth for "how much room" ──
+   A pure, memoised roll-up of the same supply math the Resource Balancer hero
+   computes inline (counted engineers, minus months an engineer is fully
+   medical/resigned, minus the FTE already engaged). Extracted so the Pipeline
+   board can weigh candidate demand against real free capacity WITHOUT the
+   dashboard render. Returns FTE·months over the given range, plus a per-group
+   breakdown. `free` = idle FTE·months = the bench headroom new projects can draw. */
+export function pipelineCapacity(months){
+  months=months||[];
+  return _memo('pipeCap:'+_monthsKey(months), function(){
+    var engUtil=_buildEngUtil(months);
+    var counted=Object.values(engUtil).filter(function(eu){return _costCounts(eu.eng);});
+    function inactive(eu,m){ var s=eu.monthStatus&&eu.monthStatus[m]; return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0; }
+    var supply=0, engaged=0, demand=0, byGroup={};
+    counted.forEach(function(eu){
+      var key=eu.grp||t('Ungrouped'), color=eu.grpColor||'var(--muted)';
+      var g=byGroup[eu.grpId||key]||(byGroup[eu.grpId||key]={name:key,color:color,supply:0,engaged:0,demand:0,people:0});
+      g.people++;
+      months.forEach(function(m){
+        if(inactive(eu,m))return;
+        supply+=1; g.supply+=1;
+        var a=eu.monthAllocs[m]||0;
+        engaged+=Math.min(a,1); g.engaged+=Math.min(a,1);
+        demand+=a; g.demand+=a;
+      });
+    });
+    Object.keys(byGroup).forEach(function(k){ var g=byGroup[k]; g.free=Math.max(0,g.supply-g.engaged); });
+    return {
+      months:months.length, people:counted.length,
+      supply:supply, engaged:engaged, demand:demand,
+      free:Math.max(0,supply-engaged),        // idle FTE·months = bench headroom
+      over:Math.max(0,demand-engaged),
+      byGroup:byGroup,
+    };
+  });
 }
 
 /* Shared mini bar-sparkline used by cost-by-project, project-detail and the

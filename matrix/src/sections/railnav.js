@@ -93,6 +93,7 @@ var RAIL_DOMAINS = [
   { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
     {id:'exec',        label:t('Executive summary')},
     {id:'gate',        label:t('Gate & PI')},
+    {id:'pipeline',    label:t('Pipeline')},
     {id:'portfolio',   label:t('Portfolio analytics')},
     {id:'econ',        label:t('Portfolio economics')},
     {id:'analytics',   label:t('People analytics')},
@@ -434,7 +435,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,engagement:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).

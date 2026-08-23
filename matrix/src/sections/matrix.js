@@ -316,16 +316,20 @@ function renderWithAnim(W,H,pw,ph,isAnim){
       const pcol=safeColor(p.color);
       const sec=sections.find(s=>s.id===p.sectionId);
       const ringColor=isSel?'#fff':safeColor(sec?sec.color:p.color);
-      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}"
+      // Lifecycle cue: terminal (cancelled/withdrawn/eol) → dimmed; on_hold → dashed warn ring.
+      const lcOp=projIsActivePortfolio(p)?1:0.3;
+      const lcHeld=projLifecycle(p)==='on_hold';
+      h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${pcol}18" stroke="${ringColor}" stroke-width="${isSel?2.5:1.5}" opacity="${lcOp}"
             style="cursor:${drawTool==='none'&&!isAnim?'grab':(isAnim?'default':'crosshair')}"
             onmousedown="${drawTool==='none'&&!isAnim?`startProjDrag(event,${p.id})`:''}"
             oncontextmenu="openCtx(event,${p.id})"
             onmouseover="showTip(event,${p.id})" onmouseout="hideTip()"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}" />`;
-      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${pcol}" pointer-events="none"/>`;
+      if(lcHeld) h+=`<circle cx="${cx}" cy="${cy}" r="${DOT_R+3}" fill="none" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.9" pointer-events="none"/>`;
+      h+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${pcol}" pointer-events="none" opacity="${lcOp}"/>`;
       const td=(p.todos||[]).filter(t=>t.done).length,tt=(p.todos||[]).length;
       if(tt) h+=`<text font-family="IBM Plex Mono,monospace" font-size="8" fill="${pcol}88"
-                   text-anchor="middle" x="${cx}" y="${cy+22}" pointer-events="none">${td}/${tt}</text>`;
+                   text-anchor="middle" x="${cx}" y="${cy+22}" pointer-events="none" opacity="${lcOp}">${td}/${tt}</text>`;
     }
   }
 
@@ -340,6 +344,7 @@ function renderWithAnim(W,H,pw,ph,isAnim){
       const {p,cx,cy,lbl,lw}=nd;
       const isSel=p.id===selId;
       const pcol=safeColor(p.color);
+      const lcOp=projIsActivePortfolio(p)?1:0.3;   // match the dot pass: dim terminal projects
       const angle=-Math.PI/2+i*step;
       const r=N===1?(DOT_R+8):fanR;
       // Label centre point
@@ -358,10 +363,10 @@ function renderWithAnim(W,H,pw,ph,isAnim){
         h+=`<line x1="${lx0.toFixed(1)}" y1="${ly0.toFixed(1)}"
                   x2="${lxe.toFixed(1)}" y2="${(ly-2).toFixed(1)}"
               stroke="${pcol}" stroke-width="0.9" stroke-dasharray="3,2"
-              opacity="0.5" pointer-events="none"/>`;
+              opacity="${(0.5*lcOp).toFixed(2)}" pointer-events="none"/>`;
       }
       h+=`<text font-family="IBM Plex Sans,sans-serif" font-size="10" font-weight="${isSel?700:600}"
-            fill="${pcol}" text-anchor="${anchor}" dominant-baseline="auto"
+            fill="${pcol}" text-anchor="${anchor}" dominant-baseline="auto" opacity="${lcOp}"
             x="${lx.toFixed(1)}" y="${ly.toFixed(1)}"
             style="cursor:${drawTool==='none'&&!isAnim?'pointer':'default'};paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round"
             onclick="${drawTool==='none'&&!isAnim?`selectProject(${p.id})`:''}"

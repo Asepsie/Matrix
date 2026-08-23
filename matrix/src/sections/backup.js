@@ -150,6 +150,12 @@ export function importFullBackup(){
 
         takeSnap('Auto: before full backup restore','full','',true);
 
+        // gateConfig MUST load before sanitiseProjects: the one-time lifecycle migration
+        // (_projAtInitialGate) reads the active methodology's first stage to decide
+        // proposed-vs-active. A PRE-lifecycle backup carrying a CUSTOM methodology would
+        // otherwise be migrated against the CURRENT session's config (wrong first stage).
+        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
+
         if(d.projects)       {projects=d.projects;sanitiseProjects();}
         if(d.sections)       sections=d.sections;
         if(d.engineers)      {
@@ -164,7 +170,7 @@ export function importFullBackup(){
         // per-dataset eng.id) so a stale set can't bleed onto colliding new ids.
         _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
         if(d.ktPlans)        _ktPlans=d.ktPlans;
-        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
+        // (gateConfig already loaded above, before sanitiseProjects)
         if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
         if(d.orgPositions)   _orgPositions=d.orgPositions;
         if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;

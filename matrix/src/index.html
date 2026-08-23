@@ -205,6 +205,19 @@
           <option value="Diversify">Diversify</option>
         </select>
       </div>
+      <div class="field"><label>LIFECYCLE</label>
+        <select id="e-lifecycle" title="Project disposition — funding & end-of-life state. Held/cancelled/withdrawn/EoL projects stop consuming team capacity.">
+          <option value="proposed">Proposed</option>
+          <option value="active">Funded / Active</option>
+          <option value="on_hold">On Hold</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="in_service">In Service</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="maint_cancelled">Maintenance Cancelled</option>
+          <option value="withdrawn">Withdrawn</option>
+          <option value="eol">End of Life</option>
+        </select>
+      </div>
       <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
       <div class="field"><label>NOTE</label><input type="text" id="e-note" placeholder="Optional"></div>
       <div class="field"><label>COLOR</label>

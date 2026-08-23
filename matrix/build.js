@@ -66,6 +66,7 @@ const JS_FILES = [
   'sections/econ.js',
   'sections/exec.js',
   'sections/gate.js',
+  'sections/pipeline.js',   // new-project intake & feasibility — reads ecDataset/gate/pipelineCapacity
   'sections/engagement.js',
   'sections/home.js',   // personal front door: reads analytics/gate/econ/engagement producers
   'sections/collab.js',

@@ -5,6 +5,156 @@ keep entries short — record what is *non-obvious from the code*, not a full to
 
 ---
 
+## Pipeline board — new-project intake & feasibility (`pipeline.js`)
+
+`INSIGHTS › Pipeline` ([src/sections/pipeline.js](src/sections/pipeline.js), all
+`pipe`/`_pipe`/`PIPE_`-prefixed). A read-only **decision aid** for the front of the
+funnel: rank CANDIDATE projects and check them against a money budget **and** a
+people ceiling at once. It composes existing engines rather than recomputing —
+the whole feature is a *join*, not new analytics.
+
+### What it reuses (the join)
+
+- **Value/return:** `ecDataset()` ([econ.js](src/sections/econ.js)) — the per-project
+  NPV / risk-adj NPV / IRR / PI / `invested` (effInvestment). Pipeline indexes it by
+  `p.id`; it does **not** call `calculateFinancials` itself.
+- **People:** `pipelineCapacity(months)` ([dashboard.js](src/sections/dashboard.js)) —
+  a NEW pure, memoised roll-up of the SAME supply math the Resource Balancer hero
+  computes inline (counted engineers via `_costCounts`, minus fully medical/resigned
+  months, minus engaged FTE). Returns `{supply, engaged, free, over, byGroup}` in
+  FTE·months; `free` (idle FTE·months = bench headroom) is the capacity ceiling. The
+  dashboard still has its own inline copy — the extraction exists so Pipeline can get
+  capacity WITHOUT a dashboard render; delegating the dashboard to it is a future tidy.
+- **Lifecycle:** `pipeIsCandidate(p)` = `projLifecycle(p)` is `'proposed'` or
+  `'on_hold'` (see *Project lifecycle* below). **Candidacy is the lifecycle field, NOT
+  the gate stage** (an earlier cut keyed candidacy off `gtCurStageIdx` < commit gate —
+  replaced, because the disposition needs to be an explicit, logged decision, not
+  inferred). The commit-gate selector now only chooses which gate `gtStageReadiness`
+  scores for the go/no-go strip. Funding a candidate flips it to `'active'` (leaves the
+  board, starts consuming capacity). `＋ Add candidate` creates a `makeProject({lifecycle:
+  'proposed'})`; the Fund/Hold/Kill buttons call `pipeDecide` → `projSetLifecycle`.
+
+### The one new datum — `charter.demand`
+
+A committed project's FTE demand comes from `allocRows`; a *candidate* isn't staffed
+yet, so it needs a forecast. `makeCharter().demand = makeCharterDemand()` =
+`{peakFte, fteMonths, byGroup:{}}` ([model.js](src/data/model.js)); back-filled in
+`sanitiseCharter` ([persist.js](src/core/persist.js)). **It rides persistence for free**
+— `demand` is nested inside `project.charter`, and `projects[]` is already in all three
+capture surfaces, so it needs NO `MUST_PERSIST` entry (that guard is top-level keys only).
+Edited **inline in the ranking table** (the only state mutation here → `pipeSetDemand`
+→ `saveState`, debounced), not on the charter tab.
+
+### The frontier (greedy, dual-ceiling)
+
+`pipeScore` ranks by NPV-per-FTE·month (default; toggle to per-€ or raw risk-adj NPV);
+no-NPV rows sink last. `pipeFrontier` walks the ranked list accumulating € and
+FTE·months and funds while BOTH stay under their ceilings; the first breach is the
+fund/defer cut (rest deferred, greedy stop). The SVG normalises each cumulative to its
+OWN ceiling (100% line) so "which constraint binds first" is visible; budget-null →
+the € curve normalises to Σinvested (informational, never binding). Board controls
+(budget in M€, sort, commit gate) are **session-only** vars, not persisted.
+
+### ⚠ Gotcha that cost real debug time — `*/` inside a block comment
+
+The section header comment listed the prefixes as `pipe*/_pipe*/PIPE_` — the `*/`
+**closed the `/* */` block comment early**, turning the rest into code with a stray
+regex literal. `build.js`'s `vm.Script` compile tolerated the garbage (V8 lazy-parse),
+so **the build passed**, but the browser threw `SyntaxError: Invalid regular expression:
+missing /` at top-level script eval — which **aborts everything after that file in the
+bundle**, including `boot()`. Symptom: rail rendered (earlier file) but `boot` never ran
+→ data loaded into localStorage but `PROJECTS 0`, and a stale `railTogglePin is not
+defined` from the half-initialised page. Lesson: **never write `*/` inside a block
+comment**, and a green `node build.js` does NOT prove the bundle runs in a browser —
+`vm.Script` only parses, it doesn't execute top level.
+
+### Registration & verify
+
+Registered like any res tab: `JS_FILES` (after gate.js) + `RAIL_DOMAINS`/`RAIL_RES_TABS`
+([railnav.js](src/sections/railnav.js)) + `showResTab` case & highlight array
+([nav.js](src/sections/nav.js)). Verified in-browser against a seeded 5-project /
+4-engineer dataset: candidate detection, ranking + re-sort on demand edit, budget ceiling
+moving the cut, dual-curve frontier SVG, go/no-go readiness, inline-demand persistence,
+the Fund action (proposed→active, logged, drops from the board), and capacity suppression
+(holding a consuming project freed its FTE·months). Pure engine covered by
+`tests/pipeline.test.js` + `tests/lifecycle.test.js` (`pipeScore`/`pipeFrontier`/
+`pipelineCapacity`/`projSetLifecycle`/`_projCapacitySet`) — `pipeScore(r, sort)` takes its
+metric as a param to stay global-free; the capacity roll-up is tested against a synthetic
+engUtil injected via globalThis (the impure `_buildEngUtil`/`_memo` seam), and lifecycle.test
+dynamic-imports globals.js (after shimming its load-time `t`/`makeGateConfig`) for the real
+`PROJECT_LIFECYCLE` table.
+
+---
+
+## Project lifecycle — fund / hold / cancel / maintenance / withdraw / EoL
+
+A project's **disposition**, distinct from its gate stage (forward development position)
+and `tacticalIntent` (strategic posture). One persisted enum `project.lifecycle` +
+`lifecycleReason` + append-only `lifecycleHistory[]` ({ts,from,to,reason}). The single
+source of truth is **`PROJECT_LIFECYCLE`** ([globals.js](src/core/globals.js)) — an ordered
+list of `{id,label,phase,consumes,activePortfolio,color}`:
+
+`proposed` · `active` (Funded/Active) · `on_hold` · `cancelled` · `in_service` ·
+`maintenance` · `maint_cancelled` · `withdrawn` · `eol`.
+
+- **`consumes`** = its allocations count against team capacity (true for active /
+  in_service / maintenance). **`activePortfolio`** = it belongs to the LIVE portfolio
+  (terminal states — cancelled/withdrawn/eol — are history only; on_hold/maint_cancelled
+  stay in the active portfolio but stop consuming).
+- **Accessors** ([helpers.js](src/core/helpers.js)): `projLifecycle(p)`,
+  `projLifecycleDef(idOrProj)`, `projConsumesCapacity(p)`, `projIsActivePortfolio(p)`,
+  and the memoised **`_projCapacitySet()`** (project ids whose demand counts — the
+  suppression choke point). `projSetLifecycle(p,next,reason)` records a transition (writes
+  state + reason, appends to the log, returns whether it changed) — used by the sidebar
+  editor AND the Pipeline board's `pipeDecide`.
+
+### Capacity/cost suppression (the wiring)
+
+`_computeEngUtil` ([helpers.js](src/core/helpers.js)) and `_computeCostMaps`
+([dashboard.js](src/sections/dashboard.js)) both **skip an alloc row when
+`r.projectId != null && !_projCapacitySet().has(r.projectId)`** — so a held/cancelled/EoL
+project's allocations stop counting as demand, cost, utilisation, and over-allocation
+everywhere at once (dashboard, analytics, plan, home, pipeline all read these two). Rows
+with no `projectId` (unassigned) always count. Verified: holding a consuming project
+raised free capacity by exactly its engaged FTE·months.
+
+**Migration / defaults (by gate position, not blanket-active).** A project with no (or
+invalid) `lifecycle` is normalised in `sanitiseProjects` by **`_projAtInitialGate(p)`**: at
+the initial gate (its `gatePlan.stageId` is unset, or equals the FIRST stage id of the
+active — possibly custom — methodology) → `'proposed'`; advanced past the first gate →
+`'active'`. `makeProject`'s own default is `'proposed'` (a fresh project sits at the initial
+gate = intake). The `lifecycle===undefined` guard makes the migration one-time per project
+(a funded proposal is never re-derived), so no version flag is needed. **Consequence to
+know:** a portfolio that never engaged the gate (every `stageId=''`) migrates ENTIRELY to
+`proposed` on first load → its demand is suppressed until each project is funded. **Ordering
+invariant (all three restore paths):** `gateConfig` must be assigned BEFORE `sanitiseProjects`
+so `_projAtInitialGate` reads the restored dataset's (possibly custom) first stage, not the
+session's. `loadState` (persist.js:380 → :424), `restoreSnap` (:984 → :985) and
+`importFullBackup` ([backup.js](src/sections/backup.js): gateConfig block moved above the
+`projects`/`sanitiseProjects` line, 2026-08-23 fix) all honour it. Previously importFullBackup
+sanitised first, so a PRE-lifecycle backup carrying a custom methodology mis-migrated against
+the session's config. Verified: a project at a custom first stage `discover` → `proposed`;
+past it → `active`.
+
+### Editing & gotchas
+
+- **Edit surfaces:** the canonical dropdown is `#e-lifecycle` in the project edit panel
+  ([index.html](src/index.html) + `populateEditor`/`saveEdit` in
+  [sidebar.js](src/sections/sidebar.js)); the Pipeline board's Fund/Hold/Kill buttons are
+  the fast path for candidates; the **Gate board's GATE DECISION bar** (`gtDecide` in
+  [gate.js](src/sections/gate.js), Projects detail) is the reviewer's Go/Hold/Kill — Go also
+  advances the stage via `gtStepStage` (disposition and gate stage are separate axes with
+  separate history logs; a declined blocked-override still leaves the project funded but at its
+  stage). All route through `projSetLifecycle` so every change is logged.
+- **New field, no MUST_PERSIST entry needed** — `lifecycle`/`lifecycleReason`/
+  `lifecycleHistory` live on the project, and `projects[]` is already in all three capture
+  surfaces (that guard checks top-level state keys only).
+- **`confirmAdd` now uses `makeProject`** ([modals.js](src/sections/modals.js)) — a matrix-added
+  project carries `charter`/`gatePlan`/`lifecycle` (= `'proposed'`, a fresh intake) at creation,
+  no longer relying on the next load's `sanitiseProjects` to back-fill. (Was a raw literal.)
+
+---
+
 ## Personal Home — customizable widget grid + Action Queue (`home.js`)
 
 The default front door: `HOME › Home` ([src/sections/home.js](src/sections/home.js) +
@@ -2075,6 +2225,38 @@ export contains **no** paper hex; the on-screen panel is byte-identical after an
 
 **`anExportCSV` is untouched** — a flat data dump, out of scope by the standing decision. The
 `↓ PNG`/`↓ PDF` buttons collapsed into one `📄 EXPORT`; `↓ CSV` stays beside it.
+
+### Bug fix (2026-08-20) — `vh` clipped PNG/SVG exports to ~half the page
+
+**Symptom (user report):** a PNG export of a People-Analytics custom/compare chart showed only
+the top half of the page. Reproduced first as an isolated mechanism, then confirmed against the
+**real bundled `exportHTMLParts`** in-browser: a landscape-A3 cover+chart lost **414px (~35%)** off
+the bottom before the fix, **0px** after.
+
+**Root cause — a viewport-unit mismatch across the two contexts `_exportMeasure` straddles.** The
+PNG (`exportRasterize`) and SVG (`exportToSVG`) paths render the export document inside an SVG
+`<foreignObject>` whose height is the **whole document**, so any `vh` resolves against the entire
+image, not one page. The cover carries an inline `min-height:70vh` (correct on screen and in print,
+where it fills a page). In the single image it instead ballooned to ~70% of the *whole* image and
+shoved the chart below it off the bottom. It compounds in the opposite direction at measure time:
+`_exportMeasure` measures inside a **10px-tall** iframe, where that same `70vh` collapses to ~7px,
+so the captured canvas height is also too short. Two wrongs, same unit.
+
+**Fix (shell-level, one line of CSS).** New exported constant
+`EXPORT_RASTER_CSS_FIXUP = '.ex-cover{min-height:200px!important}'`, appended to the shared CSS
+inside `_exportMeasure` (alongside the existing `.no-print` rule). It pins the cover to a fixed px
+height so measure and render agree and the cover cannot balloon. Because the fixup lives in the
+shared measure step, it protects **every** deliverable's PNG/SVG at once — not just analytics.
+See the `vh`/viewport-unit bullet under *Key facts* for the standing rule (no `vh`/`vw`/`vmin`/`vmax`
+may ever reach these paths — a single image has no page-viewport to resolve them against). Regression
+test in [tests/export.test.js](tests/export.test.js) (33 export tests, 207 total, all green).
+
+**How this was found (method worth repeating):** the two-context height mismatch was measured
+empirically — render the exact `exportHTMLParts` output into a 10px-tall iframe (what
+`_exportMeasure` does) *and* into an iframe sized to that measured height (what the foreignObject
+becomes), then diff `body.scrollHeight`. A raster export that "looks clipped" is almost always this
+measure-vs-render disagreement, not a canvas-size cap (that path is already guarded by
+`_exportSafeScale`).
 
 ### Next: migrating another deliverable onto this engine (recipe)
 

@@ -62,10 +62,16 @@ function closeModal(){G('add-overlay').classList.remove('show');}
 function confirmAdd(){
   const name=V('m-name').trim();if(!name){G('m-name').focus();return;}
   const sid=V('m-section');
-  const p={uid:newUid(),id:nextId++,name,x:+V('m-x')||5,y:+V('m-y')||5,vis:5,ena:5,
-    note:V('m-note'),color:V('m-color'),gate:'',eta:'',todos:[],risks:[],milestones:[],actions:[],
-    vis:+V('m-vis')||5,ena:+V('m-ena')||5,costSource:'manual',planCost:null,
-    sectionId:sid?+sid:null,visible:true};
+  // Build via the factory so new fields (charter, gatePlan, lifecycle, …) are present at
+  // creation instead of relying on the next load's sanitise to back-fill them.
+  const p=makeProject({
+    id:nextId++, name,
+    x:+V('m-x')||5, y:+V('m-y')||5,
+    vis:+V('m-vis')||5, ena:+V('m-ena')||5,
+    note:V('m-note'), color:V('m-color'),
+    costSource:'manual', planCost:null,
+    sectionId:sid?+sid:null,
+  });
   projects.push(p);closeModal();selectProject(p.id);renderList();render();saveState();
 }
 

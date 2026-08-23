@@ -36,6 +36,7 @@ export const HOME_THRESHOLDS = {
   marginPct:15,
   hhi:0.6,
   spofBoost:1.5,
+  holdStaleDays:90,
 };
 
 // Severity ordering: lower rank sorts first / is "worse".
@@ -45,8 +46,8 @@ export const HOME_BAND_RANK = { critical:0, warn:1, watch:2 };
 const HOME_CONCERN_DOMAIN = {
   'retention-risk':'people', 'over-allocation':'people', 'bench':'people',
   'stale-review':'people', 'engagement-due':'people',
-  'gate-blocked':'governance', 'gate-behind':'governance',
-  'charter-conflict':'portfolio', 'value-destroying':'portfolio',
+  'gate-blocked':'governance', 'gate-behind':'governance', 'hold-stale':'governance',
+  'charter-conflict':'portfolio', 'value-destroying':'portfolio', 'candidate-stale':'portfolio',
   'low-unit-margin':'portfolio', 'dtc-gap':'portfolio', 'channel-concentration':'portfolio',
   'task-overdue':'planner', 'task-pinned':'planner',
 };
@@ -102,6 +103,8 @@ function homeProjectTitle(concern, name){
     'low-unit-margin':' has a thin unit margin',
     'dtc-gap':' is over its cost target',
     'channel-concentration':' is channel-concentrated',
+    'hold-stale':' has been on hold too long',
+    'candidate-stale':' is a value-destroying candidate',
   };
   return (name||'A project') + (map[concern]||' needs attention');
 }
@@ -180,7 +183,10 @@ export function homeClassifyPerson(d, o){
 export function homeClassifyProject(pj, o){
   o = o||{};
   const thr = o.thresholds||HOME_THRESHOLDS;
+  const now = o.now||new Date();
+  const nowMs = (now instanceof Date) ? now.getTime() : new Date(now).getTime();
   const p = pj.p||{}, s = pj.sig||{}, rd = pj.readiness||{};
+  const lc = pj.lifecycle || 'active';                    // disposition (defaults active, mirrors projLifecycle)
   const uid = p.uid, id = p.id, nm = p.name||'Untitled';
   const baseImpact = Math.max(0, (s.riskAdjNpv!=null ? s.riskAdjNpv : (s.npv!=null ? s.npv : 0)));
   const items = [];
@@ -208,7 +214,9 @@ export function homeClassifyProject(pj, o){
       [{ label:'Conflicts', val:s.conflicts, tone:'warn' }],
       'Resolve in Trade-off decision', String(s.conflicts)));
   }
-  if(s.pi!=null && s.pi < 1){
+  // A funded/active project with PI<1 is a "review financials" flag; the SAME signal on
+  // a still-Proposed candidate is instead a decide-to-kill nudge (candidate-stale below).
+  if(lc!=='proposed' && s.pi!=null && s.pi < 1){
     items.push(mk('value-destroying', 'warn',
       ['Profitability index below 1 (PI '+s.pi.toFixed(2)+')'],
       [{ label:'PI', val:s.pi.toFixed(2), tone:'warn' }],
@@ -231,6 +239,34 @@ export function homeClassifyProject(pj, o){
       ['Channel concentration high (HHI '+s.chanHHI.toFixed(2)+')'],
       [{ label:'HHI', val:s.chanHHI.toFixed(2), tone:'watch' }],
       'Diversify in Channel mix', String(homeBucket(s.chanHHI*100,10))));
+  }
+  // ── Lifecycle nudges (disposition axis) ────────────────────────────────────
+  // On hold too long: a paused project no one has resumed or retired. Age from the
+  // most-recent transition INTO on_hold in lifecycleHistory.
+  if(lc==='on_hold'){
+    const hist = Array.isArray(pj.lifecycleHistory) ? pj.lifecycleHistory : [];
+    let sinceMs = null;
+    for(let k=hist.length-1;k>=0;k--){ if(hist[k] && hist[k].to==='on_hold'){ sinceMs = hist[k].ts; break; } }
+    if(sinceMs!=null){
+      const days = Math.floor((nowMs - sinceMs)/86400000);
+      if(days >= thr.holdStaleDays){
+        items.push(mk('hold-stale', 'warn',
+          ['On hold '+days+' days — decide to resume or retire it'],
+          [{ label:'On hold', val:days+'d', tone:'warn' }],
+          'Resume or kill in Gate & PI', String(homeBucket(days,30))));
+      }
+    }
+  }
+  // Value-destroying candidate still Proposed: a negative-value proposal awaiting a
+  // fund/kill call. Fires on PI<1 OR a negative risk-adjusted NPV.
+  if(lc==='proposed'){
+    const npv = (s.riskAdjNpv!=null ? s.riskAdjNpv : s.npv);
+    if((s.pi!=null && s.pi < 1) || (npv!=null && npv < 0)){
+      items.push(mk('candidate-stale', 'warn',
+        ['Proposed candidate is value-destroying — decide to fund or kill'],
+        [{ label:'PI', val:(s.pi!=null ? s.pi.toFixed(2) : '—'), tone:'warn' }],
+        'Decide in Pipeline', (s.pi!=null ? 'pi'+String(homeBucket(s.pi*10,1)) : 'npvneg')));
+    }
   }
   return items;
 }
@@ -381,7 +417,8 @@ function homeRawItems(o){
           readiness = { blocked:hard.length>0, pct:rd.pct, blockers:hard };
         }
       }catch(e){}
-      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness, gateEngaged:gateEngaged }, { thresholds:thr })
+      homeClassifyProject({ p:{ id:p.id, uid:p.uid, name:p.name||'Untitled' }, sig:s, readiness:readiness, gateEngaged:gateEngaged,
+          lifecycle:(p.lifecycle||'active'), lifecycleHistory:(Array.isArray(p.lifecycleHistory)?p.lifecycleHistory:[]) }, { thresholds:thr, now:now })
         .forEach(function(it){ items.push(it); });
     });
   }catch(e){}
@@ -931,11 +968,12 @@ function homeOpenFor(concern, entityId){
   if(concern==='over-allocation' || concern==='bench'){ if(typeof railGo==='function') railGo(null,'plan'); return; }
   if(concern==='task-overdue' || concern==='task-pinned'){ if(typeof railGo==='function') railGo(null,'backlog'); return; }
   if(concern==='engagement-due'){ if(typeof railGo==='function') railGo(null,'engagement'); return; }
-  if(concern==='gate-blocked' || concern==='gate-behind'){
+  if(concern==='gate-blocked' || concern==='gate-behind' || concern==='hold-stale'){
     if(typeof railGo==='function') railGo(null,'gate');
     if(typeof gtOpenDetail==='function') gtOpenDetail(id);
     return;
   }
+  if(concern==='candidate-stale'){ if(typeof railGo==='function') railGo(null,'pipeline'); return; }
   if(concern==='charter-conflict'){ homeGoView('decision', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
   if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('charters', function(){ if(typeof openCharter==='function') openCharter(id); }); return; }
   if(concern==='dtc-gap'){ homeGoView('dtc', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }

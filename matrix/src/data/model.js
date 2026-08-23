@@ -146,6 +146,9 @@ export function makeProject(overrides = {}) {
     status:      '',
     sector:      '',
     tacticalIntent: '',   // strategic posture: '' | Defend | Grow | Adapt | Diversify
+    lifecycle:    'proposed',  // disposition (see PROJECT_LIFECYCLE): proposed | active | on_hold | cancelled | in_service | maintenance | maint_cancelled | withdrawn | eol — a fresh project sits at the initial gate = intake, so it starts Proposed (fund it to go Active)
+    lifecycleReason: '',     // free-text note on the CURRENT disposition (why held/cancelled/etc.)
+    lifecycleHistory: [],    // append-only decision log: [{ts, from, to, reason}]
     impactEur:   null,
     costSource:  'plan',
     planCost:    0,
@@ -282,8 +285,21 @@ export function makeCharter(overrides = {}) {
     decision:   makeDecisionCard(),
     costModel:  makeCostModel(),
     channelModel: makeChannelModel(),
+    demand:     makeCharterDemand(),   // resource-demand ESTIMATE for pipeline feasibility (see pipeline.js)
     ...overrides,
   };
+}
+
+// Resource-demand ESTIMATE for a candidate project — captured BEFORE it is
+// staffed month-by-month in the allocation plan, so a pipeline of new projects
+// can be weighed against available capacity. `peakFte` = concurrent engineers at
+// peak (the headcount feel); `fteMonths` = total effort in FTE·months (compared
+// against free FTE·months capacity in the pipeline frontier). `byGroup` is a
+// reserved map (engGroup id → FTE·months) for a future per-discipline breakdown.
+// A committed project draws its real demand from allocRows; this is the pre-staff
+// forecast only. All numbers are plain (null → not estimated yet).
+export function makeCharterDemand(overrides = {}) {
+  return { peakFte: null, fteMonths: null, byGroup: {}, ...overrides };
 }
 
 // Go-to-market CHANNEL model (on the charter). The go-to-market synoptic:

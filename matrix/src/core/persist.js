@@ -437,6 +437,17 @@ export function loadState(){
     return true;
   }catch(e){return false;}
 }
+// Is a project still at the INITIAL gate? = its gate stage is unset (defaults to the
+// first stage) OR equals the first stage id of the active methodology (custom-safe: we
+// read the first stage whatever it's named). No methodology configured → treat as intake.
+// Used only by the one-time lifecycle migration in sanitiseProjects.
+function _projAtInitialGate(p){
+  var sid=p&&p.gatePlan&&p.gatePlan.stageId;
+  if(!sid) return true;
+  var stages=(typeof gateConfig!=='undefined'&&gateConfig&&gateConfig.model&&Array.isArray(gateConfig.model.stages))?gateConfig.model.stages:[];
+  if(!stages.length) return true;
+  return !!stages[0] && stages[0].id===sid;
+}
 export function sanitiseProjects(){
   projects.forEach(p=>{
     if(!p.todos||!Array.isArray(p.todos))       p.todos=[];
@@ -460,6 +471,16 @@ export function sanitiseProjects(){
     if(p.planCost===undefined)  p.planCost=0;
     if(!p.costSource)        p.costSource='plan';
     if(!p.status)            p.status='';
+    // Lifecycle (added later). A project with no (or invalid) lifecycle is normalised
+    // by GATE POSITION: one still sitting at the INITIAL gate (the first stage of the
+    // active — possibly custom — methodology, or no gate set) is intake → 'proposed';
+    // anything advanced past it is assumed already funded → 'active'. Runs once per
+    // project (once lifecycle is set it's never re-derived), so a funded proposal
+    // stays funded. See PIPELINE-PLAN.md item 2.
+    if(p.lifecycle===undefined || !PROJECT_LIFECYCLE.some(s=>s.id===p.lifecycle))
+      p.lifecycle = _projAtInitialGate(p) ? 'proposed' : 'active';
+    if(p.lifecycleReason==null) p.lifecycleReason='';
+    if(!Array.isArray(p.lifecycleHistory)) p.lifecycleHistory=[];
     p.risks.forEach(r=>{
       if(!r.status)   r.status='open';
       if(r.sev==null) r.sev=1;
@@ -522,6 +543,13 @@ export function sanitiseCharter(p){
     if(!Array.isArray(s.items)) s.items=[];
     s.items.forEach(it=>{ if(it.include==null) it.include=true; if(it.cost==null) it.cost=0; });
   });
+  // Resource-demand estimate (added later; back-fill for older charters).
+  if(!c.demand||typeof c.demand!=='object'){ c.demand=makeCharterDemand(); }
+  else{ const dd=makeCharterDemand();
+    if(c.demand.peakFte===undefined)   c.demand.peakFte=dd.peakFte;
+    if(c.demand.fteMonths===undefined) c.demand.fteMonths=dd.fteMonths;
+    if(!c.demand.byGroup||typeof c.demand.byGroup!=='object') c.demand.byGroup=dd.byGroup;
+  }
   // Go-to-market channel model (added later; back-fill for older charters).
   // A missing model is seeded with the default channels; an intentionally
   // emptied one stays empty (we only replace when absent/invalid).

@@ -94,6 +94,23 @@ export var _devFormula = {
   cr_high_hold:       115,
   cr_new_hold:        110,
 };
+/* ── Project lifecycle — the one source of truth for a project's disposition ──
+   A project's overall state, distinct from its gate stage (forward development
+   position) and tacticalIntent (strategic posture). `consumes` = its allocations
+   count against team capacity; `activePortfolio` = it belongs to the LIVE portfolio
+   (terminal states are history only). Ordered roughly by lifecycle progression.
+   Read via projLifecycle()/projLifecycleDef()/projConsumesCapacity() (helpers.js). */
+export const PROJECT_LIFECYCLE=[
+  { id:'proposed',        label:'Proposed',              phase:'pipeline',    consumes:false, activePortfolio:false, color:'var(--accent2)' },
+  { id:'active',          label:'Funded / Active',       phase:'development', consumes:true,  activePortfolio:true,  color:'var(--accent)'  },
+  { id:'on_hold',         label:'On Hold',               phase:'development', consumes:false, activePortfolio:true,  color:'var(--warn)'    },
+  { id:'cancelled',       label:'Cancelled',             phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--danger)'  },
+  { id:'in_service',      label:'In Service',            phase:'service',     consumes:true,  activePortfolio:true,  color:'var(--accent)'  },
+  { id:'maintenance',     label:'Maintenance',           phase:'service',     consumes:true,  activePortfolio:true,  color:'#5be5c8'        },
+  { id:'maint_cancelled', label:'Maintenance Cancelled', phase:'service',     consumes:false, activePortfolio:true,  color:'var(--warn)'    },
+  { id:'withdrawn',       label:'Withdrawn',             phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
+  { id:'eol',             label:'End of Life',           phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
+];
 export let _planRowOrder=[];
 export let _planDragSrc=null;
 export let planFilterEng=new Set(),planFilterProj=new Set(),planHideEmpty=false;

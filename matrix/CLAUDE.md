@@ -30,6 +30,8 @@ area.
 | Channel mix / go-to-market synoptic | src/sections/channels.js (+ ARCHITECTURE.md) |
 | Portfolio economics (cross-layer analytics) | src/sections/econ.js (+ ARCHITECTURE.md) |
 | Executive summary (one-page cockpit) | src/sections/exec.js (+ ARCHITECTURE.md) |
+| Project pipeline / intake & feasibility (candidate ranking, budget vs capacity frontier) | src/sections/pipeline.js (+ ARCHITECTURE.md › Pipeline board; **PIPELINE-PLAN.md** for the running TODO) |
+| Project lifecycle (fund/hold/kill/maintenance/withdraw/EoL; capacity suppression) | src/core/globals.js (PROJECT_LIFECYCLE) + src/core/helpers.js (accessors, projSetLifecycle) (+ ARCHITECTURE.md › Project lifecycle) |
 | Export deliverables (PDF/print, drag-drop block picker, templates, theme) | src/core/export.js (+ ARCHITECTURE.md › Export engine, matrix/OUTPUT-LAYER-PLAN.md) |
 | Talent engagement planner (cadence/touchpoints) | src/sections/engagement.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |

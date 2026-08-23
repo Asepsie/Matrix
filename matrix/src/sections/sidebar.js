@@ -105,7 +105,7 @@ function populateEditor(){
   SV('e-name',p.name);SV('e-x',p.x);SV('e-y',p.y);
   SV('e-vis',p.vis??5);SV('e-ena',p.ena??5);
   SV('e-note',p.note||'');SV('e-color',p.color);
-  SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
+  SV('e-sector',p.sector||'');SV('e-intent',p.tacticalIntent||'');SV('e-lifecycle',projLifecycle(p));SV('e-impacteur',p.impactEur!=null?p.impactEur:'');
   // Empty revenue → show the derived default (impact+enabler) as a placeholder hint.
   var _rd=(p.y!=null&&p.ena!=null)?((+p.y)+(+p.ena)):null;
   G('e-impacteur').placeholder=(_rd!=null)?t('default {n} = impact+enabler',{n:_rd}):t('e.g. 2.5');
@@ -129,6 +129,7 @@ function saveEdit(){
   p.currentGate=V('e-current-gate');p.gate=V('e-gate');p.eta=V('e-eta');
   p.sector=V('e-sector');
   p.tacticalIntent=V('e-intent');
+  projSetLifecycle(p, V('e-lifecycle')||'active');   // logs the transition if it changed
   p.impactEur=V('e-impacteur')!==''?+V('e-impacteur'):null;
   const sid=V('e-section');p.sectionId=sid?+sid:null;
   renderList();render();saveState();
