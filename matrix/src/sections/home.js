@@ -483,13 +483,15 @@ let _homeDragId = null;     // widget id being dragged
 // One smart default layout (editable). Widths are 1–3 grid columns.
 function homeDefaultLayout(){
   return [
-    { id:'action-queue', w:3 },
-    { id:'my-tasks',     w:1 },
-    { id:'talent-risk',  w:1 },
-    { id:'gate-readiness', w:1 },
-    { id:'capacity',     w:1 },
-    { id:'headcount',    w:1 },
-    { id:'engagement',   w:1 },
+    { id:'capacity',      w:3 },   // the join — hero
+    { id:'action-queue',  w:3 },
+    { id:'decisions',     w:2 },
+    { id:'portfolio',     w:1 },
+    { id:'people-health', w:2 },
+    { id:'headcount',     w:1 },
+    { id:'my-tasks',      w:1 },
+    { id:'engagement',    w:1 },
+    { id:'launchpad',     w:1 },
   ];
 }
 function homeClampW(w){ w = +w||1; return w<1 ? 1 : (w>3 ? 3 : w); }
@@ -526,12 +528,14 @@ function homeWidgetDefs(){
   return [
     { id:'action-queue',   title:t('Action Queue'),        domain:'action',     defW:3, render:homeWqActionQueue,
       desc:t('Ranked cross-domain "what needs you" list') },
-    { id:'talent-risk',    title:t('Talent Risk Radar'),   domain:'people',     defW:1, render:homeWqTalentRisk,
-      desc:t('Your highest-risk people') },
-    { id:'retention',      title:t('Retention Watch'),     domain:'people',     defW:1, render:homeWqRetention,
-      desc:t('Risk bands + who is critical') },
-    { id:'review-gov',     title:t('Review Governance'),   domain:'people',     defW:1, render:homeWqReviewGov,
-      desc:t('People overdue a performance review') },
+    { id:'capacity',       title:t('Capacity ↔ Demand'),   domain:'governance', defW:3, render:homeWqCapacity,
+      desc:t('The people×project join: committed %, free capacity, discipline breaches, pipeline pressure') },
+    { id:'decisions',      title:t('Decisions Pending'),   domain:'portfolio',  defW:2, render:homeWqDecisions,
+      desc:t('Candidates to fund/kill, stale holds, gate reviews due') },
+    { id:'portfolio',      title:t('Portfolio Health'),    domain:'portfolio',  defW:1, render:homeWqPortfolio,
+      desc:t('Risk-adjusted value, capital at risk, lifecycle funnel') },
+    { id:'people-health',  title:t('People Health'),       domain:'people',     defW:2, render:homeWqPeopleHealth,
+      desc:t('Retention risk, SPOF, overdue reviews') },
     { id:'engagement',     title:t('Engagement This Week'),domain:'people',     defW:1, render:homeWqEngagement,
       desc:t("This week's retention touchpoints") },
     { id:'headcount',      title:t('Headcount'),           domain:'people',     defW:1, render:homeWqHeadcount,
@@ -540,10 +544,10 @@ function homeWidgetDefs(){
       desc:t('Overdue & pinned to-dos and actions') },
     { id:'gate-readiness', title:t('Gate Readiness'),      domain:'governance', defW:2, render:homeWqGate,
       desc:t('Projects blocked or behind at their gate') },
-    { id:'capacity',       title:t('Capacity & Bench'),    domain:'governance', defW:1, render:homeWqCapacity,
-      desc:t('FTE this month, bench, over-allocation') },
     { id:'cost-burn',      title:t('Team Cost'),           domain:'governance', defW:2, render:homeWqCost,
       desc:t('Loaded team cost, allocated %, bench €') },
+    { id:'launchpad',      title:t('Insight Launchpad'),   domain:'action',     defW:1, render:homeWqLaunchpad,
+      desc:t('Jump into the analytics: portfolio, people, exec, gate, pipeline') },
   ];
 }
 function homeWidgetDef(id){
@@ -613,54 +617,37 @@ function homeActionCard(it){
 }
 
 // ── people widgets ─────────────────────────────────────────────────────────
-function homeWqTalentRisk(){
+// People Health — the merged people-risk widget (was Talent Risk + Retention + Review
+// Governance, which were three cuts of the same dataset). One KPI row + the top people.
+function homeWqPeopleHealth(){
   let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
-  const rows = ds.filter(function(d){ return d.riskScore>0; })
-    .sort(function(a,b){ return b.riskScore-a.riskScore; }).slice(0, 6);
-  if(!rows.length) return homeEmpty('No talent-risk signals yet — place people on the nine-box and log reviews.');
-  const max = rows[0].riskScore || 1;
-  let h = '';
-  rows.forEach(function(d){
-    const col = d.riskScore>=50 ? 'var(--danger)' : d.riskScore>=25 ? 'var(--warn)' : 'var(--accent2)';
-    h += '<div class="home-row" onclick="homeOpenFor(\'retention-risk\','+(+d.id)+')">'
-       + '<span class="home-row-name">'+escH(d.name||'')+'</span>'
-       + '<span class="home-bar"><span style="width:'+Math.round(d.riskScore/(max||1)*100)+'%;background:'+col+'"></span></span>'
-       + '<span class="home-row-val" style="color:'+col+'">'+escH(String(d.riskScore))+'</span></div>';
-  });
-  return h;
-}
-function homeWqRetention(){
-  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
+  if(!ds.length) return homeEmpty('No people yet — add engineers to the roster.');
   const crit = ds.filter(function(d){ return d.riskScore>=50; });
   const warn = ds.filter(function(d){ return d.riskScore>=25 && d.riskScore<50; });
+  const spof = ds.filter(function(d){ return d.spofSkills && d.spofSkills.length && !d.hasKTPlan; });
+  const stale = ds.filter(function(d){ return d.reviewCurrencyMonths==null ? (d.tenureMonths!=null && d.tenureMonths>12) : d.reviewCurrencyMonths>15; });
   let h = '<div class="home-kpis">'
-    + homeKpi(crit.length, 'Critical', 'var(--danger)')
-    + homeKpi(warn.length, 'At risk', 'var(--warn)')
-    + homeKpi(ds.length, 'Headcount', 'var(--text)')
+    + homeKpi(crit.length,  'Critical',    crit.length?'var(--danger)':'var(--muted)')
+    + homeKpi(warn.length,  'At risk',     warn.length?'var(--warn)':'var(--muted)')
+    + homeKpi(spof.length,  'SPOF · no KT',spof.length?'var(--warn)':'var(--muted)')
+    + homeKpi(stale.length, 'Reviews due', stale.length?'var(--warn)':'var(--muted)')
     + '</div>';
-  if(crit.length){
-    h += '<div class="home-tags">';
-    crit.slice(0, 8).forEach(function(d){ h += '<span class="home-chip clk" onclick="homeOpenFor(\'retention-risk\','+(+d.id)+')">'+escH(d.name||'')+'</span>'; });
+  const top = crit.concat(warn).sort(function(a,b){ return b.riskScore-a.riskScore; }).slice(0, 6);
+  if(top.length){
+    const max = top[0].riskScore || 1;
+    h += '<div class="home-list">';
+    top.forEach(function(d){
+      const col = d.riskScore>=50 ? 'var(--danger)' : 'var(--warn)';
+      h += '<div class="home-row" onclick="homeOpenFor(\'retention-risk\','+(+d.id)+')">'
+         + '<span class="home-row-name">'+escH(d.name||'')+'</span>'
+         + '<span class="home-bar"><span style="width:'+Math.round(d.riskScore/max*100)+'%;background:'+col+'"></span></span>'
+         + '<span class="home-row-val" style="color:'+col+'">'+escH(String(d.riskScore))+'</span></div>';
+    });
     h += '</div>';
+  } else {
+    h += homeEmpty('No people-risk signals. ✓');
   }
   return h;
-}
-function homeWqReviewGov(){
-  let ds = []; try{ ds = buildAnalyticsDataset(); }catch(e){}
-  const stale = ds.filter(function(d){ return d.reviewCurrencyMonths==null ? (d.tenureMonths!=null && d.tenureMonths>12) : d.reviewCurrencyMonths>15; });
-  if(!stale.length) return homeEmpty('All performance reviews are current. ✓');
-  stale.sort(function(a,b){
-    const am = a.reviewCurrencyMonths==null ? 999 : a.reviewCurrencyMonths;
-    const bm = b.reviewCurrencyMonths==null ? 999 : b.reviewCurrencyMonths;
-    return bm-am;
-  });
-  let h = '<div class="home-kpis">'+homeKpi(stale.length, 'Overdue reviews', 'var(--warn)')+'</div><div class="home-list">';
-  stale.slice(0, 7).forEach(function(d){
-    const lbl = d.reviewCurrencyMonths==null ? 'never' : d.reviewCurrencyMonths+' mo';
-    h += '<div class="home-row" onclick="homeOpenFor(\'stale-review\','+(+d.id)+')"><span class="home-row-name">'+escH(d.name||'')+'</span>'
-       + '<span class="home-sp"></span><span class="home-row-val">'+escH(lbl)+'</span></div>';
-  });
-  return h + '</div>';
 }
 function homeWqEngagement(){
   let list = []; try{ list = (typeof tegThisWeekList==='function') ? tegThisWeekList() : []; }catch(e){}
@@ -745,19 +732,49 @@ function homeWqGate(){
   });
   return h;
 }
+// Capacity ↔ Demand — THE JOIN, promoted to the hero. Committed %, free FTE·months,
+// per-discipline breaches (from pipelineCapacity.byGroup), and the forward pressure the
+// current pipeline candidates would add. The one place people and projects meet.
 function homeWqCapacity(){
   const months = (typeof getMonthRange==='function') ? getMonthRange() : [];
-  let util = {}; try{ util = _buildEngUtil(months); }catch(e){}
-  const engs = Object.values(util);
-  if(!engs.length) return homeEmpty('Set a FROM/TO period and allocate people to see capacity.');
-  const cur = homeCurInRange(months);
-  let fte = 0, bench = 0, over = 0;
-  engs.forEach(function(eu){ const a = eu.monthAllocs[cur]||0; fte += a; if(a<0.1) bench++; if(a>1.05) over++; });
-  return '<div class="home-kpis">'
-    + homeKpi(fte.toFixed(1), 'FTE this month', 'var(--text)')
-    + homeKpi(bench, 'On bench', 'var(--accent2)')
-    + homeKpi(over, 'Over-allocated', 'var(--warn)')
+  if(!months.length) return homeEmpty('Set a FROM/TO period to see capacity vs demand.');
+  let cap = null; try{ cap = (typeof pipelineCapacity==='function') ? pipelineCapacity(months) : null; }catch(e){}
+  if(!cap || !cap.supply) return homeEmpty('Allocate people over the period to see capacity vs demand.');
+  const pct = cap.supply>0 ? Math.round(cap.engaged/cap.supply*100) : 0;
+  const overGroups = [];
+  Object.keys(cap.byGroup||{}).forEach(function(k){ const g = cap.byGroup[k]; if(g && g.demand>g.supply+0.01) overGroups.push(g); });
+  // forward pressure: Σ FTE·months the current candidates (proposed/on_hold) would add
+  let pipeDemand = 0, cands = 0;
+  try{
+    (typeof projects!=='undefined'?projects:[]).forEach(function(p){
+      const lc = (typeof projLifecycle==='function') ? projLifecycle(p) : 'active';
+      if(lc!=='proposed' && lc!=='on_hold') return;
+      const d = p.charter && p.charter.demand; const fm = d ? +d.fteMonths : NaN;
+      if(fm>0){ pipeDemand += fm; cands++; }
+    });
+  }catch(e){}
+  const col = cap.free<=0 ? 'var(--danger)' : (pct>=95 ? 'var(--warn)' : 'var(--accent)');
+  let h = '<div class="home-kpis">'
+    + homeKpi(pct+'%', 'Committed', col)
+    + homeKpi(cap.free.toFixed(0), 'Free FTE·mo', cap.free>0?'var(--accent2)':'var(--danger)')
+    + homeKpi(overGroups.length, 'Over disciplines', overGroups.length?'var(--danger)':'var(--muted)')
     + '</div>';
+  h += '<div class="home-bar wide"><span style="width:'+Math.min(100,pct)+'%;background:'+col+'"></span></div>';
+  if(overGroups.length){
+    h += '<div class="home-tags">';
+    overGroups.slice(0, 6).forEach(function(g){ h += '<span class="home-chip" style="color:var(--danger)">'+escH(g.name)+' +'+(g.demand-g.supply).toFixed(0)+'</span>'; });
+    h += '</div>';
+  }
+  if(cands){
+    const fits = pipeDemand <= cap.free;
+    h += '<div style="font-size:11px;color:var(--muted);margin-top:7px">'
+       + t('{n} candidate(s) would add {d} FTE·mo — ',{n:cands,d:pipeDemand.toFixed(0)})
+       + '<b style="color:'+(fits?'var(--accent)':'var(--danger)')+'">'+(fits?t('fits free capacity'):t('exceeds free capacity'))+'</b></div>';
+  }
+  h += '<div class="home-foot">'
+     + '<button class="home-btn" onclick="railGo(null,\'dashboard\')">'+escH(t('Resource balancer →'))+'</button>'
+     + '<button class="home-btn" onclick="railGo(null,\'pipeline\')">'+escH(t('Pipeline →'))+'</button></div>';
+  return h;
 }
 function homeWqCost(){
   const months = (typeof getMonthRange==='function') ? getMonthRange() : [];
@@ -780,6 +797,105 @@ function homeWqCost(){
     + '</div>';
   h += '<div class="home-bar wide"><span style="width:'+pct+'%;background:var(--accent)"></span></div>';
   return h;
+}
+
+// ── portfolio widgets ──────────────────────────────────────────────────────
+// Portfolio Health — the "what to build" readout the front door was missing:
+// risk-adjusted portfolio value, capital tied up in sub-economic projects, and the
+// lifecycle funnel. Reads ecDataset (value) + projLifecycle (funnel). Active portfolio
+// only (terminal projects excluded from value, matching the capacity-suppression model).
+function homeWqPortfolio(){
+  if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
+  let eco = []; try{ eco = (typeof ecDataset==='function') ? ecDataset() : []; }catch(e){}
+  const byId = {}; eco.forEach(function(r){ if(r && r.p) byId[r.p.id] = r; });
+  let sumVal = 0, atRisk = 0, valued = 0;
+  const life = { proposed:0, active:0, in_service:0 };
+  projects.forEach(function(p){
+    const lc = (typeof projLifecycle==='function') ? projLifecycle(p) : 'active';
+    if(life[lc]!=null) life[lc]++;
+    const active = (typeof projIsActivePortfolio==='function') ? projIsActivePortfolio(p) : true;
+    if(!active) return;
+    const r = byId[p.id]; if(!r) return;
+    const radj = (r.riskAdjNpv!=null) ? r.riskAdjNpv : (r.npv!=null ? r.npv : null);
+    if(radj!=null){ sumVal += radj; valued++; }
+    if(r.pi!=null && r.pi<1) atRisk += (r.invested||0);   // capital committed to sub-1-PI projects
+  });
+  let h = '<div class="home-kpis">'
+    + homeKpi(homeEur(sumVal), 'Portfolio value', sumVal>=0?'var(--accent2)':'var(--danger)')
+    + homeKpi(homeEur(atRisk), 'Capital at risk', atRisk>0?'var(--warn)':'var(--muted)')
+    + homeKpi(valued, 'Valued', 'var(--text)')
+    + '</div>';
+  h += '<div class="home-tags">'
+     + '<span class="home-chip">'+life.proposed+' '+escH(t('Proposed'))+'</span>'
+     + '<span class="home-chip">→ '+life.active+' '+escH(t('Active'))+'</span>'
+     + '<span class="home-chip">→ '+life.in_service+' '+escH(t('In service'))+'</span>'
+     + '</div>';
+  h += '<div class="home-foot"><button class="home-btn" onclick="railGo(null,\'portfolio\')">'+escH(t('Portfolio analytics →'))+'</button></div>';
+  return h;
+}
+
+// Decisions Pending — the forward-looking lane (vs. the problem-oriented tiles). Candidates
+// awaiting a fund/kill call, projects on hold too long, and gate-blocked projects. Home stays
+// READ-ONLY: every row deep-links to where the decision is actually made (Pipeline / Gate).
+function homeWqDecisions(){
+  if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet.');
+  let sig = {}; try{ sig = gtBuildSignalMap(); }catch(e){}
+  let stages = []; try{ stages = (typeof gateConfig!=='undefined' && gateConfig.model && gateConfig.model.stages) || []; }catch(e){}
+  const now = Date.now(), rows = [];
+  projects.forEach(function(p){
+    const lc = (typeof projLifecycle==='function') ? projLifecycle(p) : 'active';
+    if(lc==='proposed'){ rows.push({ name:p.name||'Untitled', tag:t('fund / kill'), col:'var(--accent)', go:'pipeline', ord:1 }); return; }
+    if(lc==='on_hold'){
+      const hist = Array.isArray(p.lifecycleHistory) ? p.lifecycleHistory : [];
+      let since=null; for(let k=hist.length-1;k>=0;k--){ if(hist[k] && hist[k].to==='on_hold'){ since=hist[k].ts; break; } }
+      const days = since!=null ? Math.floor((now-since)/86400000) : null;
+      if(days!=null && days>=90){ rows.push({ name:p.name||'Untitled', tag:t('held {d}d',{d:days}), col:'var(--warn)', go:'gate', id:p.id, ord:2 }); return; }
+    }
+    // gate-blocked (hard block) → a gate review is due
+    try{
+      const s = sig[p.id] || {}, gp = p.gatePlan || (typeof makeGatePlan==='function'?makeGatePlan():{});
+      const idx = (typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0, st = stages[idx];
+      if(st && typeof gtStageReadiness==='function'){
+        const rd = gtStageReadiness(st, gp, s);
+        if(rd.blocked) rows.push({ name:p.name||'Untitled', tag:t('gate review'), col:'var(--danger)', go:'gate', id:p.id, ord:3 });
+      }
+    }catch(e){}
+  });
+  if(!rows.length) return homeEmpty('No decisions pending — pipeline and gates are clear. ✓');
+  rows.sort(function(a,b){ return a.ord-b.ord; });
+  const nCand = rows.filter(function(r){return r.ord===1;}).length;
+  let h = '<div class="home-kpis">'
+    + homeKpi(nCand, 'To green-light', nCand?'var(--accent)':'var(--muted)')
+    + homeKpi(rows.filter(function(r){return r.ord===2;}).length, 'Stale holds', 'var(--warn)')
+    + homeKpi(rows.filter(function(r){return r.ord===3;}).length, 'Gate reviews', 'var(--danger)')
+    + '</div><div class="home-list">';
+  rows.slice(0, 8).forEach(function(r){
+    const open = r.id!=null ? 'gtOpenDetail('+(+r.id)+')' : 'railGo(null,\''+r.go+'\')';
+    h += '<div class="home-row" onclick="railGo(null,\''+r.go+'\');'+(r.id!=null?open+';':'')+'">'
+       + '<span class="home-row-name">'+escH(r.name)+'</span>'
+       + '<span class="home-sp"></span>'
+       + '<span class="home-row-val" style="color:'+r.col+'">'+escH(r.tag)+'</span></div>';
+  });
+  return h + '</div>';
+}
+
+// Insight Launchpad — the fix for "insights buried": quick entries into the analytics that
+// the nav reframe spread next to what they analyze. Reuses the add-card styling.
+function homeWqLaunchpad(){
+  const links = [
+    ['portfolio', t('Portfolio analytics'), t('value · ROI · risk')],
+    ['analytics', t('People analytics'),    t('talent risk · dimensions')],
+    ['exec',      t('Executive summary'),   t('one-page cockpit')],
+    ['gate',      t('Gate & PI'),           t('stage-gate governance')],
+    ['pipeline',  t('Pipeline'),            t('intake & feasibility')],
+  ];
+  let h = '<div class="home-add-grid">';
+  links.forEach(function(l){
+    h += '<button class="home-add-card" onclick="railGo(null,\''+homeAttr(l[0])+'\')">'
+       + '<span class="home-add-title">'+escH(l[1])+'</span>'
+       + '<span class="home-add-desc">'+escH(l[2])+'</span></button>';
+  });
+  return h + '</div>';
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -838,7 +954,7 @@ function homeWidgetHTML(item, ctx){
   const w = homeClampW(item.w);
   let body = '';
   try{ body = def.render(ctx); }catch(e){ body = homeEmpty('This widget failed to render.'); }
-  const hero = item.id==='action-queue' ? ' home-w-hero' : '';
+  const hero = (item.id==='action-queue' || item.id==='capacity') ? ' home-w-hero' : '';
   // Section is always a drop TARGET; the header grip is the always-available drag
   // SOURCE (draggable anytime, no need to enter Customize — that was undiscoverable).
   let h = '<section class="home-w'+hero+'" style="grid-column:span '+w+'" data-wid="'+escH(item.id)+'"'

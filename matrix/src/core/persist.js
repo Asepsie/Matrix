@@ -549,6 +549,7 @@ export function sanitiseCharter(p){
     if(c.demand.peakFte===undefined)   c.demand.peakFte=dd.peakFte;
     if(c.demand.fteMonths===undefined) c.demand.fteMonths=dd.fteMonths;
     if(!c.demand.byGroup||typeof c.demand.byGroup!=='object') c.demand.byGroup=dd.byGroup;
+    if(typeof c.demand.startMonth!=='string') c.demand.startMonth=dd.startMonth;   // 'YYYY-MM' | null
   }
   // Go-to-market channel model (added later; back-fill for older charters).
   // A missing model is seeded with the default channels; an intentionally

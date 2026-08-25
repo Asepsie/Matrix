@@ -57,49 +57,52 @@ var RAIL_I = {
 /* Labels run through t() at load (language is fixed per page load, resolved
    before this file in the bundle). Every consumer — rail render, breadcrumb,
    the Settings landing dropdown — reads these, so this is the single point. */
+/* Reframed 2026-08-23 (IA Track A): 7 feature-led domains → 5 job-led domains that
+   spell the daily loop — HOME (triage) · PORTFOLIO (what to build) · PLAN (the
+   people×project JOIN) · PEOPLE (run/grow team) · REVIEW (report). Pure nav reorg:
+   every view keeps its id + render path; only its domain/label/order changed. The
+   Track-B feature merges (compare→matrix mode, summary cut, econ+portfolio, charter
+   workspace, …) land later — until then those views still sit here, grouped so the
+   redundancy is visible. See PIPELINE-PLAN sibling IA-REFRAME notes. */
 var RAIL_DOMAINS = [
   { id:'home', name:t('HOME'), ico:RAIL_I.home, views:[
     {id:'home',        label:t('Home')},
   ]},
-  { id:'team', name:t('TEAM'), ico:RAIL_I.team, views:[
-    {id:'roster',      label:t('Roster')},
-    {id:'org',         label:t('Org chart')},
-  ]},
-  { id:'work', name:t('OFFER MNGT'), ico:RAIL_I.work, views:[
-    {id:'matrix',      label:t('Portfolio matrix'), bdg:t('was home')},
+  { id:'portfolio', name:t('PORTFOLIO'), ico:RAIL_I.work, views:[
+    {id:'matrix',      label:t('Portfolio matrix')},
+    {id:'pipeline',    label:t('Pipeline')},
+    {id:'gate',        label:t('Gate & PI')},
     {id:'charters',    label:t('Financials analysis')},
     {id:'decision',    label:t('Trade-off decision')},
+    {id:'portfolio',   label:t('Portfolio analytics')},
+    {id:'econ',        label:t('Portfolio economics')},
+    {id:'compare',     label:t('Compare')},
     {id:'channels',    label:t('Channel mix')},
     {id:'dtc',         label:t('Design to cost')},
     {id:'brief',       label:t('Project brief')},
   ]},
-  { id:'planning', name:t('PLAN'), ico:RAIL_I.planning, views:[
+  { id:'plan', name:t('PLAN'), ico:RAIL_I.planning, views:[
     {id:'plan',        label:t('Resource plan')},
+    {id:'dashboard',   label:t('Resource balancer')},
     {id:'timeline',    label:t('Timeline')},
     {id:'backlog',     label:t('Backlog & planner')},
   ]},
-  { id:'skills', name:t('SKILLS'), ico:RAIL_I.skills, views:[
+  { id:'people', name:t('PEOPLE'), ico:RAIL_I.team, views:[
+    {id:'roster',      label:t('Roster')},
+    {id:'org',         label:t('Org chart')},
     {id:'skills',      label:t('Skills matrix')},
     {id:'skillrisk',   label:t('Skill risk'), bdg:'SPOF'},
     {id:'heatmap',     label:t('Heatmap')},
-  ]},
-  { id:'talent', name:t('TALENT'), ico:RAIL_I.talent, views:[
     {id:'ninebox',     label:t('Nine-box')},
     {id:'disc',        label:'DISC'},
     {id:'profiles',    label:t('Team profiles')},
     {id:'development', label:t('Development')},
-    {id:'engagement', label:t('Engagement')},
-  ]},
-  { id:'insights', name:t('INSIGHTS'), ico:RAIL_I.insights, views:[
-    {id:'exec',        label:t('Executive summary')},
-    {id:'gate',        label:t('Gate & PI')},
-    {id:'pipeline',    label:t('Pipeline')},
-    {id:'portfolio',   label:t('Portfolio analytics')},
-    {id:'econ',        label:t('Portfolio economics')},
+    {id:'engagement',  label:t('Engagement')},
     {id:'analytics',   label:t('People analytics')},
+  ]},
+  { id:'review', name:t('REVIEW'), ico:RAIL_I.insights, views:[
+    {id:'exec',        label:t('Executive summary')},
     {id:'summary',     label:t('Summary')},
-    {id:'dashboard',   label:t('Resource balancer')},
-    {id:'compare',     label:t('Compare')},
   ]},
 ];
 

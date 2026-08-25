@@ -299,7 +299,9 @@ export function makeCharter(overrides = {}) {
 // A committed project draws its real demand from allocRows; this is the pre-staff
 // forecast only. All numbers are plain (null → not estimated yet).
 export function makeCharterDemand(overrides = {}) {
-  return { peakFte: null, fteMonths: null, byGroup: {}, ...overrides };
+  // startMonth ('YYYY-MM' | null) = the scheduled start on the Timeline capacity-planner
+  // (see TIMELINE-PLAN.md); null = not scheduled yet.
+  return { peakFte: null, fteMonths: null, byGroup: {}, startMonth: null, ...overrides };
 }
 
 // Go-to-market CHANNEL model (on the charter). The go-to-market synoptic:
