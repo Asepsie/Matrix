@@ -201,7 +201,7 @@ export function renderResPlan(){
   // ── Helper: subtotal row for a set of rows ──
   function subtotalHTML(label,rows,color){
     let sh=`<tr style="background:rgba(255,255,255,.04);border-top:1px solid var(--border)">
-      <td class="col-name" colspan="2" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;color:${color};padding-left:14px">
+      <td class="col-name" colspan="3" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;color:${color};padding-left:14px">
         ${escH(label)}
       </td><td class="col-cost"></td>`;
     months.forEach(m=>{
@@ -216,6 +216,15 @@ export function renderResPlan(){
     });
     sh+=`<td></td></tr>`;
     return sh;
+  }
+
+  // ── Single-project lens: synthesized per-project resourcing summary ──
+  // Shows when exactly one project is selected (and no engineer filter). Computed
+  // straight off allocRows so it is NOT subject to lifecycle suppression — a
+  // proposed/on-hold project still shows its real cost and staffing here.
+  if(planFilterProj.size===1 && !planFilterEng.size){
+    const _lensProj=projects.find(p=>planFilterProj.has(p.name));
+    if(_lensProj) h+=planProjectLens(_lensProj,months,cur);
   }
 
   // ── Build table ──
@@ -338,17 +347,20 @@ export function renderResPlan(){
   }
 
   // ── Grand totals ──
+  // Leading cells MUST mirror the data/header row column layout exactly, or the
+  // month totals shift left: [drag handle (flat+manual only)] · name · proj · budget · cost.
+  const _totLead=(planViewMode==='flat'&&planFlatSort==='none')?'<td style="width:14px"></td>':'';
   h+=`<tr style="border-top:2px solid var(--border)">
-    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('TOTAL FTE')}</td>
-    <td class="col-proj"></td><td class="col-cost"></td>`;
+    ${_totLead}<td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('TOTAL FTE')}</td>
+    <td class="col-proj"></td><td class="col-budget"></td><td class="col-cost"></td>`;
   months.forEach(m=>{
     const total=visibleRows.reduce((s,r)=>s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0),0);
     const col=total>visibleRows.length?'var(--danger)':total>0?'var(--accent)':'var(--muted)';
     h+=`<td class="alloc-cell" style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:${col};text-align:center">${total?total.toFixed(1):''}</td>`;
   });
   h+=`<td></td></tr><tr>
-    <td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('COST (€)')}</td>
-    <td class="col-proj"></td><td class="col-cost"></td>`;
+    ${_totLead}<td class="col-name" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:600;color:var(--muted)">${t('COST (€)')}</td>
+    <td class="col-proj"></td><td class="col-budget"></td><td class="col-cost"></td>`;
   months.forEach(m=>{
     const cost=visibleRows.reduce((s,r)=>{
       const eng=engineers.find(e=>e.id===r.engId);
@@ -1102,4 +1114,165 @@ export function addRowForProj(projId){
   const row={uid:newUid(),id:nextAllocId++,engId:null,projectId:projId,allocs:{}};
   allocRows.push(row);
   renderResPlan();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PROJECT LENS — synthesized per-project resourcing summary
+   Shown atop the plan when one project is selected. A pure join over
+   allocRows + charter demand; intentionally NOT suppression-gated so a
+   proposed/on-hold project still shows real cost & staffing.
+   ══════════════════════════════════════════════════════════════════ */
+export function planProjectLens(proj, months, cur){
+  if(!months||!months.length) return '';
+  const engById=_engByIdMap();
+  const rows=allocRows.filter(r=>r.projectId===proj.id && r.engId!=null);
+
+  // Per-month FTE and € for THIS project.
+  const mFte=months.map(m=>rows.reduce((s,r)=>s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0),0));
+  const mCost=months.map(m=>rows.reduce((s,r)=>{const e=engById.get(r.engId);return s+(e&&r.allocs&&r.allocs[m]!=null?_allocCost(r.allocs[m],e.monthlyCost):0);},0));
+  const totCost=mCost.reduce((s,v)=>s+v,0);
+  const totFteMonths=mFte.reduce((s,v)=>s+v,0);
+  let peak=0,peakIdx=-1; mFte.forEach((v,i)=>{if(v>peak){peak=v;peakIdx=i;}});
+
+  // Each engineer's TOTAL load per month across ALL projects (raw, unsuppressed),
+  // so we can flag over-allocation caused elsewhere.
+  const loadByEng={};
+  allocRows.forEach(r=>{ if(r.engId==null)return; const map=loadByEng[r.engId]||(loadByEng[r.engId]={});
+    months.forEach(m=>{ if(r.allocs&&r.allocs[m]!=null) map[m]=(map[m]||0)+_allocNum(r.allocs[m]); }); });
+
+  // Aggregate this project's rows by engineer.
+  const byEng={};
+  rows.forEach(r=>{ const e=engById.get(r.engId); if(!e)return;
+    const a=byEng[r.engId]||(byEng[r.engId]={eng:e,fteMonths:0,cost:0,peak:0,mrMonths:0});
+    months.forEach(m=>{ const v=r.allocs?r.allocs[m]:null; if(v==null)return;
+      const n=_allocNum(v); a.fteMonths+=n; a.cost+=_allocCost(v,e.monthlyCost); if(n>a.peak)a.peak=n;
+      if(v==='m'||v==='r')a.mrMonths++; });
+  });
+  const team=Object.values(byEng).filter(a=>a.fteMonths>0||a.mrMonths>0);
+  const headcount=team.filter(a=>a.fteMonths>0).length;
+
+  // Cost / effort by function (engGroup).
+  const byGrp={};
+  team.forEach(a=>{ const g=engGroups.find(gg=>gg.id===a.eng.groupId); const key=g?g.id:'__none';
+    const b=byGrp[key]||(byGrp[key]={name:g?g.name:t('Unassigned'),color:g?g.color:'var(--muted)',fteMonths:0,cost:0});
+    b.fteMonths+=a.fteMonths; b.cost+=a.cost; });
+  const grpList=Object.values(byGrp).sort((x,y)=>y.fteMonths-x.fteMonths);
+
+  // Over-allocation: engineers on this project whose TOTAL load tops 1.0 in a month
+  // they are staffed here.
+  const overNames=[];
+  team.forEach(a=>{ if(a.fteMonths<=0)return; const load=loadByEng[a.eng.id]||{};
+    const hit=months.some(m=>{ const here=(byEng[a.eng.id]&&_engMonthOnProj(rows,a.eng.id,m))>0; return here && (load[m]||0)>1.005; });
+    if(hit) overNames.push(a.eng.name); });
+
+  // Charter demand (forecast) vs actual.
+  const dem=proj.charter&&proj.charter.demand?proj.charter.demand:null;
+  const demPeak=dem&&dem.peakFte!=null?dem.peakFte:null;
+  const demFteMonths=dem&&dem.fteMonths!=null?dem.fteMonths:null;
+
+  const lc=projLifecycleDef(proj);
+  const money=v=>v>=1000?Math.round(v/1000).toLocaleString()+' k€':Math.round(v)+' €';
+  const pkColor='var(--accent2)';
+
+  // ── Hero KPI tiles ──
+  function tile(val,label,sub,color){
+    return `<div style="flex:1;min-width:120px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:19px;font-weight:700;color:${color||'var(--text)'}">${val}</div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-top:2px">${escH(label)}</div>
+      ${sub?`<div style="font-size:10px;color:var(--dim);margin-top:2px">${escH(sub)}</div>`:''}</div>`;
+  }
+  let h=`<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${safeColor(proj.color,'var(--accent2)')};border-radius:8px;padding:14px 16px;margin-bottom:10px">`;
+  h+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <span style="font-size:15px;font-weight:700;color:var(--text)">${escH(proj.name)}</span>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;padding:2px 8px;border-radius:10px;background:${safeColor(lc&&lc.color,'var(--muted)')}22;color:${safeColor(lc&&lc.color,'var(--muted)')};border:1px solid ${safeColor(lc&&lc.color,'var(--muted)')}55">${escH(lc?lc.label:t('—'))}</span>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${fmtMonth(months[0])} → ${fmtMonth(months[months.length-1])}</span>
+    <div style="flex:1"></div>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">${t('PROJECT LENS')}</span>
+  </div>`;
+  h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    ${tile(money(totCost),t('Total cost'),t('over period'),'var(--accent2)')}
+    ${tile(totFteMonths.toFixed(1),t('FTE·months'),t('total effort'),'var(--text)')}
+    ${tile(peak.toFixed(2),t('Peak FTE'),peakIdx>=0?fmtMonth(months[peakIdx]):'','var(--accent)')}
+    ${tile(String(headcount),t('People'),t('staffed'),'var(--text)')}
+    ${tile((overNames.length?overNames.length:'0'),t('Over-allocated'),overNames.length?t('conflicts'):t('none'),overNames.length?'var(--danger)':'var(--muted)')}
+  </div>`;
+
+  // ── Staffing curve ──
+  const curIdx=months.indexOf(cur);
+  h+=`<div style="margin-bottom:12px">
+    <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t('Staffing curve (FTE / month)')}</div>
+    ${_dbSparkBars(mFte,{w:Math.min(520,months.length*22),h:34,color:pkColor,curColor:'var(--accent)',curIdx:curIdx,overMax:1,minBar:0})}
+  </div>`;
+
+  // ── Demand vs supply (only if a charter forecast exists) ──
+  if(demPeak!=null||demFteMonths!=null){
+    function bar(actual,forecast,label,unit){
+      if(forecast==null) return '';
+      const pct=forecast>0?Math.min(200,actual/forecast*100):0;
+      const over=actual>forecast*1.02, under=actual<forecast*0.9;
+      const col=over?'var(--danger)':under?'var(--warn)':'var(--accent)';
+      const verdict=over?t('over plan'):under?t('under plan'):t('on plan');
+      return `<div style="margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-family:IBM Plex Mono,monospace;font-size:10px;margin-bottom:2px">
+          <span style="color:var(--muted)">${escH(label)}</span>
+          <span style="color:${col}">${actual.toFixed(1)} ${escH(unit)} vs ${forecast.toFixed(1)} plan · ${verdict}</span></div>
+        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.min(100,pct/2)}%;background:${col}"></div></div>
+      </div>`;
+    }
+    h+=`<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${t('Demand vs supply (charter forecast)')}</div>
+      ${bar(peak,demPeak,t('Peak FTE'),t('FTE'))}
+      ${bar(totFteMonths,demFteMonths,t('Effort'),t('FTE·mo'))}
+    </div>`;
+  }
+
+  // ── Cost / effort by function ──
+  if(grpList.length){
+    h+=`<div style="margin-bottom:12px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${t('By function')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+    grpList.forEach(b=>{ const sc=safeColor(b.color,'var(--muted)');
+      h+=`<span style="display:inline-flex;align-items:center;gap:6px;font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:3px 10px">
+        <span style="width:8px;height:8px;border-radius:2px;background:${sc}"></span>
+        <span style="color:var(--text)">${escH(b.name)}</span>
+        <span style="color:var(--muted)">${b.fteMonths.toFixed(1)} FTE·mo · ${money(b.cost)}</span></span>`; });
+    h+=`</div></div>`;
+  }
+
+  // ── Team table ──
+  h+=`<div>
+    <div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t('Team on this project')}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);text-transform:uppercase">
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">${t('Person')}</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">${t('Function')}</th>
+        <th style="text-align:right;padding:4px 8px;border-bottom:1px solid var(--border)">${t('Peak %')}</th>
+        <th style="text-align:right;padding:4px 8px;border-bottom:1px solid var(--border)">${t('FTE·mo')}</th>
+        <th style="text-align:right;padding:4px 8px;border-bottom:1px solid var(--border)">${t('Cost')}</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">${t('Flag')}</th>
+      </tr></thead><tbody>`;
+  team.sort((x,y)=>y.fteMonths-x.fteMonths).forEach(a=>{
+    const g=engGroups.find(gg=>gg.id===a.eng.groupId);
+    const isOver=overNames.indexOf(a.eng.name)>=0;
+    const flags=[]; if(isOver)flags.push(`<span style="color:var(--danger)">⚠ ${t('over-allocated')}</span>`);
+    if(a.mrMonths>0)flags.push(`<span style="color:var(--warn)">${t('{n} mo away',{n:a.mrMonths})}</span>`);
+    h+=`<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text)">${escH(a.eng.name)}${a.eng.role?`<span style="color:var(--dim)"> · ${escH(a.eng.role)}</span>`:''}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted)">${g?`<span style="color:${safeColor(g.color,'var(--muted)')}">${escH(g.name)}</span>`:'—'}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:IBM Plex Mono,monospace;color:${a.peak>1.005?'var(--danger)':'var(--text)'}">${Math.round(a.peak*100)}%</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:IBM Plex Mono,monospace">${a.fteMonths.toFixed(1)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:IBM Plex Mono,monospace;color:var(--accent2)">${money(a.cost)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">${flags.join(' · ')||''}</td>
+    </tr>`;
+  });
+  if(!team.length) h+=`<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--muted)">${t('No one staffed yet — add rows below.')}</td></tr>`;
+  h+=`</tbody></table></div>`;
+
+  h+=`</div>`;
+  return h;
+}
+
+// Sum of one engineer's allocation on a specific project in one month (across their rows here).
+function _engMonthOnProj(projRows,engId,m){
+  return projRows.reduce((s,r)=>s+(r.engId===engId&&r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0),0);
 }

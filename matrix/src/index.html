@@ -654,7 +654,7 @@
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
     <button class="sm" onclick="chtOpenSynopsis()">⧉ Synopsis</button>
     <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
+    <button onclick="chtBack('financials')" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="cht-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
   <div id="cht-tabs"></div>
@@ -667,7 +667,7 @@
     <span id="dec-title">TRADE-OFF DECISION</span>
     <span id="dec-pick"></span>
     <div style="flex:1"></div>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
+    <button onclick="chtBack('decision')" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="dec-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
   <div id="dec-body"></div>
@@ -725,7 +725,7 @@
     <span id="chan-pick"></span>
     <div style="flex:1"></div>
     <button class="sm primary" onclick="chanSaveNow()">SAVE</button>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
+    <button onclick="chtBack('channels')" data-i18n="← BACK">← BACK</button>
   </div>
   <div id="chan-body"></div>
 </div>

@@ -313,6 +313,21 @@ function gtBuildSignalMap(){
       m.dtcGap=(r.dtcCurrent!=null&&r.dtcTarget!=null)?(r.dtcCurrent-r.dtcTarget):null;
     });
   }catch(e){}
+  // A project with NO financial model must not be judged as FAILING a financial gate
+  // criterion. An empty model computes NPV=0, which a mandatory "NPV > 0" gate reads as a
+  // real failure and blocks the project — the false "blocked at SELECT" symptom. Treat
+  // "no model entered" as no-data (null → the auto criterion resolves to 'na', waived),
+  // NOT as a fail. Only nulls the NPV group; a genuine model that yields NPV≤0 still fails.
+  projects.forEach(p=>{ const m=map[p.id]; if(!m) return;
+    const f=p.charter&&p.charter.financials;
+    const items=(f&&f.investment&&Array.isArray(f.investment.items))?f.investment.items:[];
+    const hasFinModel=!!(f&&(
+      (Array.isArray(f.cashFlows)&&f.cashFlows.some(v=>Number(v)!==0)) ||
+      Number(f.initialInvestment)>0 ||
+      items.some(it=>Number(it&&it.amount)>0)
+    ));
+    if(!hasFinModel){ m.npv=null; m.riskAdjNpv=null; m.pi=null; }
+  });
   // route-to-market concentration — per-project channel HHI
   projects.forEach(p=>{ try{ const cc=chanConcentration([p]); if(cc&&cc.channel) map[p.id].chanHHI=cc.channel.hhi; }catch(e){} });
   // talent — worst risk score + SPOF-without-KT count among the allocated team

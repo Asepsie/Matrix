@@ -211,7 +211,10 @@ function chanRenderPicker(){
                           : '<option>— no projects —</option>'}
       </select>`;
   } else {
-    slot.innerHTML = `<button class="sm" onclick="chanBackToHub()">‹ Projects</button>`;
+    // Hub mode: ← BACK already returns to the hub — show the project NAME for context
+    // instead of a redundant second back control.
+    const p = projects.find(x=>x.id===_chanProjId);
+    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
   }
 }
 

@@ -137,3 +137,38 @@
 .home-add-title{ font-size:12px; font-weight:600; color:var(--text); }
 .home-add-dom{ font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; }
 .home-add-desc{ font-size:10px; color:var(--muted); line-height:1.4; margin-top:2px; }
+
+/* ── Portfolio by Section widget ─────────────────────────────────────── */
+.home-sec-grp{ margin-bottom:10px; }
+.home-sec-h{ display:flex; align-items:center; gap:8px; padding:3px 0 3px 8px; margin-bottom:5px;
+  font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--text); }
+.home-sec-n{ font-size:9px; color:var(--muted); background:var(--bg); border:1px solid var(--border);
+  border-radius:8px; padding:0 6px; }
+.home-sec-row{ background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px;
+  margin-bottom:5px; cursor:pointer; transition:border-color .12s; }
+.home-sec-row:hover{ border-color:var(--accent); }
+.home-sec-row-top{ display:flex; align-items:center; gap:8px; }
+.home-sec-name{ flex:1; font-size:12px; font-weight:600; color:var(--text); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.home-sec-chip{ flex-shrink:0; font-family:IBM Plex Mono,monospace; font-size:8px; letter-spacing:.04em;
+  text-transform:uppercase; border:1px solid; border-radius:9px; padding:1px 7px; }
+.home-sec-prog{ height:4px; background:var(--surface); border-radius:2px; overflow:hidden; margin:6px 0 4px; }
+.home-sec-prog-bar{ height:100%; border-radius:2px; min-width:2px; transition:width .2s; }
+.home-sec-meta{ display:flex; justify-content:space-between; gap:8px;
+  font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); }
+
+/* ── Projects by Gate Stage (funnel) widget ──────────────────────────── */
+.home-gate-funnel{ display:flex; flex-direction:column; gap:2px; }
+.home-gate-stage{ padding:5px 0; border-bottom:1px dashed var(--border); }
+.home-gate-stage:last-child{ border-bottom:none; }
+.home-gate-lab{ display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+.home-gate-dot{ width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+.home-gate-name{ flex:1; font-family:IBM Plex Mono,monospace; font-size:10px; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--text); }
+.home-gate-cnt{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted);
+  background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0 6px; }
+.home-gate-chips{ display:flex; flex-wrap:wrap; gap:4px; padding-left:15px; }
+.home-gate-chip{ font-size:10px; color:var(--text); background:var(--bg); border:1px solid var(--border);
+  border-radius:10px; padding:2px 9px; cursor:pointer; transition:border-color .12s, background .12s;
+  overflow:hidden; text-overflow:ellipsis; max-width:160px; white-space:nowrap; }
+.home-gate-chip:hover{ background:var(--surface); }

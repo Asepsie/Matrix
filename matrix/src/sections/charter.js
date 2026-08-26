@@ -107,10 +107,21 @@ function chtSyncRailAfterClose(){
 function projid2proj(projId){ return projects.find(x=>x.id===+projId)||null; }
 // Dropdown-mode project switch (Financials).
 export function chtSelectProject(id){ openCharter(id); }
-// Hub-mode "‹ Projects" back button — hide the panel, reveal the card grid.
+// Hub-mode back — hide the panel, reveal the card grid. Now invoked only by chtBack().
 export function chtBackToHub(target){
   if(target==='decision') chtCloseDecision(); else chtClose();
   openCharterHub(target);
+}
+// Single, context-aware BACK for the charter / decision / channels panels. If the card-grid
+// hub is open beneath the panel (you drilled in from it), step back to the hub; otherwise go
+// back through the rail history (the previous view). Consolidates the former dual controls
+// ("← BACK" + "‹ Projects") into one predictable button.
+export function chtBack(target){
+  const hub=G('chthub-overlay');
+  if(hub && hub.classList.contains('show')){
+    if(target==='channels'){ if(typeof chanBackToHub==='function') chanBackToHub(); else chtClose(); }
+    else chtBackToHub(target);
+  } else if(typeof railBack==='function'){ railBack(); }
 }
 
 // Render the header picker slot (#cht-pick / #dec-pick) for the given panel.
@@ -126,7 +137,10 @@ function chtRenderPicker(target){
                           : '<option>— no projects —</option>'}
       </select>`;
   } else {
-    slot.innerHTML = `<button class="sm" onclick="chtBackToHub('${target}')">‹ Projects</button>`;
+    // Hub mode: the ← BACK button already returns to the hub, so show the project NAME
+    // here for context instead of a redundant second back control.
+    const p = projects.find(x=>x.id===_chtProjId);
+    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
   }
 }
 

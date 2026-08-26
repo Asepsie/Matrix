@@ -485,6 +485,8 @@ function homeDefaultLayout(){
   return [
     { id:'capacity',      w:3 },   // the join — hero
     { id:'action-queue',  w:3 },
+    { id:'sections',      w:2 },   // every active project by section, with progress
+    { id:'gate-stages',   w:2 },   // portfolio as a gate funnel
     { id:'decisions',     w:2 },
     { id:'portfolio',     w:1 },
     { id:'people-health', w:2 },
@@ -532,6 +534,8 @@ function homeWidgetDefs(){
       desc:t('The people×project join: committed %, free capacity, discipline breaches, pipeline pressure') },
     { id:'decisions',      title:t('Decisions Pending'),   domain:'portfolio',  defW:2, render:homeWqDecisions,
       desc:t('Candidates to fund/kill, stale holds, gate reviews due') },
+    { id:'sections',       title:t('Portfolio by Section'),domain:'portfolio',  defW:2, render:homeWqSections,
+      desc:t('Every active project grouped by section — gate progress, lifecycle, staffing') },
     { id:'portfolio',      title:t('Portfolio Health'),    domain:'portfolio',  defW:1, render:homeWqPortfolio,
       desc:t('Risk-adjusted value, capital at risk, lifecycle funnel') },
     { id:'people-health',  title:t('People Health'),       domain:'people',     defW:2, render:homeWqPeopleHealth,
@@ -544,6 +548,8 @@ function homeWidgetDefs(){
       desc:t('Overdue & pinned to-dos and actions') },
     { id:'gate-readiness', title:t('Gate Readiness'),      domain:'governance', defW:2, render:homeWqGate,
       desc:t('Projects blocked or behind at their gate') },
+    { id:'gate-stages',    title:t('Projects by Gate Stage'),domain:'governance',defW:2, render:homeWqGateStages,
+      desc:t('The whole portfolio as a gate funnel — who sits at each stage') },
     { id:'cost-burn',      title:t('Team Cost'),           domain:'governance', defW:2, render:homeWqCost,
       desc:t('Loaded team cost, allocated %, bench €') },
     { id:'launchpad',      title:t('Insight Launchpad'),   domain:'action',     defW:1, render:homeWqLaunchpad,
@@ -703,33 +709,97 @@ function homeWqTasks(){
 }
 
 // ── governance / capacity widgets ──────────────────────────────────────────
+// Shared gate state for Home widgets. Mirrors the Action Queue gather EXACTLY so the
+// widget and the queue never disagree: a HARD block is a mandatory criterion explicitly
+// FAILING (manual 'fail' or a failing auto criterion with real data) — a merely 'pending'
+// (never-assessed) criterion is NOT a block. `gateEngaged` = the team has actually started
+// gating (advanced a stage, recorded a criterion, or logged a transition).
+function homeProjGateState(p, stages, sig){
+  const out = { hardBlocked:false, pct:100, blockers:[], gateEngaged:false, idx:0, stageName:'' };
+  try{
+    const gp = p.gatePlan || (typeof makeGatePlan==='function' ? makeGatePlan() : {});
+    const idx = (stages.length && typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0;
+    out.idx = idx;
+    const st = stages[idx];
+    out.stageName = st ? (st.name||'') : '';
+    out.gateEngaged = !!(gp && (
+      (Array.isArray(gp.history) && gp.history.length) ||
+      (stages.length && stages[0] && gp.stageId && gp.stageId !== stages[0].id) ||
+      (gp.criteria && Object.keys(gp.criteria).some(function(k){ const c=gp.criteria[k]; return c && c.status && c.status!=='pending'; }))
+    ));
+    if(st && typeof gtStageReadiness==='function'){
+      const rd = gtStageReadiness(st, gp, sig||{});
+      const hard = (rd.blockers||[]).filter(function(c){
+        return (typeof gtCritStatus==='function' ? gtCritStatus(c, gp, sig||{}) : '') === 'fail';
+      });
+      out.pct = rd.pct; out.blockers = hard; out.hardBlocked = hard.length>0;
+    }
+  }catch(e){}
+  return out;
+}
+
 function homeWqGate(){
   if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
   let sig = {}; try{ sig = gtBuildSignalMap(); }catch(e){}
   let stages = []; try{ stages = (typeof gateConfig!=='undefined' && gateConfig.model && gateConfig.model.stages) || []; }catch(e){}
   const rows = [];
-  projects.forEach(function(p){
-    const s = sig[p.id] || {};
-    let rd = { blocked:false, pct:100, blockers:[] };
-    try{
-      const gp = p.gatePlan || (typeof makeGatePlan==='function' ? makeGatePlan() : {});
-      const idx = (typeof gtCurStageIdx==='function') ? gtCurStageIdx(p, stages) : 0;
-      const st = stages[idx];
-      if(st && typeof gtStageReadiness==='function') rd = gtStageReadiness(st, gp, s);
-    }catch(e){}
-    rows.push({ p:p, rd:rd });
-  });
-  const att = rows.filter(function(r){ return r.rd.blocked || (r.rd.pct!=null && r.rd.pct<50); });
+  projects.forEach(function(p){ rows.push({ p:p, st:homeProjGateState(p, stages, sig[p.id]||{}) }); });
+  // Attention = a HARD block, or an ENGAGED project sitting below half-ready. A fresh
+  // project at its first gate with all-pending criteria is neither → it is not shown.
+  const att = rows.filter(function(r){ return r.st.hardBlocked || (r.st.gateEngaged && r.st.pct!=null && r.st.pct<50); });
   if(!att.length) return homeEmpty('Every project is gate-ready. ✓');
-  att.sort(function(a,b){ return ((a.rd.blocked?0:1)-(b.rd.blocked?0:1)) || (a.rd.pct-b.rd.pct); });
+  att.sort(function(a,b){ return ((a.st.hardBlocked?0:1)-(b.st.hardBlocked?0:1)) || (a.st.pct-b.st.pct); });
   let h = '';
   att.slice(0, 7).forEach(function(r){
-    const col = r.rd.blocked ? 'var(--danger)' : 'var(--warn)';
+    const col = r.st.hardBlocked ? 'var(--danger)' : 'var(--warn)';
     h += '<div class="home-row" onclick="homeOpenFor(\'gate-blocked\','+(+r.p.id)+')">'
        + '<span class="home-row-name">'+escH(r.p.name||'Untitled')+'</span>'
-       + '<span class="home-bar"><span style="width:'+Math.max(3,Math.min(100,r.rd.pct||0))+'%;background:'+col+'"></span></span>'
-       + '<span class="home-row-val" style="color:'+col+'">'+(r.rd.blocked ? escH(t('BLOCKED')) : (r.rd.pct+'%'))+'</span></div>';
+       + '<span class="home-bar"><span style="width:'+Math.max(3,Math.min(100,r.st.pct||0))+'%;background:'+col+'"></span></span>'
+       + '<span class="home-row-val" style="color:'+col+'">'+(r.st.hardBlocked ? escH(t('BLOCKED')) : (r.st.pct+'%'))+'</span></div>';
   });
+  return h;
+}
+
+// Projects by Gate Stage — the whole active portfolio laid out as a gate funnel: one row
+// per stage (in methodology order) with the projects currently sitting at it as chips. A
+// hard-blocked project gets a red dot. Answers "where is everything in the process?".
+function homeWqGateStages(){
+  if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
+  let stages = []; try{ stages = (typeof gateConfig!=='undefined' && gateConfig.model && gateConfig.model.stages) || []; }catch(e){}
+  if(!stages.length) return homeEmpty('No gate stages defined — build a methodology in Gate & PI.');
+  let sig = {}; try{ sig = gtBuildSignalMap(); }catch(e){}
+  const buckets = stages.map(function(){ return []; });
+  projects.forEach(function(p){
+    const active = (typeof projIsActivePortfolio==='function') ? projIsActivePortfolio(p) : true;
+    if(!active) return;
+    const gs = homeProjGateState(p, stages, sig[p.id]||{});
+    const i = Math.max(0, Math.min(stages.length-1, gs.idx));
+    buckets[i].push({ p:p, blocked:gs.hardBlocked });
+  });
+  const total = buckets.reduce(function(s,b){ return s+b.length; }, 0);
+  if(!total) return homeEmpty('No active projects at a gate yet — fund candidates in the Pipeline.');
+  let h = '<div class="home-gate-funnel">';
+  stages.forEach(function(st, i){
+    const col = safeColor(st.color, 'var(--muted)');
+    const list = buckets[i];
+    h += '<div class="home-gate-stage">'
+       + '<div class="home-gate-lab"><span class="home-gate-dot" style="background:'+col+'"></span>'
+       + '<span class="home-gate-name">'+escH(st.name || ('Stage '+(i+1)))+'</span>'
+       + '<span class="home-gate-cnt">'+list.length+'</span></div>';
+    if(list.length){
+      h += '<div class="home-gate-chips">';
+      list.forEach(function(x){
+        const bc = x.blocked ? 'var(--danger)' : col;
+        const open = (typeof gtOpenDetail==='function') ? ('gtOpenDetail('+(+x.p.id)+')') : '';
+        h += '<span class="home-gate-chip" style="border-color:'+bc+'55" onclick="railGo(null,\'gate\');'+(open?open+';':'')+'">'
+           + (x.blocked ? '<span style="color:var(--danger)">● </span>' : '')
+           + escH(x.p.name||'Untitled')+'</span>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  });
+  h += '</div><div class="home-foot"><button class="home-btn" onclick="railGo(null,\'gate\')">'+escH(t('Gate board →'))+'</button></div>';
   return h;
 }
 // Capacity ↔ Demand — THE JOIN, promoted to the hero. Committed %, free FTE·months,
@@ -831,6 +901,67 @@ function homeWqPortfolio(){
      + '<span class="home-chip">→ '+life.in_service+' '+escH(t('In service'))+'</span>'
      + '</div>';
   h += '<div class="home-foot"><button class="home-btn" onclick="railGo(null,\'portfolio\')">'+escH(t('Portfolio analytics →'))+'</button></div>';
+  return h;
+}
+
+// Portfolio by Section — every ACTIVE-portfolio project grouped by its section, each with
+// gate progress (stage i/n), lifecycle, and staffing (€ + FTE·months over the current
+// period). Unlike the alert-oriented tiles, this shows projects that have NO problem — so a
+// freshly funded / just-gated project appears here immediately. Staffing is computed straight
+// off allocRows (not suppression-gated), so it is truthful even for a project mid-transition.
+function homeWqSections(){
+  if(typeof projects==='undefined' || !projects.length) return homeEmpty('No projects yet — add projects on the matrix.');
+  let stages=[]; try{ stages=(typeof gateConfig!=='undefined'&&gateConfig.model&&gateConfig.model.stages)||[]; }catch(e){}
+  let months=[]; try{ months=(typeof getMonthRange==='function')?getMonthRange():[]; }catch(e){}
+  const engById={}; if(typeof engineers!=='undefined') engineers.forEach(function(e){ engById[e.id]=e; });
+  function projStaffing(pid){
+    let c=0,f=0; if(!months.length) return {cost:0,fte:0};
+    allocRows.forEach(function(r){ if(r.projectId!==pid||r.engId==null) return; const e=engById[r.engId]; if(!e) return;
+      months.forEach(function(m){ if(r.allocs&&r.allocs[m]!=null){ c+=_allocCost(r.allocs[m],e.monthlyCost); f+=_allocNum(r.allocs[m]); } }); });
+    return {cost:c,fte:f};
+  }
+  const secList=(typeof sections!=='undefined'&&Array.isArray(sections))?sections:[];
+  const groups={}, order=[];
+  projects.forEach(function(p){
+    const active=(typeof projIsActivePortfolio==='function')?projIsActivePortfolio(p):true;
+    if(!active) return;
+    const key=(p.sectionId!=null)?p.sectionId:'__none';
+    if(!groups[key]){ groups[key]=[]; order.push(key); }
+    groups[key].push(p);
+  });
+  if(!order.length) return homeEmpty('No active projects — fund a candidate in the Pipeline to see it here.');
+  const nStages=stages.length;
+  let h='';
+  order.forEach(function(secId){
+    const sec=secList.find(function(s){ return s.id===secId; });
+    const secName=sec?sec.name:t('Unsectioned');
+    const secColor=sec?safeColor(sec.color,'var(--muted)'):'var(--muted)';
+    const list=groups[secId];
+    h+='<div class="home-sec-grp"><div class="home-sec-h" style="border-left:3px solid '+secColor+'">'
+      +'<span>'+escH(secName)+'</span><span class="home-sec-n">'+list.length+'</span></div>';
+    list.forEach(function(p){
+      const lc=(typeof projLifecycleDef==='function')?projLifecycleDef(p):null;
+      const lcColor=safeColor(lc&&lc.color,'var(--muted)');
+      const idx=(nStages&&typeof gtCurStageIdx==='function')?gtCurStageIdx(p,stages):0;
+      const stName=nStages?((stages[idx]&&stages[idx].name)||''):'';
+      const pct=nStages>1?Math.round(idx/(nStages-1)*100):(nStages?100:0);
+      const st=projStaffing(p.id);
+      const open=(typeof gtOpenDetail==='function')?('gtOpenDetail('+(+p.id)+')'):'';
+      h+='<div class="home-sec-row" onclick="railGo(null,\'gate\');'+(open?open+';':'')+'">'
+        +'<div class="home-sec-row-top"><span class="home-sec-name">'+escH(p.name||t('Untitled'))+'</span>'
+        +'<span class="home-sec-chip" style="color:'+lcColor+';border-color:'+lcColor+'55;background:'+lcColor+'18">'+escH(lc?lc.label:'—')+'</span></div>';
+      if(nStages){
+        h+='<div class="home-sec-prog"><div class="home-sec-prog-bar" style="width:'+pct+'%;background:'+secColor+'"></div></div>'
+          +'<div class="home-sec-meta"><span>'+escH(t('Stage {i}/{n}',{i:idx+1,n:nStages}))+(stName?' · '+escH(stName):'')+'</span>'
+          +'<span>'+homeEur(st.cost)+' · '+st.fte.toFixed(1)+' FTE·mo</span></div>';
+      } else {
+        h+='<div class="home-sec-meta"><span>'+escH(t('No gate stages'))+'</span><span>'+homeEur(st.cost)+' · '+st.fte.toFixed(1)+' FTE·mo</span></div>';
+      }
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  h+='<div class="home-foot"><button class="home-btn" onclick="railGo(null,\'gate\')">'+escH(t('Gate board →'))+'</button></div>';
   return h;
 }
 
@@ -1073,6 +1204,10 @@ function homeDismiss(id, hash){
 // ── deep-link opener: one concern → exactly one target surface + entity ────
 function homeGoView(view, fn){
   if(typeof closeHome==='function') closeHome();
+  // Record where we came from (Home) on the back stack so the target panel's ← BACK
+  // returns here. railGo does this automatically, but these openers self-show their
+  // overlay and bypass railGo, so mirror the push manually (same guard/cap as railGo).
+  try{ if(typeof railNavStack!=='undefined' && typeof activeView!=='undefined' && activeView && activeView!==view){ railNavStack.push(activeView); if(railNavStack.length>60) railNavStack.shift(); } }catch(e){}
   if(typeof activeView!=='undefined') activeView = view;
   try{ fn(); }catch(e){}
   if(typeof railRender==='function') railRender();

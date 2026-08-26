@@ -1105,9 +1105,33 @@ which silently reported *everyone on bench / 0 FTE*. The cost chart keeps the re
 views: the monthly chart's FTE overlay uses `filteredRows` (like the cost bars), not the raw
 `allocRows`, so filter + overlay stay in sync.
 
-### Dashboard redesign — the `db-*` class layer ([dashboard.css](src/styles/dashboard.css))
+### ⚠ Resource Balancer is now PROJECT-CENTRIC (`bal-*`) — the portfolio dashboard was replaced
 
-`renderResDashboard` used to emit ~800 lines of per-element inline styles. It now emits
+`renderResDashboard` (view id `dashboard`, label **"Resource balancer"**) was reworked from a
+portfolio-wide supply/demand dashboard into a **per-project view**: a project **picker**
+(`balSetProject` → `_balProjId`, session-only) then, for that one project, (1) a **gate roadmap
+band** (`_balGateRoadmap`) and (2) **resourcing** (`_balResourcing`) — who's on it, each person's
+month-by-month allocation (time), cost per person, and totals. **All numbers are ABSOLUTE** — no
+share-of-portfolio / relative %, by request. Computed straight off `allocRows` with `_allocNum`/
+`_allocCost`, so it is **NOT lifecycle-suppression-gated** (a proposed/held project still shows its
+real staffing here — the whole reason the old balancer looked empty). Markup uses `bal-*` classes
+([dashboard.css](src/styles/dashboard.css) tail).
+- **Gate roadmap** reuses the existing PI model: `gateConfig.increments` (dated time boxes) as the
+  timeline, `gatePlan.roadmap[incId]` = the stage committed for each increment (the planned climb),
+  `gatePlan.piItems[incId].milestones` plotted per column, current stage via `gtCurStageIdx`, and a
+  **NOW** tag on the increment spanning `curMonth()`. **No increments defined → falls back to a stage
+  stepper.** Nothing is written — it is a pure visualization of the PI board's data.
+- **Shared helpers kept:** `_computeCostMaps`/`_buildCostMaps`, `_buildEngUtil`, `pipelineCapacity`,
+  `_dbSparkBars` are still exported and consumed by pipeline/home — only the *rendered body* changed.
+  `setEngDashGroup`/`onDashFilter*Change` still exist (now inert on this view). `_doExportDashboardPDF`
+  still prints `#res-body`; colours resolve via inline `var()` + its `:root` tokens, but the `bal-*`
+  layout rules aren't in its `db-*` pull — **balancer PDF export is a known follow-up**.
+
+### Dashboard redesign — the `db-*` class layer ([dashboard.css](src/styles/dashboard.css)) — SUPERSEDED for the balancer body
+
+The `db-*` layer below describes the PRIOR portfolio dashboard; its classes remain in
+[dashboard.css](src/styles/dashboard.css) but `renderResDashboard` no longer emits them (see the
+`bal-*` rework above). `renderResDashboard` used to emit ~800 lines of per-element inline styles. It now emits
 **class-based markup** styled by [src/styles/dashboard.css](src/styles/dashboard.css) (registered
 in `build.js` `CSS_FILES`). Non-obvious points:
 

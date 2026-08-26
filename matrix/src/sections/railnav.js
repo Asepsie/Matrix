@@ -525,7 +525,11 @@ function railBack(){
 var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','compare-overlay','summary-overlay',
   'cht-overlay','dec-overlay','chthub-overlay','dtc-overlay','chan-overlay','brief-overlay'];
 function railEscMaybeBack(){
-  var open=RAIL_VIEW_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
+  // A view overlay counts as visible if it carries the .show class OR (like the org
+  // chart) is shown via an inline display:flex — checking only .show missed org, so
+  // Esc did not go back from the org chart.
+  var open=RAIL_VIEW_OVERLAYS.some(function(id){ var e=G(id);
+    return e && (e.classList.contains('show') || (e.style && e.style.display && e.style.display!=='none')); });
   if(open) railBack();
 }
 // Modal/popup overlays that can sit ON TOP of a view — Esc must dismiss these
