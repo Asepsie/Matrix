@@ -1175,6 +1175,127 @@ sub-view needs refactoring:
   still prints `#res-body`; colours resolve via inline `var()` + its `:root` tokens, but the `bal-*`
   layout rules aren't in its `db-*` pull — **balancer PDF export is a known follow-up**.
 
+### Replacement finder — "select a resource → find available same-function/skills cover"
+
+The recurring "3 sessions couldn't do it" feature. ONE engine, `showDashReplacements(engId, btn)`
++ `_dashBestCandidate(engId)` (both in [dashboard.js](src/sections/dashboard.js)): candidates =
+same `groupId` (function) first, then other groups; scored by **free headroom** (1 − current-month
+FTE, `_dashCur()`) and **skill overlap**; optional per-skill filter pills refine it. Wired at **three**
+call sites, all routing through the same function:
+
+- **⚖ Balance › utilisation cards** — a `.db-ubtn` on **every** `.db-ucard` now (was over-allocated
+  only); non-over cards get the neutral `.db-ubtn--alt` variant + "FIND ALTERNATIVES" label.
+- **⚖ Balance › overload-conflict cards** — the original `.db-conflict` button (+ a `_dashBestCandidate`
+  "suggested swap" line).
+- **▤ By-project › team rows** — a compact `.bal-find` 🔍 per person in `_balResourcing`.
+
+**Three gotchas that made this fragile (all fixed 2026-08-27):**
+1. **Grid-squish.** The panel is inserted `afterend` of the trigger's card. In `.db-util-grid` (a CSS
+   grid) that made it a cramped ~232px grid cell. Fix: the panel carries class **`dash-repl-panel`**
+   = `grid-column:1 / -1` so it spans the full row (harmless/ignored in the flex conflict list and the
+   block by-project host). This was the main "doesn't work properly" symptom.
+2. **Table rows can't host a `<div>` panel.** From a `.bal-find` in a `<tr>`, `showDashReplacements`
+   detects `btn.closest('tr')` and renders into a shared full-width **`#bal-repl-host`** (emitted after
+   the team table in `_balResourcing`) instead of after the row — single-open, and the label toggle is
+   skipped for the icon button. The skill-pill re-entry re-detects the same `tr`, so it stays in the host
+   with no extra param.
+3. **`\"` truncated the skill-pill onclick.** The pills used to embed
+   `document.querySelector('[data-repl-eng=\"'+id+'\"]')` inside a **double-quoted** `onclick="…"` — the
+   `\"` is not HTML attribute escaping, so the parser **closed the attribute early**, and every pill click
+   threw `SyntaxError: Invalid or unexpected token` and did nothing (this bug shipped in old builds too).
+   Fixed by a named **`_replToggleSkill(pill)`** helper; the skill + engId ride on `data-repl-skill`
+   /`data-repl-for` (escH-escaped, XSS-safe for user skill names) and are read back with `getAttribute` —
+   never spliced into handler JS. **Rule: never put `\"` inside a double-quoted inline handler; pass data
+   via escH'd `data-*` attributes and read it with `getAttribute`.**
+
+Verified in-browser (seeded 6-eng/2-proj dataset, served over localhost since `file://` won't open in the
+pane) via DOM geometry: full-width panel in both modes, correct same/other-group candidates with free %,
+skill pills filter + toggle with **zero** runtime errors. Note: seeded projects with no `lifecycle`
+migrate to `proposed` → capacity-suppressed → everyone reads 0%/bench; set `lifecycle:'active'` when
+seeding or the balancer looks empty (not a bug — see *Project lifecycle* and the suppression banner below).
+
+### "Over-allocated person shows 0%" — suppression made visible (⚖ Balance)
+
+The #1 confusion: a person booked (even over-booked) on a `proposed`/`on_hold`/terminal project reads
+**0% / bench** in the balancer, because `_computeEngUtil` (helpers.js) drops allocations on projects not
+in `_projCapacitySet()` (`consumes:false`). For a portfolio that never engaged the gate, EVERY project
+defaults to `proposed` → the whole balancer reads 0. This is the capacity-planning feature working as
+designed, but it looks broken. **Decision (with the user): keep the suppression, but never show a silent
+zero.** `_balPortfolioView` recomputes the RAW (unsuppressed) bookings per engineer (`_hiddenByEng`,
+peak FTE/mo) + the set of suppressed-but-staffed projects (`_hiddenProjIds`) and surfaces them:
+
+- a **`.db-suppress` banner** below the toolbar naming the count of hidden projects, who's affected, and an
+  **OPEN PIPELINE** button (`railGo(event,'pipeline')`) to go fund them;
+- a **`db-tag--hidden` ∅ HIDDEN chip** + a **`.db-hidden-note`** ("up to N FTE/mo on un-funded projects
+  (hidden)") on each affected utilisation card. A partly-funded person shows their real funded % **and**
+  the hidden note (e.g. 55% funded + 0.8 FTE/mo hidden), so the two never contradict.
+
+This changes **no** capacity math — `_projCapacitySet`/`_computeEngUtil`/cost maps are untouched; it's a
+pure read-side explanation layer. Verified: banner appears only when a suppressed project is staffed,
+lists it, routes to Pipeline, and vanishes once all projects are `active` (Ada then reads her true 1.4 /
+over-allocated). If a future ask is "count un-funded work in utilisation too", that's the OTHER option the
+user declined here — it would mean broadening the suppression set in `_computeEngUtil` (app-wide blast
+radius: exec/home/timeline/development all read `_buildEngUtil`).
+
+## Timeline — by-resource ribbon ([timeline.js](src/sections/timeline.js))
+
+The timeline is a mode dispatcher (`_tlState.mode`): **`gantt`** ("By project" — project rows, nested
+engineer rows), **`resource`** ("By resource" — added 2026-08-27), **`plan`** (capacity scheduler).
+`renderTimeline` early-returns to `renderTimelinePlan`/`renderTimelineResource`; `tlModeBar`/`tlSetMode`
+gate the three.
+
+**By-resource** = one drag-reorderable lane per engineer, each a small **SVG stacked-area ribbon**
+(`_tlLaneSvg`) showing that person's allocation split by project colour over the FROM/TO months, so a
+project ramping down as another ramps up reads as a visible crossover. Design decisions worth keeping:
+
+- **Shows ALL real bookings, funded + un-funded.** Deliberately does NOT use `_buildEngUtil` (which
+  suppresses proposed/on-hold) — it reads `allocRows` directly, so a person booked only on un-funded work
+  still appears. Those segments render **faded (opacity 0.4)** instead of hidden — the deliberate opposite
+  of the balancer's suppression, to avoid the "over-allocated shows 0%" trap (see balancer section above).
+  Funded/un-funded split via `_projCapacitySet()`.
+- **Geometry + ADAPTIVE vertical scale.** Per-lane independent SVG, x = `(i+0.5)*CELL_W` with the area
+  extended flat to both lane edges (x=0 / x=plotW) so it fills the width. The 0→100% band is a **fixed
+  `LANE_H` px (76)** so 100% always looks the same across lanes; the **over-zone height adapts** to the
+  worst peak in view: `maxF = clamp(max lane peak, 1.15, 3.0)`, `OVER = (maxF-1)*LANE_H`, `yF(f)=y0 -
+  clamp(f,0,maxF)*LANE_H`. So a 250% person makes every lane 190px tall with the 100% line proportionally
+  low and the spike clearly taller than a 120% one — the earlier bug was a fixed `capF≈1.27` ceiling that
+  made 130% and 300% render identically. Faint gridlines at each integer multiple (200/300%), a light-red
+  over-zone tint above the line, red `var(--danger)` spill for the over-portion, bold per-month total %
+  labels anchored to the true stack top, and a transparent per-month `<rect><title>` for the hover
+  breakdown (smooth look, precise hover). Cap at 300% is visual only — the % label stays truthful above it.
+- **Right-side control panel + colour management** (redesign after "neither usable nor scalable": the top
+  legend became an unreadable wall with many projects, and clashing project colours were indistinguishable).
+  `tlSidePanel(all, projSeen, hidden)` renders a fixed 200px right column (ribbon is `flex:1` beside it and
+  scrolls — deliberately trades horizontal month room for the panel, as the user accepted): a **PROJECTS**
+  list (an `<input type=color>` per project → `tlSetProjColor` writes `project.color` and `saveState`s, so
+  it applies **app-wide** — matrix/gantt too — plus the project name text **colour-matched to its band**),
+  a **RESOURCES** list (a show/hide checkbox per person → `tlToggleEngHidden`, session-only `hiddenEng`), and
+  the capacity/over/un-funded key. The old top legend is gone.
+- **Distinct palette, recolour-everything.** `TL_PALETTE` (18 dark-legible categorical colours);
+  `tlAutoColorProjects(force)` assigns `palette[i%len]` to **every** project by index and persists. Runs
+  **once automatically on first open** (guarded by localStorage `eim_tl_autocolor`) so bands are immediately
+  separable, and again on demand from the panel's **AUTO-COLOR** button. This overwrites existing
+  `project.color`s app-wide by design (the user chose app-wide + recolour-everything); per-project pickers
+  fine-tune, and it's fully reversible.
+- **On-ribbon labels** are now the **3 thickest bands only** (≥18px tall — avoids the pile-up the screenshot
+  showed), each a dark chip **outlined and text-filled in the band's colour** so the label reads as part of
+  its graphic. `var(--bg)` separators still stroke between bands; the over-portion is a translucent
+  `var(--danger)` wash + red outline (NOT a solid-red fill, which read as a red "project" band).
+- **Lane order** is a session-only `_tlState.engOrder` (keyed by engId, not index — like `projOrder` but
+  id-keyed so it survives filtering), default peak-desc; `_tlEngDrag*` reorder. `conflictOnly` filters to
+  `peak>1.005` people. Lane name → `openIdCardModal`.
+- **Cross-link with the balancer (two-way).** `tlOpenResource(engId)` sets `mode='resource'`+`focusEng`,
+  routes `railGo(null,'timeline')`, then scroll-focuses + highlights that lane (one-shot: `focusEng`
+  cleared after render). Called from the balancer's over-allocation conflict cards (a `◧ TIMELINE` button
+  beside FIND REPLACEMENTS) and the ▤ By-project team rows (a `◧` beside the 🔍). This is the "fluid
+  movement between project and resource lenses" — cross-link, NOT a merge of the two tabs.
+
+New top-level names are all `tl`-prefixed/unique (flat-bundle rule): `renderTimelineResource`,
+`_tlLaneSvg`, `_tlEngDrag*`, `_tlEngDragId`, `tlOpenResource`. Verified in-browser (4-eng/4-proj seed, one
+project `proposed`): crossover ribbon, red over-spill on the 130% person, faded un-funded segment, hover
+breakdown, conflicts filter, drag-reorder, and the balancer→timeline focus link — zero console errors.
+Screenshots don't composite in the automation pane; verified via DOM geometry (same lesson as charter/home).
+
 ### Dashboard redesign — the `db-*` class layer ([dashboard.css](src/styles/dashboard.css)) — SUPERSEDED for the balancer body
 
 The `db-*` layer below describes the PRIOR portfolio dashboard; its classes remain in

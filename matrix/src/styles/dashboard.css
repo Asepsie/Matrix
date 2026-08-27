@@ -132,6 +132,25 @@
   border:1px solid var(--danger);color:var(--danger);border-radius:4px;padding:3px 0;cursor:pointer;
   letter-spacing:.04em;transition:background .12s}
 .db-ubtn:hover{background:rgba(241,67,53,.12)}
+/* Non-overloaded "find alternatives" variant — neutral, not alarm-red */
+.db-ubtn--alt{border-color:var(--border);color:var(--muted)}
+.db-ubtn--alt:hover{background:rgba(91,229,200,.10);border-color:var(--accent2);color:var(--accent2)}
+/* Replacement-finder panel spans the full width of the util CSS grid instead of
+   squishing into a single ~232px column when inserted afterend of a .db-ucard. */
+.dash-repl-panel{grid-column:1 / -1}
+/* Suppression banner — explains why booked people can read 0%/bench (proposed/on-hold
+   projects are excluded from capacity by the lifecycle feature). */
+.db-suppress{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;padding:9px 12px;
+  border:1px solid rgba(241,164,53,.35);border-left:3px solid var(--warn);border-radius:8px;
+  background:rgba(241,164,53,.07)}
+.db-suppress-ic{color:var(--warn);font-size:14px;line-height:1.2}
+.db-suppress-tx{flex:1;min-width:0}
+.db-suppress-h{font-family:var(--db-mono);font-size:10px;font-weight:600;color:var(--text);letter-spacing:.02em}
+.db-suppress-s{font-family:var(--db-mono);font-size:9px;color:var(--muted);margin-top:3px;line-height:1.5}
+.db-suppress button{align-self:center;flex-shrink:0;border-color:var(--warn);color:var(--warn)}
+/* Per-card "these bookings are hidden" marker */
+.db-tag--hidden{background:rgba(241,164,53,.12);color:var(--warn)}
+.db-hidden-note{color:var(--warn)!important}
 
 /* util group header */
 .db-ugroup{margin-bottom:14px}
@@ -237,6 +256,9 @@
 .bal-over{color:var(--danger);font-weight:700;}
 .bal-foot td{background:rgba(255,255,255,.03);font-weight:700;border-top:2px solid var(--border);}
 .bal-foot .bal-c-name{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;}
+/* Per-row "find available same-function/skills" trigger in the by-project team table */
+.bal-find{font-size:10px;line-height:1;padding:1px 5px;margin-left:6px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;vertical-align:middle;}
+.bal-find:hover{border-color:var(--accent);color:var(--accent);}
 .bal-cost-cell{color:var(--accent2);}
 
 /* ── Resource Balancer mode toggle (Balance | By project) ────────────── */

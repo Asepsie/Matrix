@@ -250,6 +250,36 @@ function _balPortfolioView(){
   var spofSkills=Object.values(skillMap).filter(function(sm){return sm.holders.length===1&&sm.cat==='crit';});
   var spofEngIds=new Set(spofSkills.map(function(sm){return sm.holders[0].eng.id;}));
 
+  // ── Un-funded / on-hold suppression, made VISIBLE (not a silent zero) ──────────
+  // Allocations on non-capacity-consuming projects (proposed / on_hold / terminal) are
+  // excluded from utilisation above (see _computeEngUtil › capSet). A person booked only
+  // on such projects therefore reads 0%/bench even though they're really allocated — the
+  // "over-allocated shows 0" report. We recompute the RAW (unsuppressed) bookings here so
+  // the balancer can name what's hidden and why, without changing the capacity math.
+  var _capSet=(typeof _projCapacitySet==='function')?_projCapacitySet():null;
+  var _hiddenByEng={};     // engId -> {byMonth:{}, peak}
+  var _hiddenProjSet={};   // projId -> true (suppressed AND staffed in-period)
+  if(_capSet){
+    allocRows.forEach(function(r){
+      if(r.engId==null || r.projectId==null || _capSet.has(r.projectId)) return;  // only suppressed projects
+      var eng=engById.get(r.engId); if(!eng || !_costCounts(eng)) return;
+      months.forEach(function(m){
+        var v=r.allocs&&r.allocs[m];
+        var n=(v==='p')?1:((v==='m'||v==='r')?0:(+v||0));
+        if(n<=0) return;
+        var hb=_hiddenByEng[r.engId]||(_hiddenByEng[r.engId]={byMonth:{}});
+        hb.byMonth[m]=(hb.byMonth[m]||0)+n;
+        _hiddenProjSet[r.projectId]=true;
+      });
+    });
+    Object.keys(_hiddenByEng).forEach(function(k){
+      var bm=_hiddenByEng[k].byMonth,pk=0;
+      Object.keys(bm).forEach(function(m){ if(bm[m]>pk)pk=bm[m]; });
+      _hiddenByEng[k].peak=pk;
+    });
+  }
+  var _hiddenProjIds=Object.keys(_hiddenProjSet).map(Number);
+
   var h='';
 
   // ── Filter / action toolbar ────────────────────────────────────
@@ -267,6 +297,23 @@ function _balPortfolioView(){
    +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
+
+  // ── Suppression banner — why some people read 0% / bench ────────
+  if(_hiddenProjIds.length){
+    var _hpNames=_hiddenProjIds.slice(0,4).map(function(pid){var p=_projMap.get(pid);return escH(p?(p.name||t('Untitled')):('#'+pid));});
+    var _moreH=_hiddenProjIds.length-_hpNames.length;
+    var _hiddenEngCount=Object.keys(_hiddenByEng).length;
+    h+='<div class="db-suppress">'
+      +'<div class="db-suppress-ic">&#9888;</div>'
+      +'<div class="db-suppress-tx">'
+      +'<div class="db-suppress-h">'+t('{n} project(s) are proposed or on hold — their staffing is hidden from capacity',{n:_hiddenProjIds.length})+'</div>'
+      +'<div class="db-suppress-s">'+_hpNames.join(' · ')+(_moreH>0?' +'+_moreH+' '+t('more'):'')
+        +' · '+t('{n} person(s) affected',{n:_hiddenEngCount})
+        +' — '+t('set a project Active/In-Service (project editor or Pipeline) to count its allocations here')+'</div>'
+      +'</div>'
+      +'<button class="sm" onclick="railGo(event,&#39;pipeline&#39;)">'+t('OPEN PIPELINE')+'</button>'
+      +'</div>';
+  }
 
   // ── Hero band: team capacity + how much of it is engaged ───────
   h+='<div class="db-hero">'
@@ -597,6 +644,7 @@ function _balPortfolioView(){
       var isOver=eu.overMonths&&eu.overMonths.length>0;
       var isBench=(eu.monthAllocs[curInRange]||0)===0;
       var isSpof=spofEngIds.has(eu.eng.id);
+      var hb=_hiddenByEng[eu.eng.id];  // raw bookings on suppressed (un-funded/on-hold) projects
       var col=isOver?'var(--danger)':isBench?'var(--accent2)':pct>80?'var(--accent)':'var(--accent2)';
       var cls=isOver?' db-ucard--over':isBench?' db-ucard--bench':isSpof?' db-ucard--spof':'';
       var emv=months.map(function(m){return eu.monthAllocs&&eu.monthAllocs[m]?eu.monthAllocs[m]:0;});
@@ -606,6 +654,7 @@ function _balPortfolioView(){
        +(isOver?'<span class="db-tag db-tag--over">&#9888; '+t('OVER')+'</span>':'')
        +(isBench?'<span class="db-tag db-tag--bench">'+t('BENCH')+'</span>':'')
        +(isSpof?'<span class="db-tag db-tag--spof">SPOF</span>':'')
+       +((hb&&hb.peak>0)?'<span class="db-tag db-tag--hidden" title="'+escH(t('Booked on proposed/on-hold projects, which are excluded from capacity'))+'">&#8709; '+t('HIDDEN')+'</span>':'')
        +'</div>'
        +'<div class="db-urole">'+(eu.role?escH(eu.role):'')+(eu.role&&eu.loc?' · ':'')+escH(eu.loc||'')+'</div>'
        +'<div class="db-upct" style="color:'+col+'">'+pct+'%</div>'
@@ -613,7 +662,8 @@ function _balPortfolioView(){
        +'<div style="margin-top:6px">'+eSpark+'</div>'
        +(isOver?'<div class="db-umeta" style="color:var(--danger)">&#9888; '+t('Over:')+' '+eu.overMonths.slice(0,3).map(function(m){return m.slice(0,7);}).join(', ')+(eu.overMonths.length>3?'…':'')+'</div>':'')
        +'<div class="db-umeta">'+eu.activeMonths+'/'+eu.months+' '+t('active mo')+' · '+utilPct+'% '+t('full period')+'</div>'
-       +(isOver?'<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+t('FIND REPLACEMENTS')+'</button>':'')
+       +((hb&&hb.peak>0)?'<div class="db-umeta db-hidden-note">&#8709; '+t('up to {n} FTE/mo on un-funded projects (hidden)',{n:hb.peak.toFixed(1)})+'</div>':'')
+       +'<button class="db-ubtn'+(isOver?'':' db-ubtn--alt')+'" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+(isOver?t('FIND REPLACEMENTS'):t('FIND ALTERNATIVES'))+'</button>'
        +'</div>';
     });
     h+='</div></div>';
@@ -686,7 +736,10 @@ function _balPortfolioView(){
           +(_sug.same?'':' · '+t('other group'))+'</span>'
           +'</div>';
       }
-      h+='<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>';
+      h+='<div style="display:flex;gap:6px">'
+        +'<button class="db-ubtn" style="flex:1" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>'
+        +'<button class="db-ubtn db-ubtn--alt" style="flex:1" onclick="tlOpenResource('+eu.eng.id+')" title="'+escH(t('See this person’s allocation over time'))+'">◧ '+t('TIMELINE')+'</button>'
+        +'</div>';
       h+='</div>';
     });
     h+='</div></div>';
@@ -816,7 +869,9 @@ function _balResourcing(proj, months){
   h+='<th class="bal-c-tot">'+escH(t('FTE·MO'))+'</th><th class="bal-c-cost">'+escH(t('COST'))+'</th></tr></thead><tbody>';
   team.forEach(function(a){
     var g=engGroups.find(function(gg){return gg.id===a.eng.groupId;});
-    h+='<tr><td class="bal-c-name">'+escH(a.eng.name)+(a.eng.role?'<span class="bal-role"> · '+escH(a.eng.role)+'</span>':'')+'</td>'
+    h+='<tr><td class="bal-c-name">'+escH(a.eng.name)+(a.eng.role?'<span class="bal-role"> · '+escH(a.eng.role)+'</span>':'')
+      +'<button class="bal-find" title="'+escH(t('Find available people with the same function or skills'))+'" onclick="showDashReplacements('+a.eng.id+',this)">&#128270;</button>'
+      +'<button class="bal-find" title="'+escH(t('See this person’s allocation over time'))+'" onclick="tlOpenResource('+a.eng.id+')">&#9703;</button></td>'
       +'<td class="bal-c-fn">'+(g?'<span style="color:'+safeColor(g.color,'var(--muted)')+'">'+escH(g.name)+'</span>':'—')+'</td>'
       +'<td class="bal-c-mo bal-permo">'+((a.eng.monthlyCost||0)?Math.round(a.eng.monthlyCost/1000)+'k':'')+'</td>';
     months.forEach(function(mo){
@@ -832,7 +887,9 @@ function _balResourcing(proj, months){
   h+='<tr class="bal-foot"><td class="bal-c-name">'+escH(t('COST'))+'</td><td class="bal-c-fn"></td><td class="bal-c-mo"></td>';
   mCost.forEach(function(v){ h+='<td class="bal-c-mo bal-cost-cell">'+(v?Math.round(v/1000)+'k':'')+'</td>'; });
   h+='<td class="bal-c-tot"></td><td class="bal-c-cost">'+money(totCost)+'</td></tr>';
-  h+='</tbody></table></div></div>';
+  h+='</tbody></table></div>'
+    +'<div id="bal-repl-host"></div>'   // full-width host for the per-row replacement finder
+    +'</div>';
   return h;
 }
 
@@ -978,12 +1035,39 @@ export function _dashBestCandidate(engId){
 }
 
 /* ── Dashboard: replacement finder ─────────────────────────────────── */
-// Shows or hides the replacement candidate panel for an overloaded engineer.
+// Toggles one skill in the replacement panel's per-panel skill filter, then
+// re-renders the panel. The trigger button (which owns the persisted filter, keyed
+// by data-repl-eng) is re-resolved from the DOM; the skill rides on the pill's
+// data-repl-skill attribute so no user-authored value is ever spliced into handler JS.
+export function _replToggleSkill(pill){
+  var skill = pill.getAttribute('data-repl-skill');
+  var engId = +pill.getAttribute('data-repl-for');
+  var b = document.querySelector('[data-repl-eng="'+engId+'"]');
+  if(!b) return;
+  var f = b._replSkillFilter || [];
+  var i = f.indexOf(skill);
+  if(i>=0) f.splice(i,1); else f.push(skill);
+  b._replSkillFilter = f;
+  var panel = document.getElementById('dash-repl-panel-'+engId);
+  if(panel) panel.remove();
+  showDashReplacements(engId, b);
+}
+
+// Shows or hides the replacement candidate panel for an engineer (same function/group +
+// overlapping skills + free capacity). Triggered from the ⚖ Balance utilisation cards,
+// the overload-conflict cards, and the ▤ By-project team rows.
 export function showDashReplacements(engId, btn) {
+  // Table context (▤ By-project view): the finder is triggered from a compact per-row
+  // 🔍 button inside a <tr>, where a full-width panel can't live. In that case render
+  // into the shared #bal-repl-host below the table (single-open) and leave the icon
+  // button's label alone. Detecting the <tr> here means the skill-pill re-entry (which
+  // re-resolves btn via [data-repl-eng]) stays consistent without threading a param.
+  var tr = (btn && btn.closest) ? btn.closest('tr') : null;
+  var host = tr ? document.getElementById('bal-repl-host') : null;
   // Toggle: if already open, close it
   var existing = document.getElementById('dash-repl-panel-' + engId);
-  if (existing) { existing.remove(); btn.textContent = '🔍 '+t('FIND REPLACEMENTS'); return; }
-  btn.textContent = t('▲ CLOSE');
+  if (existing) { existing.remove(); if(!tr) btn.textContent = '🔍 '+t('FIND REPLACEMENTS'); return; }
+  if(!tr) btn.textContent = t('▲ CLOSE');
 
   var eng = engineers.find(function(e){ return e.id === engId; });
   if (!eng) return;
@@ -1088,14 +1172,12 @@ export function showDashReplacements(engId, btn) {
       + '<div style="display:flex;flex-wrap:wrap;gap:4px">'
       + engSkills.map(function(s){
           var active = selectedSkills.includes(s);
-          return '<button onclick="(function(b,s){'
-            + 'var f=b._replSkillFilter||[];'
-            + 'var i=f.indexOf(s);'
-            + 'if(i>=0){f.splice(i,1);}else{f.push(s);}'
-            + 'b._replSkillFilter=f;'
-            + "document.getElementById('dash-repl-panel-"+engId+"').remove();"
-            + 'showDashReplacements('+engId+',b);'
-            + '})(document.querySelector(\'[data-repl-eng=\\"'+engId+'\\"]\'),\''+s.replace(/'/g,"\\'")+'\')" '
+          // Skill + engId travel via escH-escaped data attributes read back with getAttribute
+          // (never interpolated into the JS of the handler) — the old inline-IIFE form embedded
+          // [data-repl-eng=\"id\"], whose \" closed the double-quoted onclick attribute early and
+          // threw SyntaxError on click. data-skill also keeps user-authored skill names XSS-safe.
+          return '<button data-repl-skill="'+escH(s)+'" data-repl-for="'+engId+'"'
+            + ' onclick="_replToggleSkill(this)" '
             + 'style="font-family:IBM Plex Mono,monospace;font-size:9px;padding:2px 7px;'
             + 'border-radius:10px;cursor:pointer;border:1px solid '+(active?'var(--accent)':'var(--border)')+';'
             + 'background:'+(active?'rgba(200,241,53,.15)':'var(--bg)')+';'
@@ -1106,11 +1188,9 @@ export function showDashReplacements(engId, btn) {
     : '';
 
   // ── Panel HTML ────────────────────────────────────────────────────
-  var h = '<div id="dash-repl-panel-'+engId+'" style="margin-top:8px;padding:10px;'
+  var h = '<div id="dash-repl-panel-'+engId+'" class="dash-repl-panel" style="margin-top:8px;padding:10px;'
     + 'background:var(--surface);border:1px solid var(--border);border-radius:6px;'
     + 'border-top:2px solid var(--danger)">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
     + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);letter-spacing:.07em;margin-bottom:8px">'+t('REPLACEMENT CANDIDATES FOR')+' ' + escH(eng.name.toUpperCase()) + '</div>'
     + skillPills;
 
@@ -1144,9 +1224,15 @@ export function showDashReplacements(engId, btn) {
     + '</div>';
   h += '</div>';
 
-  // Insert panel after the button's parent card
-  var card = btn.closest('.db-ucard') || btn.closest('.kpi-card') || btn.parentElement;
-  card.insertAdjacentHTML('afterend', h);
+  // Insert: into the shared host (▤ By-project table view) or after the button's card.
+  // The panel carries grid-column:1/-1 so it spans full width when inserted into the
+  // .db-util-grid CSS grid (afterend of a .db-ucard) instead of squishing into one cell.
+  if (host) {
+    host.innerHTML = h;   // single-open below the project team table
+  } else {
+    var card = btn.closest('.db-ucard') || btn.closest('.db-conflict') || btn.closest('.kpi-card') || btn.parentElement;
+    card.insertAdjacentHTML('afterend', h);
+  }
 
   // Store skill filter on the button for re-renders
   btn.setAttribute('data-repl-eng', engId);

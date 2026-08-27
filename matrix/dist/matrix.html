@@ -1276,6 +1276,25 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
   border:1px solid var(--danger);color:var(--danger);border-radius:4px;padding:3px 0;cursor:pointer;
   letter-spacing:.04em;transition:background .12s}
 .db-ubtn:hover{background:rgba(241,67,53,.12)}
+/* Non-overloaded "find alternatives" variant — neutral, not alarm-red */
+.db-ubtn--alt{border-color:var(--border);color:var(--muted)}
+.db-ubtn--alt:hover{background:rgba(91,229,200,.10);border-color:var(--accent2);color:var(--accent2)}
+/* Replacement-finder panel spans the full width of the util CSS grid instead of
+   squishing into a single ~232px column when inserted afterend of a .db-ucard. */
+.dash-repl-panel{grid-column:1 / -1}
+/* Suppression banner — explains why booked people can read 0%/bench (proposed/on-hold
+   projects are excluded from capacity by the lifecycle feature). */
+.db-suppress{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;padding:9px 12px;
+  border:1px solid rgba(241,164,53,.35);border-left:3px solid var(--warn);border-radius:8px;
+  background:rgba(241,164,53,.07)}
+.db-suppress-ic{color:var(--warn);font-size:14px;line-height:1.2}
+.db-suppress-tx{flex:1;min-width:0}
+.db-suppress-h{font-family:var(--db-mono);font-size:10px;font-weight:600;color:var(--text);letter-spacing:.02em}
+.db-suppress-s{font-family:var(--db-mono);font-size:9px;color:var(--muted);margin-top:3px;line-height:1.5}
+.db-suppress button{align-self:center;flex-shrink:0;border-color:var(--warn);color:var(--warn)}
+/* Per-card "these bookings are hidden" marker */
+.db-tag--hidden{background:rgba(241,164,53,.12);color:var(--warn)}
+.db-hidden-note{color:var(--warn)!important}
 
 /* util group header */
 .db-ugroup{margin-bottom:14px}
@@ -1381,6 +1400,9 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .bal-over{color:var(--danger);font-weight:700;}
 .bal-foot td{background:rgba(255,255,255,.03);font-weight:700;border-top:2px solid var(--border);}
 .bal-foot .bal-c-name{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;}
+/* Per-row "find available same-function/skills" trigger in the by-project team table */
+.bal-find{font-size:10px;line-height:1;padding:1px 5px;margin-left:6px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;vertical-align:middle;}
+.bal-find:hover{border-color:var(--accent);color:var(--accent);}
 .bal-cost-cell{color:var(--accent2);}
 
 /* ── Resource Balancer mode toggle (Balance | By project) ────────────── */
@@ -2455,6 +2477,23 @@ var I18N_DICT = {
     'ENGINEER UTILISATION':'UTILISATION DES INGÉNIEURS', 'GROUP BY:':'GROUPER PAR :', 'Unassigned':'Non assigné',
     'OVER':'SURCHARGE', 'BENCH':'RÉSERVE', 'avg active':'moy. actif', 'full period':'période complète',
     'Over:':'Surcharge :', 'total':'total', 'mo':'mois', 'FIND REPLACEMENTS':'TROUVER DES REMPLAÇANTS',
+    'FIND ALTERNATIVES':'TROUVER DES ALTERNATIVES', 'Find available people with the same function or skills':'Trouver des personnes disponibles ayant la même fonction ou les mêmes compétences',
+    '{n} project(s) are proposed or on hold — their staffing is hidden from capacity':'{n} projet(s) proposé(s) ou en attente — leur affectation est masquée de la capacité',
+    'more':'de plus', '{n} person(s) affected':'{n} personne(s) concernée(s)',
+    'set a project Active/In-Service (project editor or Pipeline) to count its allocations here':'définir un projet Actif/En service (éditeur de projet ou Pipeline) pour compter ses affectations ici',
+    'OPEN PIPELINE':'OUVRIR LE PIPELINE', 'HIDDEN':'MASQUÉ',
+    'Booked on proposed/on-hold projects, which are excluded from capacity':'Affecté à des projets proposés/en attente, exclus de la capacité',
+    'up to {n} FTE/mo on un-funded projects (hidden)':'jusqu\'à {n} ETP/mois sur des projets non financés (masqué)',
+    'By project':'Par projet', 'By resource':'Par ressource', 'RESOURCE ALLOCATION OVER TIME':'ALLOCATION DES RESSOURCES DANS LE TEMPS',
+    '{n} people':'{n} personnes', '{n} over-allocated':'{n} en surcharge', '100% capacity':'capacité 100 %',
+    'over-allocated':'en surcharge', 'un-funded (faded)':'non financé (estompé)', 'un-funded':'non financé',
+    '↕ drag to reorder · click a name for the ID card · hover for the monthly split':'↕ glisser pour réordonner · cliquer un nom pour la fiche · survoler pour le détail mensuel',
+    'No over-allocated people in this period.':'Aucune personne en surcharge sur cette période.', 'No allocations in this period.':'Aucune allocation sur cette période.',
+    'RESOURCE':'RESSOURCE', 'Open ID card':'Ouvrir la fiche', 'See this person’s allocation over time':'Voir l\'allocation de cette personne dans le temps', 'TIMELINE':'CHRONOLOGIE',
+    'PROJECTS':'PROJETS', 'RESOURCES':'RESSOURCES', 'AUTO-COLOR':'AUTO-COULEUR', 'none in view':'aucun affiché',
+    'Assign a fresh distinct palette to all projects':'Attribuer une palette distincte à tous les projets',
+    'Change project colour (applies everywhere)':'Changer la couleur du projet (s\'applique partout)',
+    'All resources hidden — enable some in the panel →':'Toutes les ressources masquées — activez-en dans le panneau →',
     'PROJECT SPENDING DETAIL':'DÉTAIL DES DÉPENSES PAR PROJET',
     'cost &amp; resources per project':'coût & ressources par projet',
     'No project allocation data in selected period.':'Aucune donnée d\'allocation de projet sur la période sélectionnée.',
@@ -2925,6 +2964,23 @@ var I18N_DICT = {
     'ENGINEER UTILISATION':'工程师利用率', 'GROUP BY:':'分组方式：', 'Unassigned':'未分配',
     'OVER':'超额', 'BENCH':'闲置', 'avg active':'平均活跃', 'full period':'完整周期',
     'Over:':'超额：', 'total':'合计', 'mo':'月', 'FIND REPLACEMENTS':'查找替补',
+    'FIND ALTERNATIVES':'查找替代人选', 'Find available people with the same function or skills':'查找具有相同职能或技能的可用人员',
+    '{n} project(s) are proposed or on hold — their staffing is hidden from capacity':'{n} 个项目为提议中或暂停 — 其人员配置已从产能中隐藏',
+    'more':'更多', '{n} person(s) affected':'{n} 人受影响',
+    'set a project Active/In-Service (project editor or Pipeline) to count its allocations here':'将项目设为活跃/服务中（项目编辑器或管道）以在此计入其分配',
+    'OPEN PIPELINE':'打开管道', 'HIDDEN':'已隐藏',
+    'Booked on proposed/on-hold projects, which are excluded from capacity':'已分配到提议中/暂停的项目，这些项目不计入产能',
+    'up to {n} FTE/mo on un-funded projects (hidden)':'在未资助项目上最多 {n} FTE/月（已隐藏）',
+    'By project':'按项目', 'By resource':'按资源', 'RESOURCE ALLOCATION OVER TIME':'资源随时间分配',
+    '{n} people':'{n} 人', '{n} over-allocated':'{n} 人超额', '100% capacity':'100% 产能',
+    'over-allocated':'超额', 'un-funded (faded)':'未资助（淡化）', 'un-funded':'未资助',
+    '↕ drag to reorder · click a name for the ID card · hover for the monthly split':'↕ 拖动重新排序 · 点击姓名查看名片 · 悬停查看每月明细',
+    'No over-allocated people in this period.':'此期间没有超额人员。', 'No allocations in this period.':'此期间没有分配。',
+    'RESOURCE':'资源', 'Open ID card':'打开名片', 'See this person’s allocation over time':'查看此人随时间的分配', 'TIMELINE':'时间线',
+    'PROJECTS':'项目', 'RESOURCES':'资源', 'AUTO-COLOR':'自动配色', 'none in view':'视图中无',
+    'Assign a fresh distinct palette to all projects':'为所有项目分配一组全新的可区分配色',
+    'Change project colour (applies everywhere)':'更改项目颜色（全局生效）',
+    'All resources hidden — enable some in the panel →':'所有资源已隐藏 — 在面板中启用 →',
     'PROJECT SPENDING DETAIL':'项目支出明细',
     'cost &amp; resources per project':'各项目的成本与资源',
     'No project allocation data in selected period.':'所选周期内无项目分配数据。',
@@ -11446,6 +11502,36 @@ function _balPortfolioView(){
   var spofSkills=Object.values(skillMap).filter(function(sm){return sm.holders.length===1&&sm.cat==='crit';});
   var spofEngIds=new Set(spofSkills.map(function(sm){return sm.holders[0].eng.id;}));
 
+  // ── Un-funded / on-hold suppression, made VISIBLE (not a silent zero) ──────────
+  // Allocations on non-capacity-consuming projects (proposed / on_hold / terminal) are
+  // excluded from utilisation above (see _computeEngUtil › capSet). A person booked only
+  // on such projects therefore reads 0%/bench even though they're really allocated — the
+  // "over-allocated shows 0" report. We recompute the RAW (unsuppressed) bookings here so
+  // the balancer can name what's hidden and why, without changing the capacity math.
+  var _capSet=(typeof _projCapacitySet==='function')?_projCapacitySet():null;
+  var _hiddenByEng={};     // engId -> {byMonth:{}, peak}
+  var _hiddenProjSet={};   // projId -> true (suppressed AND staffed in-period)
+  if(_capSet){
+    allocRows.forEach(function(r){
+      if(r.engId==null || r.projectId==null || _capSet.has(r.projectId)) return;  // only suppressed projects
+      var eng=engById.get(r.engId); if(!eng || !_costCounts(eng)) return;
+      months.forEach(function(m){
+        var v=r.allocs&&r.allocs[m];
+        var n=(v==='p')?1:((v==='m'||v==='r')?0:(+v||0));
+        if(n<=0) return;
+        var hb=_hiddenByEng[r.engId]||(_hiddenByEng[r.engId]={byMonth:{}});
+        hb.byMonth[m]=(hb.byMonth[m]||0)+n;
+        _hiddenProjSet[r.projectId]=true;
+      });
+    });
+    Object.keys(_hiddenByEng).forEach(function(k){
+      var bm=_hiddenByEng[k].byMonth,pk=0;
+      Object.keys(bm).forEach(function(m){ if(bm[m]>pk)pk=bm[m]; });
+      _hiddenByEng[k].peak=pk;
+    });
+  }
+  var _hiddenProjIds=Object.keys(_hiddenProjSet).map(Number);
+
   var h='';
 
   // ── Filter / action toolbar ────────────────────────────────────
@@ -11463,6 +11549,23 @@ function _balPortfolioView(){
    +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
+
+  // ── Suppression banner — why some people read 0% / bench ────────
+  if(_hiddenProjIds.length){
+    var _hpNames=_hiddenProjIds.slice(0,4).map(function(pid){var p=_projMap.get(pid);return escH(p?(p.name||t('Untitled')):('#'+pid));});
+    var _moreH=_hiddenProjIds.length-_hpNames.length;
+    var _hiddenEngCount=Object.keys(_hiddenByEng).length;
+    h+='<div class="db-suppress">'
+      +'<div class="db-suppress-ic">&#9888;</div>'
+      +'<div class="db-suppress-tx">'
+      +'<div class="db-suppress-h">'+t('{n} project(s) are proposed or on hold — their staffing is hidden from capacity',{n:_hiddenProjIds.length})+'</div>'
+      +'<div class="db-suppress-s">'+_hpNames.join(' · ')+(_moreH>0?' +'+_moreH+' '+t('more'):'')
+        +' · '+t('{n} person(s) affected',{n:_hiddenEngCount})
+        +' — '+t('set a project Active/In-Service (project editor or Pipeline) to count its allocations here')+'</div>'
+      +'</div>'
+      +'<button class="sm" onclick="railGo(event,&#39;pipeline&#39;)">'+t('OPEN PIPELINE')+'</button>'
+      +'</div>';
+  }
 
   // ── Hero band: team capacity + how much of it is engaged ───────
   h+='<div class="db-hero">'
@@ -11793,6 +11896,7 @@ function _balPortfolioView(){
       var isOver=eu.overMonths&&eu.overMonths.length>0;
       var isBench=(eu.monthAllocs[curInRange]||0)===0;
       var isSpof=spofEngIds.has(eu.eng.id);
+      var hb=_hiddenByEng[eu.eng.id];  // raw bookings on suppressed (un-funded/on-hold) projects
       var col=isOver?'var(--danger)':isBench?'var(--accent2)':pct>80?'var(--accent)':'var(--accent2)';
       var cls=isOver?' db-ucard--over':isBench?' db-ucard--bench':isSpof?' db-ucard--spof':'';
       var emv=months.map(function(m){return eu.monthAllocs&&eu.monthAllocs[m]?eu.monthAllocs[m]:0;});
@@ -11802,6 +11906,7 @@ function _balPortfolioView(){
        +(isOver?'<span class="db-tag db-tag--over">&#9888; '+t('OVER')+'</span>':'')
        +(isBench?'<span class="db-tag db-tag--bench">'+t('BENCH')+'</span>':'')
        +(isSpof?'<span class="db-tag db-tag--spof">SPOF</span>':'')
+       +((hb&&hb.peak>0)?'<span class="db-tag db-tag--hidden" title="'+escH(t('Booked on proposed/on-hold projects, which are excluded from capacity'))+'">&#8709; '+t('HIDDEN')+'</span>':'')
        +'</div>'
        +'<div class="db-urole">'+(eu.role?escH(eu.role):'')+(eu.role&&eu.loc?' · ':'')+escH(eu.loc||'')+'</div>'
        +'<div class="db-upct" style="color:'+col+'">'+pct+'%</div>'
@@ -11809,7 +11914,8 @@ function _balPortfolioView(){
        +'<div style="margin-top:6px">'+eSpark+'</div>'
        +(isOver?'<div class="db-umeta" style="color:var(--danger)">&#9888; '+t('Over:')+' '+eu.overMonths.slice(0,3).map(function(m){return m.slice(0,7);}).join(', ')+(eu.overMonths.length>3?'…':'')+'</div>':'')
        +'<div class="db-umeta">'+eu.activeMonths+'/'+eu.months+' '+t('active mo')+' · '+utilPct+'% '+t('full period')+'</div>'
-       +(isOver?'<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+t('FIND REPLACEMENTS')+'</button>':'')
+       +((hb&&hb.peak>0)?'<div class="db-umeta db-hidden-note">&#8709; '+t('up to {n} FTE/mo on un-funded projects (hidden)',{n:hb.peak.toFixed(1)})+'</div>':'')
+       +'<button class="db-ubtn'+(isOver?'':' db-ubtn--alt')+'" onclick="showDashReplacements('+eu.eng.id+',this)">&#128270; '+(isOver?t('FIND REPLACEMENTS'):t('FIND ALTERNATIVES'))+'</button>'
        +'</div>';
     });
     h+='</div></div>';
@@ -11882,7 +11988,10 @@ function _balPortfolioView(){
           +(_sug.same?'':' · '+t('other group'))+'</span>'
           +'</div>';
       }
-      h+='<button class="db-ubtn" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>';
+      h+='<div style="display:flex;gap:6px">'
+        +'<button class="db-ubtn" style="flex:1" onclick="showDashReplacements('+eu.eng.id+',this)">🔍 '+t('FIND REPLACEMENTS')+'</button>'
+        +'<button class="db-ubtn db-ubtn--alt" style="flex:1" onclick="tlOpenResource('+eu.eng.id+')" title="'+escH(t('See this person’s allocation over time'))+'">◧ '+t('TIMELINE')+'</button>'
+        +'</div>';
       h+='</div>';
     });
     h+='</div></div>';
@@ -12012,7 +12121,9 @@ function _balResourcing(proj, months){
   h+='<th class="bal-c-tot">'+escH(t('FTE·MO'))+'</th><th class="bal-c-cost">'+escH(t('COST'))+'</th></tr></thead><tbody>';
   team.forEach(function(a){
     var g=engGroups.find(function(gg){return gg.id===a.eng.groupId;});
-    h+='<tr><td class="bal-c-name">'+escH(a.eng.name)+(a.eng.role?'<span class="bal-role"> · '+escH(a.eng.role)+'</span>':'')+'</td>'
+    h+='<tr><td class="bal-c-name">'+escH(a.eng.name)+(a.eng.role?'<span class="bal-role"> · '+escH(a.eng.role)+'</span>':'')
+      +'<button class="bal-find" title="'+escH(t('Find available people with the same function or skills'))+'" onclick="showDashReplacements('+a.eng.id+',this)">&#128270;</button>'
+      +'<button class="bal-find" title="'+escH(t('See this person’s allocation over time'))+'" onclick="tlOpenResource('+a.eng.id+')">&#9703;</button></td>'
       +'<td class="bal-c-fn">'+(g?'<span style="color:'+safeColor(g.color,'var(--muted)')+'">'+escH(g.name)+'</span>':'—')+'</td>'
       +'<td class="bal-c-mo bal-permo">'+((a.eng.monthlyCost||0)?Math.round(a.eng.monthlyCost/1000)+'k':'')+'</td>';
     months.forEach(function(mo){
@@ -12028,7 +12139,9 @@ function _balResourcing(proj, months){
   h+='<tr class="bal-foot"><td class="bal-c-name">'+escH(t('COST'))+'</td><td class="bal-c-fn"></td><td class="bal-c-mo"></td>';
   mCost.forEach(function(v){ h+='<td class="bal-c-mo bal-cost-cell">'+(v?Math.round(v/1000)+'k':'')+'</td>'; });
   h+='<td class="bal-c-tot"></td><td class="bal-c-cost">'+money(totCost)+'</td></tr>';
-  h+='</tbody></table></div></div>';
+  h+='</tbody></table></div>'
+    +'<div id="bal-repl-host"></div>'   // full-width host for the per-row replacement finder
+    +'</div>';
   return h;
 }
 
@@ -12174,12 +12287,39 @@ function _dashBestCandidate(engId){
 }
 
 /* ── Dashboard: replacement finder ─────────────────────────────────── */
-// Shows or hides the replacement candidate panel for an overloaded engineer.
+// Toggles one skill in the replacement panel's per-panel skill filter, then
+// re-renders the panel. The trigger button (which owns the persisted filter, keyed
+// by data-repl-eng) is re-resolved from the DOM; the skill rides on the pill's
+// data-repl-skill attribute so no user-authored value is ever spliced into handler JS.
+function _replToggleSkill(pill){
+  var skill = pill.getAttribute('data-repl-skill');
+  var engId = +pill.getAttribute('data-repl-for');
+  var b = document.querySelector('[data-repl-eng="'+engId+'"]');
+  if(!b) return;
+  var f = b._replSkillFilter || [];
+  var i = f.indexOf(skill);
+  if(i>=0) f.splice(i,1); else f.push(skill);
+  b._replSkillFilter = f;
+  var panel = document.getElementById('dash-repl-panel-'+engId);
+  if(panel) panel.remove();
+  showDashReplacements(engId, b);
+}
+
+// Shows or hides the replacement candidate panel for an engineer (same function/group +
+// overlapping skills + free capacity). Triggered from the ⚖ Balance utilisation cards,
+// the overload-conflict cards, and the ▤ By-project team rows.
 function showDashReplacements(engId, btn) {
+  // Table context (▤ By-project view): the finder is triggered from a compact per-row
+  // 🔍 button inside a <tr>, where a full-width panel can't live. In that case render
+  // into the shared #bal-repl-host below the table (single-open) and leave the icon
+  // button's label alone. Detecting the <tr> here means the skill-pill re-entry (which
+  // re-resolves btn via [data-repl-eng]) stays consistent without threading a param.
+  var tr = (btn && btn.closest) ? btn.closest('tr') : null;
+  var host = tr ? document.getElementById('bal-repl-host') : null;
   // Toggle: if already open, close it
   var existing = document.getElementById('dash-repl-panel-' + engId);
-  if (existing) { existing.remove(); btn.textContent = '🔍 '+t('FIND REPLACEMENTS'); return; }
-  btn.textContent = t('▲ CLOSE');
+  if (existing) { existing.remove(); if(!tr) btn.textContent = '🔍 '+t('FIND REPLACEMENTS'); return; }
+  if(!tr) btn.textContent = t('▲ CLOSE');
 
   var eng = engineers.find(function(e){ return e.id === engId; });
   if (!eng) return;
@@ -12284,14 +12424,12 @@ function showDashReplacements(engId, btn) {
       + '<div style="display:flex;flex-wrap:wrap;gap:4px">'
       + engSkills.map(function(s){
           var active = selectedSkills.includes(s);
-          return '<button onclick="(function(b,s){'
-            + 'var f=b._replSkillFilter||[];'
-            + 'var i=f.indexOf(s);'
-            + 'if(i>=0){f.splice(i,1);}else{f.push(s);}'
-            + 'b._replSkillFilter=f;'
-            + "document.getElementById('dash-repl-panel-"+engId+"').remove();"
-            + 'showDashReplacements('+engId+',b);'
-            + '})(document.querySelector(\'[data-repl-eng=\\"'+engId+'\\"]\'),\''+s.replace(/'/g,"\\'")+'\')" '
+          // Skill + engId travel via escH-escaped data attributes read back with getAttribute
+          // (never interpolated into the JS of the handler) — the old inline-IIFE form embedded
+          // [data-repl-eng=\"id\"], whose \" closed the double-quoted onclick attribute early and
+          // threw SyntaxError on click. data-skill also keeps user-authored skill names XSS-safe.
+          return '<button data-repl-skill="'+escH(s)+'" data-repl-for="'+engId+'"'
+            + ' onclick="_replToggleSkill(this)" '
             + 'style="font-family:IBM Plex Mono,monospace;font-size:9px;padding:2px 7px;'
             + 'border-radius:10px;cursor:pointer;border:1px solid '+(active?'var(--accent)':'var(--border)')+';'
             + 'background:'+(active?'rgba(200,241,53,.15)':'var(--bg)')+';'
@@ -12302,11 +12440,9 @@ function showDashReplacements(engId, btn) {
     : '';
 
   // ── Panel HTML ────────────────────────────────────────────────────
-  var h = '<div id="dash-repl-panel-'+engId+'" style="margin-top:8px;padding:10px;'
+  var h = '<div id="dash-repl-panel-'+engId+'" class="dash-repl-panel" style="margin-top:8px;padding:10px;'
     + 'background:var(--surface);border:1px solid var(--border);border-radius:6px;'
     + 'border-top:2px solid var(--danger)">'
-    + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
     + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--danger);letter-spacing:.07em;margin-bottom:8px">'+t('REPLACEMENT CANDIDATES FOR')+' ' + escH(eng.name.toUpperCase()) + '</div>'
     + skillPills;
 
@@ -12340,9 +12476,15 @@ function showDashReplacements(engId, btn) {
     + '</div>';
   h += '</div>';
 
-  // Insert panel after the button's parent card
-  var card = btn.closest('.db-ucard') || btn.closest('.kpi-card') || btn.parentElement;
-  card.insertAdjacentHTML('afterend', h);
+  // Insert: into the shared host (▤ By-project table view) or after the button's card.
+  // The panel carries grid-column:1/-1 so it spans full width when inserted into the
+  // .db-util-grid CSS grid (afterend of a .db-ucard) instead of squishing into one cell.
+  if (host) {
+    host.innerHTML = h;   // single-open below the project team table
+  } else {
+    var card = btn.closest('.db-ucard') || btn.closest('.db-conflict') || btn.closest('.kpi-card') || btn.parentElement;
+    card.insertAdjacentHTML('afterend', h);
+  }
 
   // Store skill filter on the button for re-renders
   btn.setAttribute('data-repl-eng', engId);
@@ -12570,7 +12712,10 @@ if(typeof _tlState==='undefined'){
   var _tlState={
     conflictOnly: false,
     projOrder:    [],
-    mode:         'gantt',   // 'gantt' (committed) | 'plan' (capacity-scheduled pipeline)
+    engOrder:     [],       // resource-mode lane order (session-only, like projOrder)
+    hiddenEng:    [],       // resource-mode lanes hidden via the side panel (session-only)
+    focusEng:     null,     // resource lane to scroll-to/highlight (set by tlOpenResource)
+    mode:         'gantt',   // 'gantt' (committed) | 'resource' (per-person ribbon) | 'plan' (capacity pipeline)
   };
 }
 
@@ -12730,9 +12875,9 @@ function tlModeBar(){
       +(on?';border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.08)':'')+'">'+label+'</button>'; }
   return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">VIEW</span>'
-    +b('gantt','▦ '+t('Gantt (committed)'))+b('plan','⛰ '+t('Capacity plan'))+'</div>';
+    +b('gantt','▦ '+t('By project'))+b('resource','◧ '+t('By resource'))+b('plan','⛰ '+t('Capacity plan'))+'</div>';
 }
-function tlSetMode(m){ _tlState.mode=(m==='plan'?'plan':'gantt'); renderTimeline(); }
+function tlSetMode(m){ _tlState.mode=(m==='plan'?'plan':(m==='resource'?'resource':'gantt')); renderTimeline(); }
 
 // Candidate rows for the plan: proposed/on_hold projects with a demand estimate; startIdx from
 // the persisted charter.demand.startMonth (unset → unscheduled = "to place").
@@ -12875,6 +13020,7 @@ function renderTimeline(){
   }
 
   if(_tlState.mode==='plan'){ renderTimelinePlan(body, months, cur); return; }
+  if(_tlState.mode==='resource'){ renderTimelineResource(body, months, cur); return; }
 
   // Build conflict map: for each engineer per month, sum allocations
   var engMonthSum={};
@@ -13042,6 +13188,273 @@ function renderTimeline(){
 
   h+='</div></div></div>';
   body.innerHTML=h;
+}
+
+/* ══ By-resource mode — per-person allocation ribbon (stacked-by-project over time) ══
+   Shows EVERY real booking (funded + un-funded), so a person booked on proposed/on-hold
+   projects still appears — those segments render faded (opacity .4) rather than hidden, to
+   avoid the "over-allocated shows 0%" trap the balancer suppression created. Over-100% spills
+   above the dashed capacity line in red. Lanes are drag-reorderable and independent of the
+   gantt/plan orders. */
+
+// One resource lane as an SVG: free/bench background, stacked project areas, over-allocation
+// overlay, the 100% line, per-month total labels, and transparent per-month hover columns.
+function _tlLaneSvg(d, g){
+  var months=g.months, N=months.length, CELL_W=g.CELL_W, plotW=g.plotW, LANE_H=g.LANE_H, OVER=g.OVER;
+  var maxF=g.maxF||((OVER+LANE_H)/LANE_H);
+  var y100=OVER, y0=OVER+LANE_H, svgH=OVER+LANE_H;
+  function yF(f){ f=Math.min(Math.max(f,0),maxF); return +(y0 - f*LANE_H).toFixed(1); }
+  function xAt(i){ return +((i+0.5)*CELL_W).toFixed(1); }
+  var s='<svg width="'+plotW+'" height="'+svgH+'" viewBox="0 0 '+plotW+' '+svgH+'" style="display:block">';
+  if(OVER>0) s+='<rect x="0" y="0" width="'+plotW+'" height="'+y100+'" fill="rgba(241,67,53,.045)"/>';   // over-100% zone tint
+  s+='<rect x="0" y="'+y100+'" width="'+plotW+'" height="'+LANE_H+'" fill="var(--surface)" stroke="rgba(120,120,140,.10)" stroke-width="0.5"/>';
+  var ci=months.indexOf(g.cur);
+  if(ci>=0) s+='<rect x="'+(ci*CELL_W)+'" y="0" width="'+CELL_W+'" height="'+svgH+'" fill="rgba(200,241,53,.05)"/>';
+  for(var gf=2; gf<=maxF+0.001; gf++){ var gy=yF(gf); s+='<line x1="0" y1="'+gy+'" x2="'+plotW+'" y2="'+gy+'" stroke="var(--muted)" stroke-width="0.5" opacity="0.3"/>'; }
+  var projs=Object.keys(d.byProj).map(function(k){return d.byProj[k];}).filter(function(r){return r.vals.some(function(v){return v>0.001;});});
+  projs.sort(function(a,b){ return b._sum-a._sum; });
+  var cum=months.map(function(){return 0;});
+  var bandLabels=[];
+  projs.forEach(function(r){
+    var upper=months.map(function(_,i){return cum[i]+r.vals[i];});
+    var pts=['0,'+yF(upper[0])];
+    for(var i=0;i<N;i++) pts.push(xAt(i)+','+yF(upper[i]));
+    pts.push(plotW+','+yF(upper[N-1]));
+    pts.push(plotW+','+yF(cum[N-1]));
+    for(var j=N-1;j>=0;j--) pts.push(xAt(j)+','+yF(cum[j]));
+    pts.push('0,'+yF(cum[0]));
+    var col=safeColor(r.proj?r.proj.color:'var(--muted)','var(--muted)');
+    // bg-coloured stroke separates adjacent bands so similar project colours don't merge
+    s+='<polygon points="'+pts.join(' ')+'" fill="'+col+'" opacity="'+(r.funded?'0.92':'0.45')+'" stroke="var(--bg)" stroke-width="1.2" stroke-linejoin="round"/>';
+    var imax=0; for(var m2=1;m2<N;m2++){ if(r.vals[m2]>r.vals[imax]) imax=m2; }
+    bandLabels.push({x:xAt(imax), y:yF(cum[imax]+r.vals[imax]/2), h:r.vals[imax]*LANE_H, name:(r.proj?r.proj.name:t('Unassigned')), funded:r.funded, color:col});
+    cum=upper;
+  });
+  var total=cum;
+  // Over-100%: a light danger WASH (project colours still show through) + a red outline tracing
+  // the breach — deliberately not a solid red fill, which read like a red "project" in the ribbon.
+  if(total.some(function(v){return v>1.005;})){
+    var wash=['0,'+yF(Math.max(total[0],1))];
+    for(var k=0;k<N;k++) wash.push(xAt(k)+','+yF(Math.max(total[k],1)));
+    wash.push(plotW+','+yF(Math.max(total[N-1],1)));
+    wash.push(plotW+','+y100); wash.push('0,'+y100);
+    s+='<polygon points="'+wash.join(' ')+'" fill="var(--danger)" opacity="0.20"/>';
+    var oline=['0,'+yF(Math.max(total[0],1))];
+    for(var q=0;q<N;q++) oline.push(xAt(q)+','+yF(Math.max(total[q],1)));
+    oline.push(plotW+','+yF(Math.max(total[N-1],1)));
+    s+='<polyline points="'+oline.join(' ')+'" fill="none" stroke="var(--danger)" stroke-width="1.5" opacity="0.9"/>';
+  }
+  s+='<line x1="0" y1="'+y100+'" x2="'+plotW+'" y2="'+y100+'" stroke="var(--text)" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>';
+  // On-ribbon labels: only the 3 thickest bands (avoids the label pile-up), chip outlined + text
+  // coloured in the band's colour so the label reads as belonging to its graphic.
+  bandLabels.filter(function(bl){return bl.h>=18;}).sort(function(a,b){return b.h-a.h;}).slice(0,3).forEach(function(bl){
+    var nm=bl.name.length>14?bl.name.slice(0,13)+'…':bl.name;
+    var w=nm.length*5.6+12, x=Math.min(Math.max(bl.x-w/2,2),plotW-w-2);
+    s+='<rect x="'+x.toFixed(1)+'" y="'+(bl.y-7).toFixed(1)+'" width="'+w.toFixed(1)+'" height="14" rx="3" fill="rgba(10,10,12,.80)" stroke="'+bl.color+'" stroke-width="0.75"/>';
+    s+='<text x="'+(x+w/2).toFixed(1)+'" y="'+(bl.y+3).toFixed(1)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" font-weight="700" fill="'+bl.color+'"'+(bl.funded?'':' opacity="0.8"')+'>'+escH(nm)+'</text>';
+  });
+  for(var a=0;a<N;a++){
+    if(total[a]<=0.001) continue;
+    var over=total[a]>1.005;
+    s+='<text x="'+xAt(a)+'" y="'+(yF(total[a])-4)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" font-weight="700" fill="'+(over?'var(--danger)':'var(--muted)')+'">'+Math.round(total[a]*100)+'</text>';
+  }
+  for(var b=0;b<N;b++){
+    var parts=projs.filter(function(r){return r.vals[b]>0.001;}).map(function(r){ return (r.proj?r.proj.name:t('Unassigned'))+' '+Math.round(r.vals[b]*100)+'%'+(r.funded?'':' ('+t('un-funded')+')'); });
+    var ttl=months[b]+' · '+(parts.length?parts.join(', '):t('free'))+' · '+t('total')+' '+Math.round(total[b]*100)+'%';
+    s+='<rect x="'+(b*CELL_W)+'" y="0" width="'+CELL_W+'" height="'+svgH+'" fill="transparent"><title>'+escH(ttl)+'</title></rect>';
+  }
+  return s+'</svg>';
+}
+
+// Lane drag-reorder (session-only engOrder, keyed by engId not index).
+var _tlEngDragId=null;
+function _tlEngDragStart(e,engId){ _tlEngDragId=engId; e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(engId)); setTimeout(function(){var el=document.getElementById('tl-lane-'+engId); if(el)el.style.opacity='0.4';},0); }
+function _tlEngDragEnd(e){ var el=_tlEngDragId!=null?document.getElementById('tl-lane-'+_tlEngDragId):null; if(el)el.style.opacity=''; _tlEngDragId=null; }
+function _tlEngDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+function _tlEngDrop(e,targetId){
+  e.preventDefault();
+  var src=_tlEngDragId;
+  if(src==null||src===targetId){ _tlEngDragId=null; return; }
+  var arr=_tlState.engOrder, si=arr.indexOf(src);
+  if(si<0){ _tlEngDragId=null; return; }
+  arr.splice(si,1);
+  var ti=arr.indexOf(targetId);
+  arr.splice(ti<0?arr.length:ti,0,src);
+  _tlEngDragId=null;
+  renderTimeline();
+}
+
+// Cross-link entry point (called from the Resource Balancer): open the timeline in
+// by-resource mode focused on one engineer's lane.
+function tlOpenResource(engId){
+  _tlState.mode='resource';
+  _tlState.focusEng=(engId!=null)?+engId:null;
+  if(typeof railGo==='function') railGo(null,'timeline');
+  else if(typeof showResTab==='function') showResTab('timeline');
+}
+
+// A distinct, dark-mode-legible categorical palette (extends past 8 so many projects stay
+// separable). Assigned by project index so it's stable across renders.
+var TL_PALETTE=['#3987e5','#eb6834','#1baf7a','#eda100','#e87ba4','#8bc34a','#9085e9','#e34948',
+  '#26c6da','#ff8f00','#ab47bc','#66bb6a','#5c6bc0','#ff7043','#26a69a','#d4e157','#ec407a','#7e57c2'];
+
+// Recolor ALL projects with the distinct palette and persist (app-wide — the user chose
+// "recolor everything"). Runs once automatically on first open (localStorage flag), and on
+// demand from the panel's AUTO-COLOR button.
+function tlAutoColorProjects(force){
+  if(typeof projects==='undefined'||!projects.length) return;
+  projects.forEach(function(p,i){ p.color=TL_PALETTE[i%TL_PALETTE.length]; });
+  if(typeof saveState==='function') saveState();
+  try{ localStorage.setItem('eim_tl_autocolor','1'); }catch(e){}
+  if(force) renderTimeline();
+}
+// Set one project's colour from the panel picker (persists to project.color → applies everywhere).
+function tlSetProjColor(pid,color){
+  var p=projects.find(function(x){return x.id===pid;}); if(!p) return;
+  p.color=color; if(typeof saveState==='function') saveState(); renderTimeline();
+}
+// Toggle a resource lane's visibility (session-only).
+function tlToggleEngHidden(engId){
+  var arr=_tlState.hiddenEng||(_tlState.hiddenEng=[]);
+  var i=arr.indexOf(engId); if(i>=0) arr.splice(i,1); else arr.push(engId);
+  renderTimeline();
+}
+// The right-side control panel: per-project colour pickers (name text colour-matched to the band)
+// + per-resource show/hide, and the small capacity/over/un-funded key.
+function tlSidePanel(all, projSeen, hidden){
+  function hex(c){ return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)?c:'#888888'; }
+  var p='<div style="width:200px;flex-shrink:0;overflow:auto;min-height:0;border-left:1px solid var(--border);background:var(--surface);padding:8px">';
+  p+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+t('PROJECTS')+'</span>'
+    +'<button onclick="tlAutoColorProjects(true)" class="sm" style="margin-left:auto;font-size:8px;padding:1px 6px" title="'+escH(t('Assign a fresh distinct palette to all projects'))+'">'+t('AUTO-COLOR')+'</button>'
+    +'</div>';
+  var pk=Object.keys(projSeen);
+  if(!pk.length) p+='<div style="font-size:8px;color:var(--muted);margin-bottom:8px">'+t('none in view')+'</div>';
+  pk.forEach(function(k){ var pr=projSeen[k];
+    p+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
+    if(pr.pid!=null) p+='<input type="color" value="'+hex(pr.color)+'" onchange="tlSetProjColor('+pr.pid+',this.value)" style="width:16px;height:16px;padding:0;border:1px solid var(--border);border-radius:3px;background:none;cursor:pointer;flex-shrink:0" title="'+escH(t('Change project colour (applies everywhere)'))+'">';
+    else p+='<span style="width:16px;height:16px;border-radius:3px;background:'+pr.color+';flex-shrink:0"></span>';
+    p+='<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+pr.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:'+(pr.funded?'1':'0.6')+'" title="'+escH(pr.name)+'">'+escH(pr.name)+'</span>';
+    p+='</div>';
+  });
+  p+='<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:12px 0 6px">'+t('RESOURCES')+'</div>';
+  all.slice().sort(function(a,b){return b.peak-a.peak;}).forEach(function(d){
+    var isH=hidden.indexOf(d.eng.id)>=0, pk2=Math.round(d.peak*100);
+    var pc=d.peak>1.005?'var(--danger)':d.peak>=0.999?'var(--accent)':'var(--muted)';
+    p+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;opacity:'+(isH?'0.5':'1')+'">'
+      +'<input type="checkbox" '+(isH?'':'checked')+' onchange="tlToggleEngHidden('+d.eng.id+')" style="accent-color:var(--accent);cursor:pointer;flex-shrink:0">'
+      +'<span style="font-size:9px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1" title="'+escH(d.eng.name)+'">'+escH(d.eng.name)+'</span>'
+      +'<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+pc+';flex-shrink:0">'+pk2+'%</span>'
+      +'</div>';
+  });
+  p+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);display:flex;flex-direction:column;gap:4px">'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;border-top:1px dashed var(--muted)"></span>'+t('100% capacity')+'</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:9px;background:var(--danger);opacity:.5;border-radius:2px"></span>'+t('over-allocated')+'</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:9px;background:var(--muted);opacity:.4;border-radius:2px"></span>'+t('un-funded (faded)')+'</span>'
+    +'</div>';
+  return p+'</div>';
+}
+
+// renders the by-resource ribbon: one drag-reorderable lane per engineer, stacked by project.
+function renderTimelineResource(body, months, cur){
+  var CELL_W=Math.max(40,Math.min(72,Math.floor(900/months.length)));
+  var LABEL_W=210, LANE_H=76, plotW=months.length*CELL_W;
+  var capSet=(typeof _projCapacitySet==='function')?_projCapacitySet():null;
+
+  var engData={};
+  engineers.filter(function(e){return !e.vacant;}).forEach(function(eng){
+    var rows=allocRows.filter(function(r){return r.engId===eng.id;});
+    if(!rows.length) return;
+    var byProj={}, total=months.map(function(){return 0;});
+    rows.forEach(function(r){
+      var pid=(r.projectId==null)?'_none':r.projectId;
+      var rec=byProj[pid];
+      if(!rec){ var p=(r.projectId==null)?null:projects.find(function(pp){return pp.id===r.projectId;});
+        rec=byProj[pid]={proj:p,vals:months.map(function(){return 0;}),funded:(r.projectId==null)||(capSet?capSet.has(r.projectId):true),_sum:0}; }
+      months.forEach(function(m,i){ var v=r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0; rec.vals[i]+=v; total[i]+=v; rec._sum+=v; });
+    });
+    if(!total.some(function(v){return v>0.001;})) return;
+    engData[eng.id]={eng:eng,byProj:byProj,total:total,peak:Math.max.apply(null,total)};
+  });
+
+  var all=Object.keys(engData).map(function(k){return engData[k];});
+  // First-ever open of this view: auto-assign the distinct palette to every project and persist
+  // (user chose app-wide "recolor everything"). Runs once; adjustable per project in the panel.
+  try{ if(!localStorage.getItem('eim_tl_autocolor') && typeof projects!=='undefined' && projects.length){ tlAutoColorProjects(false); } }catch(e){}
+
+  var list=_tlState.conflictOnly?all.filter(function(d){return d.peak>1.005;}):all;
+  var visible={}; list.forEach(function(d){visible[d.eng.id]=d;});
+  _tlState.engOrder=(_tlState.engOrder||[]).filter(function(id){return visible[id];});
+  list.slice().sort(function(a,b){return b.peak-a.peak;}).forEach(function(d){ if(_tlState.engOrder.indexOf(d.eng.id)<0) _tlState.engOrder.push(d.eng.id); });
+  var ordered=_tlState.engOrder.map(function(id){return visible[id];}).filter(Boolean);
+  var hidden=_tlState.hiddenEng||[];
+  var displayed=ordered.filter(function(d){return hidden.indexOf(d.eng.id)<0;});
+  var overCount=all.filter(function(d){return d.peak>1.005;}).length;
+  // Vertical scale ADAPTS to the worst over-allocation among DISPLAYED lanes: the 0→100% band is
+  // a fixed LANE_H px (so 100% always looks the same), and the over-zone above the line grows with
+  // the peak (capped at 300%) — so a 250% spike is visibly taller than a 120% one.
+  var maxTotal=displayed.reduce(function(m,d){return Math.max(m,d.peak);},0);
+  var maxF=Math.max(1.15, Math.min(maxTotal||1, 3.0));
+  var OVER=Math.round((maxF-1)*LANE_H);
+  var g={months:months,CELL_W:CELL_W,plotW:plotW,LANE_H:LANE_H,OVER:OVER,maxF:maxF,cur:cur};
+
+  // Projects present across displayed lanes (for the side panel + on-ribbon labels), keyed by pid.
+  var projSeen={};
+  displayed.forEach(function(d){ Object.keys(d.byProj).forEach(function(k){ var r=d.byProj[k]; if(!r.vals.some(function(v){return v>0.001;}))return;
+    if(!projSeen[k]) projSeen[k]={pid:(r.proj?r.proj.id:null),name:r.proj?(r.proj.name||t('Untitled')):t('Unassigned'),color:safeColor(r.proj?r.proj.color:'var(--muted)','var(--muted)'),funded:r.funded}; }); });
+
+  var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=tlModeBar();
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
+   +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">'+t('RESOURCE ALLOCATION OVER TIME')+'</h3>'
+   +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{n} people',{n:displayed.length})+' · '+months.length+' '+t('months')+(overCount?' · <span style="color:var(--danger)">'+t('{n} over-allocated',{n:overCount})+'</span>':'')+'</span>'
+   +'<div style="flex:1"></div>'
+   +'<span style="color:var(--dim);font-family:IBM Plex Mono,monospace;font-size:8px">'+t('↕ drag to reorder · click a name for the ID card · hover for the monthly split')+'</span>'
+   +'<button onclick="toggleTimelineConflict()" class="sm'+(_tlState.conflictOnly?' active':'')+'" style="font-size:9px;padding:2px 8px'+(_tlState.conflictOnly?';border-color:var(--danger);color:var(--danger)':'')+'">⚠ '+t('CONFLICTS ONLY')+(_tlState.conflictOnly?' ✓':'')+'</button>'
+   +'</div>';
+
+  // ── Main row: ribbon (left, scrolls) + control panel (right) ──
+  h+='<div style="flex:1;display:flex;min-height:0">';
+  h+='<div style="flex:1;overflow:auto;min-height:0"><div style="min-width:'+(LABEL_W+plotW+8)+'px">';
+  if(!displayed.length){
+    h+='<div style="color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:24px 0;text-align:center">'+(_tlState.conflictOnly?t('No over-allocated people in this period.'):(all.length?t('All resources hidden — enable some in the panel →'):t('No allocations in this period.')))+'</div>';
+  } else {
+  h+='<div style="display:flex;position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border)">'
+   +'<div style="width:'+LABEL_W+'px;flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);padding:4px 8px;border-right:1px solid var(--border)">'+t('RESOURCE')+'</div><div style="display:flex">'
+   +months.map(function(m){ var isCur=m===cur; return '<div style="width:'+CELL_W+'px;flex-shrink:0;text-align:center;font-family:IBM Plex Mono,monospace;font-size:'+(CELL_W<34?'7':'8')+'px;color:'+(isCur?'var(--accent)':'var(--muted)')+';padding:3px 0;border-right:1px solid var(--border)'+(isCur?';background:rgba(200,241,53,.06)':'')+'">'+m.slice(5,7)+'/'+m.slice(2,4)+'</div>'; }).join('')
+   +'</div></div>';
+
+  displayed.forEach(function(d){
+    var eng=d.eng, peakPct=Math.round(d.peak*100);
+    var pcol=d.peak>1.005?'var(--danger)':d.peak>=0.999?'var(--accent)':d.peak>=0.5?'var(--accent2)':'var(--muted)';
+    var ini=(eng.name||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    var photo=_photoCache&&_photoCache.get(eng.id);
+    var av=photo?'<img src="'+photo+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+      :'<div style="width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:var(--muted);flex-shrink:0">'+ini+'</div>';
+    var foc=_tlState.focusEng===eng.id;
+    h+='<div id="tl-lane-'+eng.id+'" draggable="true" ondragstart="_tlEngDragStart(event,'+eng.id+')" ondragend="_tlEngDragEnd(event)" ondragover="_tlEngDragOver(event)" ondrop="_tlEngDrop(event,'+eng.id+')" style="display:flex;align-items:stretch;border-bottom:1px solid var(--border)'+(foc?';box-shadow:inset 3px 0 0 var(--accent);background:rgba(200,241,53,.04)':'')+'">'
+     +'<div style="width:'+LABEL_W+'px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:4px 8px;border-right:1px solid var(--border);background:var(--surface);cursor:grab">'
+     +'<span style="color:var(--muted);font-size:10px">⠿</span>'+av
+     +'<div style="flex:1;min-width:0">'
+     +'<div onclick="openIdCardModal('+eng.id+')" title="'+escH(t('Open ID card'))+'" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">'+escH(eng.name)+'</div>'
+     +'<div style="font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(eng.role||'')+'</div>'
+     +'</div>'
+     +'<div style="text-align:right;flex-shrink:0"><div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:'+pcol+'">'+peakPct+'%</div><div style="font-size:7px;color:var(--muted)">'+t('peak')+'</div></div>'
+     +'</div>'
+     +'<div style="flex-shrink:0">'+_tlLaneSvg(d,g)+'</div>'
+     +'</div>';
+  });
+  }
+  h+='</div></div>';                      // close inner min-width + ribbon scroll area
+  h+=tlSidePanel(all, projSeen, hidden);  // right control panel
+  h+='</div>';                            // close main row
+  h+='</div>';                            // close outer column
+  body.innerHTML=h;
+
+  if(_tlState.focusEng!=null){
+    var fe=_tlState.focusEng; _tlState.focusEng=null;
+    setTimeout(function(){ var el=document.getElementById('tl-lane-'+fe); if(el&&el.scrollIntoView) el.scrollIntoView({block:'center'}); },40);
+  }
 }
 /* ◄◄ END: sections/timeline.js ►► */
 
