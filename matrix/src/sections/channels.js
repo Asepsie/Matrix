@@ -205,9 +205,10 @@ function chanRender(){
 function chanRenderPicker(){
   const slot=G('chan-pick'); if(!slot) return;
   if(chanPickerMode()==='dropdown'){
+    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chanProjId);
     slot.innerHTML = `<label class="cht-hl">PROJECT</label>
       <select class="cht-sel" onchange="chanSelectProject(this.value)">
-        ${projects.length ? projects.map(p=>`<option value="${p.id}"${p.id===_chanProjId?' selected':''}>${escH(p.name||'Untitled project')}</option>`).join('')
+        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chanProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
                           : '<option>— no projects —</option>'}
       </select>`;
   } else {

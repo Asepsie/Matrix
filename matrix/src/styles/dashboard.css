@@ -238,3 +238,9 @@
 .bal-foot td{background:rgba(255,255,255,.03);font-weight:700;border-top:2px solid var(--border);}
 .bal-foot .bal-c-name{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;}
 .bal-cost-cell{color:var(--accent2);}
+
+/* ── Resource Balancer mode toggle (Balance | By project) ────────────── */
+.bal-mode{ display:inline-flex; gap:2px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:3px; margin-bottom:10px; }
+.bal-mode-btn{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.03em; color:var(--muted); background:transparent; border:0; border-radius:6px; padding:5px 12px; cursor:pointer; }
+.bal-mode-btn:hover{ color:var(--text); }
+.bal-mode-btn.on{ background:var(--accent); color:#0f0f11; font-weight:600; }

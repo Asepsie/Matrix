@@ -93,7 +93,7 @@ function renderEconTab(){
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ECONOMICS')+'</span>'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
     +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
-    +'</span></div>';
+    +'</span><div style="flex:1"></div>'+analyticsArchivedToggle('renderEconTab')+'</div>';
   if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
   h+=ecScorecard(ds);
   h+=pfSection(t('CAPITAL ALLOCATION — value per €'), t('NPV created against capital invested, ranked by profitability index (PV of inflows ÷ outlay). PI > 1 creates value; fund the top, review the bottom.'), ecCapital(ds));

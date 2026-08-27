@@ -46,7 +46,8 @@ var RAIL_I = {
   pin:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   pinOpen:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
   chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
-  collab:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.6"/><circle cx="17" cy="8" r="2.6"/><path d="M2.6 18c0-2.4 1.9-4 4.4-4 1.2 0 2.3.4 3.1 1.1"/><path d="M13.9 15.1c.8-.7 1.9-1.1 3.1-1.1 2.5 0 4.4 1.6 4.4 4"/><path d="M9.4 12.2a3.2 3.2 0 0 1 5.2 0"/></svg>'
+  collab:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.6"/><circle cx="17" cy="8" r="2.6"/><path d="M2.6 18c0-2.4 1.9-4 4.4-4 1.2 0 2.3.4 3.1 1.1"/><path d="M13.9 15.1c.8-.7 1.9-1.1 3.1-1.1 2.5 0 4.4 1.6 4.4 4"/><path d="M9.4 12.2a3.2 3.2 0 0 1 5.2 0"/></svg>',
+  archive:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>'
 };
 
 /* ── Domain → view map. Every view id routes through railGo (Phase 2).
@@ -118,6 +119,7 @@ RAIL_DOMAINS.forEach(function(d){ d.views.forEach(function(v){ RAIL_VIEW_DEF_DOM
 var RAIL_UTIL = [
   {id:'export',   name:t('Export'),    ico:RAIL_I.exportico},
   {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
+  {id:'archive',  name:t('Archive'),   ico:RAIL_I.archive},
   {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
   {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
   {id:'restore',  name:t('Restore'),   ico:RAIL_I.restore},
@@ -448,6 +450,7 @@ function closeAllOverlays(){
   if(typeof closeCompare==='function')  closeCompare();
   if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
+  if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
   if(typeof chtClose==='function')          chtClose();
@@ -465,6 +468,7 @@ function railOpenRes(tab){
   if(typeof closeCompare==='function')  closeCompare();
   if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
+  if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
   if(typeof closeCharterHub==='function') closeCharterHub();
   if(typeof chtClose==='function')          chtClose();
@@ -535,7 +539,7 @@ function railEscMaybeBack(){
 // Modal/popup overlays that can sit ON TOP of a view — Esc must dismiss these
 // first (and NOT navigate back) so e.g. closing an ID card keeps you on the roster.
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
-  'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','alloc-ctx',
+  'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','archive-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
   'export-builder-overlay','export-picker-overlay'];
 function railAnyModalOpen(){
@@ -548,6 +552,7 @@ function railAction(id){
   if(railPinned&&window.innerWidth<=640) railTogglePin();
   if(id==='export')        exportOpenPicker();
   else if(id==='collab')   collabOpen();
+  else if(id==='archive')  openArchive();
   else if(id==='snap')     openSnap();
   else if(id==='backup')   exportFullBackup();
   else if(id==='restore')  importFullBackup();

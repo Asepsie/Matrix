@@ -131,9 +131,10 @@ function chtRenderPicker(target){
   const slot = G(target==='decision'?'dec-pick':'cht-pick'); if(!slot) return;
   if(chtPickerMode()==='dropdown'){
     const set = target==='decision' ? 'chtDecSelectProject' : 'chtSelectProject';
+    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chtProjId);
     slot.innerHTML = `<label class="cht-hl">PROJECT</label>
       <select class="cht-sel" onchange="${set}(this.value)">
-        ${projects.length ? projects.map(p=>`<option value="${p.id}"${p.id===_chtProjId?' selected':''}>${escH(p.name||'Untitled project')}</option>`).join('')
+        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chtProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
                           : '<option>— no projects —</option>'}
       </select>`;
   } else {

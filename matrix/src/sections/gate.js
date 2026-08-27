@@ -46,6 +46,9 @@ const GATE_SIGNALS = [
 const GATE_OPS = ['>','>=','<','<=','=='];
 
 // ── accessors / tiny helpers ──
+// Projects the gate board should show: ARCHIVED (terminal: cancelled/withdrawn/eol/completed)
+// projects are no longer being gated, so they're hidden from every gate surface.
+function gtActiveProjects(){ return projects.filter(function(p){ return typeof projIsArchived!=='function' || !projIsArchived(p); }); }
 function gtModel(){ if(!gateConfig||typeof gateConfig!=='object') gateConfig=makeGateConfig(); return gateConfig.model; }
 function gtUid(pfx){ return pfx+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function gtDeepCopy(v){ return JSON.parse(JSON.stringify(v)); }
@@ -397,10 +400,11 @@ function gtFmtSignal(dim,v){
 
 // ── Projects view (gate detail per project) ──────────────────────────────────
 function gtProjectsView(m){
-  if(!projects.length) return pfEmpty(t('No projects yet — add projects on the matrix to run gate readiness.'));
+  const active=gtActiveProjects();
+  if(!active.length) return pfEmpty(t('No active projects to gate — archived (closed/finished) projects are hidden here.'));
   if(!m.stages.length) return pfEmpty(t('No stages defined — build your methodology first (⛿ METHODOLOGY).'));
-  // resolve selection
-  if(_gtProjId==null || !projects.some(p=>p.id===_gtProjId)) _gtProjId=projects[0].id;
+  // resolve selection (archived projects excluded)
+  if(_gtProjId==null || !active.some(p=>p.id===_gtProjId)) _gtProjId=active[0].id;
   const p=projects.find(x=>x.id===_gtProjId);
   const signals=gtBuildSignalMap();
   let h='<div style="display:flex;flex-direction:column;gap:14px">';
@@ -408,7 +412,7 @@ function gtProjectsView(m){
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'+t('PROJECT')+'</span>'
     +'<select onchange="gtSelectProject(this.value)" style="'+gtInStyle('240px')+'">'
-    +projects.map(x=>'<option value="'+x.id+'"'+(x.id===_gtProjId?' selected':'')+'>'+escH(x.name||t('Untitled project'))+'</option>').join('')
+    +active.map(x=>'<option value="'+x.id+'"'+(x.id===_gtProjId?' selected':'')+'>'+escH(x.name||t('Untitled project'))+'</option>').join('')
     +'</select></div>';
   h+=gtProjectDetail(p,m,signals[p.id]||{});
   h+='</div>';
@@ -616,14 +620,15 @@ function gtCurStageIdx(p,stages){
   return i<0?0:i;   // unset current stage defaults to the first stage
 }
 function gtPipelineView(m){
-  if(!projects.length) return pfEmpty(t('No projects yet — add projects on the matrix to run gate readiness.'));
+  const active=gtActiveProjects();
+  if(!active.length) return pfEmpty(t('No active projects to gate — archived (closed/finished) projects are hidden here.'));
   if(!m.stages.length) return pfEmpty(t('No stages defined — build your methodology first (⛿ METHODOLOGY).'));
   const stages=m.stages;
   const signals=gtBuildSignalMap();
-  // group projects by current-stage index
+  // group projects by current-stage index (archived projects excluded)
   const cols=stages.map(()=>[]);
   let blockedTot=0;
-  projects.forEach(p=>{
+  active.forEach(p=>{
     const i=gtCurStageIdx(p,stages);
     cols[i].push(p);
     const rd=gtStageReadiness(stages[i],p.gatePlan||makeGatePlan(),signals[p.id]||{});
@@ -632,7 +637,7 @@ function gtPipelineView(m){
   let h='<div style="display:flex;flex-direction:column;gap:12px">';
   // summary line
   h+='<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted)">'
-    +'<span>'+t('{n} project(s)',{n:projects.length})+'</span>'
+    +'<span>'+t('{n} project(s)',{n:active.length})+'</span>'
     +'<span>'+t('{n} stage(s)',{n:stages.length})+'</span>'
     +'<span style="color:'+(blockedTot?'var(--warn)':'var(--muted)')+'">'+(blockedTot?'⚠ ':'')+t('{n} blocked at their gate',{n:blockedTot})+'</span>'
     +'</div>';
@@ -725,10 +730,11 @@ function gtSetPiTab(v){ _gtPiTab=(v==='plan')?'plan':'overview'; renderGateTab()
 // then any project not yet in that list, appended in projects[] order.
 function gtProjOrder(){
   const order=Array.isArray(gateConfig.piOrder)?gateConfig.piOrder:[];
-  const byId=new Map(projects.map(p=>[p.id,p]));
+  const active=gtActiveProjects();   // archived projects are not planned on the roadmap
+  const byId=new Map(active.map(p=>[p.id,p]));
   const out=[], seen=new Set();
   order.forEach(id=>{ const p=byId.get(id); if(p&&!seen.has(id)){ out.push(p); seen.add(id); } });
-  projects.forEach(p=>{ if(!seen.has(p.id)){ out.push(p); seen.add(p.id); } });
+  active.forEach(p=>{ if(!seen.has(p.id)){ out.push(p); seen.add(p.id); } });
   return out;
 }
 function gtPiSelectedSet(){ return new Set(Array.isArray(gateConfig.piSelected)?gateConfig.piSelected:[]); }
@@ -763,7 +769,7 @@ function gtDragEnd(){ _gtDragId=null; }
 // ── Gate overview (selectable / draggable projects × PIs gate matrix) ─────────
 function gtOverviewGrid(m){
   const incs=gateConfig.increments||[];
-  if(!projects.length) return pfEmpty(t('No projects yet — add projects on the matrix to plan a roadmap.'));
+  if(!gtProjOrder().length) return pfEmpty(t('No active projects to plan — archived (closed/finished) projects are hidden here.'));
   if(!m.stages.length) return pfEmpty(t('No stages defined — build your methodology first (⛿ METHODOLOGY).'));
   const stages=m.stages;
   const ordered=gtProjOrder();
@@ -845,7 +851,7 @@ function gtUnselectedPanel(list){
 // ── PI plan (selected projects × PIs → milestones + objectives) ───────────────
 function gtPiPlanGrid(m){
   const incs=gateConfig.increments||[];
-  if(!projects.length) return pfEmpty(t('No projects yet — add projects on the matrix to plan a roadmap.'));
+  if(!gtProjOrder().length) return pfEmpty(t('No active projects to plan — archived (closed/finished) projects are hidden here.'));
   if(!incs.length)     return pfEmpty(t('Add at least one increment above to plan milestones & objectives over time.'));
   const selSet=gtPiSelectedSet();
   const selected=gtProjOrder().filter(p=>selSet.has(p.id));

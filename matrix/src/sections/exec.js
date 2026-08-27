@@ -70,7 +70,8 @@ function renderExecTab(){
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
     +(months.length?t('over {n} month(s) · FROM/TO period · click a tile to drill in',{n:months.length}):t('set a FROM/TO period for cost & capacity'))
     +'</span></div>'
-    +'<button class="sm" onclick="exportExecPack()" style="border-color:var(--accent);color:var(--accent)">'+t('📄 Export')+'</button>'
+    +'<div style="display:flex;align-items:center;gap:10px">'+analyticsArchivedToggle('renderExecTab')
+    +'<button class="sm" onclick="exportExecPack()" style="border-color:var(--accent);color:var(--accent)">'+t('📄 Export')+'</button></div>'
     +'</div>';
   if(!projects.length && !engineers.length){ body.innerHTML=h+pfEmpty(t('Nothing to summarise yet — add projects and a team.'))+'</div>'; return; }
 
@@ -478,17 +479,17 @@ function xsAttention(months){
     items.push({icon:'●',iconCol:col,text:'<b>'+escH(d.name)+'</b> — '+t('talent risk {s}',{s:d.riskScore})+(top?' <span style="color:var(--dim)">· '+escH(top)+'</span>':''),to:'analytics'});
   });
 
-  // Delivery — overdue milestones.
+  // Delivery — overdue milestones (archived projects excluded).
   let overdue=0, worstName='', worstN=0;
-  projects.forEach(function(p){
+  analyticsProjects().forEach(function(p){
     const n=(p.milestones||[]).filter(function(m){return m.end&&!m.done&&new Date(m.end)<new Date();}).length;
     overdue+=n; if(n>worstN){ worstN=n; worstName=p.name; }
   });
   if(overdue>0) items.push({icon:'📅',iconCol:'var(--danger)',text:t('{n} overdue milestone(s)',{n:overdue})+(worstName?' <span style="color:var(--dim)">· '+t('worst: {p} ({n})',{p:escH(worstName),n:worstN})+'</span>':''),to:'portfolio'});
 
-  // Delivery — blocked actions.
+  // Delivery — blocked actions (archived projects excluded).
   let blocked=0;
-  projects.forEach(function(p){ blocked+=(p.actions||[]).filter(function(a){return a.status==='Blocked';}).length; });
+  analyticsProjects().forEach(function(p){ blocked+=(p.actions||[]).filter(function(a){return a.status==='Blocked';}).length; });
   if(blocked>0) items.push({icon:'⛔',iconCol:'var(--warn)',text:t('{n} blocked action(s) across the portfolio',{n:blocked}),to:'portfolio'});
 
   // Route-to-market — channel concentration.

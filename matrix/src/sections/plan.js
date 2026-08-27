@@ -88,6 +88,10 @@ export function renderResPlan(){
       <input type="checkbox" ${planHideEmpty?'checked':''} onchange="planHideEmpty=this.checked;renderResPlan()" style="accent-color:var(--accent)">
       <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('HIDE EMPTY ROWS')}</span>
     </label>
+    ${projects.some(p=>typeof projIsArchived==='function'&&projIsArchived(p))?`<label style="font-size:11px;display:flex;align-items:center;gap:5px;cursor:pointer" title="${t('Archived = closed/finished (terminal lifecycle)')}">
+      <input type="checkbox" ${planShowArchived?'checked':''} onchange="planShowArchived=this.checked;renderResPlan()" style="accent-color:var(--accent)">
+      <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('SHOW ARCHIVED')}</span>
+    </label>`:''}
     <div style="flex:1"></div>
     <button class="sm${planFreezeHeader?' active':''}" id="plan-freeze-btn"
       onclick="planFreezeHeader=!planFreezeHeader;var w=document.getElementById('alloc-wrap');if(w)w.classList.toggle('freeze-on',planFreezeHeader);this.classList.toggle('active',planFreezeHeader);this.style.borderColor=planFreezeHeader?'var(--accent2)':'';this.style.color=planFreezeHeader?'var(--accent2)':'';"
@@ -124,6 +128,11 @@ export function renderResPlan(){
     if(planFilterEng.size){const e=engineers.find(e=>e.id===r.engId);if(!e||!planFilterEng.has(e.name))return false;}
     if(planFilterProj.size){const p=projects.find(p=>p.id===r.projectId);if(!p||!planFilterProj.has(p.name))return false;}
     const filterActive=planFilterEng.size||planFilterProj.size;
+    // Hide rows on ARCHIVED (terminal) projects by default — unless the toggle is on or a
+    // project filter is active (an explicit project pick should always be shown).
+    if(!planShowArchived&&!planFilterProj.size&&r.projectId!=null&&typeof projIsArchived==='function'){
+      const pr=projects.find(p=>p.id===r.projectId); if(pr&&projIsArchived(pr))return false;
+    }
     if(planHideEmpty&&!filterActive){const hasAny=months.some(m=>r.allocs&&r.allocs[m]&&r.allocs[m]>0);if(!hasAny)return false;}
     return true;
   });
@@ -153,7 +162,9 @@ export function renderResPlan(){
     if(showProjCol){
       rh+=`<td class="col-proj"><select class="alloc-sel" onchange="setRowProj(${row.id},+this.value)">
         <option value="">${t('— Select —')}</option>`;
-      projects.forEach(p=>{rh+=`<option value="${p.id}"${p.id===row.projectId?' selected':''}>${escH(p.name)}</option>`;});
+      // Archived (terminal) projects aren't assignable — excluded unless already on this row.
+      projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===row.projectId)
+        .forEach(p=>{rh+=`<option value="${p.id}"${p.id===row.projectId?' selected':''}>${escH(p.name)}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`;});
       rh+=`</select></td>`;
     } else {
       rh+=`<td class="col-proj" style="padding:0"></td>`;

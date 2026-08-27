@@ -41,8 +41,9 @@ function dtcRender(){
   // project picker (populated live)
   const picker=G('dtc-picker');
   if(picker){
-    picker.innerHTML = projects.length
-      ? projects.map(p=>`<option value="${p.id}"${p.id===_dtcProjId?' selected':''}>${escH(p.name||'Untitled project')}</option>`).join('')
+    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_dtcProjId);
+    picker.innerHTML = pickable.length
+      ? pickable.map(p=>`<option value="${p.id}"${p.id===_dtcProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
       : '<option>— no projects —</option>';
   }
   if(!projects.length){ body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix.</div>'; return; }

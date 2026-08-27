@@ -45,7 +45,7 @@ function _blRiskPriority(r){
 // Each row: {pid,pname,pcolor,kind,id,ref,text,assignee,status,priority,due,estimateD,done,overdue}.
 function _blItems(){
   var today=new Date(), rows=[];
-  projects.forEach(function(p){
+  analyticsProjects().forEach(function(p){
     if(_blProjFilter!=null && p.id!==_blProjFilter) return;
     if(_blTypes.todo)(p.todos||[]).forEach(function(td){
       rows.push({ pid:p.id,pname:p.name,pcolor:p.color,kind:'todo',id:td.id,ref:td,
@@ -78,7 +78,8 @@ function _blChip(txt,color,bg){
 
 // project <option> list (value = pid; selVal picks the current one)
 function _blProjectOptions(selVal){
-  return projects.slice().sort(function(a,b){return String(a.name).localeCompare(b.name);})
+  return analyticsProjects().filter(function(p){ return typeof projIsArchived!=='function'||!projIsArchived(p)||p.id===selVal; })
+    .slice().sort(function(a,b){return String(a.name).localeCompare(b.name);})
     .map(function(p){return '<option value="'+p.id+'"'+(selVal===p.id?' selected':'')+'>'+escH(p.name)+'</option>';}).join('');
 }
 
@@ -113,7 +114,7 @@ export function renderBacklogTab(){
 
   // Per-type totals across the CURRENT project scope (independent of the type filter).
   var allCounts={ todo:0, risk:0, action:0 };
-  projects.forEach(function(p){
+  analyticsProjects().forEach(function(p){
     if(_blProjFilter!=null && p.id!==_blProjFilter) return;
     allCounts.todo   += (p.todos||[]).length;
     allCounts.risk   += (p.risks||[]).length;
@@ -154,6 +155,8 @@ export function renderBacklogTab(){
     h+='<button class="sm'+(on?' active':'')+'" onclick="blSetPrioFilter(\''+pr[0]+'\')" '
       +'style="font-size:10px;padding:3px 9px'+(on?';border-color:'+pr[2]+';color:'+pr[2]:'')+'">'+pr[1]+'</button>';
   });
+  var _blArchTog=analyticsArchivedToggle('renderBacklogTab');
+  if(_blArchTog) h+='<div style="flex:1"></div>'+_blArchTog;
   h+='</div>';
 
   // ── Quick-add task bar ─────────────────────────────────────────

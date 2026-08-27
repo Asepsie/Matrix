@@ -110,10 +110,13 @@ export const PROJECT_LIFECYCLE=[
   { id:'maint_cancelled', label:'Maintenance Cancelled', phase:'service',     consumes:false, activePortfolio:true,  color:'var(--warn)'    },
   { id:'withdrawn',       label:'Withdrawn',             phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
   { id:'eol',             label:'End of Life',           phase:'terminal',    consumes:false, activePortfolio:false, color:'var(--muted)'   },
+  { id:'completed',       label:'Completed',             phase:'terminal',    consumes:false, activePortfolio:false, color:'#5b9e6e'        },
 ];
 export let _planRowOrder=[];
 export let _planDragSrc=null;
 export let planFilterEng=new Set(),planFilterProj=new Set(),planHideEmpty=false;
+export let planShowArchived=false;   // include archived (terminal-lifecycle) project rows in the plan grid
+export let showArchivedProj=false;   // analytics/governance views: include archived projects (toggle)
 export let planCollapsed={};
 export let planFreezeHeader=true;
 

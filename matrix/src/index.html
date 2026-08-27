@@ -216,6 +216,7 @@
           <option value="maint_cancelled">Maintenance Cancelled</option>
           <option value="withdrawn">Withdrawn</option>
           <option value="eol">End of Life</option>
+          <option value="completed">Completed</option>
         </select>
       </div>
       <div class="field"><label>REVENUE IMPACT (M€)</label><input type="number" id="e-impacteur" step="0.1" min="0" placeholder="e.g. 2.5" title="Financial revenue impact in millions of euros — distinct from the impact score (1-10) above"></div>
@@ -746,6 +747,16 @@
     <button onclick="closeSnap()">✕ CLOSE</button>
   </div>
   <div id="snap-body"></div>
+</div>
+
+<!-- ARCHIVE OVERLAY (closed/finished project browser — rail utility) -->
+<div id="archive-overlay">
+  <div id="archive-header">
+    <h2>🗄 ARCHIVE</h2>
+    <div style="flex:1"></div>
+    <button onclick="closeArchive()">✕ CLOSE</button>
+  </div>
+  <div id="archive-body"></div>
 </div>
 
 <div id="alloc-ctx">

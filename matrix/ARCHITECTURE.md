@@ -86,6 +86,41 @@ dynamic-imports globals.js (after shimming its load-time `t`/`makeGateConfig`) f
 
 ---
 
+## Project archive — closed/finished browser (`archive.js`)
+
+A thin feature on top of lifecycle, NOT a new data model. **"Archived" = terminal lifecycle**
+(`projLifecycleDef(p).phase==='terminal'`): `cancelled` / `withdrawn` / `eol` / **`completed`**
+(the last added by this feature — a positive "finished successfully" bucket, `activePortfolio:false`,
+color `#5b9e6e`). The one accessor is **`projIsArchived(p)`** ([helpers.js](src/core/helpers.js)) —
+distinct from `proposed` (pipeline, also non-active) and `on_hold` (paused but live).
+
+- **Working views hide archived by default** (keeps them clean): the Resource **plan** grid (rows +
+  the row project selector; toggle `planShowArchived` in the toolbar, shown only when archived projects
+  exist), the **balancer** project picker (`_balDefaultProject` skips them too), and the **charter /
+  DTC / channel** project dropdowns. Every filter keeps the *currently-selected* archived project so you
+  can still VIEW one. All gated `typeof projIsArchived==='function'` (engine stays load-order-safe).
+- **Archive browser** = a rail UTILITY (`RAIL_UTIL` `archive`, like Snapshots): `#archive-overlay`,
+  `openArchive`/`closeArchive`/`renderArchive`/`archRestore`/`archView` (arch-prefixed). Lists terminal
+  projects grouped by state, each with **Restore** (→ `projSetLifecycle(p,'active',…)`, so it's logged
+  in `lifecycleHistory` like any lifecycle change) and **View** (opens the balancer focused on it).
+- **`completed` had to be added in TWO places** — `PROJECT_LIFECYCLE` ([globals.js](src/core/globals.js))
+  AND the **hardcoded `#e-lifecycle` `<select>`** in [index.html](src/index.html) (that dropdown is NOT
+  built from the table — a gotcha: adding a lifecycle state to the table alone leaves it unselectable in
+  the editor). `sanitiseProjects` validates `p.lifecycle` against `PROJECT_LIFECYCLE`, so the new id is
+  accepted and never reset. No persistence/capture-surface changes (lifecycle already rides `projects[]`).
+- **Gate board hides archived ENTIRELY** — `gtActiveProjects()` ([gate.js](src/sections/gate.js)) filters
+  terminal projects out of the pipeline kanban, the projects picker, and (via `gtProjOrder`) the PI
+  roadmap + PI plan. Kept unfiltered: `gtBuildSignalMap` (data map, keyed by id) and the increment-cleanup
+  loop (must touch all projects' `roadmap`).
+- **Analytics/governance views exclude archived with a toggle** — shared `showArchivedProj`
+  ([globals.js](src/core/globals.js)) + `analyticsProjects()` / `analyticsArchivedToggle(rerenderFn)`
+  ([helpers.js](src/core/helpers.js)). Wired into **portfolio** (`pfBuildDataset`), **exec** (delivery
+  loops), **backlog** (`_blItems` + project dropdowns). **Coupling to know:** `ecDataset` builds ON
+  `pfBuildDataset`, so **econ inherits the filter for free** — and so do `gtBuildSignalMap`/home/pipeline
+  (all downstream of `ecDataset`), which is *consistent* (archived drops out of live signals) but means
+  the one `showArchivedProj` toggle has portfolio-wide reach. Gate stays visually clean regardless because
+  it filters at its own view level.
+
 ## Project lifecycle — fund / hold / cancel / maintenance / withdraw / EoL
 
 A project's **disposition**, distinct from its gate stage (forward development position)
@@ -1105,17 +1140,30 @@ which silently reported *everyone on bench / 0 FTE*. The cost chart keeps the re
 views: the monthly chart's FTE overlay uses `filteredRows` (like the cost bars), not the raw
 `allocRows`, so filter + overlay stay in sync.
 
-### ⚠ Resource Balancer is now PROJECT-CENTRIC (`bal-*`) — the portfolio dashboard was replaced
+### Resource Balancer — TWO modes (`renderResDashboard` dispatches)
 
-`renderResDashboard` (view id `dashboard`, label **"Resource balancer"**) was reworked from a
-portfolio-wide supply/demand dashboard into a **per-project view**: a project **picker**
-(`balSetProject` → `_balProjId`, session-only) then, for that one project, (1) a **gate roadmap
-band** (`_balGateRoadmap`) and (2) **resourcing** (`_balResourcing`) — who's on it, each person's
-month-by-month allocation (time), cost per person, and totals. **All numbers are ABSOLUTE** — no
-share-of-portfolio / relative %, by request. Computed straight off `allocRows` with `_allocNum`/
-`_allocCost`, so it is **NOT lifecycle-suppression-gated** (a proposed/held project still shows its
-real staffing here — the whole reason the old balancer looked empty). Markup uses `bal-*` classes
-([dashboard.css](src/styles/dashboard.css) tail).
+`renderResDashboard` (view id `dashboard`, label **"Resource balancer"**) is a **dispatcher** with a
+mode toggle (`_balMode` session var, `balSetMode`, default **`'balance'`**); it calls the chosen
+sub-view then **prepends** `_balModeToggle()` via `insertAdjacentHTML('afterbegin', …)` so neither
+sub-view needs refactoring:
+
+- **⚖ Balance** (default) = **`_balPortfolioView()`** — the portfolio supply/demand balancer:
+  capacity vitals, demand-vs-capacity chart, capacity-by-function, **availability**, utilisation grid,
+  and **over-allocation with proactive rebalancing suggestions**. Its engine —
+  **`_dashBestCandidate(engId)`** (best substitute = most same-group headroom + skill overlap),
+  **`showDashReplacements`**, **`openAddResourceModal`/`confirmAddResource`**, `pipelineCapacity`,
+  `_buildEngUtil`, `_computeCostMaps` — uses the legacy **`db-*`** classes. **Regression history:** an
+  earlier rework REPLACED `renderResDashboard`'s body with the per-project view, which silently dropped
+  this whole balancing UI (the engine functions survived but were orphaned — the entry-point buttons
+  lived in the removed render body). It was recovered from git (parent of the balancer-rework commit)
+  and restored as `_balPortfolioView`. **Lesson: replacing a render wholesale can orphan a working
+  feature — grep for callers of the functions the old body invoked before replacing it.**
+- **▤ By project** = **`_balProjectView()`** — the per-project view: a **picker**
+  (`balSetProject` → `_balProjId`) then a **gate roadmap band** (`_balGateRoadmap`) + **resourcing**
+  (`_balResourcing`) — who's on it, each person's month-by-month time, cost per person, totals. **All
+  numbers ABSOLUTE** (no share-of-portfolio). Computed off `allocRows` with `_allocNum`/`_allocCost`,
+  so **not** suppression-gated (a proposed/held/archived project still shows real staffing). Uses
+  `bal-*` classes ([dashboard.css](src/styles/dashboard.css) tail).
 - **Gate roadmap** reuses the existing PI model: `gateConfig.increments` (dated time boxes) as the
   timeline, `gatePlan.roadmap[incId]` = the stage committed for each increment (the planned climb),
   `gatePlan.piItems[incId].milestones` plotted per column, current stage via `gtCurStageIdx`, and a

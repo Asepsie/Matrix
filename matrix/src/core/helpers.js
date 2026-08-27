@@ -70,6 +70,25 @@ export function projLifecycle(p){ return (p&&p.lifecycle)||'active'; }
 export function projConsumesCapacity(p){ return !!projLifecycleDef(p).consumes; }
 // Is this project part of the LIVE portfolio (vs. terminal/history-only)?
 export function projIsActivePortfolio(p){ return !!projLifecycleDef(p).activePortfolio; }
+// Is this project ARCHIVED — closed or finished (terminal lifecycle: cancelled /
+// withdrawn / eol / completed)? Distinct from proposed (pipeline, also non-active) and
+// from on_hold (paused but still live). Working views hide these by default.
+export function projIsArchived(p){ return projLifecycleDef(p).phase==='terminal'; }
+// Project list for analytics/governance views — excludes archived unless the shared
+// `showArchivedProj` toggle is on. Use this as the project source in portfolio / econ /
+// exec / backlog so a closed project drops out of the live picture by default.
+export function analyticsProjects(){
+  return projects.filter(function(p){ return (typeof showArchivedProj!=='undefined'&&showArchivedProj) || projLifecycleDef(p).phase!=='terminal'; });
+}
+// Shared toggle chip for those views. `rerender` = the name of the view's re-render fn.
+export function analyticsArchivedToggle(rerender){
+  var anyArch=projects.some(function(p){ return projLifecycleDef(p).phase==='terminal'; });
+  if(!anyArch) return '';
+  var on=(typeof showArchivedProj!=='undefined'&&showArchivedProj);
+  return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)" title="'+escH(t('Include archived (closed/finished) projects'))+'">'
+    +'<input type="checkbox"'+(on?' checked':'')+' onchange="showArchivedProj=this.checked;'+rerender+'()" style="accent-color:var(--accent)">'
+    +escH(t('SHOW ARCHIVED'))+'</label>';
+}
 // Memoised set of project ids whose demand counts — the choke point for suppression.
 export function _projCapacitySet(){
   return _memo('projCapSet', function(){
