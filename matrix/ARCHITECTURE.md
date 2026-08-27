@@ -1269,8 +1269,15 @@ project ramping down as another ramps up reads as a visible crossover. Design de
   scrolls — deliberately trades horizontal month room for the panel, as the user accepted): a **PROJECTS**
   list (an `<input type=color>` per project → `tlSetProjColor` writes `project.color` and `saveState`s, so
   it applies **app-wide** — matrix/gantt too — plus the project name text **colour-matched to its band**),
-  a **RESOURCES** list (a show/hide checkbox per person → `tlToggleEngHidden`, session-only `hiddenEng`), and
-  the capacity/over/un-funded key. The old top legend is gone.
+  a **RESOURCES** list (a show/hide checkbox per person → `tlToggleEngHidden`, session-only `hiddenEng`, plus
+  **All/None** via `tlEngShowAll`/`tlEngHideAll`), and the capacity/over/un-funded key. The old top legend is gone.
+- **Scroll survives re-render.** Every panel action (`tlToggleEngHidden`, `tlSetProjColor`, conflict toggle)
+  calls `renderTimeline()` which rebuilds `body.innerHTML` — which otherwise resets the ribbon and panel to
+  the top ("have to scroll down again after each toggle"). Fixed by giving the two scroll containers stable
+  ids (`tl-ribbon-scroll`, `tl-side-panel`) and capturing their `scrollTop`/`scrollLeft` **before** the
+  `body.innerHTML=h` assignment, then restoring onto the freshly-built elements right after (synchronous —
+  layout is available immediately). maxF can shift the total height slightly on hide/show, so restoration is
+  best-effort but visually stable.
 - **Distinct palette, recolour-everything.** `TL_PALETTE` (18 dark-legible categorical colours);
   `tlAutoColorProjects(force)` assigns `palette[i%len]` to **every** project by index and persists. Runs
   **once automatically on first open** (guarded by localStorage `eim_tl_autocolor`) so bands are immediately

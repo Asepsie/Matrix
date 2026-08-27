@@ -624,11 +624,19 @@ function tlToggleEngHidden(engId){
   var i=arr.indexOf(engId); if(i>=0) arr.splice(i,1); else arr.push(engId);
   renderTimeline();
 }
+// Show every resource lane.
+function tlEngShowAll(){ _tlState.hiddenEng=[]; renderTimeline(); }
+// Hide every resource lane (every engineer that has allocations).
+function tlEngHideAll(){
+  var ids={}; allocRows.forEach(function(r){ if(r.engId!=null) ids[r.engId]=1; });
+  _tlState.hiddenEng=Object.keys(ids).map(Number);
+  renderTimeline();
+}
 // The right-side control panel: per-project colour pickers (name text colour-matched to the band)
 // + per-resource show/hide, and the small capacity/over/un-funded key.
 function tlSidePanel(all, projSeen, hidden){
   function hex(c){ return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)?c:'#888888'; }
-  var p='<div style="width:200px;flex-shrink:0;overflow:auto;min-height:0;border-left:1px solid var(--border);background:var(--surface);padding:8px">';
+  var p='<div id="tl-side-panel" style="width:200px;flex-shrink:0;overflow:auto;min-height:0;border-left:1px solid var(--border);background:var(--surface);padding:8px">';
   p+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+t('PROJECTS')+'</span>'
     +'<button onclick="tlAutoColorProjects(true)" class="sm" style="margin-left:auto;font-size:8px;padding:1px 6px" title="'+escH(t('Assign a fresh distinct palette to all projects'))+'">'+t('AUTO-COLOR')+'</button>'
@@ -642,7 +650,11 @@ function tlSidePanel(all, projSeen, hidden){
     p+='<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:'+pr.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:'+(pr.funded?'1':'0.6')+'" title="'+escH(pr.name)+'">'+escH(pr.name)+'</span>';
     p+='</div>';
   });
-  p+='<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em;margin:12px 0 6px">'+t('RESOURCES')+'</div>';
+  p+='<div style="display:flex;align-items:center;gap:6px;margin:12px 0 6px">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+t('RESOURCES')+'</span>'
+    +'<button onclick="tlEngShowAll()" class="sm" style="margin-left:auto;font-size:8px;padding:1px 6px">'+t('All')+'</button>'
+    +'<button onclick="tlEngHideAll()" class="sm" style="font-size:8px;padding:1px 6px">'+t('None')+'</button>'
+    +'</div>';
   all.slice().sort(function(a,b){return b.peak-a.peak;}).forEach(function(d){
     var isH=hidden.indexOf(d.eng.id)>=0, pk2=Math.round(d.peak*100);
     var pc=d.peak>1.005?'var(--danger)':d.peak>=0.999?'var(--accent)':'var(--muted)';
@@ -720,7 +732,7 @@ function renderTimelineResource(body, months, cur){
 
   // ── Main row: ribbon (left, scrolls) + control panel (right) ──
   h+='<div style="flex:1;display:flex;min-height:0">';
-  h+='<div style="flex:1;overflow:auto;min-height:0"><div style="min-width:'+(LABEL_W+plotW+8)+'px">';
+  h+='<div id="tl-ribbon-scroll" style="flex:1;overflow:auto;min-height:0"><div style="min-width:'+(LABEL_W+plotW+8)+'px">';
   if(!displayed.length){
     h+='<div style="color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:24px 0;text-align:center">'+(_tlState.conflictOnly?t('No over-allocated people in this period.'):(all.length?t('All resources hidden — enable some in the panel →'):t('No allocations in this period.')))+'</div>';
   } else {
@@ -754,7 +766,14 @@ function renderTimelineResource(body, months, cur){
   h+=tlSidePanel(all, projSeen, hidden);  // right control panel
   h+='</div>';                            // close main row
   h+='</div>';                            // close outer column
+
+  // Preserve scroll across re-render (toggling a resource / colour / conflict rebuilds the DOM;
+  // without this the ribbon and the panel jump back to the top — "have to scroll down again").
+  var _oR=document.getElementById('tl-ribbon-scroll'), _oP=document.getElementById('tl-side-panel');
+  var _rT=_oR?_oR.scrollTop:0, _rL=_oR?_oR.scrollLeft:0, _pT=_oP?_oP.scrollTop:0;
   body.innerHTML=h;
+  var _nR=document.getElementById('tl-ribbon-scroll'); if(_nR){ _nR.scrollTop=_rT; _nR.scrollLeft=_rL; }
+  var _nP=document.getElementById('tl-side-panel'); if(_nP){ _nP.scrollTop=_pT; }
 
   if(_tlState.focusEng!=null){
     var fe=_tlState.focusEng; _tlState.focusEng=null;
