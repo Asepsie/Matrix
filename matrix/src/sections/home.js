@@ -1225,8 +1225,8 @@ function homeOpenFor(concern, entityId){
     return;
   }
   if(concern==='candidate-stale'){ if(typeof railGo==='function') railGo(null,'pipeline'); return; }
-  if(concern==='charter-conflict'){ homeGoView('decision', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
-  if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('charters', function(){ if(typeof openCharter==='function') openCharter(id); }); return; }
-  if(concern==='dtc-gap'){ homeGoView('dtc', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }
-  if(concern==='channel-concentration'){ homeGoView('channels', function(){ if(typeof openChannels==='function') openChannels(id); }); return; }
+  if(concern==='charter-conflict'){ homeGoView('workspace', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
+  if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('workspace', function(){ if(typeof openCharter==='function') openCharter(id,'financials'); }); return; }
+  if(concern==='dtc-gap'){ homeGoView('workspace', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }
+  if(concern==='channel-concentration'){ homeGoView('workspace', function(){ if(typeof openChannels==='function') openChannels(id); }); return; }
 }

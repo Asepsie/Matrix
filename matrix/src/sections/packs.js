@@ -141,10 +141,11 @@ function packBoardOpen(){
  * picker still SHOWS it (so the feature is discoverable before there's data)
  * but greys it and explains what is missing.
  *
- * Project-scoped deliverables — the Gantt and the project brief — are
- * deliberately NOT listed: they export whatever project you currently have
- * open, which is meaningless from a global menu. They keep their button on
- * their own view, where the scope is unambiguous. */
+ * The Gantt is still deliberately NOT listed: it exports whatever project you
+ * currently have open, which is meaningless from a global menu, so it keeps its
+ * button on its own view. The project brief WAS excluded for the same reason but
+ * is now listed (Track B #7) — it self-scopes via per-project toggles in the
+ * builder, so it's unambiguous from the global menu. */
 function exportDeliverables(){
   var anyPeople=engineers.filter(function(e){return !e.planningOnly;}).length;
   return [
@@ -160,6 +161,10 @@ function exportDeliverables(){
     {id:'pack-board', pack:true, label:t('Board pack'), domain:t('INSIGHTS'),
      hint:t('Executive scorecard, spend, risk and burn, plus headcount and talent mix.'),
      ready:!!(projects.length||anyPeople), missing:t('Add projects and a team first.'), open:packBoardOpen},
+
+    {id:'project-brief', label:t('Project brief'), domain:t('PORTFOLIO'),
+     hint:t('A print-ready page per project — KPIs plus optional team, risks, todos, milestones and Gantt. Pick which projects in the builder.'),
+     ready:!!projects.length, missing:t('Add projects first.'), open:exportProjectBriefOpen},
 
     {id:'exec', label:t('Executive summary'), domain:t('INSIGHTS'),
      hint:t('Scorecard, spend map, value vs risk, cost burn, attention list.'),

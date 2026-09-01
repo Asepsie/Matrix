@@ -37,7 +37,7 @@ export function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 export function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','econ','exec','gate','pipeline','engagement','backlog'].forEach(function(t){
+  ['roster','plan','dashboard','skills','placement','development','analytics','portfolio','exec','gate','pipeline','engagement','backlog'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -51,18 +51,12 @@ export function showResTab(tab){
     }
   });
   if(tab==='roster')           renderRosterTab();
-  else if(tab==='plan')        renderResPlan();
-  else if(tab==='skills')      renderSkillsTab();
-  else if(tab==='skillrisk')   renderSkillRisk();
-  else if(tab==='profiles')    renderProfilesTab();
-  else if(tab==='ninebox')     renderNineBox();
-  else if(tab==='disc')        renderDiscMatrix();
-  else if(tab==='timeline')    renderTimeline();
+  else if(tab==='plan')        renderPlan();
+  else if(tab==='skills')      renderSkills();
+  else if(tab==='placement')   renderTalentPlacement();
   else if(tab==='development') renderDevelopment();
-  else if(tab==='heatmap')     renderHeatmap();
-  else if(tab==='analytics')   renderAnalyticsTab();
+  else if(tab==='analytics')   renderPeople();
   else if(tab==='portfolio')   renderPortfolioAnalytics();
-  else if(tab==='econ')        renderEconTab();
   else if(tab==='exec')        renderExecTab();
   else if(tab==='gate')        renderGateTab();
   else if(tab==='pipeline')    renderPipelineTab();
@@ -196,9 +190,7 @@ export function onDashFilterProjChange(s){engDashFilterProj=s;renderResDashboard
 // Re-renders whichever resource tab is currently active.
 export function renderResActiveTab(){
   if(resActiveTab==='roster')        renderRosterTab();
-  else if(resActiveTab==='plan')     renderResPlan();
-  else if(resActiveTab==='ninebox')  renderNineBox();
-  else if(resActiveTab==='disc')     renderDiscMatrix();
-  else if(resActiveTab==='timeline') renderTimeline();
+  else if(resActiveTab==='plan')     renderPlan();
+  else if(resActiveTab==='placement') renderTalentPlacement();
   else if(resActiveTab==='development') renderDevelopment();
 }

@@ -109,9 +109,30 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
   return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">'+chips+'</div>';
 }
 
+/* ── Talent placement: two lenses (Nine-box | DISC) in one view (Track B follow-up).
+   The former separate Nine-box and DISC rail views are merged into a single "Talent
+   placement" door. renderTalentPlacement() is the nav entry point; each lens renderer
+   (renderNineBox / renderDiscMatrix) marks _tpLens itself and prepends tpLensBar(), so the
+   toggle always reflects what's on screen. The lens is remember-last (persisted in the rail
+   prefs via railSavePrefs, not the dataset). tpGo() is the deep-link opener for callers that
+   want to land on a specific lens. ── */
+function renderTalentPlacement(){ if(_tpLens==='disc') renderDiscMatrix(); else renderNineBox(); }
+function tpSetLens(l){ _tpLens=(l==='disc')?'disc':'ninebox'; if(typeof railSavePrefs==='function') railSavePrefs(); renderTalentPlacement(); }
+function tpGo(ev,lens){ _tpLens=(lens==='disc')?'disc':'ninebox'; if(typeof railSavePrefs==='function') railSavePrefs(); if(typeof railGo==='function') railGo(ev,'placement'); }
+function tpLensBar(){
+  var mk=function(id,label){ var on=_tpLens===id;
+    return '<button onclick="tpSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0">'
+    +'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">⊞ '+escH(t('TALENT PLACEMENT'))+'</span>'
+    +'<div style="display:flex;gap:6px">'+mk('ninebox',t('Nine-box'))+mk('disc','DISC')+'</div></div>';
+}
+
 // renders the nine-box talent matrix grid with people chips
 export function renderNineBox(){
   var body=G('res-body');if(!body)return;
+  _tpLens='ninebox';
   if(!_nineBoxPlacements)_nineBoxPlacements={};
   var CELLS=_nbCells();
   var placed=new Set(Object.keys(_nineBoxPlacements));   // keys are uids
@@ -133,6 +154,7 @@ export function renderNineBox(){
   var yearsList=nbYears();
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=tpLensBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">NINE-BOX TALENT MATRIX</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_nineBoxPlacements).length+' placed · '+unplaced.length+' unplaced'+moveSummary+'</span>'

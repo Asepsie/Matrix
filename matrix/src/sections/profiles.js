@@ -17,16 +17,14 @@
  *   getProfileExportEngs         — returns the filtered engineer set for export
  *   exportProfilesDashboardOpen  — opens the builder for the card grid (PDF/HTML/PNG/SVG + columns)
  *   profilesExportAllOpen        — opens the builder for one full page per person (PDF)
- *   openProjectBriefExport       — opens the project-brief project checklist (project SCOPE, separate from content blocks)
- *   briefSelectAll               — checks/unchecks all projects in the brief modal
- *   briefSelectVisible           — selects only the currently-visible projects in the brief modal
- *   getSelectedBriefProjects     — returns the projects checked in the brief modal
+ *   prfBriefBlocks               — the project-brief content toggles (team/risks/todos/milestones/actions)
  *   buildBriefProjectBlock       — builds one project's HTML block (KPIs, team, risks, todos…)
- *   exportProjectBriefOpen       — opens the builder for the project brief (PDF/HTML; blocks = team/risks/todos/milestones/actions)
+ *   exportProjectBriefOpen       — opens the shared builder for the project brief (project scope = per-project toggle controls; reached from the Export door)
  */
 // renders the profiles tab: filter bar + engineer cards
 function renderProfilesTab(){
   const body=G('res-body');if(!body)return;
+  if(typeof _peopleLens!=='undefined') _peopleLens='profiles';
   const grpFilter=G('prf-grp')?G('prf-grp').value:'';
   const search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
   let engs=engineers.filter(function(e){return !e.vacant;});
@@ -38,6 +36,7 @@ function renderProfilesTab(){
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
 
   let h='<div style="display:flex;flex-direction:column;height:100%">';
+  if(typeof peopleLensBar==='function') h+=peopleLensBar();
 
   h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0">';
   h+='<input id="prf-search" class="eng-card-inp" placeholder="'+t('🔍 Search name…')+'" value="'+escH(search)+'"'
@@ -525,49 +524,12 @@ function profilesExportAllOpen(){
   });
 }
 
-/* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
-// opens the project-brief rail view (WORK › Project brief) with the project checklist
-function openProjectBriefExport(){
-  var list=G('brief-proj-list');
-  if(!list)return;                                  // markup lives after {{JS}} — guard at boot
-  list.innerHTML='';
-  projects.forEach(function(p){
-    var isVis=p.visible!==false;
-    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:6px 9px;'
-      +'border-radius:5px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid var(--border)">'
-      +'<input type="checkbox" data-pid="'+p.id+'"'+(isVis?' checked':'')+'>'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:'+safeColor(p.color)+';flex-shrink:0"></span>'
-      +'<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name)+'</span>'
-      +(p.sector?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+escH(p.sector)+'</span>':'')
-      +'</label>';
-  });
-  var ov=G('brief-overlay'); if(ov) ov.classList.add('show');
-}
-// close the project-brief view (rail-highlight sync is added by railWrapClosers)
-function closeBrief(){ var o=G('brief-overlay'); if(o) o.classList.remove('show'); }
-
-// checks/unchecks all projects in the brief modal
-function briefSelectAll(val){
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]').forEach(function(cb){cb.checked=val;});
-}
-// selects only the currently-visible projects in the brief modal
-function briefSelectVisible(){
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]').forEach(function(cb){
-    var pid=+cb.dataset.pid;
-    var p=projects.find(function(x){return x.id===pid;});
-    cb.checked=p&&p.visible!==false;
-  });
-}
-
-// returns the projects checked in the brief modal
-function getSelectedBriefProjects(){
-  var selected=[];
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
-    var p=projects.find(function(x){return x.id===+cb.dataset.pid;});
-    if(p)selected.push(p);
-  });
-  return selected;
-}
+/* ►► SECTION: BRIEF ◄◄ Project brief — a deliverable on the shared export engine
+ * (exportProjectBriefOpen below), reached from the global Export door (packs.js
+ * registry). The old standalone #brief-overlay rail view + its project checklist
+ * were removed (Track B #7): project scope is now per-project toggles in the
+ * builder's controls bar. prfBriefBlocks() = the content blocks; buildBriefProjectBlock
+ * renders one project's page. */
 
 // the five content toggles the project-brief picker offers (mirrors the old
 // brief-include-team/risks/todos/milestones/actions checkboxes, now inside
@@ -833,26 +795,42 @@ function buildBriefProjectBlock(p, inc, shared){
   return html;
 }
 
-// opens the shared builder for the project brief (formats: PDF, HTML; blocks =
-// team/risks/todos/milestones/actions — project SCOPE stays the brief panel's
-// own checklist, since that's "which projects", not "which content").
+// opens the shared builder for the project brief (formats: PDF, HTML). Now a
+// deliverable on the global Export door (packs.js) — no standalone rail view.
+// WHICH PROJECTS (scope) lives as per-project TOGGLES in the builder's controls
+// bar (default = the visible, non-archived projects); WHICH CONTENT is the blocks
+// (team/risks/todos/milestones/actions). Two independent axes, same builder.
 function exportProjectBriefOpen(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
+  if(!projects.length){alert(t('Add projects first.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'R&D Portfolio';
 
   exportOpenBuilder({
     deliverableId: 'project-brief',
     title: planTitle,
-    subtitleDefault: 'Project Briefs · '+sel.length+' project'+(sel.length!==1?'s':''),
+    subtitleDefault: 'Project Briefs',
     blocks: prfBriefBlocks(),
-    ctx: {selectedProjs:sel},
+    ctx: {},
     formats: [{id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')}],
+    controls: function(){
+      return projects.map(function(p){
+        var arch=(typeof projIsArchived==='function'&&projIsArchived(p));
+        return { id:'bp_'+p.id, label:p.name, type:'toggle', value:(p.visible!==false&&!arch),
+                 hint:arch?t('archived'):(p.sector||'') };
+      });
+    },
     builtinTemplates: [
       {id:'full', name:t('Full'), blocks:['team','risks','todos','milestones','actions']},
       {id:'kpis-only', name:t('KPIs only')+' ('+t('no content blocks')+')', blocks:[]},
     ],
     composeRender: function(includedIds, ctx){
+      var sel=projects.filter(function(p){
+        var v=ctx['bp_'+p.id];
+        if(v===undefined) v=(p.visible!==false);   // match the control default before first toggle
+        return !!v;
+      });
+      if(!sel.length) return '<div style="padding:24px;color:var(--muted);font-size:12px">'
+        +escH(t('No projects selected — tick at least one project in the controls above.'))+'</div>';
+
       var axName='Effort';
       try{axName=axX().name||'Effort';}catch(e){}
       var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
@@ -886,7 +864,7 @@ function exportProjectBriefOpen(){
       var shared={axName:axName,yLabel:yLabel,projAllocMap:projAllocMap};
       // kept as one flowing page (not one-per-project) — projects were never
       // forced onto separate pages here, only .proj-block{break-inside:avoid}
-      return ctx.selectedProjs.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
+      return sel.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
     },
   });
 }

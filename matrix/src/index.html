@@ -165,14 +165,8 @@
   </div>
 </div>
 
-<!-- SUMMARY OVERLAY -->
-<div id="summary-overlay">
-  <div id="summary-header">
-    <h2>▤ PORTFOLIO SUMMARY</h2>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="summary-body"></div>
-</div>
+<!-- (Portfolio Summary view was cut — Track B #8. Exec / Portfolio analytics / Home +
+     Backlog cover everything it showed; the 's' shortcut now opens Executive summary.) -->
 
 <main>
   <aside id="sidebar">
@@ -262,6 +256,7 @@
       <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     data-i18n-title="Sort by Impact"     title="Sort by Impact"     data-i18n="IMPACT">IMPACT</button>
       <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" data-i18n-title="Sort by Visibility" title="Sort by Visibility" data-i18n="VISIBILITY">VISIBILITY</button>
       <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    data-i18n-title="Sort by Enabler"    title="Sort by Enabler"    data-i18n="ENABLER">ENABLER</button>
+      <button class="sm"        id="mtb-compare"   onclick="matrixOpenCompare()"    data-i18n-title="Compare two Y-axis modes side by side" title="Compare two Y-axis modes side by side" data-i18n="⧉ COMPARE">⧉ COMPARE</button>
       <div class="bar-sep"></div>
       <span id="focus-bar" style="display:flex;align-items:center;gap:6px"></span>
     </div>
@@ -391,6 +386,25 @@
     </div>
   </div>
 </div>
+<!-- DATA UTILITY MENU (rail foot → groups Snapshots / Backup / Restore — Track B #9) -->
+<div id="data-menu-overlay">
+  <div class="dm-card">
+    <div class="dm-head"><span data-i18n="DATA">DATA</span><button class="dm-x" onclick="dataMenuClose()" title="Close">✕</button></div>
+    <button class="dm-item" onclick="dataMenuGo('snap')">
+      <span class="dm-ico">🕐</span>
+      <span class="dm-txt"><b data-i18n="Snapshots">Snapshots</b><small data-i18n="Time-travel copies of this dataset">Time-travel copies of this dataset</small></span>
+    </button>
+    <button class="dm-item" onclick="dataMenuGo('backup')">
+      <span class="dm-ico">⭳</span>
+      <span class="dm-txt"><b data-i18n="Backup">Backup</b><small data-i18n="Export everything (incl. photos) to a file">Export everything (incl. photos) to a file</small></span>
+    </button>
+    <button class="dm-item" onclick="dataMenuGo('restore')">
+      <span class="dm-ico">⭱</span>
+      <span class="dm-txt"><b data-i18n="Restore">Restore</b><small data-i18n="Load a full backup file (replaces current data)">Load a full backup file (replaces current data)</small></span>
+    </button>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL (opened from the rail util foot) -->
 <div id="settings-overlay" class="overlay">
   <div class="modal-box" style="width:min(420px,95vw)">
@@ -645,33 +659,29 @@
   <div id="res-body"></div>
 </div>
 
-<!-- FINANCIALS ANALYSIS (WORK › Financials analysis rail view) — panel, rail-inset -->
-<div id="cht-overlay">
-  <div id="cht-header">
-    <span id="cht-title">FINANCIALS ANALYSIS</span>
-    <span id="cht-pick"></span>
+<!-- PROJECT WORKSPACE (PORTFOLIO › Project workspace) — the four former per-project
+     charter panels (Financials / Trade-off / Channels / Design-to-cost) merged into
+     ONE tabbed, rail-inset shell. The per-panel body <div>s live here now and each
+     tab re-uses its original renderer unchanged (see sections/workspace.js). -->
+<div id="wk-overlay">
+  <div id="wk-header">
+    <span id="wk-title">PROJECT WORKSPACE</span>
+    <span id="wk-pick"></span>
     <div class="cht-head-meta" id="cht-head-meta"></div>
     <div style="flex:1"></div>
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
     <button class="sm" onclick="chtOpenSynopsis()">⧉ Synopsis</button>
-    <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
-    <button onclick="chtBack('financials')" data-i18n="← BACK">← BACK</button>
+    <button class="sm primary" onclick="wkSaveNow()">SAVE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
-  <div id="cht-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
-  <div id="cht-tabs"></div>
-  <div id="cht-body"></div>
-</div>
-
-<!-- TRADE-OFF DECISION (WORK › Trade-off decision rail view) — panel, rail-inset -->
-<div id="dec-overlay">
-  <div id="dec-header">
-    <span id="dec-title">TRADE-OFF DECISION</span>
-    <span id="dec-pick"></span>
-    <div style="flex:1"></div>
-    <button onclick="chtBack('decision')" data-i18n="← BACK">← BACK</button>
+  <div id="wk-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
+  <div id="wk-tabs"></div>
+  <div id="wk-body">
+    <div id="cht-body"></div>
+    <div id="dec-body"></div>
+    <div id="chan-body"></div>
+    <div id="dtc-body"></div>
   </div>
-  <div id="dec-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
-  <div id="dec-body"></div>
 </div>
 
 <!-- CHARTER SLIDE DECK (generated from the open charter) -->
@@ -697,39 +707,11 @@
   <div id="cht-syn-body"></div>
 </div>
 
-<!-- CHARTERS HUB (WORK › Charters rail view) — lists every project's charter -->
-<div id="chthub-overlay">
-  <div id="chthub-header">
-    <span id="chthub-title">CHARTERS</span>
-    <div style="flex:1"></div>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="chthub-body"></div>
-</div>
+<!-- (Charters hub removed — the 4 charter panels are merged into #wk-overlay; the hub
+     card grid is gone. Track B #2 + cleanup.) -->
 
-<!-- DESIGN-TO-COST (OFFER MNGT › Design to cost rail view) -->
-<div id="dtc-overlay">
-  <div id="dtc-header">
-    <span id="dtc-title">DESIGN TO COST</span>
-    <label class="cht-hl" style="margin-left:10px">PROJECT</label>
-    <select id="dtc-picker" class="cht-sel" onchange="dtcSelectProject(this.value)"></select>
-    <div style="flex:1"></div>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="dtc-body"></div>
-</div>
-
-<!-- CHANNEL MIX (OFFER MNGT › Channel mix rail view) — go-to-market synoptic -->
-<div id="chan-overlay">
-  <div id="chan-header">
-    <span id="chan-title">CHANNEL MIX</span>
-    <span id="chan-pick"></span>
-    <div style="flex:1"></div>
-    <button class="sm primary" onclick="chanSaveNow()">SAVE</button>
-    <button onclick="chtBack('channels')" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="chan-body"></div>
-</div>
+<!-- (Design-to-cost & Channel-mix panels merged into #wk-overlay above — their
+     #dtc-body / #chan-body containers live there now.) -->
 
 <!-- ICON PICKER (permanent, outside ptw-body) -->
 <div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
@@ -1171,44 +1153,8 @@
 
 
 <!-- PROJECT BRIEF (WORK › Project brief rail view) — panel, rail-inset -->
-<div id="brief-overlay">
-  <div id="brief-header">
-    <span id="brief-title">📄 PROJECT BRIEF</span>
-    <div style="flex:1"></div>
-    <button class="sm primary" onclick="exportProjectBriefOpen()">📄 EXPORT</button>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="brief-body">
-    <div class="brief-wrap">
-      <div class="brief-intro">Pick the projects and the sections to include, then export a print-ready brief as PDF or a standalone HTML file.</div>
-
-      <section class="brief-sec">
-        <div class="brief-sec-head">
-          <span class="brief-sec-title">SELECT PROJECTS</span>
-          <div class="brief-sec-tools">
-            <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
-            <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
-            <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
-          </div>
-        </div>
-        <div id="brief-proj-list" class="brief-proj-grid"></div>
-      </section>
-
-      <div class="brief-2col">
-        <section class="brief-sec">
-          <div class="brief-sec-title">ALLOCATION PERIOD</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="month" id="brief-from" class="brief-month">
-            <span style="font-size:11px;color:var(--muted)">→</span>
-            <input type="month" id="brief-to" class="brief-month">
-            <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
-            <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
-          </div>
-          <div style="font-size:9px;color:var(--dim);margin-top:8px">Leave blank to include all allocation data.</div>
-        </section>
-      </div>
-    </div>
-  </div>
-</div>
+  <!-- (Project brief is now a deliverable on the shared Export engine — reached from
+       the Export door, project scope chosen via per-project toggles in the builder.
+       Its old #brief-overlay rail view was removed in Track B #7.) -->
   <script src="matrix-tour.js"></script>
 </body>

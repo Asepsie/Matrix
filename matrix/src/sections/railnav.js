@@ -47,7 +47,8 @@ var RAIL_I = {
   pinOpen:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
   chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   collab:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.6"/><circle cx="17" cy="8" r="2.6"/><path d="M2.6 18c0-2.4 1.9-4 4.4-4 1.2 0 2.3.4 3.1 1.1"/><path d="M13.9 15.1c.8-.7 1.9-1.1 3.1-1.1 2.5 0 4.4 1.6 4.4 4"/><path d="M9.4 12.2a3.2 3.2 0 0 1 5.2 0"/></svg>',
-  archive:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>'
+  archive:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>',
+  data:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/></svg>'
 };
 
 /* ── Domain → view map. Every view id routes through railGo (Phase 2).
@@ -61,10 +62,13 @@ var RAIL_I = {
 /* Reframed 2026-08-23 (IA Track A): 7 feature-led domains → 5 job-led domains that
    spell the daily loop — HOME (triage) · PORTFOLIO (what to build) · PLAN (the
    people×project JOIN) · PEOPLE (run/grow team) · REVIEW (report). Pure nav reorg:
-   every view keeps its id + render path; only its domain/label/order changed. The
-   Track-B feature merges (compare→matrix mode, summary cut, econ+portfolio, charter
-   workspace, …) land later — until then those views still sit here, grouped so the
-   redundancy is visible. See PIPELINE-PLAN sibling IA-REFRAME notes. */
+   every view keeps its id + render path; only its domain/label/order changed. Track-B
+   feature merges DONE so far: charter workspace (4 panels → 'workspace'), econ→portfolio
+   (Economics lens), skills (Matrix|Risk lenses + heatmap view removed), timeline→Plan
+   (GRID·GANTT·RIBBON·CAPACITY mode bar), compare→matrix (⧉ COMPARE toolbar sub-mode),
+   brief→Export door (a shared-engine deliverable, project scope = builder toggles),
+   summary CUT (redundant), profiles→People analytics (Analytics|Profiles lens),
+   snap/backup/restore grouped into the Data utility. Track B complete. See IA-REFRAME. */
 var RAIL_DOMAINS = [
   { id:'home', name:t('HOME'), ico:RAIL_I.home, views:[
     {id:'home',        label:t('Home')},
@@ -73,37 +77,25 @@ var RAIL_DOMAINS = [
     {id:'matrix',      label:t('Portfolio matrix')},
     {id:'pipeline',    label:t('Pipeline')},
     {id:'gate',        label:t('Gate & PI')},
-    {id:'charters',    label:t('Financials analysis')},
-    {id:'decision',    label:t('Trade-off decision')},
+    {id:'workspace',   label:t('Project workspace')},
     {id:'portfolio',   label:t('Portfolio analytics')},
-    {id:'econ',        label:t('Portfolio economics')},
-    {id:'compare',     label:t('Compare')},
-    {id:'channels',    label:t('Channel mix')},
-    {id:'dtc',         label:t('Design to cost')},
-    {id:'brief',       label:t('Project brief')},
   ]},
   { id:'plan', name:t('PLAN'), ico:RAIL_I.planning, views:[
     {id:'plan',        label:t('Resource plan')},
     {id:'dashboard',   label:t('Resource balancer')},
-    {id:'timeline',    label:t('Timeline')},
     {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'people', name:t('PEOPLE'), ico:RAIL_I.team, views:[
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
-    {id:'skills',      label:t('Skills matrix')},
-    {id:'skillrisk',   label:t('Skill risk'), bdg:'SPOF'},
-    {id:'heatmap',     label:t('Heatmap')},
-    {id:'ninebox',     label:t('Nine-box')},
-    {id:'disc',        label:'DISC'},
-    {id:'profiles',    label:t('Team profiles')},
+    {id:'skills',      label:t('Skills'), bdg:'SPOF'},
+    {id:'placement',   label:t('Talent placement')},
     {id:'development', label:t('Development')},
     {id:'engagement',  label:t('Engagement')},
     {id:'analytics',   label:t('People analytics')},
   ]},
   { id:'review', name:t('REVIEW'), ico:RAIL_I.insights, views:[
     {id:'exec',        label:t('Executive summary')},
-    {id:'summary',     label:t('Summary')},
   ]},
 ];
 
@@ -120,9 +112,7 @@ var RAIL_UTIL = [
   {id:'export',   name:t('Export'),    ico:RAIL_I.exportico},
   {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
   {id:'archive',  name:t('Archive'),   ico:RAIL_I.archive},
-  {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
-  {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
-  {id:'restore',  name:t('Restore'),   ico:RAIL_I.restore},
+  {id:'data',     name:t('Data'),      ico:RAIL_I.data},
   {id:'ai',       name:t('AI advisor'),ico:RAIL_I.ai},
   {id:'settings', name:t('Settings'),  ico:RAIL_I.settings},
   {id:'help',     name:t('Help'),      ico:RAIL_I.help},
@@ -157,13 +147,14 @@ function railLoadPrefs(){
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
+              if(p.tpLens==='disc'||p.tpLens==='ninebox') _tpLens=p.tpLens;   // Talent placement remember-last lens
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -379,7 +370,7 @@ function railInit(){
   // Land on the user's chosen default view — or ask once on first run.
   // DEFER to DOMContentLoaded: the bundled script runs mid-body, so the overlays
   // that live *after* the {{JS}} placeholder (#res-overlay, #org-overlay,
-  // #snap-overlay, #brief-overlay) are not parsed yet — routing would hit null.
+  // #snap-overlay) are not parsed yet — routing would hit null.
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',railLand);
   else                                railLand();
 }
@@ -440,7 +431,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,skills:1,placement:1,development:1,analytics:1,dashboard:1,portfolio:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -448,16 +439,10 @@ function closeAllOverlays(){
   if(typeof closeRes==='function')      closeRes();
   if(typeof closeOrgChart==='function') closeOrgChart();
   if(typeof closeCompare==='function')  closeCompare();
-  if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
-  if(typeof closeCharterHub==='function') closeCharterHub();
-  if(typeof chtClose==='function')          chtClose();
-  if(typeof chtCloseDecision==='function')  chtCloseDecision();
-  if(typeof closeDtc==='function')        closeDtc();
-  if(typeof closeChannels==='function')   closeChannels();
-  if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeWorkspace==='function')  closeWorkspace();
   if(typeof closeHome==='function')       closeHome();
 }
 
@@ -466,16 +451,10 @@ function closeAllOverlays(){
 function railOpenRes(tab){
   if(typeof closeOrgChart==='function') closeOrgChart();
   if(typeof closeCompare==='function')  closeCompare();
-  if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
-  if(typeof closeCharterHub==='function') closeCharterHub();
-  if(typeof chtClose==='function')          chtClose();
-  if(typeof chtCloseDecision==='function')  chtCloseDecision();
-  if(typeof closeDtc==='function')        closeDtc();
-  if(typeof closeChannels==='function')   closeChannels();
-  if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeWorkspace==='function')  closeWorkspace();
   if(typeof closeHome==='function')       closeHome();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -484,17 +463,11 @@ function railOpenRes(tab){
 // Dispatch a view id to its existing surface. Every target verified against source.
 function railRoute(viewId){
   if(RAIL_RES_TABS[viewId]){ railOpenRes(viewId); return; }
-  closeAllOverlays();                       // org/summary/compare/matrix = single surface
+  closeAllOverlays();                       // org/matrix = single surface
   if(viewId==='matrix')       return;       // base canvas now revealed
   else if(viewId==='home')    openHome();
   else if(viewId==='org')     openOrgChart();
-  else if(viewId==='summary') openSummary();
-  else if(viewId==='compare') openCompare();
-  else if(viewId==='charters')chtOpenFinancials();
-  else if(viewId==='decision')chtOpenDecisionView();
-  else if(viewId==='dtc')     openDtc();
-  else if(viewId==='channels')openChannelsView();
-  else if(viewId==='brief')   openProjectBriefExport();
+  else if(viewId==='workspace')openWorkspace();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -526,8 +499,7 @@ function railBack(){
 }
 // Esc mirrors the ← Back button, but ONLY when a rail view overlay is the visible
 // surface (so Esc on the bare matrix, or over a modal, doesn't teleport you).
-var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','compare-overlay','summary-overlay',
-  'cht-overlay','dec-overlay','chthub-overlay','dtc-overlay','chan-overlay','brief-overlay'];
+var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','wk-overlay'];
 function railEscMaybeBack(){
   // A view overlay counts as visible if it carries the .show class OR (like the org
   // chart) is shown via an inline display:flex — checking only .show missed org, so
@@ -541,7 +513,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','archive-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay','export-picker-overlay'];
+  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -553,12 +525,29 @@ function railAction(id){
   if(id==='export')        exportOpenPicker();
   else if(id==='collab')   collabOpen();
   else if(id==='archive')  openArchive();
-  else if(id==='snap')     openSnap();
-  else if(id==='backup')   exportFullBackup();
-  else if(id==='restore')  importFullBackup();
+  else if(id==='data')     dataMenuOpen();
   else if(id==='ai')       aiOpenChat();
   else if(id==='settings') railOpenSettings();
   else if(id==='help')     openHelp();
+}
+
+/* ── DATA utility (Track B #9) — one rail door grouping the three dataset-lifecycle
+   actions that used to be separate utility icons: Snapshots (time-travel copies),
+   Backup (full export incl. photos) and Restore (load a full backup). A small modal
+   menu (#data-menu-overlay, z1100 like Settings); each button fires the existing
+   function and closes the menu. Registered in RAIL_MODAL_OVERLAYS + boot.js Esc. */
+function dataMenuOpen(){
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  var ov=G('data-menu-overlay'); if(ov) ov.classList.add('show');
+}
+function dataMenuClose(){ var ov=G('data-menu-overlay'); if(ov) ov.classList.remove('show'); }
+// A menu item fires its action then dismisses the menu.
+function dataMenuGo(action){
+  dataMenuClose();
+  if(action==='snap'    && typeof openSnap==='function')          openSnap();
+  else if(action==='backup'  && typeof exportFullBackup==='function') exportFullBackup();
+  else if(action==='restore' && typeof importFullBackup==='function') importFullBackup();
 }
 
 // collapsed: tap toggles the flyout · pinned: expand accordion + go to first view
@@ -818,7 +807,7 @@ function railChooseLanding(viewId){
    (Action overlays — snap/help — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc','closeBrief'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){

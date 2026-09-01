@@ -437,12 +437,12 @@ function renderWithAnim(W,H,pw,ph,isAnim){
 }
 
 /* ── Focus star + importance formula (matrix toolbar) ─────────────────
-   Moved here from the heatmap. The focus star already renders in the SVG
-   above (reads _hmState.showStar/starN/formula); these controls drive it.
-   State lives in _hmState (defined in heatmap.js) so the shared importance
-   formula stays in sync across the matrix and the heatmap. Rebuilt only on
-   toggle/apply — never inside render() — so typing in the formula field
-   isn't interrupted by pan/zoom re-renders. */
+   The focus star already renders in the SVG above (reads
+   _hmState.showStar/starN/formula); these controls drive it. State lives in
+   _hmState (defined in heatmap.js, which now holds only this shared importance
+   state after the Heatmap view was removed). Rebuilt only on toggle/apply —
+   never inside render() — so typing in the formula field isn't interrupted by
+   pan/zoom re-renders. */
 
 // renders the focus-star toggle + collapsible importance-formula panel
 function renderFocusBar(){

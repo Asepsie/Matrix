@@ -174,15 +174,10 @@ export function tlEarliestFit(demand, capByMonth, fromIdx){
 /* ══ Capacity-plan mode — the forward scheduler UI (see TIMELINE-PLAN.md) ══════ */
 
 // The Gantt/Plan mode toggle, shown atop both views.
-function tlModeBar(){
-  function b(mode,label){ var on=_tlState.mode===mode;
-    return '<button onclick="tlSetMode(\''+mode+'\')" class="sm'+(on?' active':'')+'" style="font-size:9px;padding:2px 10px'
-      +(on?';border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.08)':'')+'">'+label+'</button>'; }
-  return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">VIEW</span>'
-    +b('gantt','▦ '+t('By project'))+b('resource','◧ '+t('By resource'))+b('plan','⛰ '+t('Capacity plan'))+'</div>';
-}
-function tlSetMode(m){ _tlState.mode=(m==='plan'?'plan':(m==='resource'?'resource':'gantt')); renderTimeline(); }
+/* The timeline mode bar is now the unified PLAN mode bar (planModeBar / planSetMode
+   in plan.js) — GRID · GANTT · RIBBON · CAPACITY — since the Timeline was merged into
+   the Plan view (Track B #5). renderTimeline still dispatches on _tlState.mode for the
+   three timeline modes; planSetMode keeps _tlState.mode in sync. */
 
 // Candidate rows for the plan: proposed/on_hold projects with a demand estimate; startIdx from
 // the persisted charter.demand.startMonth (unset → unscheduled = "to place").
@@ -232,6 +227,7 @@ function tlPlanCandRow(cand, months, LW, CW, result, supplyMax){
    +'<span style="font-size:10px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escH(cand.name)+'">'+escH(cand.name)+'</span>'
    +flag
    +'<select onchange="tlSetStart('+cand.id+',this.value)" title="'+escH(t('Start month'))+'" style="font-size:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:1px 2px;max-width:52px">'+opts+'</select>'
+   +(cand.scheduled?tlCommitBtn(cand):'')
    +'</div><div style="display:flex">';
   months.forEach(function(m,i){
     var load=loadByIdx[i]||0, barH=Math.round(Math.min(1,load/supplyMax)*100), br=breachMonth[i];
@@ -253,7 +249,7 @@ function renderTimelinePlan(body, months, cur){
   var sched=tlSchedule(scheduled, cap);
   var supplyMax=Math.max(1, cap.reduce(function(m,c){ return Math.max(m,c.supply); },0));
 
-  var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">'+tlModeBar();
+  var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">'+planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">'+t('CAPACITY PLAN — SCHEDULE THE PIPELINE')+'</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{a} scheduled · {b} to place · {n} months',{a:scheduled.length,b:unscheduled.length,n:months.length})+'</span>'
@@ -313,6 +309,52 @@ function tlAutoLevel(){
   renderTimeline();
 }
 
+/* ── Commit-loop: turn a SCHEDULED candidate's demand spread into real (unassigned)
+   allocation rows in the plan Grid (Track B #5 follow-up). The rows carry engId=null
+   (unassigned staffing slots to be filled by a person) and a sentinel budgetLine so a
+   re-commit replaces only THIS project's prior committed rows, never a manually-added
+   one. Deliberately does NOT change lifecycle — funding stays a separate, explicit
+   step (the demand is suppressed until the project is funded, which is consistent). */
+var TL_COMMIT_TAG='Capacity plan';
+function tlCommitBtn(cand){
+  var committed=allocRows.some(function(r){return r.projectId===cand.id&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG;});
+  return '<button onclick="tlCommitCandidate('+cand.id+')" title="'+escH(committed?t('Re-commit this demand into the plan Grid (Grid mode) as unassigned staffing rows'):t('Commit this demand into the plan Grid (Grid mode) as unassigned staffing rows'))+'" '
+    +'style="font-size:9px;line-height:1;padding:2px 5px;border:1px solid '+(committed?'var(--accent2)':'var(--accent)')+';color:'+(committed?'var(--accent2)':'var(--accent)')+';background:transparent;border-radius:3px;cursor:pointer;flex-shrink:0">'+(committed?'✓':'⤓')+'</button>';
+}
+function tlCommitCandidate(pid){
+  pid=Number(pid);
+  var p=projects.find(function(x){return x.id===pid;}); if(!p) return;
+  var months=getMonthRange(); if(!months.length){ alert(t('Set a FROM/TO period first.')); return; }
+  var cand=tlPlanCandidates(months).find(function(c){return c.id===pid;});
+  if(!cand){ alert(t('This project is no longer a schedulable candidate.')); return; }
+  if(!cand.scheduled){ alert(t('Pick a start month for this candidate first.')); return; }
+  var spread=tlSpreadDemand(cand.demand, cand.startIdx, months.length);
+  if(!spread.cells.length){ alert(t('Nothing to commit — check the demand estimate (peak FTE + FTE·months).')); return; }
+  // Distribute each month's aggregate FTE across ceil(peakFte) unassigned rows so every
+  // row stays a valid 0–1 per-person allocation (a person can't be >100% on one line).
+  var peak=Math.max(1, Math.ceil(+cand.demand.peakFte||1));
+  var rowMaps=[]; for(var k=0;k<peak;k++) rowMaps.push({});
+  var totalFte=0;
+  spread.cells.forEach(function(c){
+    var rem=c.total; totalFte+=c.total;
+    for(var j=0;j<peak && rem>0.0001;j++){ var v=Math.min(1,rem); rowMaps[j][months[c.idx]]=+v.toFixed(3); rem-=v; }
+  });
+  var nRows=rowMaps.filter(function(m){return Object.keys(m).length;}).length;
+  if(!nRows){ alert(t('Nothing to commit — the demand did not land in the current period.')); return; }
+  var existing=allocRows.filter(function(r){return r.projectId===pid&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG;});
+  var msg=t('Commit “{p}” as {n} unassigned staffing row(s) in the plan Grid — {f} FTE·months from {m}. Assign people to them (and fund the project) separately.',{p:(p.name||'project'),n:nRows,f:totalFte.toFixed(1),m:cand.startMonth});
+  if(existing.length) msg+='\n\n'+t('This replaces {n} row(s) from a previous commit of this project.',{n:existing.length});
+  if(!confirm(msg)) return;
+  // Undo safety net: an auto full snapshot before we mutate allocRows.
+  try{ if(typeof takeSnap==='function') takeSnap(t('Before committing capacity plan'),'full',t('Auto: before writing “{p}” demand into the plan',{p:(p.name||'')}),true); }catch(e){}
+  // Replace only THIS project's prior committed rows (never a manual unassigned row).
+  for(var i=allocRows.length-1;i>=0;i--){ var r=allocRows[i]; if(r.projectId===pid&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG) allocRows.splice(i,1); }
+  rowMaps.forEach(function(am){ if(Object.keys(am).length) allocRows.push({uid:newUid(),id:nextAllocId++,engId:null,projectId:pid,engUid:null,projectUid:(p.uid||null),allocs:am,budgetLine:TL_COMMIT_TAG}); });
+  saveState();
+  if(typeof flashSaved==='function') flashSaved();
+  renderTimeline();
+}
+
 // renders the timeline grid (project bars, engineer rows, conflicts)
 function renderTimeline(){
   var body=G('res-body');if(!body)return;
@@ -361,7 +403,7 @@ function renderTimeline(){
   var ENG_H=24;
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
-  h+=tlModeBar();
+  h+=planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">PROJECT TIMELINE &amp; RESOURCE CONFLICTS</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+activeProjects.length+' active projects · '+months.length+' months</span>'
@@ -593,9 +635,10 @@ function _tlEngDrop(e,targetId){
 // by-resource mode focused on one engineer's lane.
 function tlOpenResource(engId){
   _tlState.mode='resource';
+  if(typeof _planMode!=='undefined') _planMode='resource';   // merged Plan view mode axis
   _tlState.focusEng=(engId!=null)?+engId:null;
-  if(typeof railGo==='function') railGo(null,'timeline');
-  else if(typeof showResTab==='function') showResTab('timeline');
+  if(typeof railGo==='function') railGo(null,'plan');
+  else if(typeof showResTab==='function') showResTab('plan');
 }
 
 // A distinct, dark-mode-legible categorical palette (extends past 8 so many projects stay
@@ -721,7 +764,7 @@ function renderTimelineResource(body, months, cur){
     if(!projSeen[k]) projSeen[k]={pid:(r.proj?r.proj.id:null),name:r.proj?(r.proj.name||t('Untitled')):t('Unassigned'),color:safeColor(r.proj?r.proj.color:'var(--muted)','var(--muted)'),funded:r.funded}; }); });
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
-  h+=tlModeBar();
+  h+=planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">'+t('RESOURCE ALLOCATION OVER TIME')+'</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{n} people',{n:displayed.length})+' · '+months.length+' '+t('months')+(overCount?' · <span style="color:var(--danger)">'+t('{n} over-allocated',{n:overCount})+'</span>':'')+'</span>'

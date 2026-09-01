@@ -28,7 +28,7 @@ area.
 | Cross-functional charter (demands / square / financials / deck) | src/sections/charter.js, src/core/financial.js (+ ARCHITECTURE.md) |
 | Design-to-cost (cascade / waterfall / guidelines) | src/sections/dtc.js (+ ARCHITECTURE.md) |
 | Channel mix / go-to-market synoptic | src/sections/channels.js (+ ARCHITECTURE.md) |
-| Portfolio economics (cross-layer analytics) | src/sections/econ.js (+ ARCHITECTURE.md) |
+| Portfolio economics (now the "Economics" lens of Portfolio analytics) | src/sections/econ.js (`ecBody`) + portfolio.js lens toggle (+ ARCHITECTURE.md) |
 | Executive summary (one-page cockpit) | src/sections/exec.js (+ ARCHITECTURE.md) |
 | Project pipeline / intake & feasibility (candidate ranking, budget vs capacity frontier) | src/sections/pipeline.js (+ ARCHITECTURE.md › Pipeline board; **PIPELINE-PLAN.md** for the running TODO) |
 | Project lifecycle (fund/hold/kill/maintenance/withdraw/EoL; capacity suppression) | src/core/globals.js (PROJECT_LIFECYCLE) + src/core/helpers.js (accessors, projSetLifecycle) (+ ARCHITECTURE.md › Project lifecycle) |
@@ -46,6 +46,15 @@ area.
 ## Build
 node build.js → dist/matrix.html
 node --test tests/*.test.js → run unit tests
+
+## Full-app smoke test
+After the Track B nav-simplification work, **SMOKE-TEST.md** is a self-contained
+checklist (build/serve/seed + click-through of every merged view) to verify the app
+end-to-end in a fresh session. Run it in-browser over localhost (file:// won't work in
+the pane). Current rail = 17 views across HOME/PORTFOLIO/PLAN/PEOPLE/REVIEW + 7 utilities
+(Nine-box + DISC are merged into one **Talent placement** view with a Nine-box|DISC lens
+toggle — `renderTalentPlacement`/`tpSetLens`/`tpGo` in ninebox.js; lens is remember-last,
+`_tpLens` persisted in rail prefs).
 
 ## Critical invariants (checked by build.js)
 1. No </script> inside JS strings — split as '<scr'+'ipt>'

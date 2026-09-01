@@ -1308,7 +1308,24 @@ function anStoryPayProgression(data){
 /* ══════════════════════════════════════════════════════════════════
    5. TAB SHELL + render orchestration
    ══════════════════════════════════════════════════════════════════ */
+/* People view: two lenses in one tab (Track B #6) — Analytics (this story/dimension
+   engine) and Profiles (the card grid, profiles.js). renderPeople() dispatches on
+   _peopleLens; each lens renderer sets it so the toggle always reflects what's shown. */
+var _peopleLens='analytics';
+function renderPeople(){ if(_peopleLens==='profiles' && typeof renderProfilesTab==='function') renderProfilesTab(); else renderAnalyticsTab(); }
+function peopleSetLens(l){ if(l==='profiles' && typeof renderProfilesTab==='function') renderProfilesTab(); else renderAnalyticsTab(); }
+function peopleLensBar(){
+  const mk=(id,label)=>{ const on=_peopleLens===id;
+    return '<button onclick="peopleSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">◎ '+t('PEOPLE')+'</span>'
+    +'<div style="display:flex;gap:6px">'+mk('analytics',t('Analytics'))+mk('profiles',t('Profiles'))+'</div></div>';
+}
+
 export function renderAnalyticsTab(){
+  _peopleLens='analytics';
   const dimsByGroup = {};
   ANALYTICS_DIMENSIONS.forEach(d => { (dimsByGroup[d.group] = dimsByGroup[d.group] || []).push(d); });
   const dimOpts = sel => '<option value="">'+t('— none —')+'</option>' + Object.keys(dimsByGroup).map(grp =>
@@ -1336,6 +1353,7 @@ export function renderAnalyticsTab(){
       + (on?'▾ ':'▸ ')+label+'</button>'; };
 
   let h = '<div style="padding:14px 16px">';
+  h += peopleLensBar();
   // Story pills + view toggles
   h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
     + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('STORY VIEWS')+'</span>'

@@ -83,18 +83,15 @@ function ecBar(label,frac,rightHtml,color,title){
 function ecEur(v){ return (typeof pfEur==='function') ? pfEur(v) : Math.round(+v||0)+'€'; }
 function ecPct(v){ return v==null||!Number.isFinite(v) ? '—' : v.toFixed(1)+'%'; }
 
-// ── entry point ──────────────────────────────────────────────────────────────
-function renderEconTab(){
-  const body=G('res-body'); if(!body) return;
-  const ds=ecDataset();
-  const months=getMonthRange();
-  let h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
-  h+='<div style="display:flex;align-items:baseline;gap:10px">'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ECONOMICS')+'</span>'
-    +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
-    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
-    +'</span><div style="flex:1"></div>'+analyticsArchivedToggle('renderEconTab')+'</div>';
-  if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
+// ── economics lens body ──────────────────────────────────────────────────────
+// The old standalone `renderEconTab` is merged into Portfolio analytics as the
+// "Economics" lens (portfolio.js). This returns just the sections (scorecard +
+// analyses); the shared header (title / FROM-TO context / archived toggle) is
+// rendered once by renderPortfolioAnalytics. Assumes projects.length>0 (the
+// caller short-circuits the empty case). Revenue here is `expectedRevenueM`
+// (charter), NOT the Overview lens' impact revenue — a deliberately different base.
+function ecBody(ds){
+  let h='';
   h+=ecScorecard(ds);
   h+=pfSection(t('CAPITAL ALLOCATION — value per €'), t('NPV created against capital invested, ranked by profitability index (PV of inflows ÷ outlay). PI > 1 creates value; fund the top, review the bottom.'), ecCapital(ds));
   h+=pfSection(t('CHANNEL PROFIT POOLS'), t('Revenue vs gross profit (revenue × channel margin) by channel. A big low-margin channel can trail a small high-margin one — profit, not revenue, is the ranking that matters.'), ecPools('byChannel'));
@@ -107,8 +104,7 @@ function renderEconTab(){
   h+=pfSection(t('DECISION QUALITY'), t('Trade-off conflicts and low cross-functional alignment on high-value projects — execution risk on your best bets.'), ecDecision(ds));
   h+=pfSection(t('VALUE PER FTE'), t('NPV and revenue per average FTE over the period — the productivity of where people are placed.'), ecValuePerFte(ds));
   h+='<div id="ec-sec-traj">'+ecTrajectoryShell()+'</div>';
-  h+='</div>';
-  body.innerHTML=h;
+  return h;
 }
 
 // ── 1. scorecard ─────────────────────────────────────────────────────────────

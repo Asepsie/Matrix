@@ -70,24 +70,30 @@ function pfBuildDataset(){
 // Entry point — assemble the tab into #res-body.
 function renderPortfolioAnalytics(){
   var body=G('res-body'); if(!body) return;
-  var ds=pfBuildDataset();
   var months=getMonthRange();
+  var lens=(_pfState.lens==='economics')?'economics':'overview';
   var h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
-  h+='<div style="display:flex;align-items:baseline;gap:10px">'
+  h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ANALYTICS')+'</span>'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
-    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
-    +'</span><div style="flex:1"></div>'+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
+    +(lens==='economics' ? t('value · NPV · channel profit · decision quality')
+        : (months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost')))
+    +'</span><div style="flex:1"></div>'+pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
   if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
-  h+=pfScorecard(ds);
-  h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
-  h+=pfSection(t('VALUE vs COST — ROI'),      t('Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.'), pfRoiChart(ds));
-  h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
-  h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
-  h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
-  h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on OFFER MNGT ▸ Channel mix.'), pfChannelMix(ds));
-  h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
-  h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
+  if(lens==='economics'){
+    h+=(typeof ecBody==='function') ? ecBody(ecDataset()) : pfEmpty(t('Economics view unavailable.'));
+  } else {
+    var ds=pfBuildDataset();
+    h+=pfScorecard(ds);
+    h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
+    h+=pfSection(t('VALUE vs COST — ROI'),      t('Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.'), pfRoiChart(ds));
+    h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
+    h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
+    h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
+    h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on the Project workspace ▸ Channels tab.'), pfChannelMix(ds));
+    h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
+    h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
+  }
   h+='</div>';
   body.innerHTML=h;
 }
@@ -273,7 +279,26 @@ function pfRiskValue(ds){
 /* ══ INTERACTIVE SECTIONS (treemap · burn · distribution) ══════════════
    Small module state + a generic re-render router so each section's controls
    re-render only their own wrapper (no full-tab reflow, no scroll jump). */
-var _pfState={ treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+var _pfState={ lens:'overview', treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+
+// Two lenses in one tab (Track B #1 — folds the former Portfolio economics view in):
+//  overview  = delivery analytics (impact-revenue ROI, gates, sectors, risk, treemap, burn, dist)
+//  economics = value analytics (NPV/PI, channel profit pools, margin realism, decision quality)
+// Kept as lenses (not one long tab) so the two DIFFERENT revenue bases — Overview uses
+// impact revenue (projRevenueM); Economics uses charter expectedRevenueM — are never summed
+// or shown side-by-side, avoiding a double-counted-€ read.
+function pfLensToggle(){
+  var L=(_pfState.lens==='economics')?'economics':'overview';
+  return '<div style="display:flex;gap:6px">'
+    +pfToggle("pfSetLens('overview')",  t('Overview'),  L==='overview')
+    +pfToggle("pfSetLens('economics')", t('Economics'), L==='economics')+'</div>';
+}
+function pfSetLens(lens){ _pfState.lens=(lens==='economics')?'economics':'overview'; renderPortfolioAnalytics(); }
+// Deep-link entry (used by the Executive summary): open Portfolio analytics on a lens.
+function pfOpenLens(ev,lens){
+  _pfState.lens=(lens==='economics')?'economics':'overview';
+  if(typeof railGo==='function') railGo(ev,'portfolio'); else renderPortfolioAnalytics();
+}
 var PF_SEL='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer';
 
 // Set a control value and re-render just the affected section wrapper.

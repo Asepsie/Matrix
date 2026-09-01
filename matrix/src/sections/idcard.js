@@ -176,7 +176,7 @@ export function saveIdCardModal(){
   eng.idcard.reviews=_idcReviews.map(function(x){return {year:x.year||'',rating:x.rating||'',comments:x.comments||''};});
   saveState();
   closeIdCardModal();
-  if(resActiveTab==='profiles')renderProfilesTab();
+  if(resActiveTab==='analytics'&&typeof renderPeople==='function')renderPeople();
   else if(G('eng-roster'))renderResPlan();
 }
 

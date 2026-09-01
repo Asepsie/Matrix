@@ -293,7 +293,7 @@ function _balPortfolioView(){
    +multiSelectHTML('dash-proj',allProjNames,engDashFilterProj,'onDashFilterProjChange',t('Projects'))
    +clearBtn
    +'<div class="db-tb-actions">'
-   +'<button class="sm" onclick="showResTab(\'timeline\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
+   +'<button class="sm" onclick="planGo(event,\'gantt\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
    +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
@@ -356,7 +356,7 @@ function _balPortfolioView(){
    +'<div class="db-stat'+(spofSkills.length?' db-stat--warn':'')+'"><span class="db-sev"></span>'
    +'<div class="db-stat-v"'+(spofSkills.length?'':' style="color:var(--accent)"')+'>'+spofSkills.length+'</div><div class="db-stat-k">'+t('CRITICAL SPOF SKILLS')+'</div>'
    +'<div class="db-stat-d">'+t('Single-person critical skills')+'</div>'
-   +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="showResTab(\'skillrisk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
+   +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="skGo(event,\'risk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
    +'</div>';
 
   // ── Monthly demand vs capacity chart ───────────────────────────

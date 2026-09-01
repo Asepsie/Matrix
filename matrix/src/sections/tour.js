@@ -36,23 +36,27 @@ var TOUR_COPY = {
     +'nine-box placement, compa-ratio, succession and engagement cadence. '
     +'Everyone here flows into cost, skills, talent and analytics.' },
   plan: { icon:'📅', body:
-    'Allocate engineers to projects month by month (0–100% FTE). '
-    +'A cell can carry a status — <code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned — '
-    +'which changes how it costs. Group <strong>by engineer</strong> or <strong>by project</strong>. '
-    +'This is the single source every cost number is summed from.' },
+    'Allocate engineers to projects month by month (0–100% FTE) in <strong>Grid</strong> mode — a cell can '
+    +'carry a status (<code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned) that changes how it '
+    +'costs; this grid is the single source every cost number is summed from. The mode bar also gives you '
+    +'<strong>Gantt</strong> (project bars over time), <strong>Ribbon</strong> (per-person capacity crossover) '
+    +'and <strong>Capacity</strong> (schedule forward demand against free bench) — all on the same allocation data.' },
   dashboard: { icon:'⚖', body:
     'The capacity cockpit: team supply vs demand, a monthly <strong>demand-vs-capacity</strong> chart, '
     +'capacity balance by function, per-engineer utilisation and over/under-allocation alerts. '
     +'Overloaded someone? A <strong>suggested swap</strong> and <strong>Find replacements</strong> '
     +'surface available substitutes; the availability panel shows who is free and what they can do.' },
-  skillrisk: { icon:'🛡', body:
-    'Your <strong>Single Points of Failure</strong> — skills held by only one person. '
-    +'Shows coverage, holder count and whether a knowledge-transfer plan exists. '
-    +'This is where fragility becomes visible before someone resigns.' },
-  ninebox: { icon:'⊞', body:
-    'The classic <strong>Performance × Potential</strong> grid. Placements feed development '
-    +'priorities, salary signals and the org-chart KPI panel — and are tracked per year, so you '
-    +'can see a person’s trajectory over time.' },
+  skills: { icon:'🛡', body:
+    'Your skill inventory in two lenses. <strong>Matrix</strong> is the dictionary — every skill '
+    +'with its category, domain, holders and levels, plus rename / merge / split. <strong>Risk</strong> '
+    +'surfaces <strong>Single Points of Failure</strong> (skills held by one person), coverage and '
+    +'knowledge-transfer plans — where fragility becomes visible before someone resigns.' },
+  placement: { icon:'⊞', body:
+    'Calibrate your team on two grids, switchable by the lens toggle. <strong>Nine-box</strong> is '
+    +'the classic <strong>Performance × Potential</strong> grid — placements feed development '
+    +'priorities, salary signals and the org-chart KPI panel, and are tracked per year so you can see '
+    +'a person’s trajectory over time. <strong>DISC</strong> plots behavioural style across four '
+    +'quadrants. Both feed the talent story views in People analytics.' },
   exec: { icon:'◈', body:
     'A one-page, read-only cockpit that crosses every layer — portfolio value (NPV / PI), cost & '
     +'spend map, capacity, talent risk and channel concentration — with a <strong>week planner</strong> '

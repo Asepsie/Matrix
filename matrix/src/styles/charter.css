@@ -1,9 +1,28 @@
-/* ►► CHARTER ◄◄ Now two rail-inset PANELS (like Design-to-cost), not full-cover
- * modals: #cht-overlay = "Financials analysis" (overview/demands/financials tabs)
- * and #dec-overlay = "Trade-off decision" (the configurable triangle(s) + lists).
- * Both stay rail-inset (left:var(--rail)) and sit ABOVE the Charters HUB
- * (#chthub-overlay, z400) so a hub card opens a panel over the grid; closing the
- * panel reveals the hub again. The deck/synopsis remain modals on top. */
+/* ►► CHARTER ◄◄ Styles for the charter/DTC/channel bodies, which now render as TABS
+ * of the Project workspace (#wk-overlay — see below). The former standalone panel
+ * overlays (#cht-overlay/#dec-overlay/#chan-overlay/#dtc-overlay) and the Charters hub
+ * were removed; their #*-body rules are reused inside #wk-body. Deck/synopsis remain
+ * modals on top. (Some dead #*-overlay container rules are left below, harmless.) */
+
+/* ── Project workspace (PORTFOLIO › Project workspace) — the merged shell that
+ * hosts the former Financials / Trade-off / Channels / Design-to-cost panels as
+ * tabs. The per-panel body <div>s (#cht-body/#dec-body/#chan-body/#dtc-body) live
+ * inside #wk-body; only the active one is shown (toggled inline by workspace.js). */
+#wk-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#wk-overlay.show{ display:flex; }
+#wk-header{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#wk-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#wk-pick{ display:inline-flex; align-items:center; gap:6px; }
+#wk-header button{ margin-left:4px; }
+#wk-tabs{ display:flex; gap:2px; padding:0 12px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+/* One flex column; the active per-panel body (all flex:1) fills + scrolls. */
+#wk-body{ flex:1; min-height:0; display:flex; flex-direction:column; }
 
 #cht-overlay{
   display:none; position:fixed; inset:0; left:var(--rail);
@@ -291,37 +310,8 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .cht-stance-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
 .cht-stance-grid .cht-f{ margin:0; }
 
-/* ── Charters hub (rail view) ── */
-#chthub-overlay{
-  display:none; position:fixed; inset:0; left:var(--rail);
-  background:var(--bg); z-index:400; flex-direction:column;
-}
-#chthub-overlay.show{ display:flex; }
-#chthub-header{
-  display:flex; align-items:center; gap:10px;
-  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
-}
-#chthub-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
-#chthub-body{ flex:1; overflow:auto; padding:18px 22px; }
-.chthub-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
-.chthub-card{
-  background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:14px; cursor:pointer; transition:border-color .12s, transform .12s;
-}
-.chthub-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
-.chthub-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:10px; }
-.chthub-name{ font-size:14px; font-weight:600; color:var(--text); }
-.chthub-status{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
-.chthub-badges{ display:flex; flex-wrap:wrap; gap:6px; }
-.chthub-prio, .chthub-metric{
-  font-family:IBM Plex Mono,monospace; font-size:10px; padding:2px 7px; border-radius:10px;
-  border:1px solid var(--border); color:var(--muted);
-}
-.chthub-prio.hi{ color:var(--danger); border-color:var(--danger); }
-.chthub-prio.med{ color:var(--warn); border-color:var(--warn); }
-.chthub-prio.lo{ color:var(--muted); }
-.chthub-metric.ok{ color:var(--accent2); border-color:var(--accent2); }
-.chthub-metric.conflict{ color:var(--danger); border-color:var(--danger); }
+/* (Charters hub CSS removed — the hub was cut when the 4 charter panels merged into
+   #wk-overlay, Track B #2 + cleanup.) */
 
 /* ── Channel mix (OFFER MNGT › Channel mix rail view) ── */
 #chan-overlay{

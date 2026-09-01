@@ -13,15 +13,11 @@
 let _dtcProjId = null;
 const _dtcOpen = new Set();   // expanded subsystem indices (UI-only, not persisted)
 
-// ── open / close (rail view) ─────────────────────────────────────────────────
-export function openDtc(){
-  if(!G('dtc-overlay')) return;
-  if(_dtcProjId==null || !projects.some(p=>p.id===_dtcProjId))
-    _dtcProjId = projects.length ? projects[0].id : null;
-  G('dtc-overlay').classList.add('show');
-  dtcRender();
-}
-export function closeDtc(){ const o=G('dtc-overlay'); if(o) o.classList.remove('show'); }
+// ── open / close (merged into the Project workspace shell) ───────────────────
+// Design-to-cost is now a tab of the Project workspace (workspace.js); these
+// openers redirect there, landing on the Design-to-cost tab.
+export function openDtc(){ if(typeof wkOpen==='function') wkOpen('dtc'); }
+export function closeDtc(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
 
 function dtcCharter(){
   const p=projects.find(x=>x.id===_dtcProjId);
@@ -33,7 +29,10 @@ function dtcCharter(){
 function dtcSave(){ saveState(); }
 function dtcEur(v){ return v==null||!Number.isFinite(+v) ? '—' : `€${(+v).toLocaleString('en-US',{maximumFractionDigits:2})}`; }
 
-export function dtcSelectProject(id){ _dtcProjId=+id; dtcRender(); }
+export function dtcSelectProject(id){
+  if(typeof wkSelectProject==='function'){ wkSelectProject(id); return; }
+  _dtcProjId=+id; dtcRender();
+}
 
 // ── top-level render ─────────────────────────────────────────────────────────
 function dtcRender(){

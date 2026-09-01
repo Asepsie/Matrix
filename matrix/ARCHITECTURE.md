@@ -966,6 +966,13 @@ canvas is no longer the front door — it's one view under OFFER MNGT (the renam
   `activeView='matrix'` so the highlight stays truthful — railnav wraps
   `closeRes/closeOrgChart/closeCompare/closeSummary` once at load, guarded by the
   `railRouting` flag so rail-driven navigation doesn't self-reset.
+- **Compare is a matrix sub-mode, not a rail view (Track B #3).** The old `compare` rail entry is
+  gone; the two-panel dual-Y comparison opens from a `⧉ COMPARE` button in `#matrix-toolbar`
+  (`matrixOpenCompare` seeds the panels from the current matrix `yMode`). `compare-overlay` moved
+  from `RAIL_VIEW_OVERLAYS` → `RAIL_MODAL_OVERLAYS` and gained a `closeCompare()` call in boot.js's
+  Esc handler, so Esc dismisses it like a modal (no back-navigation) and returns to the matrix. The
+  `C` keyboard shortcut still opens it. (`renderCompareSVG` already reused the matrix's axis/zoom
+  state, so this was a demote, not a rewrite.)
 - **Hover-drawer + prefs.** Collapsed rail expands on hover and auto-collapses on leave
   (toggle in Settings); the pin button locks it open; `railIsOpen()`=pinned‖hoverOpen.
   UI-only prefs — `{hoverMode, landing, railWidth, chartPicker, badgeScope, scrollbar, viewOrder}` —
@@ -1045,9 +1052,10 @@ res-header" is obsolete — the rail owns navigation now.)
   €/ROI/gate/sector/risk plus treemap, cost-over-time burn, a distribution panel
   (histogram + Gaussian / Pareto), and a channel-mix block (`pfChannelMix` via `chanAggregate`).
   All `pf`-prefixed; reuses `getMonthRange` / `_allocCost` / `_engByIdMap`. Interactive sub-controls
-  re-render only their own wrapper via `pfSet`. *Portfolio economics* = [econ.js](src/sections/econ.js)
-  (`renderEconTab`, `ec`-prefixed) — the cross-layer value×cost×channel×decision tab (its own
-  ARCHITECTURE section below); it reuses `pfBuildDataset`/`pfSection`/`pfEur` and the channel helpers.
+  re-render only their own wrapper via `pfSet`. **Portfolio analytics now has two lenses**
+  (`Overview | Economics`, `_pfState.lens`): the Economics lens is the former *Portfolio economics*
+  tab ([econ.js](src/sections/econ.js), `ec`-prefixed, `ecBody(ds)`) folded in — see its own
+  ARCHITECTURE section below; it reuses `pfBuildDataset`/`pfSection`/`pfEur` and the channel helpers.
 - **Spend-map treemap has two axes of control** (`_pfState.treemapBy` = `cost|revenue`,
   `_pfState.treemapGroup` = `none|intent`). `intent` mode = a **nested** treemap:
   outer cells are `project.tacticalIntent` groups (`pfTreemapGroupedSvg`, squarified twice —
@@ -1091,6 +1099,27 @@ auto-insights. Chart primitives are pure **SVG-string builders** (`anBarChart`/`
   an **auto-insight chip** — all three read the same per-row value, so they never diverge.
   It deliberately **fuses** the flight-risk logic here with the rule-based priority signals in
   [development.js](src/sections/development.js) into one ranked "who needs attention" view.
+
+---
+
+## Skills view — Matrix | Risk lenses; Heatmap removed (Track B #4)
+
+The former **Skill risk** rail view is merged into **Skills** as a second lens
+([skills.js](src/sections/skills.js)). `renderSkills()` is the single `showResTab('skills')`
+entry; a `skLensBar()` toggle (`Matrix | Risk`, state `_skLens`) switches between
+`renderSkillsTab()` (the inventory/dictionary — categories, domains, holders, rename/merge/split)
+and `renderSkillRisk()` (SPOF / coverage / KT planner). **Each lens renderer sets `_skLens` itself**
+(top of the function) so the toggle always reflects what's on screen even when the lens's own
+controls (which call `renderSkillsTab()`/`renderSkillRisk()` directly on every keystroke) re-render.
+`skGo(ev,'risk')` is the deep-link opener — used by the dashboard SPOF chip and the Exec SPOF KPI
+(via `xsNav`). The rail keeps one `skills` entry (label `Skills`, `bdg:'SPOF'`).
+
+- **⚠ Heatmap-removal gotcha:** the **Heatmap** view (project importance × team-performance grid)
+  was removed, but [heatmap.js](src/sections/heatmap.js) stays in the build because it still owns
+  **`_hmState` + `_hmImportance`** — the importance-formula state the **Portfolio matrix** focus-star
+  reads (`renderFocusBar`/`mtx*` in [matrix.js](src/sections/matrix.js)). The file was slimmed to just
+  those two; the grid renderer and its perf-bucket helpers are gone. Don't delete heatmap.js or the
+  matrix focus star breaks.
 
 ---
 
@@ -1237,12 +1266,37 @@ over-allocated). If a future ask is "count un-funded work in utilisation too", t
 user declined here — it would mean broadening the suppression set in `_computeEngUtil` (app-wide blast
 radius: exec/home/timeline/development all read `_buildEngUtil`).
 
-## Timeline — by-resource ribbon ([timeline.js](src/sections/timeline.js))
+## Timeline — merged into the Plan view as GANTT/RIBBON/CAPACITY modes (Track B #5)
 
-The timeline is a mode dispatcher (`_tlState.mode`): **`gantt`** ("By project" — project rows, nested
-engineer rows), **`resource`** ("By resource" — added 2026-08-27), **`plan`** (capacity scheduler).
-`renderTimeline` early-returns to `renderTimelinePlan`/`renderTimelineResource`; `tlModeBar`/`tlSetMode`
-gate the three.
+**The standalone Timeline rail view is gone.** Its three renderers are now three of the four modes of
+the **Resource plan** view (`PLAN › Resource plan`), joined by the editable grid:
+
+- **Unified mode bar** = `planModeBar()` + `planSetMode()` in [plan.js](src/sections/plan.js), state
+  `_planMode` (`grid | gantt | resource | plan`), rendered as **GRID · GANTT · RIBBON · CAPACITY**.
+  `renderPlan()` is the nav entry (`showResTab('plan')`/`renderResActiveTab`/`buildAllocTable` all route
+  through it): `grid` → `renderResPlan()` (the allocation grid, which sets `_planMode='grid'` + prepends the
+  bar); the other three → set `_tlState.mode` and call `renderTimeline()`. The old `tlModeBar`/`tlSetMode`
+  were deleted; the three timeline renderers now emit `planModeBar()`. This works because Plan and Timeline
+  were already sibling Resources tabs sharing the global FROM/TO period — so switching mode never loses
+  context, and a grid edit is instantly visible on flipping to Ribbon/Gantt.
+- **Deep-links:** `planGo(ev,mode)` opens the Plan view on a mode (the balancer's `⊟ TIMELINE` button →
+  `gantt`); `tlOpenResource(engId)` (balancer per-resource cross-link) sets `_planMode='resource'` and
+  `railGo(null,'plan')`, still one-shot-focusing the lane via `_tlState.focusEng`.
+- **The commit-loop (DONE — the "very powerful" step).** Each SCHEDULED candidate in CAPACITY mode has a
+  **⤓ Commit** button (`tlCommitBtn`/`tlCommitCandidate`): it turns that candidate's demand spread
+  (`tlSpreadDemand`) into **real unassigned `allocRows` in the GRID** — staffing slots to fill with people.
+  Design decisions (user's calls): (1) it writes **unassigned rows only** (`engId=null`) and does **NOT**
+  change lifecycle — funding stays a separate, explicit step (so the demand is suppressed until funded,
+  which is consistent). (2) It's guarded by a `confirm()` **and takes an auto full snapshot first**
+  (`takeSnap(...,true)`) for undo. Since demand is aggregate FTE but a row is one person (0–1), the month
+  totals are **distributed across `ceil(peakFte)` rows** (each ≤1.0). Committed rows carry a sentinel
+  `budgetLine='Capacity plan'` (`TL_COMMIT_TAG`) so a **re-commit replaces only this project's prior
+  committed rows** — never a manually-added unassigned row. The button shows ✓ once committed. This closes
+  the plan-forward → staff-it loop inside one view. Gantt/matrix rows still read numeric `id`, unchanged.
+
+`renderTimeline` is still a mode dispatcher (`_tlState.mode`): **`gantt`** ("By project" — project rows,
+nested engineer rows), **`resource`** ("By resource"), **`plan`** (capacity scheduler). It early-returns to
+`renderTimelinePlan`/`renderTimelineResource`; the mode bar (now shared) gates the three.
 
 **By-resource** = one drag-reorderable lane per engineer, each a small **SVG stacked-area ribbon**
 (`_tlLaneSvg`) showing that person's allocation split by project colour over the FROM/TO months, so a
@@ -1346,30 +1400,46 @@ styles in [src/styles/charter.css](src/styles/charter.css); tests in
 and no CAPEX/OPEX** by design (both were dropped — a single-user local tool can't enforce
 approvals, and investment-type fed no calculation).
 
-### Two PANELS (not a modal), a shared project + picker mode (non-obvious)
+### ONE merged "Project workspace" (Track B #2) — the shell + reused bodies (non-obvious)
 
-The charter is now **two rail-inset panels**, split out of the old 4-tab modal:
-- **OFFER MNGT › Financials analysis** (`#cht-overlay`) — Overview / Demands / Financials tabs
-  (`chtOpenFinancials` → per mode). `openCharter(projId)` renders it.
-- **OFFER MNGT › Trade-off decision** (`#dec-overlay`) — the configurable triangle(s) +
-  non-negotiables/flexibilities (`chtOpenDecisionView` → per mode; `chtOpenDecision(projId)`).
-- Both share one selected project (`_chtProjId`) and a **picker MODE** from Settings
-  (`railChartPicker()` → `'hub' | 'dropdown'`, persisted in `eim_rail_prefs.chartPicker`):
-  - `hub` — `openCharterHub(target)` shows `#chthub-overlay` (the card grid). A card opens the
-    matching panel stacked **above** the hub. One hub overlay serves **three** targets via
-    `_chtHubTarget` (`target` = 'financials' | 'decision' | **'channels'** — the last opens the
-    Channel-mix panel; see the Channel-mix section). Card badges are target-aware.
-  - `dropdown` — the panel opens directly with a `<select>` in its header (`#cht-pick`/`#dec-pick`/
-    `#chan-pick`, rendered by `chtRenderPicker` / `chanRenderPicker`), like Design-to-cost's `#dtc-picker`.
-- **These panels are VIEWS now** (rail-inset `left:var(--rail)`), NOT modals: `#cht-overlay`,
-  `#dec-overlay` and `#chan-overlay` are `z-index:410` so they sit **above** the hub (`z400`) —
-  closing a panel reveals the hub again. Only the deck/synopsis stay full-cover modals (z1150).
-- **Rail-highlight sync on close** is done inside `chtClose`/`chtCloseDecision`/`closeChannels` via
-  `chtSyncRailAfterClose()` (NOT the railnav `railWrapClosers` wrap): it resets `activeView`
-  to `'matrix'` only when NO charter surface (`cht`/`dec`/`chan` panel or hub) is left showing and we're not
-  mid-navigation (`railRouting`). Wrapping `chtClose` in railnav instead would wrongly reset the
-  highlight when the hub is still visible beneath a just-closed panel. `railChartPicker`,
-  `railRouting`, `activeView` are read cross-file (one shared bundle scope).
+The four former per-project panels (Financials analysis / Trade-off decision / Channel mix /
+Design-to-cost) are **merged into a single tabbed rail view**, `PORTFOLIO › Project workspace`
+([workspace.js](src/sections/workspace.js), all `wk`/`WK_`-prefixed). One rail-inset overlay
+`#wk-overlay` (`left:var(--rail)`, z400) = a shared project picker (`#wk-pick`) + a tab bar
+(`#wk-tabs`) + a body (`#wk-body`). **Six tabs** — `OVERVIEW · DEMANDS · FINANCIALS · TRADE-OFF ·
+CHANNELS · DESIGN-TO-COST` (the task named five; DEMANDS is the sixth because the charter demands
+board / conflicts can't be dropped, and each tab maps 1:1 to one reused body renderer).
+
+- **Bodies are re-used UNCHANGED.** `#wk-body` hosts the four original body `<div>`s
+  (`#cht-body`, `#dec-body`, `#chan-body`, `#dtc-body`) — one shown at a time (inline `display`
+  toggle by `wkShowTab`). Each tab calls its original renderer: the three charter tabs →
+  `chtShowTab(tab)` (into `#cht-body`) + `chtRenderHeader()` for the `PRIORITY/STATUS` meta
+  (`#cht-head-meta`, shown only on the charter tabs); trade-off → `chtRenderDecision()`; channels →
+  `chanRender()`; design-to-cost → `dtcRender()`. All four renderers already null-guard their old
+  per-panel title/picker elements, so the standalone `#cht-overlay`/`#dec-overlay`/`#chan-overlay`/
+  `#dtc-overlay` (and the old `#cht-tabs`/`#*-pick` per-panel pickers, hub card grid) are **gone**.
+- **ONE shared `_chtProjId` picker** (owned by charter.js). `wkSyncIds()` keeps `_chanProjId` and
+  `_dtcProjId` (channels.js / dtc.js) in lockstep with it so `chanRender`/`dtcRender` read the same
+  project. `wkSelectProject(id)` is the single project-switch path.
+- **The former openers now REDIRECT here.** `openCharter(projId, tab='overview')`,
+  `chtOpenDecision(projId)`, `openChannels(projId)`, `openDtc()`, `dtcSelectProject(id)` all call
+  `wkOpen(tab, projId)` / `wkSelectProject(id)` — so deep-links (Home `homeOpenFor`, Pipeline
+  `pipeOpenCharter`, the matrix context menu) land on the correct tab. `homeOpenFor`'s charter
+  concerns route via `homeGoView('workspace', …)`; value-destroying/low-margin pass `'financials'`.
+- **Rail-highlight sync on close** still runs through `chtSyncRailAfterClose()` — now checking
+  `['wk-overlay','chthub-overlay']` — invoked by `closeWorkspace()` (which every old closer
+  `chtClose`/`chtCloseDecision`/`closeChannels`/`closeDtc` delegates to). It resets `activeView`
+  to `'matrix'` only when the workspace isn't showing and we're not mid-navigation (`railRouting`).
+  `wkOpen` sets `activeView='workspace'`; `closeWorkspace` is NOT in `railWrapClosers` (it self-syncs).
+  Only the deck/synopsis stay full-cover modals (z1150).
+- **Collab presence** was two entries (`cht-overlay`+`dec-overlay`) in `COLLAB_MODALS`; now ONE
+  `wk-overlay` entry (banner `#wk-presence`) whose `refresh` calls `wkRefreshPresence()` (re-renders
+  the active tab, scroll preserved). Charter inputs stay id-less → entity-level banner, no per-field
+  cursor (unchanged from before).
+- **Left OUT:** the `brief` (Project brief) stays a separate rail view / export deliverable — it's
+  Track B #7 (move to the Export utility), not part of this merge. The old Settings `chartPicker`
+  (hub|dropdown) pref is now inert (the hub is unreachable; `openCharterHub`/`chtRenderHub`/`chtBack`
+  remain as dead code but are never called).
 
 ### Data model (`makeCharter` in [model.js](src/data/model.js))
 
@@ -1482,10 +1552,10 @@ pixels for numbers anyway.
 
 ### Design-to-cost workspace ([src/sections/dtc.js](src/sections/dtc.js), `dtc`-prefixed)
 
-A **rail view under OFFER MNGT** (`OFFER MNGT › Design to cost`) — a *view*, not a modal, so its
-`#dtc-overlay` stays `left:var(--rail)` (z400), wired into railnav exactly like the Charters
-hub (`RAIL_DOMAINS` work views, `railRoute`, `closeAllOverlays`, `railOpenRes`,
-`railWrapClosers` all include it). A project **picker** (`#dtc-picker`) at the top chooses
+Now the **DESIGN-TO-COST tab of the merged Project workspace** (see *ONE merged "Project
+workspace"* above) — its body renders into `#dtc-body` (now inside `#wk-overlay`) via the same
+`dtcRender()`; `openDtc()` redirects to `wkOpen('dtc')`. Historically it was a standalone rail
+view (`#dtc-overlay`) wired into railnav like the charter panels. A project **picker** chooses
 which project's `charter.costModel` to work on. Four sections, all reading from the charter:
 1. **Target-cost cascade** — subsystems each with target/current €/unit; the **envelope** =
    `dtcTarget(financials)` (max allowable unit cost from price − target margin). Rollup shows
@@ -1531,7 +1601,9 @@ helper (in financial.js). Reuses charter's `cht-*` CSS + globals (`CHT_FUNCS`, `
 
 ## Channel mix — go-to-market synoptic
 
-`OFFER MNGT › Channel mix` ([src/sections/channels.js](src/sections/channels.js),
+Now the **CHANNELS tab of the merged Project workspace** (see *ONE merged "Project workspace"*
+above) — `chanRender()` renders into `#chan-body` (inside `#wk-overlay`); `openChannels(projId)`
+redirects to `wkOpen('channels', projId)`. ([src/sections/channels.js](src/sections/channels.js),
 all `chan`-prefixed) — a **per-project** go-to-market view: a top-down synoptic of
 **Company/Project → Channels → Segments**, plus an editor. Data lives on
 `charter.channelModel` (via `makeChannelModel`/`makeChannel` in
@@ -1565,16 +1637,30 @@ and is back-filled by `sanitiseCharter` ([persist.js](src/core/persist.js)). Reu
   (`pfChannelMix`): revenue per channel uses the SAME `expectedRevenueM` base as the panel (NOT
   `projRevenueM`), so the panel and the rollup agree. Projects with no expected revenue contribute €0.
 
-## Portfolio economics — cross-layer analytics
+## Portfolio economics — the ECONOMICS lens of Portfolio analytics (Track B #1)
 
-`INSIGHTS › Portfolio economics` ([src/sections/econ.js](src/sections/econ.js),
-all `ec`-prefixed) — a read-only Resources tab (`renderEconTab`) that **crosses the four
-data layers** the rest of the app keeps separate: value (`charter.financials` →
-`calculateFinancials`), cost (allocations via `pfBuildDataset` + design-to-cost unit cost),
-route-to-market (`channelModel`), decision (`chtConflicts` + `CHT_FUNCS` alignment). Wired
-like any tab: `JS_FILES`, `showResTab` case + highlight array, `RAIL_DOMAINS` insights view +
-`RAIL_RES_TABS`. No new CSS file — sections are inline-styled like [portfolio.js](src/sections/portfolio.js)
-and reuse its `pfSection`/`pfSectionShell`/`pfEmpty`/`pfEur` helpers.
+The former standalone `Portfolio economics` rail view is **merged into Portfolio analytics as a
+second lens** (`PORTFOLIO › Portfolio analytics`, toggle `Overview | Economics` in the tab header).
+The `ec`-prefixed code in [src/sections/econ.js](src/sections/econ.js) is **reused unchanged** — only
+its entry point changed: `renderEconTab` (which drew its own header + `#res-body`) became
+**`ecBody(ds)`**, which returns just the sections (scorecard + analyses). `renderPortfolioAnalytics`
+([portfolio.js](src/sections/portfolio.js)) renders the shared header + the `pfLensToggle()`, then
+branches on `_pfState.lens`: `overview` → the delivery sections; `economics` → `ecBody(ecDataset())`.
+The `econ` rail view + `RAIL_RES_TABS`/`showResTab` entries are **gone**.
+
+- **Why a lens, not one long tab (the double-counted-€ guard):** Overview revenue is impact revenue
+  (`projRevenueM`); Economics revenue is charter `expectedRevenueM` — two DIFFERENT bases. Keeping them
+  on separate lenses means the two scorecards are never summed or shown side-by-side, so no conflicting
+  "revenue" total appears. `pfBuildDataset` is only built on the overview branch; `ecDataset` (which
+  builds on `pfBuildDataset` internally) only on the economics branch.
+- **Deep-links:** the Executive summary's `to:'econ'` targets now route through `pfOpenLens(ev,'economics')`
+  (and `'portfolio'` → `pfOpenLens(ev,'overview')`) via `xsNav()` ([exec.js](src/sections/exec.js)) — sets
+  the lens, then `railGo('portfolio')`, landing the NPV/PI/conflict/concentration drills on the right lens.
+  `_pfState.lens` is session-only (like the rest of `_pfState`), so it resets to `overview` each load.
+- It still **crosses the four data layers** the rest of the app keeps separate: value (`charter.financials`
+  → `calculateFinancials`), cost (allocations via `pfBuildDataset` + design-to-cost unit cost),
+  route-to-market (`channelModel`), decision (`chtConflicts` + `CHT_FUNCS` alignment). Sections are
+  inline-styled and reuse `pfSection`/`pfSectionShell`/`pfEmpty`/`pfEur`.
 
 ### Key facts (non-obvious)
 
@@ -2292,13 +2378,17 @@ blocks, theme, format, and (dashboard only) columns, all before anything is gene
   - `profilesExportAllOpen()` — one full page per person. `composeRender` returns an ARRAY (one
     440px-wrapped card per engineer), so the shell's `.export-page`/page-break machinery does
     the pagination for free. `formats:[pdf]` only (matches what existed before).
-  - `exportProjectBriefOpen()` — the project brief. Blocks are `team`/`risks`/`todos`/
-    `milestones`/`actions` (what used to be five checkboxes — `brief-include-team` etc. — INSIDE
-    the brief panel; now inside the shared builder instead, so the brief panel only handles
-    project SCOPE, not content). `buildBriefProjectBlock(p, includedIds, shared)` is the
-    per-project renderer (`shared` = pre-computed `{axName,yLabel,projAllocMap}`, built once by
-    `composeRender` before mapping over the selected projects — KPIs are always shown; only
-    team/risks/todos/milestones/actions are gated). `formats:[pdf,html]`.
+  - `exportProjectBriefOpen()` — the project brief, now a first-class Export-door deliverable
+    (Track B #7 — the standalone `#brief-overlay` rail view + its checklist were removed). Content
+    blocks are `team`/`risks`/`todos`/`milestones`/`actions`; **project SCOPE is now per-project
+    `type:'toggle'` CONTROLS** (`controls: function(){ return projects.map(...) }`, one `bp_<id>`
+    toggle per project, default = the visible non-archived projects). This is a clean use of the two
+    builder axes: BLOCKS = which content, CONTROLS = which projects. `composeRender` reads the toggles
+    (`ctx['bp_'+p.id]`, undefined → the visible default) to pick projects, then maps
+    `buildBriefProjectBlock(p, includedIds, shared)` (`shared` = pre-computed `{axName,yLabel,projAllocMap}`
+    built once — KPIs always shown; team/risks/todos/milestones/actions gated). `formats:[pdf,html]`.
+    Registered in `exportDeliverables()` (packs.js, domain PORTFOLIO); the **Gantt stays excluded**
+    (still bound to the currently-open project, so meaningless from a global menu).
 - **Card markup is 100% `var(--…)` tokens now, no `vars`/`palette` parameter threading.**
   Because `exportHTML` always writes the brand palette onto the popup document's `:root` (the
   "theming trick" above), `buildProfileCardHTMLs`/`buildBriefProjectBlock` don't need a palette
@@ -2347,10 +2437,10 @@ Node-testable (it has real ESM imports), packs.js is where app knowledge is allo
   - Every entry carries `ready` + `missing`. A deliverable with no data is **still listed** but
     greyed, showing what's missing ("Place people on the nine-box or DISC first") — discoverable
     before there is data, instead of an empty menu or an alert after the click.
-  - **Project-scoped deliverables (Gantt, project brief) are deliberately NOT listed.** They
-    export whichever project happens to be open, which is meaningless from a global menu; they
-    keep their button on their own view where the scope is unambiguous. The picker says so in a
-    footnote rather than leaving it a mystery.
+  - **The Gantt is deliberately NOT listed** — it exports whichever project happens to be open,
+    which is meaningless from a global menu, so it keeps its button on its own view. The **project
+    brief WAS excluded for the same reason but is now listed** (Track B #7): it self-scopes via
+    per-project toggles in the builder, so it's unambiguous from the global door.
 - **Packs are not a new rendering path** — a pack is the ordinary `exportOpenBuilder` handed a
   *merged* block list, so it inherits templates, theme, paper, layout, preview and per-block
   error isolation for free. `packBlocksFrom(prefix, sourceLabel, list)` namespaces another

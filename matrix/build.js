@@ -63,6 +63,7 @@ const JS_FILES = [
   'sections/charter.js',
   'sections/dtc.js',
   'sections/channels.js',
+  'sections/workspace.js',   // merges the four charter panels into one tabbed shell (reuses their renderers)
   'sections/econ.js',
   'sections/exec.js',
   'sections/gate.js',

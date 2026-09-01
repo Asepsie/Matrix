@@ -1151,17 +1151,12 @@ const COLLAB_MODALS=[
     // re-calling it is already a field-level patch; scroll/layout are untouched.
     refresh:function(ent){ if(typeof openIdCardModal==='function') openIdCardModal(ent.id); },
     close:function(){ if(typeof closeIdCardModal==='function') closeIdCardModal(); } },
-  { overlay:'dec-overlay', banner:'dec-presence', type:'project',
+  { overlay:'wk-overlay', banner:'wk-presence', type:'project',
     cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
-    refresh:function(){ collabRestoreScroll('dec-body',function(){ if(typeof chtRenderDecision==='function') chtRenderDecision(); }); },
-    close:function(){ if(typeof chtCloseDecision==='function') chtCloseDecision(); } },
-  { overlay:'cht-overlay', banner:'cht-presence', type:'project',
-    cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
-    // Re-render header (financial summary can change) + the CURRENT tab body (keep _chtTab).
-    refresh:function(){ collabRestoreScroll('cht-body',function(){
-      if(typeof chtRenderHeader==='function') chtRenderHeader();
-      if(typeof chtShowTab==='function') chtShowTab((typeof _chtTab!=='undefined'&&_chtTab)?_chtTab:'overview'); }); },
-    close:function(){ if(typeof chtClose==='function') chtClose(); } }
+    // The four charter panels are merged into the Project workspace — re-render the
+    // ACTIVE workspace tab (financial summary/body can change), scroll preserved.
+    refresh:function(){ if(typeof wkRefreshPresence==='function') wkRefreshPresence(); },
+    close:function(){ if(typeof closeWorkspace==='function') closeWorkspace(); } }
 ];
 // Run an innerHTML-rebuilding refresh while preserving a scroll container's scrollTop.
 function collabRestoreScroll(bodyId,fn){

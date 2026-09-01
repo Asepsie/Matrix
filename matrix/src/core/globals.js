@@ -72,6 +72,13 @@ export let engDashFilterEng=new Set(),engDashFilterProj=new Set();
 /* ── Plan tab state ── */
 export let planViewMode='flat';
 export let planFlatSort='none';
+
+/* ── Talent placement lens (Nine-box + DISC merged into one view; Track B follow-up).
+   Values: 'ninebox' or 'disc'. Remember-last — persisted in the rail prefs (railLoadPrefs/
+   railSavePrefs), not in the dataset. Declared here so it exists before railLoadPrefs runs
+   at boot (globals.js loads before railnav.js), which would otherwise be clobbered by a
+   later per-file initialiser. ── */
+export let _tpLens='ninebox';
 export var _devFormulaOpen = false;
 export var _devFormula = {
   w_spof:       30,

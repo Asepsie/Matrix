@@ -220,22 +220,12 @@ select option{background:var(--surface);color:var(--text);}
 .cmp-svg-wrap{flex:1;position:relative;overflow:hidden;}
 .cmp-svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
 
-/* ── SUMMARY DASHBOARD ── */
-#summary-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;}
-#summary-overlay.show{display:flex;}
-#summary-header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
-#summary-header h2{font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.08em;flex:1;}
-#summary-body{flex:1;overflow-y:auto;padding:20px;}
-.sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+/* (Summary dashboard cut — Track B #8. The .kpi-* cards below are shared with other
+   views, so they stay; the summary-only .sum-*/.psr-* rules were removed.) */
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
 .kpi-val{font-family:IBM Plex Mono,monospace;font-size:28px;font-weight:600;color:var(--accent);line-height:1;}
 .kpi-label{font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:4px;}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:6px;}
-.sum-section-title{font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border);}
-.proj-sum-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
-.proj-sum-row:last-child{border-bottom:none;}
-.psr-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.psr-badges{display:flex;gap:5px;flex-shrink:0;}
 .badge{font-family:IBM Plex Mono,monospace;font-size:9px;padding:2px 6px;border-radius:3px;}
 .badge-risk-hi{background:rgba(241,67,53,.15);color:#f14335;}
 .badge-risk-md{background:rgba(241,164,53,.12);color:#f1a435;}
@@ -730,47 +720,11 @@ body{padding-left:var(--rail);}
    Keep the rail visible while any full-screen overlay is open. These overlays
    are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
    wins. (#org-overlay is styled inline in index.html and is inset there instead.) */
-#help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
+#help-overlay, #compare-overlay, #res-overlay, #snap-overlay{
   left:var(--rail);
 }
 
-/* ── PROJECT BRIEF (WORK › Project brief rail view) ──────
-   A rail-inset panel (like Design-to-cost / Trade-off decision), NOT a modal.
-   z-index:400 = view level, so rail-spawned modals (Settings) still sit above. */
-#brief-overlay{
-  display:none; position:fixed; inset:0; left:var(--rail);
-  background:var(--bg); z-index:400; flex-direction:column;
-}
-#brief-overlay.show{ display:flex; }
-#brief-header{
-  display:flex; align-items:center; gap:8px;
-  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
-}
-#brief-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
-#brief-header button{ margin-left:4px; }
-#brief-body{ flex:1; overflow:auto; padding:18px 22px; }
-.brief-wrap{ max-width:1000px; }
-.brief-intro{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
-.brief-sec{
-  background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:14px 16px; margin-bottom:16px;
-}
-.brief-sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
-.brief-sec-title{
-  font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted);
-  letter-spacing:.06em; display:block; margin-bottom:10px;
-}
-.brief-sec-head .brief-sec-title{ margin-bottom:0; flex:1; }
-.brief-sec-tools{ display:flex; gap:6px; }
-.brief-proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px; }
-.brief-2col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
-@media (max-width:720px){ .brief-2col{ grid-template-columns:1fr; } }
-.brief-opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
-.brief-opt{ display:flex; align-items:center; gap:7px; font-size:11px; cursor:pointer; }
-.brief-month{
-  background:var(--bg); border:1px solid var(--border); color:var(--text);
-  font-family:IBM Plex Mono,monospace; font-size:11px; padding:3px 7px; border-radius:4px;
-}
+/* (Project-brief overlay + Summary overlay CSS removed — both were cut/merged in Track B.) */
 
 /* Rail-spawned modals (Settings, first-run landing, the export builder) must sit
    ABOVE the full-screen view overlays (z-index:400) — they open as actions without
@@ -780,15 +734,52 @@ body{padding-left:var(--rail);}
 #settings-overlay, #landing-firstrun, #export-builder-overlay, #export-picker-overlay{
   z-index:1100; left:var(--rail);
 }
+
+/* Data utility menu (rail foot → Snapshots / Backup / Restore) */
+#data-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
+  align-items:center; justify-content:center; }
+#data-menu-overlay.show{ display:flex; }
+.dm-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px;
+  width:340px; max-width:92vw; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+.dm-head{ display:flex; align-items:center; justify-content:space-between; font-family:IBM Plex Mono,monospace;
+  font-size:11px; letter-spacing:.08em; color:var(--muted); margin-bottom:12px; }
+.dm-x{ background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; }
+.dm-item{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--bg);
+  border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:8px; cursor:pointer; color:var(--text); }
+.dm-item:hover{ border-color:var(--accent); }
+.dm-item:last-child{ margin-bottom:0; }
+.dm-ico{ font-size:18px; flex-shrink:0; width:24px; text-align:center; }
+.dm-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.dm-txt b{ font-size:13px; font-weight:600; }
+.dm-txt small{ font-size:10px; color:var(--muted); }
 /* the picker hands off to the builder, so the builder must sit ABOVE it */
 #export-builder-overlay{ z-index:1110; }
 #export-picker-overlay .exp-pick:hover{ border-color:var(--accent); }
-/* ►► CHARTER ◄◄ Now two rail-inset PANELS (like Design-to-cost), not full-cover
- * modals: #cht-overlay = "Financials analysis" (overview/demands/financials tabs)
- * and #dec-overlay = "Trade-off decision" (the configurable triangle(s) + lists).
- * Both stay rail-inset (left:var(--rail)) and sit ABOVE the Charters HUB
- * (#chthub-overlay, z400) so a hub card opens a panel over the grid; closing the
- * panel reveals the hub again. The deck/synopsis remain modals on top. */
+/* ►► CHARTER ◄◄ Styles for the charter/DTC/channel bodies, which now render as TABS
+ * of the Project workspace (#wk-overlay — see below). The former standalone panel
+ * overlays (#cht-overlay/#dec-overlay/#chan-overlay/#dtc-overlay) and the Charters hub
+ * were removed; their #*-body rules are reused inside #wk-body. Deck/synopsis remain
+ * modals on top. (Some dead #*-overlay container rules are left below, harmless.) */
+
+/* ── Project workspace (PORTFOLIO › Project workspace) — the merged shell that
+ * hosts the former Financials / Trade-off / Channels / Design-to-cost panels as
+ * tabs. The per-panel body <div>s (#cht-body/#dec-body/#chan-body/#dtc-body) live
+ * inside #wk-body; only the active one is shown (toggled inline by workspace.js). */
+#wk-overlay{
+  display:none; position:fixed; inset:0; left:var(--rail);
+  background:var(--bg); z-index:400; flex-direction:column;
+}
+#wk-overlay.show{ display:flex; }
+#wk-header{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+#wk-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
+#wk-pick{ display:inline-flex; align-items:center; gap:6px; }
+#wk-header button{ margin-left:4px; }
+#wk-tabs{ display:flex; gap:2px; padding:0 12px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+/* One flex column; the active per-panel body (all flex:1) fills + scrolls. */
+#wk-body{ flex:1; min-height:0; display:flex; flex-direction:column; }
 
 #cht-overlay{
   display:none; position:fixed; inset:0; left:var(--rail);
@@ -1076,37 +1067,8 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .cht-stance-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
 .cht-stance-grid .cht-f{ margin:0; }
 
-/* ── Charters hub (rail view) ── */
-#chthub-overlay{
-  display:none; position:fixed; inset:0; left:var(--rail);
-  background:var(--bg); z-index:400; flex-direction:column;
-}
-#chthub-overlay.show{ display:flex; }
-#chthub-header{
-  display:flex; align-items:center; gap:10px;
-  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
-}
-#chthub-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
-#chthub-body{ flex:1; overflow:auto; padding:18px 22px; }
-.chthub-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
-.chthub-card{
-  background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:14px; cursor:pointer; transition:border-color .12s, transform .12s;
-}
-.chthub-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
-.chthub-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:10px; }
-.chthub-name{ font-size:14px; font-weight:600; color:var(--text); }
-.chthub-status{ font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
-.chthub-badges{ display:flex; flex-wrap:wrap; gap:6px; }
-.chthub-prio, .chthub-metric{
-  font-family:IBM Plex Mono,monospace; font-size:10px; padding:2px 7px; border-radius:10px;
-  border:1px solid var(--border); color:var(--muted);
-}
-.chthub-prio.hi{ color:var(--danger); border-color:var(--danger); }
-.chthub-prio.med{ color:var(--warn); border-color:var(--warn); }
-.chthub-prio.lo{ color:var(--muted); }
-.chthub-metric.ok{ color:var(--accent2); border-color:var(--accent2); }
-.chthub-metric.conflict{ color:var(--danger); border-color:var(--danger); }
+/* (Charters hub CSS removed — the hub was cut when the 4 charter panels merged into
+   #wk-overlay, Track B #2 + cleanup.) */
 
 /* ── Channel mix (OFFER MNGT › Channel mix rail view) ── */
 #chan-overlay{
@@ -1876,14 +1838,8 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
   </div>
 </div>
 
-<!-- SUMMARY OVERLAY -->
-<div id="summary-overlay">
-  <div id="summary-header">
-    <h2>▤ PORTFOLIO SUMMARY</h2>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="summary-body"></div>
-</div>
+<!-- (Portfolio Summary view was cut — Track B #8. Exec / Portfolio analytics / Home +
+     Backlog cover everything it showed; the 's' shortcut now opens Executive summary.) -->
 
 <main>
   <aside id="sidebar">
@@ -1973,6 +1929,7 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <button class="sm active" id="ym-impact"     onclick="setYMode('impact')"     data-i18n-title="Sort by Impact"     title="Sort by Impact"     data-i18n="IMPACT">IMPACT</button>
       <button class="sm"        id="ym-visibility" onclick="setYMode('visibility')" data-i18n-title="Sort by Visibility" title="Sort by Visibility" data-i18n="VISIBILITY">VISIBILITY</button>
       <button class="sm"        id="ym-enabler"    onclick="setYMode('enabler')"    data-i18n-title="Sort by Enabler"    title="Sort by Enabler"    data-i18n="ENABLER">ENABLER</button>
+      <button class="sm"        id="mtb-compare"   onclick="matrixOpenCompare()"    data-i18n-title="Compare two Y-axis modes side by side" title="Compare two Y-axis modes side by side" data-i18n="⧉ COMPARE">⧉ COMPARE</button>
       <div class="bar-sep"></div>
       <span id="focus-bar" style="display:flex;align-items:center;gap:6px"></span>
     </div>
@@ -2102,6 +2059,25 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
     </div>
   </div>
 </div>
+<!-- DATA UTILITY MENU (rail foot → groups Snapshots / Backup / Restore — Track B #9) -->
+<div id="data-menu-overlay">
+  <div class="dm-card">
+    <div class="dm-head"><span data-i18n="DATA">DATA</span><button class="dm-x" onclick="dataMenuClose()" title="Close">✕</button></div>
+    <button class="dm-item" onclick="dataMenuGo('snap')">
+      <span class="dm-ico">🕐</span>
+      <span class="dm-txt"><b data-i18n="Snapshots">Snapshots</b><small data-i18n="Time-travel copies of this dataset">Time-travel copies of this dataset</small></span>
+    </button>
+    <button class="dm-item" onclick="dataMenuGo('backup')">
+      <span class="dm-ico">⭳</span>
+      <span class="dm-txt"><b data-i18n="Backup">Backup</b><small data-i18n="Export everything (incl. photos) to a file">Export everything (incl. photos) to a file</small></span>
+    </button>
+    <button class="dm-item" onclick="dataMenuGo('restore')">
+      <span class="dm-ico">⭱</span>
+      <span class="dm-txt"><b data-i18n="Restore">Restore</b><small data-i18n="Load a full backup file (replaces current data)">Load a full backup file (replaces current data)</small></span>
+    </button>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL (opened from the rail util foot) -->
 <div id="settings-overlay" class="overlay">
   <div class="modal-box" style="width:min(420px,95vw)">
@@ -3904,6 +3880,13 @@ let engDashFilterEng=new Set(),engDashFilterProj=new Set();
 /* ── Plan tab state ── */
 let planViewMode='flat';
 let planFlatSort='none';
+
+/* ── Talent placement lens (Nine-box + DISC merged into one view; Track B follow-up).
+   Values: 'ninebox' or 'disc'. Remember-last — persisted in the rail prefs (railLoadPrefs/
+   railSavePrefs), not in the dataset. Declared here so it exists before railLoadPrefs runs
+   at boot (globals.js loads before railnav.js), which would otherwise be clobbered by a
+   later per-file initialiser. ── */
+let _tpLens='ninebox';
 var _devFormulaOpen = false;
 var _devFormula = {
   w_spof:       30,
@@ -7844,12 +7827,12 @@ function renderWithAnim(W,H,pw,ph,isAnim){
 }
 
 /* ── Focus star + importance formula (matrix toolbar) ─────────────────
-   Moved here from the heatmap. The focus star already renders in the SVG
-   above (reads _hmState.showStar/starN/formula); these controls drive it.
-   State lives in _hmState (defined in heatmap.js) so the shared importance
-   formula stays in sync across the matrix and the heatmap. Rebuilt only on
-   toggle/apply — never inside render() — so typing in the formula field
-   isn't interrupted by pan/zoom re-renders. */
+   The focus star already renders in the SVG above (reads
+   _hmState.showStar/starN/formula); these controls drive it. State lives in
+   _hmState (defined in heatmap.js, which now holds only this shared importance
+   state after the Heatmap view was removed). Rebuilt only on toggle/apply —
+   never inside render() — so typing in the formula field isn't interrupted by
+   pan/zoom re-renders. */
 
 // renders the focus-star toggle + collapsible importance-formula panel
 function renderFocusBar(){
@@ -9562,7 +9545,8 @@ function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.sli
 function rgbaToHex(rgba){const m=rgba.match(/[\d.]+/g);if(!m||m.length<3)return '#888888';return '#'+[m[0],m[1],m[2]].map(v=>(+v|0).toString(16).padStart(2,'0')).join('');}
 /* ◄◄ END: sections/tooltip.js ►► */
 
-/* ►► SECTION: OVERLAYS ◄◄ Help, Compare (dual Y-mode), and Summary dashboard overlays
+/* ►► SECTION: OVERLAYS ◄◄ Help + Compare (dual Y-mode) overlays.
+ * (The Summary dashboard was cut — Track B #8 — and its renderer removed.)
  *
  * Functions defined in this file:
  *   openHelp        — opens the help overlay
@@ -9571,9 +9555,6 @@ function rgbaToHex(rgba){const m=rgba.match(/[\d.]+/g);if(!m||m.length<3)return 
  *   closeCompare    — closes the compare overlay
  *   renderCompare   — renders both compare panels for the selected Y-modes
  *   renderCompareSVG — renders one compare matrix panel for a given Y-mode
- *   openSummary     — opens the portfolio summary dashboard
- *   closeSummary    — closes the summary dashboard
- *   renderSummary   — renders the summary KPIs, project breakdown, and team workload
  */
 
 // opens the help overlay
@@ -9585,6 +9566,18 @@ function closeHelp(){
   clearActivePill();G('help-overlay').classList.remove('show');}
 
 const _cmpRO=new ResizeObserver(()=>{if(G('compare-overlay').classList.contains('show'))renderCompare();});
+// Matrix toolbar entry (Track B #3 — Compare is now a matrix sub-mode, not a rail view):
+// seed the left panel with the matrix's CURRENT Y-mode and the right with a different one,
+// so the split opens showing a genuine comparison, then open the two-panel overlay.
+function matrixOpenCompare(){
+  const modes=['impact','visibility','enabler'];
+  const left=(typeof yMode!=='undefined')?yMode:'impact';
+  const right=modes.filter(m=>m!==left)[0]||'visibility';
+  const l=G('cmp-left'), r=G('cmp-right');
+  if(l) l.value=left;
+  if(r) r.value=right;
+  openCompare();
+}
 // opens the compare overlay and starts observing resize
 function openCompare(){
   setActivePill('COMPARE');
@@ -9720,116 +9713,6 @@ function renderCompareSVG(svgId,wrapId,mode){
     });
   }
   svg.innerHTML=h;
-}
-
-// opens the portfolio summary dashboard
-function openSummary(){
-  setActivePill('SUMMARY');G('summary-overlay').classList.add('show');renderSummary();}
-// closes the summary dashboard
-function closeSummary(){
-  clearActivePill();G('summary-overlay').classList.remove('show');}
-
-// renders the summary KPIs, project breakdown, and team workload
-function renderSummary(){
-  const body=G('summary-body');
-  const vis=projects.filter(p=>p.visible);
-  const allRisks=projects.flatMap(p=>p.risks||[]);
-  const allActions=projects.flatMap(p=>p.actions||[]);
-  const allTodos=projects.flatMap(p=>p.todos||[]);
-  const allMs=projects.flatMap(p=>p.milestones||[]);
-
-  const riskHi=allRisks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;
-  const riskMd=allRisks.filter(r=>{const rpn=(r.sev||1)*(r.occ||1)*(r.det||1);return rpn>=100&&rpn<300;}).length;
-  const actionsDone=allActions.filter(a=>a.status==='Done').length;
-  const actionsBlocked=allActions.filter(a=>a.status==='Blocked').length;
-  const todosDone=allTodos.filter(t=>t.done).length;
-  const msOverdue=allMs.filter(m=>m.end&&!m.done&&new Date(m.end)<new Date()).length;
-  const msDone=allMs.filter(m=>m.done).length;
-  const withGate=projects.filter(p=>p.gate).length;
-  const avgImpact=vis.length?(vis.reduce((s,p)=>s+p.y,0)/vis.length).toFixed(1):'-';
-  const avgVis=vis.length?(vis.reduce((s,p)=>s+(p.vis||5),0)/vis.length).toFixed(1):'-';
-  const avgEna=vis.length?(vis.reduce((s,p)=>s+(p.ena||5),0)/vis.length).toFixed(1):'-';
-
-  let h=`
-  <div class="sum-grid">
-    <div class="kpi-card"><div class="kpi-val">${projects.length}</div><div class="kpi-label">${t('TOTAL PROJECTS')}</div><div class="kpi-sub">${t('{n} visible on matrix',{n:vis.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--danger)">${riskHi}</div><div class="kpi-label">${t('HIGH RISKS (RPN≥300)')}</div><div class="kpi-sub">${t('{m} medium · {n} total',{m:riskMd,n:allRisks.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${actionsDone}<span style="font-size:14px;color:var(--muted)">/${allActions.length}</span></div><div class="kpi-label">${t('ACTIONS COMPLETE')}</div><div class="kpi-sub">${t('{n} blocked',{n:actionsBlocked})}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${todosDone}<span style="font-size:14px;color:var(--muted)">/${allTodos.length}</span></div><div class="kpi-label">${t('TASKS DONE')}</div><div class="kpi-sub">${allTodos.length?Math.round(todosDone/allTodos.length*100):0}% ${t('completion')}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:${msOverdue>0?'var(--danger)':'var(--accent)'}">${msOverdue}</div><div class="kpi-label">${t('OVERDUE MILESTONES')}</div><div class="kpi-sub">${t('{d} completed · {n} total',{d:msDone,n:allMs.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${withGate}</div><div class="kpi-label">${t('PROJECTS WITH GATE')}</div><div class="kpi-sub">${t('Next gate defined')}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${avgImpact}</div><div class="kpi-label">${t('AVG IMPACT')}</div><div class="kpi-sub">${t('Visibility {v} · Enabler {e}',{v:avgVis,e:avgEna})}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${sections.length}</div><div class="kpi-label">${t('SECTIONS')}</div><div class="kpi-sub">${t('{n} unsectioned',{n:projects.filter(p=>!p.sectionId).length})}</div></div>
-  </div>`;
-
-  // Per-section breakdown
-  const allGroups=[
-    {name:t('UNSECTIONED'),color:'var(--muted)',projs:projects.filter(p=>!p.sectionId)},
-    ...sections.map(s=>({name:s.name,color:s.color,projs:projects.filter(p=>p.sectionId===s.id)}))
-  ].filter(g=>g.projs.length);
-
-  h+=`<div class="sum-section-title">${t('PROJECT BREAKDOWN')}</div>`;
-  for(const grp of allGroups){
-    h+=`<div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(grp.color)};flex-shrink:0"></div>
-        <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">${escH(grp.name)}</span>
-      </div>`;
-    for(const p of grp.projs){
-      const pRisks=p.risks||[],pActs=p.actions||[],pTodos=p.todos||[];
-      const rpnHi=pRisks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;
-      const actPct=pActs.length?Math.round(pActs.filter(a=>a.status==='Done').length/pActs.length*100):null;
-      const todoPct=pTodos.length?Math.round(pTodos.filter(t=>t.done).length/pTodos.length*100):null;
-      const pMs=p.milestones||[];
-      const msOvd=pMs.filter(m=>m.end&&!m.done&&new Date(m.end)<new Date()).length;
-      h+=`<div class="proj-sum-row">
-        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(p.color)};flex-shrink:0"></div>
-        <div class="psr-name" style="color:${safeColor(p.color)}">${escH(p.name)}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;white-space:nowrap">
-          I:${p.y} V:${p.vis||5} E:${p.ena||5}
-        </div>
-        <div class="psr-badges">
-          ${rpnHi?`<span class="badge badge-risk-hi">⚠ ${t('{n} HI',{n:rpnHi})}</span>`:''}
-          ${msOvd?`<span class="badge" style="background:rgba(241,67,53,.12);color:#f14335">📅 ${t('{n} late',{n:msOvd})}</span>`:''}
-          ${p.currentGate?`<span class="badge" style="background:rgba(120,120,140,.12);color:var(--muted);font-size:9px;padding:1px 5px;border-radius:3px">🏁 ${escH(p.currentGate.slice(0,12))} →</span>` :''} ${p.gate?`<span class="badge badge-gate">🏁 ${escH(p.gate.slice(0,14))}</span>`:''}
-          ${pTodos.length?`<span class="badge badge-todo">☑ ${todoPct}%</span>`:''}
-          ${pActs.length?`<span class="badge" style="background:rgba(167,139,250,.1);color:#a78bfa">👥 ${actPct}%</span>`:''}
-        </div>
-      </div>
-      ${(todoPct!==null||actPct!==null)?`
-      <div style="padding:2px 0 4px 15px">
-        ${todoPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-bottom:2px"><span style="width:36px">${t('Tasks')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${todoPct}%"></div></div><span>${todoPct}%</span></div>`:''}
-        ${actPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)"><span style="width:36px">${t('Actions')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${actPct}%;background:#a78bfa"></div></div><span>${actPct}%</span></div>`:''}
-      </div>`:''}`;
-    }
-    h+='</div>';
-  }
-
-  // Team workload
-  const memberMap={};
-  projects.forEach(p=>(p.actions||[]).forEach(a=>{
-    const m=a.member||t('Unassigned');
-    if(!memberMap[m])memberMap[m]={total:0,done:0,blocked:0,projects:new Set()};
-    memberMap[m].total++;memberMap[m].projects.add(p.name);
-    if(a.status==='Done')memberMap[m].done++;
-    if(a.status==='Blocked')memberMap[m].blocked++;
-  }));
-  if(Object.keys(memberMap).length){
-    h+=`<div class="sum-section-title" style="margin-top:8px">${t('TEAM WORKLOAD')}</div>
-    <div class="sum-grid">`;
-    for(const [name,s] of Object.entries(memberMap)){
-      const pct=Math.round(s.done/s.total*100);
-      h+=`<div class="kpi-card">
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent2);margin-bottom:6px">${escH(name)}</div>
-        <div style="font-size:12px">${t('{n} actions',{n:s.total})} &nbsp;·&nbsp; <span style="color:var(--accent)">${pct}%</span> ${t('done')}</div>
-        ${s.blocked?`<div style="font-size:10px;color:var(--danger);margin-top:2px">⚠ ${t('{n} blocked',{n:s.blocked})}</div>`:''}
-        <div class="progress-bar-wrap" style="margin-top:8px"><div class="progress-bar" style="width:${pct}%"></div></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">${[...s.projects].slice(0,2).map(p=>p.slice(0,16)).join(', ')}${s.projects.size>2?'…':''}</div>
-      </div>`;
-    }
-    h+='</div>';
-  }
-  body.innerHTML=h;
 }
 /* ◄◄ END: sections/overlays.js ►► */
 
@@ -10019,10 +9902,44 @@ const SKILL_LVL_LABELS=['','Awareness','Basic','Proficient','Advanced','Expert']
  */
 
 /** Renders the full allocation plan table with filter/view toolbar, fill bar, and grouped rows. */
+/* ── Merged PLAN view: one mode axis across the editable grid + the timeline views
+   (Track B #5). GRID = renderResPlan (edit allocations); GANTT / RIBBON / CAPACITY reuse
+   the timeline renderers UNCHANGED (renderTimeline dispatches on _tlState.mode). _planMode
+   is the single active mode; planSetMode switches + re-renders; renderPlan() is the nav
+   entry point; planGo() is the deep-link opener (balancer cross-links). Both surfaces share
+   the global FROM/TO period, so switching mode never loses context. */
+var _planMode='grid';
+function planModeBar(){
+  var cur=_planMode||'grid';
+  var b=function(m,label){ var on=cur===m;
+    return '<button onclick="planSetMode(\''+m+'\')" class="sm'+(on?' active':'')+'" style="font-size:9px;padding:2px 10px'
+      +(on?';border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.08)':'')+'">'+label+'</button>'; };
+  return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+t('MODE')+'</span>'
+    +b('grid','▤ '+t('Grid'))+b('gantt','▦ '+t('Gantt'))+b('resource','◧ '+t('Ribbon'))+b('plan','⛰ '+t('Capacity'))+'</div>';
+}
+function planSetMode(m){
+  _planMode=(m==='gantt'||m==='resource'||m==='plan')?m:'grid';
+  if(_planMode==='grid') renderResPlan();
+  else { if(typeof _tlState!=='undefined') _tlState.mode=_planMode; renderTimeline(); }
+}
+// Nav entry for the 'plan' tab — dispatch to the grid or the active timeline mode.
+function renderPlan(){
+  if(_planMode && _planMode!=='grid' && typeof renderTimeline==='function'){
+    if(typeof _tlState!=='undefined') _tlState.mode=_planMode; renderTimeline();
+  } else renderResPlan();
+}
+// Deep-link opener: land the Plan view on a given mode (used by the balancer buttons).
+function planGo(ev,mode){
+  _planMode=(mode==='gantt'||mode==='resource'||mode==='plan')?mode:'grid';
+  if(typeof railGo==='function') railGo(ev,'plan');
+}
+
 function renderResPlan(){
   const months=getMonthRange();
   const cur=curMonth();
-  let h='';
+  _planMode='grid';
+  let h=planModeBar();
 
   // ── Filter & view toolbar ──
   const allEngNamesP=[...new Set(engineers.map(e=>e.name))].sort();
@@ -10031,7 +9948,7 @@ function renderResPlan(){
   const selStyle='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none';
 
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('VIEW:')}</span>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('GROUP:')}</span>
     <button class="sm${planViewMode==='flat'?' active':''}" onclick="setPlanView('flat')">${t('FLAT')}</button>
     ${planViewMode==='flat' ? `
     <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">${t('sort:')}</span>
@@ -10348,7 +10265,7 @@ function renderResPlan(){
 }
 
 /** Refreshes the active resource tab (plan or dashboard). */
-function buildAllocTable(){ if(resActiveTab==='plan')renderResPlan(); else renderResDashboard(); }
+function buildAllocTable(){ if(resActiveTab==='plan')renderPlan(); else renderResDashboard(); }
 
 /** Updates the CSS class on an allocation input based on its numeric value. */
 function colorCell(inp){
@@ -11547,7 +11464,7 @@ function _balPortfolioView(){
    +multiSelectHTML('dash-proj',allProjNames,engDashFilterProj,'onDashFilterProjChange',t('Projects'))
    +clearBtn
    +'<div class="db-tb-actions">'
-   +'<button class="sm" onclick="showResTab(\'timeline\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
+   +'<button class="sm" onclick="planGo(event,\'gantt\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
    +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
    +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
    +'</div></div>';
@@ -11610,7 +11527,7 @@ function _balPortfolioView(){
    +'<div class="db-stat'+(spofSkills.length?' db-stat--warn':'')+'"><span class="db-sev"></span>'
    +'<div class="db-stat-v"'+(spofSkills.length?'':' style="color:var(--accent)"')+'>'+spofSkills.length+'</div><div class="db-stat-k">'+t('CRITICAL SPOF SKILLS')+'</div>'
    +'<div class="db-stat-d">'+t('Single-person critical skills')+'</div>'
-   +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="showResTab(\'skillrisk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
+   +(spofSkills.length?'<a class="db-chip db-chip--warn" onclick="skGo(event,\'risk\')" style="cursor:pointer;text-decoration:none">'+t('view risk tab')+' →</a>':'')+'</div>'
    +'</div>';
 
   // ── Monthly demand vs capacity chart ───────────────────────────
@@ -12871,15 +12788,10 @@ function tlEarliestFit(demand, capByMonth, fromIdx){
 /* ══ Capacity-plan mode — the forward scheduler UI (see TIMELINE-PLAN.md) ══════ */
 
 // The Gantt/Plan mode toggle, shown atop both views.
-function tlModeBar(){
-  function b(mode,label){ var on=_tlState.mode===mode;
-    return '<button onclick="tlSetMode(\''+mode+'\')" class="sm'+(on?' active':'')+'" style="font-size:9px;padding:2px 10px'
-      +(on?';border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.08)':'')+'">'+label+'</button>'; }
-  return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">VIEW</span>'
-    +b('gantt','▦ '+t('By project'))+b('resource','◧ '+t('By resource'))+b('plan','⛰ '+t('Capacity plan'))+'</div>';
-}
-function tlSetMode(m){ _tlState.mode=(m==='plan'?'plan':(m==='resource'?'resource':'gantt')); renderTimeline(); }
+/* The timeline mode bar is now the unified PLAN mode bar (planModeBar / planSetMode
+   in plan.js) — GRID · GANTT · RIBBON · CAPACITY — since the Timeline was merged into
+   the Plan view (Track B #5). renderTimeline still dispatches on _tlState.mode for the
+   three timeline modes; planSetMode keeps _tlState.mode in sync. */
 
 // Candidate rows for the plan: proposed/on_hold projects with a demand estimate; startIdx from
 // the persisted charter.demand.startMonth (unset → unscheduled = "to place").
@@ -12929,6 +12841,7 @@ function tlPlanCandRow(cand, months, LW, CW, result, supplyMax){
    +'<span style="font-size:10px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escH(cand.name)+'">'+escH(cand.name)+'</span>'
    +flag
    +'<select onchange="tlSetStart('+cand.id+',this.value)" title="'+escH(t('Start month'))+'" style="font-size:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:1px 2px;max-width:52px">'+opts+'</select>'
+   +(cand.scheduled?tlCommitBtn(cand):'')
    +'</div><div style="display:flex">';
   months.forEach(function(m,i){
     var load=loadByIdx[i]||0, barH=Math.round(Math.min(1,load/supplyMax)*100), br=breachMonth[i];
@@ -12950,7 +12863,7 @@ function renderTimelinePlan(body, months, cur){
   var sched=tlSchedule(scheduled, cap);
   var supplyMax=Math.max(1, cap.reduce(function(m,c){ return Math.max(m,c.supply); },0));
 
-  var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">'+tlModeBar();
+  var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">'+planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">'+t('CAPACITY PLAN — SCHEDULE THE PIPELINE')+'</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{a} scheduled · {b} to place · {n} months',{a:scheduled.length,b:unscheduled.length,n:months.length})+'</span>'
@@ -13010,6 +12923,52 @@ function tlAutoLevel(){
   renderTimeline();
 }
 
+/* ── Commit-loop: turn a SCHEDULED candidate's demand spread into real (unassigned)
+   allocation rows in the plan Grid (Track B #5 follow-up). The rows carry engId=null
+   (unassigned staffing slots to be filled by a person) and a sentinel budgetLine so a
+   re-commit replaces only THIS project's prior committed rows, never a manually-added
+   one. Deliberately does NOT change lifecycle — funding stays a separate, explicit
+   step (the demand is suppressed until the project is funded, which is consistent). */
+var TL_COMMIT_TAG='Capacity plan';
+function tlCommitBtn(cand){
+  var committed=allocRows.some(function(r){return r.projectId===cand.id&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG;});
+  return '<button onclick="tlCommitCandidate('+cand.id+')" title="'+escH(committed?t('Re-commit this demand into the plan Grid (Grid mode) as unassigned staffing rows'):t('Commit this demand into the plan Grid (Grid mode) as unassigned staffing rows'))+'" '
+    +'style="font-size:9px;line-height:1;padding:2px 5px;border:1px solid '+(committed?'var(--accent2)':'var(--accent)')+';color:'+(committed?'var(--accent2)':'var(--accent)')+';background:transparent;border-radius:3px;cursor:pointer;flex-shrink:0">'+(committed?'✓':'⤓')+'</button>';
+}
+function tlCommitCandidate(pid){
+  pid=Number(pid);
+  var p=projects.find(function(x){return x.id===pid;}); if(!p) return;
+  var months=getMonthRange(); if(!months.length){ alert(t('Set a FROM/TO period first.')); return; }
+  var cand=tlPlanCandidates(months).find(function(c){return c.id===pid;});
+  if(!cand){ alert(t('This project is no longer a schedulable candidate.')); return; }
+  if(!cand.scheduled){ alert(t('Pick a start month for this candidate first.')); return; }
+  var spread=tlSpreadDemand(cand.demand, cand.startIdx, months.length);
+  if(!spread.cells.length){ alert(t('Nothing to commit — check the demand estimate (peak FTE + FTE·months).')); return; }
+  // Distribute each month's aggregate FTE across ceil(peakFte) unassigned rows so every
+  // row stays a valid 0–1 per-person allocation (a person can't be >100% on one line).
+  var peak=Math.max(1, Math.ceil(+cand.demand.peakFte||1));
+  var rowMaps=[]; for(var k=0;k<peak;k++) rowMaps.push({});
+  var totalFte=0;
+  spread.cells.forEach(function(c){
+    var rem=c.total; totalFte+=c.total;
+    for(var j=0;j<peak && rem>0.0001;j++){ var v=Math.min(1,rem); rowMaps[j][months[c.idx]]=+v.toFixed(3); rem-=v; }
+  });
+  var nRows=rowMaps.filter(function(m){return Object.keys(m).length;}).length;
+  if(!nRows){ alert(t('Nothing to commit — the demand did not land in the current period.')); return; }
+  var existing=allocRows.filter(function(r){return r.projectId===pid&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG;});
+  var msg=t('Commit “{p}” as {n} unassigned staffing row(s) in the plan Grid — {f} FTE·months from {m}. Assign people to them (and fund the project) separately.',{p:(p.name||'project'),n:nRows,f:totalFte.toFixed(1),m:cand.startMonth});
+  if(existing.length) msg+='\n\n'+t('This replaces {n} row(s) from a previous commit of this project.',{n:existing.length});
+  if(!confirm(msg)) return;
+  // Undo safety net: an auto full snapshot before we mutate allocRows.
+  try{ if(typeof takeSnap==='function') takeSnap(t('Before committing capacity plan'),'full',t('Auto: before writing “{p}” demand into the plan',{p:(p.name||'')}),true); }catch(e){}
+  // Replace only THIS project's prior committed rows (never a manual unassigned row).
+  for(var i=allocRows.length-1;i>=0;i--){ var r=allocRows[i]; if(r.projectId===pid&&r.engId==null&&r.budgetLine===TL_COMMIT_TAG) allocRows.splice(i,1); }
+  rowMaps.forEach(function(am){ if(Object.keys(am).length) allocRows.push({uid:newUid(),id:nextAllocId++,engId:null,projectId:pid,engUid:null,projectUid:(p.uid||null),allocs:am,budgetLine:TL_COMMIT_TAG}); });
+  saveState();
+  if(typeof flashSaved==='function') flashSaved();
+  renderTimeline();
+}
+
 // renders the timeline grid (project bars, engineer rows, conflicts)
 function renderTimeline(){
   var body=G('res-body');if(!body)return;
@@ -13058,7 +13017,7 @@ function renderTimeline(){
   var ENG_H=24;
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
-  h+=tlModeBar();
+  h+=planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">PROJECT TIMELINE &amp; RESOURCE CONFLICTS</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+activeProjects.length+' active projects · '+months.length+' months</span>'
@@ -13290,9 +13249,10 @@ function _tlEngDrop(e,targetId){
 // by-resource mode focused on one engineer's lane.
 function tlOpenResource(engId){
   _tlState.mode='resource';
+  if(typeof _planMode!=='undefined') _planMode='resource';   // merged Plan view mode axis
   _tlState.focusEng=(engId!=null)?+engId:null;
-  if(typeof railGo==='function') railGo(null,'timeline');
-  else if(typeof showResTab==='function') showResTab('timeline');
+  if(typeof railGo==='function') railGo(null,'plan');
+  else if(typeof showResTab==='function') showResTab('plan');
 }
 
 // A distinct, dark-mode-legible categorical palette (extends past 8 so many projects stay
@@ -13418,7 +13378,7 @@ function renderTimelineResource(body, months, cur){
     if(!projSeen[k]) projSeen[k]={pid:(r.proj?r.proj.id:null),name:r.proj?(r.proj.name||t('Untitled')):t('Unassigned'),color:safeColor(r.proj?r.proj.color:'var(--muted)','var(--muted)'),funded:r.funded}; }); });
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
-  h+=tlModeBar();
+  h+=planModeBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
    +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">'+t('RESOURCE ALLOCATION OVER TIME')+'</h3>'
    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+t('{n} people',{n:displayed.length})+' · '+months.length+' '+t('months')+(overCount?' · <span style="color:var(--danger)">'+t('{n} over-allocated',{n:overCount})+'</span>':'')+'</span>'
@@ -14496,8 +14456,28 @@ function ktPlanHTML(skillName,plans){
 }
 
 // renders the skill-risk (SPOF) analysis tab
+/* ── Skills view: two lenses (Matrix | Risk) in one tab (Track B #4) ──────────
+   The former separate "Skill risk" rail view is merged in as the Risk lens of the
+   Skills view. renderSkills() is the single entry point; each lens renderer sets
+   _skLens itself so the toggle always reflects what is on screen. skGo() is the
+   deep-link opener (used by the dashboard SPOF chip + the exec SPOF KPI). */
+var _skLens='matrix';
+function renderSkills(){ if(_skLens==='risk') renderSkillRisk(); else renderSkillsTab(); }
+function skSetLens(l){ if(l==='risk') renderSkillRisk(); else renderSkillsTab(); }
+function skGo(ev,lens){ _skLens=(lens==='risk')?'risk':'matrix'; if(typeof railGo==='function') railGo(ev,'skills'); }
+function skLensBar(){
+  const mk=function(id,label){ const on=_skLens===id;
+    return '<button onclick="skSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0">'
+    +'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">◎ SKILLS</span>'
+    +'<div style="display:flex;gap:6px">'+mk('matrix',t('Matrix'))+mk('risk',t('Risk'))+'</div></div>';
+}
+
 function renderSkillRisk(){
   const body=G('res-body');if(!body)return;
+  _skLens='risk';
   const skillMap=buildSkillMap();
   const catOrder={crit:0,diff:1,mand:2};
   const allSkills=Object.values(skillMap).sort(function(a,b){
@@ -14529,6 +14509,7 @@ function renderSkillRisk(){
   const CAT_COL=getSkillCatCol();
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   let h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=skLensBar();
   const ktTotal=Object.keys(_ktPlans).reduce(function(s,k){return s+(_ktPlans[k]||[]).length;},0);
   const ktDone=Object.keys(_ktPlans).reduce(function(s,k){return s+(_ktPlans[k]||[]).filter(function(p){return p.status==='Done';}).length;},0);
   const kpis=[
@@ -14766,6 +14747,7 @@ function clearActivePill(){
 // renders the skills overview tab
 function renderSkillsTab(){
   const body=G('res-body');if(!body)return;
+  _skLens='matrix';
   const sm=buildSkillMap();
   const allSkills=Object.values(sm).sort(function(a,b){return a.name.localeCompare(b.name);});
   const CAT_COL=getSkillCatCol();const CAT_LABEL=getSkillCatLabel(true);
@@ -14779,6 +14761,7 @@ function renderSkillsTab(){
   if(domF)  vis=vis.filter(s=>s.domain===domF);
   const domains=[''].concat([...new Set(allSkills.map(s=>s.domain).filter(Boolean))].sort());
   let h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=skLensBar();
   const totalEng=engineers.filter(e=>!e.vacant).length;
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0">';
   var _kpiTiles=[{val:allSkills.length,label:'TOTAL SKILLS',col:'var(--accent2)'}];
@@ -15107,7 +15090,7 @@ function saveIdCardModal(){
   eng.idcard.reviews=_idcReviews.map(function(x){return {year:x.year||'',rating:x.rating||'',comments:x.comments||''};});
   saveState();
   closeIdCardModal();
-  if(resActiveTab==='profiles')renderProfilesTab();
+  if(resActiveTab==='analytics'&&typeof renderPeople==='function')renderPeople();
   else if(G('eng-roster'))renderResPlan();
 }
 
@@ -17031,16 +17014,14 @@ function orgExportPNG(){
  *   getProfileExportEngs         — returns the filtered engineer set for export
  *   exportProfilesDashboardOpen  — opens the builder for the card grid (PDF/HTML/PNG/SVG + columns)
  *   profilesExportAllOpen        — opens the builder for one full page per person (PDF)
- *   openProjectBriefExport       — opens the project-brief project checklist (project SCOPE, separate from content blocks)
- *   briefSelectAll               — checks/unchecks all projects in the brief modal
- *   briefSelectVisible           — selects only the currently-visible projects in the brief modal
- *   getSelectedBriefProjects     — returns the projects checked in the brief modal
+ *   prfBriefBlocks               — the project-brief content toggles (team/risks/todos/milestones/actions)
  *   buildBriefProjectBlock       — builds one project's HTML block (KPIs, team, risks, todos…)
- *   exportProjectBriefOpen       — opens the builder for the project brief (PDF/HTML; blocks = team/risks/todos/milestones/actions)
+ *   exportProjectBriefOpen       — opens the shared builder for the project brief (project scope = per-project toggle controls; reached from the Export door)
  */
 // renders the profiles tab: filter bar + engineer cards
 function renderProfilesTab(){
   const body=G('res-body');if(!body)return;
+  if(typeof _peopleLens!=='undefined') _peopleLens='profiles';
   const grpFilter=G('prf-grp')?G('prf-grp').value:'';
   const search=(G('prf-search')?G('prf-search').value:'').toLowerCase().trim();
   let engs=engineers.filter(function(e){return !e.vacant;});
@@ -17052,6 +17033,7 @@ function renderProfilesTab(){
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
 
   let h='<div style="display:flex;flex-direction:column;height:100%">';
+  if(typeof peopleLensBar==='function') h+=peopleLensBar();
 
   h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0">';
   h+='<input id="prf-search" class="eng-card-inp" placeholder="'+t('🔍 Search name…')+'" value="'+escH(search)+'"'
@@ -17539,49 +17521,12 @@ function profilesExportAllOpen(){
   });
 }
 
-/* ►► SECTION: BRIEF ◄◄ Project brief export: multi-project PDF/HTML */
-// opens the project-brief rail view (WORK › Project brief) with the project checklist
-function openProjectBriefExport(){
-  var list=G('brief-proj-list');
-  if(!list)return;                                  // markup lives after {{JS}} — guard at boot
-  list.innerHTML='';
-  projects.forEach(function(p){
-    var isVis=p.visible!==false;
-    list.innerHTML+='<label style="display:flex;align-items:center;gap:8px;padding:6px 9px;'
-      +'border-radius:5px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid var(--border)">'
-      +'<input type="checkbox" data-pid="'+p.id+'"'+(isVis?' checked':'')+'>'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:'+safeColor(p.color)+';flex-shrink:0"></span>'
-      +'<span style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(p.name)+'</span>'
-      +(p.sector?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+escH(p.sector)+'</span>':'')
-      +'</label>';
-  });
-  var ov=G('brief-overlay'); if(ov) ov.classList.add('show');
-}
-// close the project-brief view (rail-highlight sync is added by railWrapClosers)
-function closeBrief(){ var o=G('brief-overlay'); if(o) o.classList.remove('show'); }
-
-// checks/unchecks all projects in the brief modal
-function briefSelectAll(val){
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]').forEach(function(cb){cb.checked=val;});
-}
-// selects only the currently-visible projects in the brief modal
-function briefSelectVisible(){
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]').forEach(function(cb){
-    var pid=+cb.dataset.pid;
-    var p=projects.find(function(x){return x.id===pid;});
-    cb.checked=p&&p.visible!==false;
-  });
-}
-
-// returns the projects checked in the brief modal
-function getSelectedBriefProjects(){
-  var selected=[];
-  G('brief-proj-list').querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
-    var p=projects.find(function(x){return x.id===+cb.dataset.pid;});
-    if(p)selected.push(p);
-  });
-  return selected;
-}
+/* ►► SECTION: BRIEF ◄◄ Project brief — a deliverable on the shared export engine
+ * (exportProjectBriefOpen below), reached from the global Export door (packs.js
+ * registry). The old standalone #brief-overlay rail view + its project checklist
+ * were removed (Track B #7): project scope is now per-project toggles in the
+ * builder's controls bar. prfBriefBlocks() = the content blocks; buildBriefProjectBlock
+ * renders one project's page. */
 
 // the five content toggles the project-brief picker offers (mirrors the old
 // brief-include-team/risks/todos/milestones/actions checkboxes, now inside
@@ -17847,26 +17792,42 @@ function buildBriefProjectBlock(p, inc, shared){
   return html;
 }
 
-// opens the shared builder for the project brief (formats: PDF, HTML; blocks =
-// team/risks/todos/milestones/actions — project SCOPE stays the brief panel's
-// own checklist, since that's "which projects", not "which content").
+// opens the shared builder for the project brief (formats: PDF, HTML). Now a
+// deliverable on the global Export door (packs.js) — no standalone rail view.
+// WHICH PROJECTS (scope) lives as per-project TOGGLES in the builder's controls
+// bar (default = the visible, non-archived projects); WHICH CONTENT is the blocks
+// (team/risks/todos/milestones/actions). Two independent axes, same builder.
 function exportProjectBriefOpen(){
-  var sel=getSelectedBriefProjects();
-  if(!sel.length){alert(t('Select at least one project.'));return;}
+  if(!projects.length){alert(t('Add projects first.'));return;}
   var planTitle=G('res-title-input')?G('res-title-input').value:'R&D Portfolio';
 
   exportOpenBuilder({
     deliverableId: 'project-brief',
     title: planTitle,
-    subtitleDefault: 'Project Briefs · '+sel.length+' project'+(sel.length!==1?'s':''),
+    subtitleDefault: 'Project Briefs',
     blocks: prfBriefBlocks(),
-    ctx: {selectedProjs:sel},
+    ctx: {},
     formats: [{id:'pdf',label:t('PDF (print)')},{id:'html',label:t('Standalone HTML')}],
+    controls: function(){
+      return projects.map(function(p){
+        var arch=(typeof projIsArchived==='function'&&projIsArchived(p));
+        return { id:'bp_'+p.id, label:p.name, type:'toggle', value:(p.visible!==false&&!arch),
+                 hint:arch?t('archived'):(p.sector||'') };
+      });
+    },
     builtinTemplates: [
       {id:'full', name:t('Full'), blocks:['team','risks','todos','milestones','actions']},
       {id:'kpis-only', name:t('KPIs only')+' ('+t('no content blocks')+')', blocks:[]},
     ],
     composeRender: function(includedIds, ctx){
+      var sel=projects.filter(function(p){
+        var v=ctx['bp_'+p.id];
+        if(v===undefined) v=(p.visible!==false);   // match the control default before first toggle
+        return !!v;
+      });
+      if(!sel.length) return '<div style="padding:24px;color:var(--muted);font-size:12px">'
+        +escH(t('No projects selected — tick at least one project in the controls above.'))+'</div>';
+
       var axName='Effort';
       try{axName=axX().name||'Effort';}catch(e){}
       var yLabel={'impact':'Impact','visibility':'Visibility','enabler':'Enabler'}[yMode]||'Impact';
@@ -17900,42 +17861,39 @@ function exportProjectBriefOpen(){
       var shared={axName:axName,yLabel:yLabel,projAllocMap:projAllocMap};
       // kept as one flowing page (not one-per-project) — projects were never
       // forced onto separate pages here, only .proj-block{break-inside:avoid}
-      return ctx.selectedProjs.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
+      return sel.map(function(p){ return buildBriefProjectBlock(p,includedIds,shared); }).join('');
     },
   });
 }
 /* ◄◄ END: sections/profiles.js ►► */
 
-/* ►► SECTION: HEATMAP ◄◄ Project × Resource Heatmap — importance/performance matrix
+/* ►► SECTION: IMPORTANCE-FORMULA STATE ◄◄ (formerly the Project×Resource Heatmap)
  *
- * Functions defined in this file:
- *   _hmImportance       — computes a project's importance score from the custom formula
- *   _hmPerfScore        — returns an engineer's nine-box performance score (1-3) or null
- *   _hmProjectPerfScore — computes a project's FTE-weighted team performance score
- *   _hmTier             — maps a normalised importance percentage to high/mid/low
- *   _hmPerfBucket       — maps a performance score to high/mid/low/none
- *   renderHeatmap       — renders the 3×4 heatmap matrix with advice flags
+ * The Heatmap VIEW was removed (Track B simplification pass). What remains here is
+ * the shared importance-formula state it used to own — still needed by the Portfolio
+ * matrix's focus-star / importance controls (renderFocusBar + mtx* in matrix.js).
  *
- * The importance formula and focus star used to live here; they now live in the
- * Portfolio matrix toolbar (renderFocusBar in matrix.js). This file keeps only
- * the high/low importance thresholds, which affect the heatmap tiers only. All
- * views share _hmState, so the formula edited on the matrix drives the heatmap.
+ *   _hmState       — shared importance-formula UI state (formula, focus-star toggles)
+ *   _hmImportance  — evaluates a project's importance from _hmState.formula
+ *
+ * Kept as its own file (registered in build.js) so the matrix keeps reading the same
+ * `_hmState` instance it always did; only the heatmap grid renderer and its
+ * performance-bucket helpers were deleted.
  */
 
-// Persistent heatmap UI state (survives tab switches)
+// Persistent importance-formula UI state (survives tab switches; driven from the
+// Portfolio matrix toolbar). The old heatmap tier thresholds were dropped with the view.
 if (typeof _hmState === 'undefined') {
   var _hmState = {
-    formula:    'impact * visibility * enabler',
-    threshHigh: 66,
-    threshLow:  33,
-    showThresh: false,   // heatmap threshold panel toggle
+    formula:     'impact * visibility * enabler',
     showFormula: false,  // matrix importance-formula panel toggle (renderFocusBar)
-    showStar:   false,   // matrix focus-star overlay toggle
-    starN:      3,
+    showStar:    false,  // matrix focus-star overlay toggle
+    starN:       3,
   };
 }
 
-// computes a project's importance score from the custom formula
+// computes a project's importance score from the custom formula (used by the matrix
+// focus star). Falls back to 0 on a bad/empty formula so a typo never throws.
 function _hmImportance(p) {
   var impact     = p.y   != null ? p.y   : 5;
   var visibility = p.vis != null ? p.vis : (p.y || 5);
@@ -17947,263 +17905,6 @@ function _hmImportance(p) {
     var v = fn(impact, visibility, enabler, x);
     return (typeof v === 'number' && isFinite(v)) ? v : 0;
   } catch(e) { return 0; }
-}
-
-// returns an engineer's nine-box performance score (1-3) or null
-function _hmPerfScore(eng) {
-  var key = _nineBoxPlacements[eng.uid];
-  if (!key) return null;
-  return parseInt(key.split('-')[0], 10) || null;
-}
-
-// computes a project's FTE-weighted team performance score
-function _hmProjectPerfScore(projId) {
-  var cur = curMonth();
-  var totalFte = 0, weightedPerf = 0;
-  allocRows.forEach(function(r) {
-    if (+r.projectId !== projId || !r.engId) return;
-    var fte = r.allocs && r.allocs[cur] ? +r.allocs[cur] : 0;
-    if (!fte) return;
-    var eng = engineers.find(function(e) { return e.id === r.engId; });
-    if (!eng) return;
-    var ps = _hmPerfScore(eng);
-    totalFte += fte;
-    weightedPerf += fte * (ps != null ? ps : 2);
-  });
-  if (!totalFte) return null;
-  return weightedPerf / totalFte;
-}
-
-// maps a normalised importance percentage to high/mid/low
-function _hmTier(normPct) {
-  if (normPct >= _hmState.threshHigh) return 'high';
-  if (normPct >= _hmState.threshLow)  return 'mid';
-  return 'low';
-}
-
-// maps a performance score to high/mid/low/none
-function _hmPerfBucket(score) {
-  if (score === null) return 'none';
-  if (score >= 2.5)  return 'high';
-  if (score >= 1.5)  return 'mid';
-  return 'low';
-}
-
-// renders the 3×4 heatmap matrix with advice flags
-function renderHeatmap() {
-  var body = G('res-body'); if (!body) return;
-
-  var cur = curMonth();
-  var visProjects = projects.filter(function(p) { return p.visible; });
-
-  var rawScores = visProjects.map(_hmImportance);
-  var maxRaw = Math.max.apply(null, rawScores.concat([1]));
-  var minRaw = Math.min.apply(null, rawScores.concat([maxRaw]));
-  var rawRange = maxRaw - minRaw || 1;
-
-  function normPct(p) {
-    return Math.round((_hmImportance(p) - minRaw) / rawRange * 100);
-  }
-
-  var engsByProj = {};
-  visProjects.forEach(function(p) { engsByProj[p.id] = []; });
-  engineers.forEach(function(eng) {
-    if (eng.vacant) return;
-    allocRows.forEach(function(r) {
-      if (r.engId !== eng.id || !r.projectId) return;
-      var fte = r.allocs && r.allocs[cur] ? +r.allocs[cur] : 0;
-      if (!fte || !engsByProj[r.projectId]) return;
-      if (!engsByProj[r.projectId].find(function(x){ return x.eng.id===eng.id; }))
-        engsByProj[r.projectId].push({ eng: eng, fte: fte, perf: _hmPerfScore(eng) });
-    });
-  });
-
-  var projData = visProjects.map(function(p) {
-    var np    = normPct(p);
-    var imp   = _hmTier(np);
-    var ps    = _hmProjectPerfScore(p.id);
-    var perf  = _hmPerfBucket(ps);
-    return { p: p, imp: imp, perf: perf, np: np, ps: ps, engs: engsByProj[p.id] };
-  });
-
-  var IMP_ROWS  = ['high','mid','low'];
-  var PERF_COLS = ['high','mid','low','none'];
-
-  var CELL_KEY = {};
-  IMP_ROWS.forEach(function(imp) {
-    PERF_COLS.forEach(function(perf) { CELL_KEY[imp+'|'+perf] = []; });
-  });
-  projData.forEach(function(d) {
-    var k = d.imp + '|' + d.perf;
-    if (CELL_KEY[k]) CELL_KEY[k].push(d);
-  });
-
-  var IMP_STYLE = {
-    high: { border: '#f14335', badge: '#f14335', bg: 'rgba(241,67,53,0.06)',  label: 'HIGH' },
-    mid:  { border: '#f1a435', badge: '#f1a435', bg: 'rgba(241,164,53,0.06)', label: 'MED'  },
-    low:  { border: '#555',    badge: '#888',     bg: 'rgba(40,40,50,0.15)',   label: 'LOW'  },
-  };
-  var PERF_STYLE = {
-    high: { border: '#c8f135', badge: '#c8f135', label: '▲ High perf' },
-    mid:  { border: '#888',    badge: '#888',     label: '● Mid perf'  },
-    low:  { border: '#f14335', badge: '#f14335',  label: '▼ Low perf'  },
-    none: { border: '#2a2a32', badge: '#555',     label: '? Unplaced'  },
-  };
-
-  function cellAdvice(imp, perf) {
-    if (imp==='high' && perf==='low')  return { col:'#f14335', msg:'⚠ Low-performers on critical project' };
-    if (imp==='high' && perf==='none') return { col:'#f14335', msg:'⚡ No resources allocated' };
-    if (imp==='low'  && perf==='high') return { col:'#a78bfa', msg:'↩ Stars on low-priority project' };
-    if (imp==='high' && perf==='mid')  return { col:'#f1a435', msg:'↑ Consider adding high-performers' };
-    if (imp==='mid'  && perf==='low')  return { col:'#f1a435', msg:'⚠ Check resource fit' };
-    return null;
-  }
-
-  function avatar(eng, sz) {
-    sz = sz || 24;
-    var photo = _photoCache && _photoCache.get && _photoCache.get(eng.id);
-    var ini = (eng.name||'?').split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    if (photo) return '<img src="'+photo+'" style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0">';
-    return '<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--muted);flex-shrink:0;font-family:IBM Plex Mono,monospace">'+ini+'</div>';
-  }
-
-  var flagged   = projData.filter(function(d){ return cellAdvice(d.imp,d.perf); }).length;
-  var noStaff   = projData.filter(function(d){ return d.perf==='none' && d.imp==='high'; }).length;
-  var starLow   = projData.filter(function(d){ return d.imp==='low' && d.perf==='high'; }).length;
-  var lowOnHigh = projData.filter(function(d){ return d.imp==='high' && d.perf==='low'; }).length;
-
-  var h = '<div style="display:flex;flex-direction:column;height:100%;gap:0;overflow:hidden">';
-
-  h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-shrink:0;flex-wrap:wrap">'
-    + '<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">🌡 PROJECT HEATMAP</h3>'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'
-    + visProjects.length + ' projects · ' + cur + '</span>'
-    + '<div style="flex:1"></div>'
-    + '<button class="add-row-btn" onclick="_hmState.showThresh=!_hmState.showThresh;renderHeatmap()" '
-    + 'style="font-size:9px;padding:2px 8px;'
-    + (_hmState.showThresh ? 'border-color:var(--accent);color:var(--accent)' : '')
-    + '">⚙ THRESHOLDS</button>'
-    + '</div>';
-
-  if (_hmState.showThresh) {
-    h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;'
-      + 'padding:12px 14px;margin-bottom:10px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:14px">';
-    h += '<div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:4px">'
-      + 'HIGH importance threshold: <span id="hm-high-val" style="color:#f14335">' + _hmState.threshHigh + '%</span></div>'
-      + '<input type="range" min="' + (_hmState.threshLow+5) + '" max="95" value="' + _hmState.threshHigh + '" '
-      + 'style="width:100%;accent-color:#f14335" '
-      + 'oninput="document.getElementById(\'hm-high-val\').textContent=this.value+\'%\'" '
-      + 'onchange="_hmState.threshHigh=+this.value;renderHeatmap()"></div>';
-    h += '<div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:4px">'
-      + 'LOW importance threshold: <span id="hm-low-val" style="color:#888">' + _hmState.threshLow + '%</span></div>'
-      + '<input type="range" min="5" max="' + (_hmState.threshHigh-5) + '" value="' + _hmState.threshLow + '" '
-      + 'style="width:100%;accent-color:#888" '
-      + 'oninput="document.getElementById(\'hm-low-val\').textContent=this.value+\'%\'" '
-      + 'onchange="_hmState.threshLow=+this.value;renderHeatmap()"></div>';
-    h += '<div style="grid-column:1/-1;font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'
-      + 'Importance formula: <span style="color:var(--accent)">' + escH(_hmState.formula) + '</span>'
-      + ' — edit it and the ⭐ focus star from the Portfolio matrix toolbar.</div>';
-    h += '</div>';
-  }
-
-  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;flex-shrink:0">';
-  [
-    { v: visProjects.length, l: 'PROJECTS',         c: 'var(--accent)' },
-    { v: flagged,            l: 'FLAGGED',           c: flagged  ? '#f14335' : 'var(--accent)' },
-    { v: noStaff,            l: 'HIGH · NO STAFF',  c: noStaff  ? '#f14335' : 'var(--accent)' },
-    { v: starLow+lowOnHigh,  l: 'MISMATCH',         c: (starLow+lowOnHigh) ? '#f1a435' : 'var(--accent)' },
-  ].forEach(function(k) {
-    h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;text-align:center">'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:20px;font-weight:700;color:'+k.c+'">'+k.v+'</div>'
-      + '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);letter-spacing:.06em;margin-top:1px">'+k.l+'</div>'
-      + '</div>';
-  });
-  h += '</div>';
-
-  var COL_W = '1fr 1fr 1fr 0.9fr';
-  h += '<div style="flex:1;overflow-y:auto;min-height:0">';
-  h += '<div style="display:grid;grid-template-columns:80px '+COL_W+';gap:4px;margin-bottom:4px;flex-shrink:0">';
-  h += '<div></div>';
-  PERF_COLS.forEach(function(perf) {
-    var ps = PERF_STYLE[perf];
-    h += '<div style="text-align:center;font-family:IBM Plex Mono,monospace;font-size:9px;'
-      + 'font-weight:700;color:'+ps.badge+';padding:4px 2px;border-bottom:2px solid '+ps.border+'">'
-      + ps.label + '</div>';
-  });
-  h += '</div>';
-
-  IMP_ROWS.forEach(function(imp) {
-    var is = IMP_STYLE[imp];
-    h += '<div style="display:grid;grid-template-columns:80px '+COL_W+';gap:4px;margin-bottom:4px">';
-    h += '<div style="display:flex;align-items:center;justify-content:center;'
-      + 'background:'+is.bg+';border:1px solid '+is.border+'44;border-radius:6px;'
-      + 'font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;color:'+is.badge+';'
-      + 'writing-mode:vertical-rl;text-orientation:mixed;padding:8px 4px;letter-spacing:.08em">'
-      + is.label + ' IMP</div>';
-    PERF_COLS.forEach(function(perf) {
-      var cellProjects = CELL_KEY[imp+'|'+perf];
-      var advice = cellAdvice(imp, perf);
-      var cellBg = advice ? advice.col + '0d' : 'var(--surface)';
-      var cellBorder = advice ? advice.col + '55' : 'var(--border)';
-      h += '<div style="background:'+cellBg+';border:1px solid '+cellBorder+';border-radius:7px;'
-        + 'padding:7px;min-height:90px;display:flex;flex-direction:column;gap:4px">';
-      if (advice && cellProjects.length > 0) {
-        h += '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:'+advice.col+';'
-          + 'padding:2px 4px;background:'+advice.col+'18;border-radius:3px;line-height:1.3">'
-          + escH(advice.msg) + '</div>';
-      }
-      if (cellProjects.length === 0) {
-        h += '<div style="flex:1;display:flex;align-items:center;justify-content:center;'
-          + 'color:var(--muted);font-size:9px;font-family:IBM Plex Mono,monospace;opacity:.4">—</div>';
-      } else {
-        cellProjects.forEach(function(d) {
-          var p = d.p;
-          var impScore = _hmImportance(p);
-          h += '<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid '
-            + (p.color||'var(--muted)') + ';border-radius:5px;padding:5px 7px">';
-          h += '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;'
-            + 'color:var(--text);line-height:1.3;margin-bottom:4px" title="'+escH(p.name)+'">'
-            + escH(p.name.length > 22 ? p.name.slice(0,21)+'…' : p.name) + '</div>';
-          h += '<div style="display:flex;gap:5px;align-items:center;margin-bottom:4px">'
-            + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">Y:'+( p.y||'?')+'</span>'
-            + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">V:'+(p.vis||'?')+'</span>'
-            + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">E:'+(p.ena||'?')+'</span>'
-            + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;font-weight:700;color:'+is.badge+'">'+Math.round(impScore)+'</span>'
-            + '</div>';
-          if (d.engs.length === 0) {
-            h += '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">No staff</div>';
-          } else {
-            h += '<div style="display:flex;flex-wrap:wrap;gap:3px">';
-            d.engs.forEach(function(item) {
-              var pScore = item.perf;
-              var pCol = pScore===3?'#c8f135':pScore===2?'#888':'#f14335';
-              var pSym = pScore===3?'▲':pScore===2?'●':pScore===1?'▼':'?';
-              h += '<div style="display:flex;align-items:center;gap:3px;padding:2px 4px;'
-                + 'border-radius:4px;background:var(--surface);border:1px solid var(--border)" '
-                + 'title="'+escH(item.eng.name)+' — '+Math.round(item.fte*100)+'%">'
-                + avatar(item.eng, 18)
-                + '<span style="font-size:8px;color:'+pCol+';font-weight:700">'+pSym+'</span>'
-                + '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted)">'
-                + Math.round(item.fte*100)+'%</span></div>';
-            });
-            h += '</div>';
-          }
-          h += '</div>';
-        });
-      }
-      h += '</div>';
-    });
-    h += '</div>';
-  });
-
-  h += '</div>';
-  h += '<div style="display:flex;align-items:center;justify-content:center;margin-top:6px;gap:8px;flex-shrink:0">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">← X AXIS: TEAM PERFORMANCE (Nine-Box avg)</span>'
-    + '</div>';
-  h += '</div>';
-  body.innerHTML = h;
 }
 /* ◄◄ END: sections/heatmap.js ►► */
 
@@ -18318,9 +18019,30 @@ function _nbPeopleHTML(key,placements,engList,photoCache,forExport){
   return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">'+chips+'</div>';
 }
 
+/* ── Talent placement: two lenses (Nine-box | DISC) in one view (Track B follow-up).
+   The former separate Nine-box and DISC rail views are merged into a single "Talent
+   placement" door. renderTalentPlacement() is the nav entry point; each lens renderer
+   (renderNineBox / renderDiscMatrix) marks _tpLens itself and prepends tpLensBar(), so the
+   toggle always reflects what's on screen. The lens is remember-last (persisted in the rail
+   prefs via railSavePrefs, not the dataset). tpGo() is the deep-link opener for callers that
+   want to land on a specific lens. ── */
+function renderTalentPlacement(){ if(_tpLens==='disc') renderDiscMatrix(); else renderNineBox(); }
+function tpSetLens(l){ _tpLens=(l==='disc')?'disc':'ninebox'; if(typeof railSavePrefs==='function') railSavePrefs(); renderTalentPlacement(); }
+function tpGo(ev,lens){ _tpLens=(lens==='disc')?'disc':'ninebox'; if(typeof railSavePrefs==='function') railSavePrefs(); if(typeof railGo==='function') railGo(ev,'placement'); }
+function tpLensBar(){
+  var mk=function(id,label){ var on=_tpLens===id;
+    return '<button onclick="tpSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0">'
+    +'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">⊞ '+escH(t('TALENT PLACEMENT'))+'</span>'
+    +'<div style="display:flex;gap:6px">'+mk('ninebox',t('Nine-box'))+mk('disc','DISC')+'</div></div>';
+}
+
 // renders the nine-box talent matrix grid with people chips
 function renderNineBox(){
   var body=G('res-body');if(!body)return;
+  _tpLens='ninebox';
   if(!_nineBoxPlacements)_nineBoxPlacements={};
   var CELLS=_nbCells();
   var placed=new Set(Object.keys(_nineBoxPlacements));   // keys are uids
@@ -18342,6 +18064,7 @@ function renderNineBox(){
   var yearsList=nbYears();
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=tpLensBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">NINE-BOX TALENT MATRIX</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_nineBoxPlacements).length+' placed · '+unplaced.length+' unplaced'+moveSummary+'</span>'
@@ -18762,6 +18485,7 @@ function _discPeopleHTML(key,placements,engList,photoCache,forExport){
 // renders the DISC matrix with drag-and-drop people chips
 function renderDiscMatrix(){
   var body=G('res-body');if(!body)return;
+  _tpLens='disc';
   if(!_discPlacements)_discPlacements={};
   var QUADRANTS=_discQuadrants();
   var placedSet=new Set(Object.keys(_discPlacements));   // keys are uids
@@ -18769,6 +18493,7 @@ function renderDiscMatrix(){
   var unplaced=talentEngsD.filter(function(e){return !placedSet.has(e.uid)||!QUADRANTS.find(function(q){return q.key===_discPlacements[e.uid];});});
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=tpLensBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">DISC BEHAVIORAL PROFILE</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_discPlacements).length+' profiled · '+unplaced.length+' unassigned</span>'
@@ -20336,7 +20061,24 @@ function anStoryPayProgression(data){
 /* ══════════════════════════════════════════════════════════════════
    5. TAB SHELL + render orchestration
    ══════════════════════════════════════════════════════════════════ */
+/* People view: two lenses in one tab (Track B #6) — Analytics (this story/dimension
+   engine) and Profiles (the card grid, profiles.js). renderPeople() dispatches on
+   _peopleLens; each lens renderer sets it so the toggle always reflects what's shown. */
+var _peopleLens='analytics';
+function renderPeople(){ if(_peopleLens==='profiles' && typeof renderProfilesTab==='function') renderProfilesTab(); else renderAnalyticsTab(); }
+function peopleSetLens(l){ if(l==='profiles' && typeof renderProfilesTab==='function') renderProfilesTab(); else renderAnalyticsTab(); }
+function peopleLensBar(){
+  const mk=(id,label)=>{ const on=_peopleLens===id;
+    return '<button onclick="peopleSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:IBM Plex Mono,monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">◎ '+t('PEOPLE')+'</span>'
+    +'<div style="display:flex;gap:6px">'+mk('analytics',t('Analytics'))+mk('profiles',t('Profiles'))+'</div></div>';
+}
+
 function renderAnalyticsTab(){
+  _peopleLens='analytics';
   const dimsByGroup = {};
   ANALYTICS_DIMENSIONS.forEach(d => { (dimsByGroup[d.group] = dimsByGroup[d.group] || []).push(d); });
   const dimOpts = sel => '<option value="">'+t('— none —')+'</option>' + Object.keys(dimsByGroup).map(grp =>
@@ -20364,6 +20106,7 @@ function renderAnalyticsTab(){
       + (on?'▾ ':'▸ ')+label+'</button>'; };
 
   let h = '<div style="padding:14px 16px">';
+  h += peopleLensBar();
   // Story pills + view toggles
   h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
     + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('STORY VIEWS')+'</span>'
@@ -20788,24 +20531,30 @@ function pfBuildDataset(){
 // Entry point — assemble the tab into #res-body.
 function renderPortfolioAnalytics(){
   var body=G('res-body'); if(!body) return;
-  var ds=pfBuildDataset();
   var months=getMonthRange();
+  var lens=(_pfState.lens==='economics')?'economics':'overview';
   var h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
-  h+='<div style="display:flex;align-items:baseline;gap:10px">'
+  h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ANALYTICS')+'</span>'
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
-    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
-    +'</span><div style="flex:1"></div>'+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
+    +(lens==='economics' ? t('value · NPV · channel profit · decision quality')
+        : (months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost')))
+    +'</span><div style="flex:1"></div>'+pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
   if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
-  h+=pfScorecard(ds);
-  h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
-  h+=pfSection(t('VALUE vs COST — ROI'),      t('Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.'), pfRoiChart(ds));
-  h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
-  h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
-  h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
-  h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on OFFER MNGT ▸ Channel mix.'), pfChannelMix(ds));
-  h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
-  h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
+  if(lens==='economics'){
+    h+=(typeof ecBody==='function') ? ecBody(ecDataset()) : pfEmpty(t('Economics view unavailable.'));
+  } else {
+    var ds=pfBuildDataset();
+    h+=pfScorecard(ds);
+    h+='<div id="pf-sec-treemap">'+pfTreemapSection(ds)+'</div>';
+    h+=pfSection(t('VALUE vs COST — ROI'),      t('Revenue impact (€) against loaded team cost (€) over the period. Bubble size = avg FTE. Above the dashed break-even line = positive ROI. Revenue defaults to impact + enabler (M€) when none is entered.'), pfRoiChart(ds));
+    h+='<div id="pf-sec-burn">'+pfBurnSection()+'</div>';
+    h+=pfSection(t('DELIVERY PIPELINE — gates'),t('How the portfolio and its revenue are distributed across current gate stages.'), pfGateFunnel(ds));
+    h+=pfSection(t('PORTFOLIO MIX — sectors'),  t('Where investment (cost) and expected return (revenue) concentrate by sector.'), pfSectorMix(ds));
+    h+=pfSection(t('GO-TO-MARKET — channel mix'),t('Portfolio revenue split across go-to-market channels (each project’s revenue × the channel’s share). Bars show € revenue, its % of the portfolio, and the blended margin. Set channels on the Project workspace ▸ Channels tab.'), pfChannelMix(ds));
+    h+=pfSection(t('RISK vs VALUE'),            t('Total risk exposure (Σ RPN) against revenue. Top-right = valuable AND risky — watch closely.'), pfRiskValue(ds));
+    h+='<div id="pf-sec-dist">'+pfDistSection(ds)+'</div>';
+  }
   h+='</div>';
   body.innerHTML=h;
 }
@@ -20991,7 +20740,26 @@ function pfRiskValue(ds){
 /* ══ INTERACTIVE SECTIONS (treemap · burn · distribution) ══════════════
    Small module state + a generic re-render router so each section's controls
    re-render only their own wrapper (no full-tab reflow, no scroll jump). */
-var _pfState={ treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+var _pfState={ lens:'overview', treemapBy:'cost', treemapGroup:'none', burnBy:'sector', distMetric:'revenue', distFit:'none', distBins:8 };
+
+// Two lenses in one tab (Track B #1 — folds the former Portfolio economics view in):
+//  overview  = delivery analytics (impact-revenue ROI, gates, sectors, risk, treemap, burn, dist)
+//  economics = value analytics (NPV/PI, channel profit pools, margin realism, decision quality)
+// Kept as lenses (not one long tab) so the two DIFFERENT revenue bases — Overview uses
+// impact revenue (projRevenueM); Economics uses charter expectedRevenueM — are never summed
+// or shown side-by-side, avoiding a double-counted-€ read.
+function pfLensToggle(){
+  var L=(_pfState.lens==='economics')?'economics':'overview';
+  return '<div style="display:flex;gap:6px">'
+    +pfToggle("pfSetLens('overview')",  t('Overview'),  L==='overview')
+    +pfToggle("pfSetLens('economics')", t('Economics'), L==='economics')+'</div>';
+}
+function pfSetLens(lens){ _pfState.lens=(lens==='economics')?'economics':'overview'; renderPortfolioAnalytics(); }
+// Deep-link entry (used by the Executive summary): open Portfolio analytics on a lens.
+function pfOpenLens(ev,lens){
+  _pfState.lens=(lens==='economics')?'economics':'overview';
+  if(typeof railGo==='function') railGo(ev,'portfolio'); else renderPortfolioAnalytics();
+}
 var PF_SEL='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer';
 
 // Set a control value and re-render just the affected section wrapper.
@@ -22693,7 +22461,7 @@ function saveResState(){ saveState(); flashSaved(); }
 // dispatches to the correct tab renderer and highlights the active button
 function showResTab(tab){
   resActiveTab=tab;
-  ['roster','plan','dashboard','skills','skillrisk','profiles','ninebox','disc','timeline','development','heatmap','analytics','portfolio','econ','exec','gate','pipeline','engagement','backlog'].forEach(function(t){
+  ['roster','plan','dashboard','skills','placement','development','analytics','portfolio','exec','gate','pipeline','engagement','backlog'].forEach(function(t){
     var btn=G('res-overlay')&&G('res-overlay').querySelector('button[onclick*='+JSON.stringify(t)+']');
     if(!btn)return;
     if(t===tab){
@@ -22707,18 +22475,12 @@ function showResTab(tab){
     }
   });
   if(tab==='roster')           renderRosterTab();
-  else if(tab==='plan')        renderResPlan();
-  else if(tab==='skills')      renderSkillsTab();
-  else if(tab==='skillrisk')   renderSkillRisk();
-  else if(tab==='profiles')    renderProfilesTab();
-  else if(tab==='ninebox')     renderNineBox();
-  else if(tab==='disc')        renderDiscMatrix();
-  else if(tab==='timeline')    renderTimeline();
+  else if(tab==='plan')        renderPlan();
+  else if(tab==='skills')      renderSkills();
+  else if(tab==='placement')   renderTalentPlacement();
   else if(tab==='development') renderDevelopment();
-  else if(tab==='heatmap')     renderHeatmap();
-  else if(tab==='analytics')   renderAnalyticsTab();
+  else if(tab==='analytics')   renderPeople();
   else if(tab==='portfolio')   renderPortfolioAnalytics();
-  else if(tab==='econ')        renderEconTab();
   else if(tab==='exec')        renderExecTab();
   else if(tab==='gate')        renderGateTab();
   else if(tab==='pipeline')    renderPipelineTab();
@@ -22852,10 +22614,8 @@ function onDashFilterProjChange(s){engDashFilterProj=s;renderResDashboard();}
 // Re-renders whichever resource tab is currently active.
 function renderResActiveTab(){
   if(resActiveTab==='roster')        renderRosterTab();
-  else if(resActiveTab==='plan')     renderResPlan();
-  else if(resActiveTab==='ninebox')  renderNineBox();
-  else if(resActiveTab==='disc')     renderDiscMatrix();
-  else if(resActiveTab==='timeline') renderTimeline();
+  else if(resActiveTab==='plan')     renderPlan();
+  else if(resActiveTab==='placement') renderTalentPlacement();
   else if(resActiveTab==='development') renderDevelopment();
 }
 /* ◄◄ END: sections/nav.js ►► */
@@ -22909,7 +22669,8 @@ var RAIL_I = {
   pinOpen:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
   chev:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   collab:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.6"/><circle cx="17" cy="8" r="2.6"/><path d="M2.6 18c0-2.4 1.9-4 4.4-4 1.2 0 2.3.4 3.1 1.1"/><path d="M13.9 15.1c.8-.7 1.9-1.1 3.1-1.1 2.5 0 4.4 1.6 4.4 4"/><path d="M9.4 12.2a3.2 3.2 0 0 1 5.2 0"/></svg>',
-  archive:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>'
+  archive:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>',
+  data:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/><path d="M4.5 11.5v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/></svg>'
 };
 
 /* ── Domain → view map. Every view id routes through railGo (Phase 2).
@@ -22923,10 +22684,13 @@ var RAIL_I = {
 /* Reframed 2026-08-23 (IA Track A): 7 feature-led domains → 5 job-led domains that
    spell the daily loop — HOME (triage) · PORTFOLIO (what to build) · PLAN (the
    people×project JOIN) · PEOPLE (run/grow team) · REVIEW (report). Pure nav reorg:
-   every view keeps its id + render path; only its domain/label/order changed. The
-   Track-B feature merges (compare→matrix mode, summary cut, econ+portfolio, charter
-   workspace, …) land later — until then those views still sit here, grouped so the
-   redundancy is visible. See PIPELINE-PLAN sibling IA-REFRAME notes. */
+   every view keeps its id + render path; only its domain/label/order changed. Track-B
+   feature merges DONE so far: charter workspace (4 panels → 'workspace'), econ→portfolio
+   (Economics lens), skills (Matrix|Risk lenses + heatmap view removed), timeline→Plan
+   (GRID·GANTT·RIBBON·CAPACITY mode bar), compare→matrix (⧉ COMPARE toolbar sub-mode),
+   brief→Export door (a shared-engine deliverable, project scope = builder toggles),
+   summary CUT (redundant), profiles→People analytics (Analytics|Profiles lens),
+   snap/backup/restore grouped into the Data utility. Track B complete. See IA-REFRAME. */
 var RAIL_DOMAINS = [
   { id:'home', name:t('HOME'), ico:RAIL_I.home, views:[
     {id:'home',        label:t('Home')},
@@ -22935,37 +22699,25 @@ var RAIL_DOMAINS = [
     {id:'matrix',      label:t('Portfolio matrix')},
     {id:'pipeline',    label:t('Pipeline')},
     {id:'gate',        label:t('Gate & PI')},
-    {id:'charters',    label:t('Financials analysis')},
-    {id:'decision',    label:t('Trade-off decision')},
+    {id:'workspace',   label:t('Project workspace')},
     {id:'portfolio',   label:t('Portfolio analytics')},
-    {id:'econ',        label:t('Portfolio economics')},
-    {id:'compare',     label:t('Compare')},
-    {id:'channels',    label:t('Channel mix')},
-    {id:'dtc',         label:t('Design to cost')},
-    {id:'brief',       label:t('Project brief')},
   ]},
   { id:'plan', name:t('PLAN'), ico:RAIL_I.planning, views:[
     {id:'plan',        label:t('Resource plan')},
     {id:'dashboard',   label:t('Resource balancer')},
-    {id:'timeline',    label:t('Timeline')},
     {id:'backlog',     label:t('Backlog & planner')},
   ]},
   { id:'people', name:t('PEOPLE'), ico:RAIL_I.team, views:[
     {id:'roster',      label:t('Roster')},
     {id:'org',         label:t('Org chart')},
-    {id:'skills',      label:t('Skills matrix')},
-    {id:'skillrisk',   label:t('Skill risk'), bdg:'SPOF'},
-    {id:'heatmap',     label:t('Heatmap')},
-    {id:'ninebox',     label:t('Nine-box')},
-    {id:'disc',        label:'DISC'},
-    {id:'profiles',    label:t('Team profiles')},
+    {id:'skills',      label:t('Skills'), bdg:'SPOF'},
+    {id:'placement',   label:t('Talent placement')},
     {id:'development', label:t('Development')},
     {id:'engagement',  label:t('Engagement')},
     {id:'analytics',   label:t('People analytics')},
   ]},
   { id:'review', name:t('REVIEW'), ico:RAIL_I.insights, views:[
     {id:'exec',        label:t('Executive summary')},
-    {id:'summary',     label:t('Summary')},
   ]},
 ];
 
@@ -22982,9 +22734,7 @@ var RAIL_UTIL = [
   {id:'export',   name:t('Export'),    ico:RAIL_I.exportico},
   {id:'collab',   name:t('Collaborate'),ico:RAIL_I.collab},
   {id:'archive',  name:t('Archive'),   ico:RAIL_I.archive},
-  {id:'snap',     name:t('Snapshots'), ico:RAIL_I.snap},
-  {id:'backup',   name:t('Backup'),    ico:RAIL_I.backup},
-  {id:'restore',  name:t('Restore'),   ico:RAIL_I.restore},
+  {id:'data',     name:t('Data'),      ico:RAIL_I.data},
   {id:'ai',       name:t('AI advisor'),ico:RAIL_I.ai},
   {id:'settings', name:t('Settings'),  ico:RAIL_I.settings},
   {id:'help',     name:t('Help'),      ico:RAIL_I.help},
@@ -23019,13 +22769,14 @@ function railLoadPrefs(){
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
+              if(p.tpLens==='disc'||p.tpLens==='ninebox') _tpLens=p.tpLens;   // Talent placement remember-last lens
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -23241,7 +22992,7 @@ function railInit(){
   // Land on the user's chosen default view — or ask once on first run.
   // DEFER to DOMContentLoaded: the bundled script runs mid-body, so the overlays
   // that live *after* the {{JS}} placeholder (#res-overlay, #org-overlay,
-  // #snap-overlay, #brief-overlay) are not parsed yet — routing would hit null.
+  // #snap-overlay) are not parsed yet — routing would hit null.
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',railLand);
   else                                railLand();
 }
@@ -23302,7 +23053,7 @@ function railRender(){
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
-var RAIL_RES_TABS={roster:1,plan:1,timeline:1,skills:1,skillrisk:1,heatmap:1,ninebox:1,disc:1,profiles:1,development:1,analytics:1,dashboard:1,portfolio:1,econ:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
+var RAIL_RES_TABS={roster:1,plan:1,skills:1,placement:1,development:1,analytics:1,dashboard:1,portfolio:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
 
 // Close every full-screen overlay, revealing the base matrix canvas.
 // Reuses each overlay's own closer (verified in nav.js/org.js/overlays.js/persist.js).
@@ -23310,16 +23061,10 @@ function closeAllOverlays(){
   if(typeof closeRes==='function')      closeRes();
   if(typeof closeOrgChart==='function') closeOrgChart();
   if(typeof closeCompare==='function')  closeCompare();
-  if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
-  if(typeof closeCharterHub==='function') closeCharterHub();
-  if(typeof chtClose==='function')          chtClose();
-  if(typeof chtCloseDecision==='function')  chtCloseDecision();
-  if(typeof closeDtc==='function')        closeDtc();
-  if(typeof closeChannels==='function')   closeChannels();
-  if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeWorkspace==='function')  closeWorkspace();
   if(typeof closeHome==='function')       closeHome();
 }
 
@@ -23328,16 +23073,10 @@ function closeAllOverlays(){
 function railOpenRes(tab){
   if(typeof closeOrgChart==='function') closeOrgChart();
   if(typeof closeCompare==='function')  closeCompare();
-  if(typeof closeSummary==='function')  closeSummary();
   if(typeof closeSnap==='function')     closeSnap();
   if(typeof closeArchive==='function')  closeArchive();
   if(typeof closeHelp==='function')     closeHelp();
-  if(typeof closeCharterHub==='function') closeCharterHub();
-  if(typeof chtClose==='function')          chtClose();
-  if(typeof chtCloseDecision==='function')  chtCloseDecision();
-  if(typeof closeDtc==='function')        closeDtc();
-  if(typeof closeChannels==='function')   closeChannels();
-  if(typeof closeBrief==='function')      closeBrief();
+  if(typeof closeWorkspace==='function')  closeWorkspace();
   if(typeof closeHome==='function')       closeHome();
   if(!G('res-overlay').classList.contains('show')) openRes();
   showResTab(tab);
@@ -23346,17 +23085,11 @@ function railOpenRes(tab){
 // Dispatch a view id to its existing surface. Every target verified against source.
 function railRoute(viewId){
   if(RAIL_RES_TABS[viewId]){ railOpenRes(viewId); return; }
-  closeAllOverlays();                       // org/summary/compare/matrix = single surface
+  closeAllOverlays();                       // org/matrix = single surface
   if(viewId==='matrix')       return;       // base canvas now revealed
   else if(viewId==='home')    openHome();
   else if(viewId==='org')     openOrgChart();
-  else if(viewId==='summary') openSummary();
-  else if(viewId==='compare') openCompare();
-  else if(viewId==='charters')chtOpenFinancials();
-  else if(viewId==='decision')chtOpenDecisionView();
-  else if(viewId==='dtc')     openDtc();
-  else if(viewId==='channels')openChannelsView();
-  else if(viewId==='brief')   openProjectBriefExport();
+  else if(viewId==='workspace')openWorkspace();
 }
 
 /* Router. VIEWS set activeView + change the visible surface; ACTIONS just fire. */
@@ -23388,8 +23121,7 @@ function railBack(){
 }
 // Esc mirrors the ← Back button, but ONLY when a rail view overlay is the visible
 // surface (so Esc on the bare matrix, or over a modal, doesn't teleport you).
-var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','compare-overlay','summary-overlay',
-  'cht-overlay','dec-overlay','chthub-overlay','dtc-overlay','chan-overlay','brief-overlay'];
+var RAIL_VIEW_OVERLAYS=['res-overlay','org-overlay','wk-overlay'];
 function railEscMaybeBack(){
   // A view overlay counts as visible if it carries the .show class OR (like the org
   // chart) is shown via an inline display:flex — checking only .show missed org, so
@@ -23403,7 +23135,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','archive-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay','export-picker-overlay'];
+  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -23415,12 +23147,29 @@ function railAction(id){
   if(id==='export')        exportOpenPicker();
   else if(id==='collab')   collabOpen();
   else if(id==='archive')  openArchive();
-  else if(id==='snap')     openSnap();
-  else if(id==='backup')   exportFullBackup();
-  else if(id==='restore')  importFullBackup();
+  else if(id==='data')     dataMenuOpen();
   else if(id==='ai')       aiOpenChat();
   else if(id==='settings') railOpenSettings();
   else if(id==='help')     openHelp();
+}
+
+/* ── DATA utility (Track B #9) — one rail door grouping the three dataset-lifecycle
+   actions that used to be separate utility icons: Snapshots (time-travel copies),
+   Backup (full export incl. photos) and Restore (load a full backup). A small modal
+   menu (#data-menu-overlay, z1100 like Settings); each button fires the existing
+   function and closes the menu. Registered in RAIL_MODAL_OVERLAYS + boot.js Esc. */
+function dataMenuOpen(){
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  var ov=G('data-menu-overlay'); if(ov) ov.classList.add('show');
+}
+function dataMenuClose(){ var ov=G('data-menu-overlay'); if(ov) ov.classList.remove('show'); }
+// A menu item fires its action then dismisses the menu.
+function dataMenuGo(action){
+  dataMenuClose();
+  if(action==='snap'    && typeof openSnap==='function')          openSnap();
+  else if(action==='backup'  && typeof exportFullBackup==='function') exportFullBackup();
+  else if(action==='restore' && typeof importFullBackup==='function') importFullBackup();
 }
 
 // collapsed: tap toggles the flyout · pinned: expand accordion + go to first view
@@ -23680,7 +23429,7 @@ function railChooseLanding(viewId){
    (Action overlays — snap/help — never change activeView, so they are
    intentionally NOT wrapped.) */
 (function railWrapClosers(){
-  ['closeRes','closeOrgChart','closeCompare','closeSummary','closeCharterHub','closeDtc','closeBrief'].forEach(function(name){
+  ['closeRes','closeOrgChart','closeCompare'].forEach(function(name){
     var orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(){
@@ -23696,21 +23445,16 @@ function railChooseLanding(viewId){
 })();
 /* ◄◄ END: sections/railnav.js ►► */
 
-/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter — now two rail-inset
- * PANELS (like Design-to-cost), not a full-cover modal:
- *   • Financials analysis (#cht-overlay) — overview / demands / financials tabs
- *   • Trade-off decision  (#dec-overlay) — the configurable triangle(s) + lists
- * Both share one selected project (`_chtProjId`) and a project-picker MODE read
- * from Settings (`chtPickerMode()`): 'hub' (card grid, as before) or 'dropdown'
- * (a top <select>, like DTC).
+/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter. The Financials and
+ * Trade-off panels are now TABS of the Project workspace (#wk-overlay, workspace.js)
+ * — this file keeps their renderers (chtShowTab → #cht-body; chtRenderDecision →
+ * #dec-body) + the financial engine glue. All share one selected project (`_chtProjId`).
  *
- *   chtOpenFinancials / chtOpenDecisionView — rail-view entry points (per mode)
- *   openCharterHub(target)  — the card grid; a card opens the financials OR the
- *                             decision panel depending on `target`
- *   openCharter(projId)     — open the Financials panel for a project
- *   chtOpenDecision(projId) — open the Trade-off decision panel for a project
- *   chtClose / chtCloseDecision — close a panel
- *   chtShowTab(tab)         — switch Financials tab and render it
+ *   openCharter(projId, tab) — redirect to the workspace on the Financials family
+ *   chtOpenDecision(projId)  — redirect to the workspace Trade-off tab
+ *   chtClose / chtCloseDecision — delegate to closeWorkspace
+ *   chtShowTab(tab)          — render a charter tab body (overview/demands/financials)
+ *   chtRenderDecision        — render the trade-off body
  *
  * All state lives on the project (makeCharter) so it flows through save/backup
  * automatically. Money is EUR. There is no approval workflow by design.
@@ -23727,13 +23471,6 @@ const CHT_TABS = [
   ['financials', 'FINANCIALS'],
 ];
 
-// Project-picker mode, set in Settings (railnav owns the pref). 'hub' = card grid
-// (default), 'dropdown' = a top <select> like Design-to-cost.
-function chtPickerMode(){
-  return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub';
-}
-// First project id, or null (used when the dropdown mode opens with no selection).
-function chtFirstProj(){ return projects.length ? projects[0].id : null; }
 // The 5 functions: section key → label.
 const CHT_FUNCS = [
   ['strategy',          'Strategy'],
@@ -23760,39 +23497,24 @@ function chtStanceWarn(d){
   return '';
 }
 
-// ── rail-view entry points (honour the picker mode) ──────────────────────────
-// WORK › Financials analysis.
-function chtOpenFinancials(){
-  if(chtPickerMode()==='dropdown') openCharter(chtFirstProj());
-  else openCharterHub('financials');
-}
-// WORK › Trade-off decision.
-function chtOpenDecisionView(){
-  if(chtPickerMode()==='dropdown') chtOpenDecision(chtFirstProj());
-  else openCharterHub('decision');
-}
+// ── rail-view entry points ───────────────────────────────────────────────────
+// The four former charter panels are merged into the Project workspace shell
+// (sections/workspace.js). These entry points + the deep-link openers below all
+// redirect there, opening on the correct tab.
+function chtOpenFinancials(){ if(typeof wkOpen==='function') wkOpen('financials'); }
+function chtOpenDecisionView(){ if(typeof wkOpen==='function') wkOpen('decision'); }
 
-// ── Financials panel (open / close) ──────────────────────────────────────────
-function openCharter(projId){
-  const p = projid2proj(projId);
-  _chtProjId = p ? p.id : null;
-  if(p && (!p.charter || typeof p.charter!=='object')) p.charter = makeCharter();
-  _chtTab = 'overview';
-  G('cht-overlay').classList.add('show');
-  chtRenderPicker('financials');
-  chtRenderHeader();
-  chtRenderTabStrip();
-  chtShowTab('overview');
-  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
-}
-function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfterClose();
-  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
+// ── deep-link opener (redirects to the workspace) ────────────────────────────
+// Opens the workspace for `projId` on `tab` (default 'overview'). Kept as the
+// public name every deep-link (Home / Pipeline / matrix context menu) still calls.
+function openCharter(projId, tab){ if(typeof wkOpen==='function') wkOpen(tab||'overview', projId); }
+function chtClose(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
 // If closing a panel reveals the BASE matrix (no charter surface left showing) and
 // we're not mid-navigation, sync the rail highlight back to matrix. When the hub
 // is still visible beneath (hub mode) it stays highlighted as the charter view.
 // Reads railnav module state directly (one shared bundle scope).
 function chtSyncRailAfterClose(){
-  const anyShown=['cht-overlay','dec-overlay','chan-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
+  const anyShown=['wk-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
   if(anyShown) return;
   if(typeof railRouting!=='undefined' && railRouting) return;
   if(typeof activeView!=='undefined' && activeView!=='matrix'){
@@ -23803,103 +23525,8 @@ function chtSyncRailAfterClose(){
 }
 // Resolve a project by id (coerces the numeric string from a <select>), or null.
 function projid2proj(projId){ return projects.find(x=>x.id===+projId)||null; }
-// Dropdown-mode project switch (Financials).
-function chtSelectProject(id){ openCharter(id); }
-// Hub-mode back — hide the panel, reveal the card grid. Now invoked only by chtBack().
-function chtBackToHub(target){
-  if(target==='decision') chtCloseDecision(); else chtClose();
-  openCharterHub(target);
-}
-// Single, context-aware BACK for the charter / decision / channels panels. If the card-grid
-// hub is open beneath the panel (you drilled in from it), step back to the hub; otherwise go
-// back through the rail history (the previous view). Consolidates the former dual controls
-// ("← BACK" + "‹ Projects") into one predictable button.
-function chtBack(target){
-  const hub=G('chthub-overlay');
-  if(hub && hub.classList.contains('show')){
-    if(target==='channels'){ if(typeof chanBackToHub==='function') chanBackToHub(); else chtClose(); }
-    else chtBackToHub(target);
-  } else if(typeof railBack==='function'){ railBack(); }
-}
-
-// Render the header picker slot (#cht-pick / #dec-pick) for the given panel.
-//   dropdown mode → a <select> of every project
-//   hub mode      → a "‹ Projects" button back to the card grid
-function chtRenderPicker(target){
-  const slot = G(target==='decision'?'dec-pick':'cht-pick'); if(!slot) return;
-  if(chtPickerMode()==='dropdown'){
-    const set = target==='decision' ? 'chtDecSelectProject' : 'chtSelectProject';
-    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chtProjId);
-    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
-      <select class="cht-sel" onchange="${set}(this.value)">
-        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chtProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
-                          : '<option>— no projects —</option>'}
-      </select>`;
-  } else {
-    // Hub mode: the ← BACK button already returns to the hub, so show the project NAME
-    // here for context instead of a redundant second back control.
-    const p = projects.find(x=>x.id===_chtProjId);
-    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
-  }
-}
-
-// ── Charters hub (card grid) — one grid serving both panels via `target` ─────
-// A card opens the Financials panel (target='financials') or the Trade-off
-// decision panel (target='decision'), which stacks on top. Closing it reveals
-// the hub again.
-let _chtHubTarget='financials';
-function openCharterHub(target){
-  _chtHubTarget = (target==='decision'||target==='channels') ? target : 'financials';
-  const t=G('chthub-title');
-  if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION'
-                      : _chtHubTarget==='channels' ? 'CHANNEL MIX'
-                      : 'FINANCIALS ANALYSIS';
-  G('chthub-overlay').classList.add('show');
-  chtRenderHub();
-}
-function closeCharterHub(){ G('chthub-overlay').classList.remove('show'); }
-
-function chtRenderHub(){
-  const body=G('chthub-body'); if(!body) return;
-  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision'
-               : _chtHubTarget==='channels' ? 'openChannels'
-               : 'openCharter';
-  if(!projects.length){
-    body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open it here.</div>';
-    return;
-  }
-  body.innerHTML='<div class="chthub-grid">'+projects.map(p=>{
-    const c = (p.charter&&typeof p.charter==='object') ? p.charter : makeCharter();
-    const r = calculateFinancials(c.financials);
-    const prio = c.priority||'—';
-    const prioCls = c.priority==='High'?'hi':c.priority==='Medium'?'med':c.priority==='Low'?'lo':'';
-    let badges;
-    if(_chtHubTarget==='channels'){
-      // Channel-mix summary: number of channels + whether the shares sum to 100%.
-      const m = chanMixSummary(c);
-      badges = `<span class="chthub-metric">${m.count} channel${m.count===1?'':'s'}</span>`
-             + `<span class="chthub-metric ${m.ok?'ok':(m.count?'conflict':'')}">Σ ${m.total}%</span>`;
-    } else {
-      const conflicts = chtConflicts(c).length;
-      const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
-      badges = `<span class="chthub-metric">NPV ${r.display.npv}</span>`
-             + `<span class="chthub-metric">IRR ${r.display.irr}</span>`
-             + (conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
-                        :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`);
-    }
-    return `<div class="chthub-card" onclick="${opener}(${p.id})" title="Open">
-      <div class="chthub-top">
-        <span class="chthub-name">${escH(p.name||'Untitled project')}</span>
-        <span class="chthub-status">${escH(c.status||'Draft')}</span>
-      </div>
-      <div class="chthub-badges">
-        <span class="chthub-prio ${prioCls}">${escH(prio)}</span>
-        ${badges}
-      </div>
-    </div>`;
-  }).join('')+'</div>';
-}
-
+// Project switch from the shared workspace picker (Financials family).
+function chtSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 // The charter object for the open project (or null).
 function chtCharter(){
   const p = projects.find(x=>x.id===_chtProjId);
@@ -23935,8 +23562,9 @@ function chtSetTop(key,value){
 function chtRenderHeader(){
   const p = projects.find(x=>x.id===_chtProjId);
   const c = chtCharter();
-  if(!p||!c){ G('cht-title').textContent='FINANCIALS ANALYSIS'; const m=G('cht-head-meta'); if(m) m.innerHTML=''; return; }
-  G('cht-title').textContent = p.name || 'PROJECT';
+  const tt = G('cht-title');   // absent in the merged workspace shell — guard it
+  if(!p||!c){ if(tt) tt.textContent='FINANCIALS ANALYSIS'; const m=G('cht-head-meta'); if(m) m.innerHTML=''; return; }
+  if(tt) tt.textContent = p.name || 'PROJECT';
   const prio = ['','High','Medium','Low'];
   const stat = ['Draft','In Review','Approved','Rejected'];
   G('cht-head-meta').innerHTML =
@@ -23948,11 +23576,6 @@ function chtRenderHeader(){
      <select class="cht-sel" onchange="chtSetTop('status',this.value)">
        ${stat.map(v=>`<option${c.status===v?' selected':''}>${v}</option>`).join('')}
      </select>`;
-}
-function chtRenderTabStrip(){
-  G('cht-tabs').innerHTML = CHT_TABS.map(([id,label])=>
-    `<div class="cht-tab${_chtTab===id?' active':''}" id="cht-tab-${id}" onclick="chtShowTab('${id}')">${label}</div>`
-  ).join('');
 }
 
 function chtShowTab(tab){
@@ -24451,18 +24074,9 @@ function chtCumCashSVG(f){
 // A configurable TRIANGLE: the primary trade-off plus up to 2 named comparison
 // scenarios. Each triangle plots 3 of the 4 dimensions; the full 4-stance set is
 // kept underneath (so conflicts + design guidelines still work off the primary).
-function chtOpenDecision(projId){
-  const p=projid2proj(projId);
-  _chtProjId = p ? p.id : null;
-  if(p && (!p.charter || typeof p.charter!=='object')) p.charter=makeCharter();
-  G('dec-overlay').classList.add('show');
-  chtRenderPicker('decision');
-  chtRenderDecision();
-  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
-}
-function chtCloseDecision(){ G('dec-overlay').classList.remove('show'); chtSyncRailAfterClose();
-  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
-function chtDecSelectProject(id){ chtOpenDecision(id); }
+function chtOpenDecision(projId){ if(typeof wkOpen==='function') wkOpen('decision', projId); }
+function chtCloseDecision(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
+function chtDecSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 
 function chtRenderDecision(){
   const p=projects.find(x=>x.id===_chtProjId);
@@ -24819,15 +24433,11 @@ function chtMdToHtml(md){
 let _dtcProjId = null;
 const _dtcOpen = new Set();   // expanded subsystem indices (UI-only, not persisted)
 
-// ── open / close (rail view) ─────────────────────────────────────────────────
-function openDtc(){
-  if(!G('dtc-overlay')) return;
-  if(_dtcProjId==null || !projects.some(p=>p.id===_dtcProjId))
-    _dtcProjId = projects.length ? projects[0].id : null;
-  G('dtc-overlay').classList.add('show');
-  dtcRender();
-}
-function closeDtc(){ const o=G('dtc-overlay'); if(o) o.classList.remove('show'); }
+// ── open / close (merged into the Project workspace shell) ───────────────────
+// Design-to-cost is now a tab of the Project workspace (workspace.js); these
+// openers redirect there, landing on the Design-to-cost tab.
+function openDtc(){ if(typeof wkOpen==='function') wkOpen('dtc'); }
+function closeDtc(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
 
 function dtcCharter(){
   const p=projects.find(x=>x.id===_dtcProjId);
@@ -24839,7 +24449,10 @@ function dtcCharter(){
 function dtcSave(){ saveState(); }
 function dtcEur(v){ return v==null||!Number.isFinite(+v) ? '—' : `€${(+v).toLocaleString('en-US',{maximumFractionDigits:2})}`; }
 
-function dtcSelectProject(id){ _dtcProjId=+id; dtcRender(); }
+function dtcSelectProject(id){
+  if(typeof wkSelectProject==='function'){ wkSelectProject(id); return; }
+  _dtcProjId=+id; dtcRender();
+}
 
 // ── top-level render ─────────────────────────────────────────────────────────
 function dtcRender(){
@@ -25202,10 +24815,10 @@ function dtcDemandResp(sec,i,key,value){
 }
 /* ◄◄ END: sections/dtc.js ►► */
 
-/* ►► SECTION: CHANNEL-MIX ◄◄ OFFER MNGT › Channel mix rail view.
- *   openChannelsView()   — rail entry point (honours the shared picker mode)
- *   openChannels(projId) — open the panel for one project
- *   closeChannels()      — close the panel (syncs the rail highlight)
+/* ►► SECTION: CHANNEL-MIX ◄◄ The Channels tab of the Project workspace.
+ *   openChannels(projId) — redirect to the workspace Channels tab
+ *   closeChannels()      — delegate to closeWorkspace
+ *   chanRender()         — render the channel body into #chan-body
  *
  * A per-project go-to-market synoptic: Company/Project → Channels → Segments.
  * Each channel has a share % (basis = revenue | volume | emphasis), a margin %,
@@ -25214,10 +24827,8 @@ function dtcDemandResp(sec,i,key,value){
  * charter and is back-filled by sanitiseCharter. Everything is `chan`-prefixed
  * and reuses the charter `cht-*` / `dtc-*` styles. Money is EUR.
  *
- * Shares the Charters HUB (target 'channels') + the Settings picker mode with
- * Financials / Trade-off / Design-to-cost (railChartPicker → hub | dropdown).
  * Pure helpers (chanMixSummary, chanChannelValue, chanAggregate) are reused by
- * the hub badges and by Portfolio analytics.
+ * Portfolio analytics.
  */
 
 let _chanProjId = null;
@@ -25227,29 +24838,13 @@ const CHAN_PALETTE = ['#5be5c8','#c8f135','#f1a435','#7aa2ff','#f14335','#c07af0
 function chanColor(ch,i){ return safeColor((ch&&ch.color) || CHAN_PALETTE[i%CHAN_PALETTE.length]); }
 function chanHexOr(col){ return /^#[0-9a-f]{6}$/i.test(col) ? col : '#5be5c8'; }
 
-// Picker mode (shared with the charter panels).
-function chanPickerMode(){ return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub'; }
-function chanFirstProj(){ return projects.length ? projects[0].id : null; }
-
-// ── open / close (rail view) ─────────────────────────────────────────────────
-function openChannelsView(){
-  if(chanPickerMode()==='dropdown') openChannels(chanFirstProj());
-  else openCharterHub('channels');
-}
-function openChannels(projId){
-  const p = projects.find(x=>x.id===+projId);
-  _chanProjId = p ? p.id : (projects.length ? projects[0].id : null);
-  const pp = projects.find(x=>x.id===_chanProjId);
-  if(pp && (!pp.charter || typeof pp.charter!=='object')) pp.charter = makeCharter();
-  const o=G('chan-overlay'); if(o) o.classList.add('show');
-  chanRender();
-}
-function closeChannels(){
-  const o=G('chan-overlay'); if(o) o.classList.remove('show');
-  if(typeof chtSyncRailAfterClose==='function') chtSyncRailAfterClose();
-}
-function chanSelectProject(id){ openChannels(id); }
-function chanBackToHub(){ closeChannels(); openCharterHub('channels'); }
+// ── open / close (merged into the Project workspace shell) ───────────────────
+// The Channel-mix panel is now a tab of the Project workspace (workspace.js);
+// these openers redirect there, landing on the Channels tab.
+function openChannelsView(){ if(typeof wkOpen==='function') wkOpen('channels'); }
+function openChannels(projId){ if(typeof wkOpen==='function') wkOpen('channels', projId); }
+function closeChannels(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
+function chanSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 
 // ── data access + save ───────────────────────────────────────────────────────
 function chanProject(){ return projects.find(x=>x.id===_chanProjId) || null; }
@@ -25398,29 +24993,11 @@ function chanConcentration(projList){
 // ── render ───────────────────────────────────────────────────────────────────
 function chanRender(){
   const body=G('chan-body'); if(!body) return;
-  chanRenderPicker();
   const p=chanProject();
   const ttl=G('chan-title'); if(ttl) ttl.textContent = p ? (p.name||'PROJECT') : 'CHANNEL MIX';
   if(!projects.length){ body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add a project on the Portfolio matrix.</div>'; return; }
   const c=chanCharter(); if(!c){ body.innerHTML=''; return; }
   body.innerHTML = chanHeadForm(c,p) + chanSynopticWrap(c,p) + chanTotalsBar(c) + chanEditor(c);
-}
-
-function chanRenderPicker(){
-  const slot=G('chan-pick'); if(!slot) return;
-  if(chanPickerMode()==='dropdown'){
-    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chanProjId);
-    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
-      <select class="cht-sel" onchange="chanSelectProject(this.value)">
-        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chanProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
-                          : '<option>— no projects —</option>'}
-      </select>`;
-  } else {
-    // Hub mode: ← BACK already returns to the hub — show the project NAME for context
-    // instead of a redundant second back control.
-    const p = projects.find(x=>x.id===_chanProjId);
-    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
-  }
 }
 
 function chanHeadForm(c,p){
@@ -25612,6 +25189,183 @@ function chanSynopticSVG(c,p){
 }
 /* ◄◄ END: sections/channels.js ►► */
 
+/* ►► SECTION: PROJECT WORKSPACE ◄◄ PORTFOLIO › Project workspace rail view.
+ *
+ * ONE rail-inset overlay (#wk-overlay, left:var(--rail), z400) that MERGES the
+ * four former per-project charter panels into a single tabbed shell:
+ *   OVERVIEW · DEMANDS · FINANCIALS · TRADE-OFF · CHANNELS · DESIGN-TO-COST.
+ * A shared project picker at the top drives ONE selected project (_chtProjId,
+ * owned by charter.js); every tab re-uses the existing per-panel body renderer
+ * UNCHANGED — the charter sub-tabs render into #cht-body via chtShowTab, the
+ * trade-off into #dec-body via chtRenderDecision, channels via chanRender, and
+ * design-to-cost via dtcRender. The four standalone overlays are gone; their
+ * body <div>s live inside #wk-body now.
+ *
+ * The task spec listed five tabs (Overview · Financials · Trade-off · Channels ·
+ * Design-to-cost); DEMANDS is added as a sixth because the charter Demands board
+ * (conflicts) cannot be dropped and each tab maps 1:1 to one reused body render.
+ *
+ * Everything here is `wk`/`WK_`-prefixed (flat-bundle uniqueness). _chanProjId
+ * and _dtcProjId (channels.js / dtc.js) are kept in lockstep with _chtProjId so
+ * their renderers read the same project as the one shared picker.
+ *
+ *   openWorkspace()        — rail entry ('workspace' view)
+ *   wkOpen(tab, projId)    — open on a given tab (the redirect target for the
+ *                            former openCharter/chtOpenDecision/openChannels/openDtc)
+ *   wkShowTab(tab)         — switch tab and render its body
+ *   wkSelectProject(id)    — change the shared project + re-render the active tab
+ *   closeWorkspace()       — hide the shell (syncs the rail highlight)
+ */
+
+// Tab registry: id → label. The first three (overview/demands/financials) render
+// the charter into #cht-body via chtShowTab; the rest map to their own bodies.
+var WK_TABS = [
+  ['overview',   'OVERVIEW'],
+  ['demands',    'DEMANDS'],
+  ['financials', 'FINANCIALS'],
+  ['decision',   'TRADE-OFF'],
+  ['channels',   'CHANNELS'],
+  ['dtc',        'DESIGN-TO-COST'],
+];
+// The charter sub-tabs (rendered into #cht-body by chtShowTab). Their header also
+// carries the PRIORITY/STATUS editors (#cht-head-meta via chtRenderHeader).
+var WK_CHT_TABS = { overview:1, demands:1, financials:1 };
+var _wkTab = 'overview';   // last active tab (remembered across opens)
+
+// The visible body <div> id for a tab (each renderer targets its own container).
+function wkBodyId(tab){
+  if(WK_CHT_TABS[tab]) return 'cht-body';
+  if(tab==='decision') return 'dec-body';
+  if(tab==='channels') return 'chan-body';
+  return 'dtc-body';
+}
+
+// Default project id: keep the current one if it's a live, non-archived project,
+// else the first non-archived project, else the first project, else null.
+function wkDefaultProj(){
+  if(typeof _chtProjId!=='undefined' && _chtProjId!=null){
+    var cur=projects.find(function(p){return p.id===_chtProjId;});
+    if(cur && ((typeof projIsArchived!=='function')||!projIsArchived(cur))) return cur.id;
+  }
+  var live=projects.find(function(p){return (typeof projIsArchived!=='function')||!projIsArchived(p);});
+  if(live) return live.id;
+  return projects.length ? projects[0].id : null;
+}
+
+// Sync the sibling per-panel selection vars to the one shared picker so their
+// renderers (chanRender/dtcRender) read the SAME project.
+function wkSyncIds(){
+  if(typeof _chanProjId!=='undefined') _chanProjId=_chtProjId;
+  if(typeof _dtcProjId!=='undefined')  _dtcProjId =_chtProjId;
+}
+
+// ── open / close ─────────────────────────────────────────────────────────────
+// Rail entry point (PORTFOLIO › Project workspace).
+function openWorkspace(){ wkOpen(_wkTab||'overview', null); }
+
+// Open the shell on `tab` for `projId` (or the current/default project). This is
+// the redirect target for the former panel openers, so deep-links land on the
+// right tab. Sets activeView='workspace' so the rail highlight stays truthful.
+function wkOpen(tab, projId){
+  var ov=G('wk-overlay'); if(!ov) return;
+  var id = (projId!=null && projId!=='') ? +projId : wkDefaultProj();
+  _chtProjId = id;
+  var p = projects.find(function(x){return x.id===_chtProjId;});
+  if(p && (!p.charter || typeof p.charter!=='object')) p.charter=makeCharter();
+  wkSyncIds();
+  if(typeof activeView!=='undefined') activeView='workspace';
+  ov.classList.add('show');
+  wkRenderPicker();
+  wkShowTab(tab || _wkTab || 'overview');
+  if(typeof railRender==='function')      railRender();
+  if(typeof railUpdateCrumb==='function') railUpdateCrumb();
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project"
+}
+
+function closeWorkspace(){
+  var ov=G('wk-overlay'); if(ov) ov.classList.remove('show');
+  if(typeof chtSyncRailAfterClose==='function') chtSyncRailAfterClose();
+  if(typeof collabPublishPresence==='function') collabPublishPresence();   // clear my "editing" focus
+}
+
+// ── shared project picker ────────────────────────────────────────────────────
+// A single <select> of every non-archived project (keeps the current one even if
+// archived, so you can still view it). Writes _chtProjId via wkSelectProject.
+function wkRenderPicker(){
+  var slot=G('wk-pick'); if(!slot) return;
+  var pickable = projects.filter(function(p){ return (typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chtProjId; });
+  slot.innerHTML = '<label class="cht-hl">PROJECT</label>'
+    + '<select class="cht-sel" onchange="wkSelectProject(this.value)">'
+    + (pickable.length
+        ? pickable.map(function(p){
+            var arch=(typeof projIsArchived==='function'&&projIsArchived(p)) ? ' ('+escH(t('archived'))+')' : '';
+            return '<option value="'+p.id+'"'+(p.id===_chtProjId?' selected':'')+'>'+escH(p.name||'Untitled project')+arch+'</option>';
+          }).join('')
+        : '<option>— no projects —</option>')
+    + '</select>';
+}
+
+// Change the shared project and re-render the active tab (+ picker selection).
+function wkSelectProject(id){
+  _chtProjId = (id!=null && id!=='') ? +id : null;
+  var p = projects.find(function(x){return x.id===_chtProjId;});
+  if(p && (!p.charter || typeof p.charter!=='object')) p.charter=makeCharter();
+  wkSyncIds();
+  wkRenderPicker();
+  wkShowTab(_wkTab);
+  if(typeof collabPublishPresence==='function') collabPublishPresence();
+}
+
+// ── tab bar + body switching ─────────────────────────────────────────────────
+function wkRenderTabs(){
+  var host=G('wk-tabs'); if(!host) return;
+  host.innerHTML = WK_TABS.map(function(pair){
+    var id=pair[0], label=pair[1];
+    return '<div class="cht-tab'+(_wkTab===id?' active':'')+'" onclick="wkShowTab(\''+id+'\')">'+label+'</div>';
+  }).join('');
+}
+
+function wkShowTab(tab){
+  _wkTab = tab;
+  wkRenderTabs();
+  // Show only the active tab's body <div>; hide the others.
+  ['cht-body','dec-body','chan-body','dtc-body'].forEach(function(bid){
+    var el=G(bid); if(el) el.style.display = (bid===wkBodyId(tab)) ? '' : 'none';
+  });
+  // PRIORITY/STATUS meta belongs to the charter sub-tabs only.
+  var meta=G('cht-head-meta');
+  if(meta) meta.style.display = WK_CHT_TABS[tab] ? '' : 'none';
+  wkRenderActiveBody();
+  if(typeof collabPublishPresence==='function') collabPublishPresence();
+}
+
+// Render the CURRENT tab's body via its existing (unchanged) renderer.
+function wkRenderActiveBody(){
+  var tab=_wkTab;
+  wkSyncIds();
+  if(WK_CHT_TABS[tab]){
+    if(typeof chtRenderHeader==='function') chtRenderHeader();   // PRIORITY/STATUS
+    if(typeof chtShowTab==='function') chtShowTab(tab);          // → #cht-body
+  } else if(tab==='decision'){
+    if(typeof chtRenderDecision==='function') chtRenderDecision();  // → #dec-body
+  } else if(tab==='channels'){
+    if(typeof chanRender==='function') chanRender();             // → #chan-body
+  } else {
+    if(typeof dtcRender==='function') dtcRender();               // → #dtc-body
+  }
+}
+
+// Re-render the active tab preserving scroll — the collab presence refresh hook.
+function wkRefreshPresence(){
+  var bid=wkBodyId(_wkTab);
+  if(typeof collabRestoreScroll==='function') collabRestoreScroll(bid, wkRenderActiveBody);
+  else wkRenderActiveBody();
+}
+
+// Save-now button (shared by every tab; every editor autosaves via saveState()).
+function wkSaveNow(){ if(typeof saveNow==='function') saveNow(); if(typeof flashSaved==='function') flashSaved(); }
+/* ◄◄ END: sections/workspace.js ►► */
+
 /* ►► SECTION: PORTFOLIO-ECONOMICS ◄◄ INSIGHTS › Portfolio economics.
  *
  * A read-only tab that CROSSES the four data layers the rest of the app keeps
@@ -25697,18 +25451,15 @@ function ecBar(label,frac,rightHtml,color,title){
 function ecEur(v){ return (typeof pfEur==='function') ? pfEur(v) : Math.round(+v||0)+'€'; }
 function ecPct(v){ return v==null||!Number.isFinite(v) ? '—' : v.toFixed(1)+'%'; }
 
-// ── entry point ──────────────────────────────────────────────────────────────
-function renderEconTab(){
-  const body=G('res-body'); if(!body) return;
-  const ds=ecDataset();
-  const months=getMonthRange();
-  let h='<div style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
-  h+='<div style="display:flex;align-items:baseline;gap:10px">'
-    +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);letter-spacing:.06em">'+t('◎ PORTFOLIO ECONOMICS')+'</span>'
-    +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
-    +(months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost'))
-    +'</span><div style="flex:1"></div>'+analyticsArchivedToggle('renderEconTab')+'</div>';
-  if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
+// ── economics lens body ──────────────────────────────────────────────────────
+// The old standalone `renderEconTab` is merged into Portfolio analytics as the
+// "Economics" lens (portfolio.js). This returns just the sections (scorecard +
+// analyses); the shared header (title / FROM-TO context / archived toggle) is
+// rendered once by renderPortfolioAnalytics. Assumes projects.length>0 (the
+// caller short-circuits the empty case). Revenue here is `expectedRevenueM`
+// (charter), NOT the Overview lens' impact revenue — a deliberately different base.
+function ecBody(ds){
+  let h='';
   h+=ecScorecard(ds);
   h+=pfSection(t('CAPITAL ALLOCATION — value per €'), t('NPV created against capital invested, ranked by profitability index (PV of inflows ÷ outlay). PI > 1 creates value; fund the top, review the bottom.'), ecCapital(ds));
   h+=pfSection(t('CHANNEL PROFIT POOLS'), t('Revenue vs gross profit (revenue × channel margin) by channel. A big low-margin channel can trail a small high-margin one — profit, not revenue, is the ranking that matters.'), ecPools('byChannel'));
@@ -25721,8 +25472,7 @@ function renderEconTab(){
   h+=pfSection(t('DECISION QUALITY'), t('Trade-off conflicts and low cross-functional alignment on high-value projects — execution risk on your best bets.'), ecDecision(ds));
   h+=pfSection(t('VALUE PER FTE'), t('NPV and revenue per average FTE over the period — the productivity of where people are placed.'), ecValuePerFte(ds));
   h+='<div id="ec-sec-traj">'+ecTrajectoryShell()+'</div>';
-  h+='</div>';
-  body.innerHTML=h;
+  return h;
 }
 
 // ── 1. scorecard ─────────────────────────────────────────────────────────────
@@ -26041,9 +25791,18 @@ function ecTrajCharts(pts){
 // Spend-map controls (UI-only, mirrors the Portfolio-analytics treemap).
 var _xsSpend={ by:'cost', group:'none' };
 
+// Drill-to-source onclick for a target id. The former 'econ' / 'portfolio' views are
+// now the two lenses of Portfolio analytics, so route those through pfOpenLens (which
+// selects the lens before opening 'portfolio'); everything else is a plain railGo.
+function xsNav(to){
+  if(to==='econ')      return "pfOpenLens(event,'economics')";
+  if(to==='portfolio') return "pfOpenLens(event,'overview')";
+  if(to==='skillrisk') return "skGo(event,'risk')";   // Skills view, Risk lens
+  return "railGo(event,'"+to+"')";
+}
 // KPI card. `sub` may contain HTML. `clickTo` = a rail view id → drill to source tab.
 function xsKpi(val,label,sub,color,clickTo){
-  const click=clickTo?' onclick="railGo(event,\''+clickTo+'\')" title="'+escH(t('Open {v}',{v:clickTo}))+'"':'';
+  const click=clickTo?' onclick="'+xsNav(clickTo)+'" title="'+escH(t('Open {v}',{v:clickTo}))+'"':'';
   return '<div class="xs-kpi" style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 13px'+(clickTo?';cursor:pointer':'')+'"'+click+'>'
     +'<div style="font-size:20px;font-weight:700;color:'+(color||'var(--text)')+';line-height:1.1">'+val+'</div>'
     +'<div style="font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;letter-spacing:.05em;text-transform:uppercase;margin-top:4px">'+escH(label)+'</div>'
@@ -26526,7 +26285,7 @@ function xsAttention(months){
   if(!items.length) return '<div style="font-size:12px;color:var(--accent2);font-family:IBM Plex Mono,monospace">'+t('✓ Nothing flagged — no talent-risk, delivery or concentration alerts.')+'</div>';
   let h='<div style="display:flex;flex-direction:column;gap:2px">';
   items.forEach(function(it){
-    h+='<div onclick="railGo(event,\''+it.to+'\')" style="display:flex;align-items:center;gap:9px;font-size:12px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">'
+    h+='<div onclick="'+xsNav(it.to)+'" style="display:flex;align-items:center;gap:9px;font-size:12px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">'
       +'<span style="color:'+it.iconCol+';flex-shrink:0;width:16px;text-align:center">'+it.icon+'</span>'
       +'<span style="color:var(--text)">'+it.text+'</span></div>';
   });
@@ -29610,10 +29369,10 @@ function homeOpenFor(concern, entityId){
     return;
   }
   if(concern==='candidate-stale'){ if(typeof railGo==='function') railGo(null,'pipeline'); return; }
-  if(concern==='charter-conflict'){ homeGoView('decision', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
-  if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('charters', function(){ if(typeof openCharter==='function') openCharter(id); }); return; }
-  if(concern==='dtc-gap'){ homeGoView('dtc', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }
-  if(concern==='channel-concentration'){ homeGoView('channels', function(){ if(typeof openChannels==='function') openChannels(id); }); return; }
+  if(concern==='charter-conflict'){ homeGoView('workspace', function(){ if(typeof chtOpenDecision==='function') chtOpenDecision(id); }); return; }
+  if(concern==='value-destroying' || concern==='low-unit-margin'){ homeGoView('workspace', function(){ if(typeof openCharter==='function') openCharter(id,'financials'); }); return; }
+  if(concern==='dtc-gap'){ homeGoView('workspace', function(){ if(typeof openDtc==='function') openDtc(); if(typeof dtcSelectProject==='function') dtcSelectProject(id); }); return; }
+  if(concern==='channel-concentration'){ homeGoView('workspace', function(){ if(typeof openChannels==='function') openChannels(id); }); return; }
 }
 /* ◄◄ END: sections/home.js ►► */
 
@@ -30770,17 +30529,12 @@ const COLLAB_MODALS=[
     // re-calling it is already a field-level patch; scroll/layout are untouched.
     refresh:function(ent){ if(typeof openIdCardModal==='function') openIdCardModal(ent.id); },
     close:function(){ if(typeof closeIdCardModal==='function') closeIdCardModal(); } },
-  { overlay:'dec-overlay', banner:'dec-presence', type:'project',
+  { overlay:'wk-overlay', banner:'wk-presence', type:'project',
     cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
-    refresh:function(){ collabRestoreScroll('dec-body',function(){ if(typeof chtRenderDecision==='function') chtRenderDecision(); }); },
-    close:function(){ if(typeof chtCloseDecision==='function') chtCloseDecision(); } },
-  { overlay:'cht-overlay', banner:'cht-presence', type:'project',
-    cur:function(){ try{ return (typeof _chtProjId!=='undefined'&&_chtProjId!=null)?projects.find(function(p){return p.id===_chtProjId;}):null; }catch(e){ return null; } },
-    // Re-render header (financial summary can change) + the CURRENT tab body (keep _chtTab).
-    refresh:function(){ collabRestoreScroll('cht-body',function(){
-      if(typeof chtRenderHeader==='function') chtRenderHeader();
-      if(typeof chtShowTab==='function') chtShowTab((typeof _chtTab!=='undefined'&&_chtTab)?_chtTab:'overview'); }); },
-    close:function(){ if(typeof chtClose==='function') chtClose(); } }
+    // The four charter panels are merged into the Project workspace — re-render the
+    // ACTIVE workspace tab (financial summary/body can change), scroll preserved.
+    refresh:function(){ if(typeof wkRefreshPresence==='function') wkRefreshPresence(); },
+    close:function(){ if(typeof closeWorkspace==='function') closeWorkspace(); } }
 ];
 // Run an innerHTML-rebuilding refresh while preserving a scroll container's scrollTop.
 function collabRestoreScroll(bodyId,fn){
@@ -31074,23 +30828,27 @@ var TOUR_COPY = {
     +'nine-box placement, compa-ratio, succession and engagement cadence. '
     +'Everyone here flows into cost, skills, talent and analytics.' },
   plan: { icon:'📅', body:
-    'Allocate engineers to projects month by month (0–100% FTE). '
-    +'A cell can carry a status — <code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned — '
-    +'which changes how it costs. Group <strong>by engineer</strong> or <strong>by project</strong>. '
-    +'This is the single source every cost number is summed from.' },
+    'Allocate engineers to projects month by month (0–100% FTE) in <strong>Grid</strong> mode — a cell can '
+    +'carry a status (<code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned) that changes how it '
+    +'costs; this grid is the single source every cost number is summed from. The mode bar also gives you '
+    +'<strong>Gantt</strong> (project bars over time), <strong>Ribbon</strong> (per-person capacity crossover) '
+    +'and <strong>Capacity</strong> (schedule forward demand against free bench) — all on the same allocation data.' },
   dashboard: { icon:'⚖', body:
     'The capacity cockpit: team supply vs demand, a monthly <strong>demand-vs-capacity</strong> chart, '
     +'capacity balance by function, per-engineer utilisation and over/under-allocation alerts. '
     +'Overloaded someone? A <strong>suggested swap</strong> and <strong>Find replacements</strong> '
     +'surface available substitutes; the availability panel shows who is free and what they can do.' },
-  skillrisk: { icon:'🛡', body:
-    'Your <strong>Single Points of Failure</strong> — skills held by only one person. '
-    +'Shows coverage, holder count and whether a knowledge-transfer plan exists. '
-    +'This is where fragility becomes visible before someone resigns.' },
-  ninebox: { icon:'⊞', body:
-    'The classic <strong>Performance × Potential</strong> grid. Placements feed development '
-    +'priorities, salary signals and the org-chart KPI panel — and are tracked per year, so you '
-    +'can see a person’s trajectory over time.' },
+  skills: { icon:'🛡', body:
+    'Your skill inventory in two lenses. <strong>Matrix</strong> is the dictionary — every skill '
+    +'with its category, domain, holders and levels, plus rename / merge / split. <strong>Risk</strong> '
+    +'surfaces <strong>Single Points of Failure</strong> (skills held by one person), coverage and '
+    +'knowledge-transfer plans — where fragility becomes visible before someone resigns.' },
+  placement: { icon:'⊞', body:
+    'Calibrate your team on two grids, switchable by the lens toggle. <strong>Nine-box</strong> is '
+    +'the classic <strong>Performance × Potential</strong> grid — placements feed development '
+    +'priorities, salary signals and the org-chart KPI panel, and are tracked per year so you can see '
+    +'a person’s trajectory over time. <strong>DISC</strong> plots behavioural style across four '
+    +'quadrants. Both feed the talent story views in People analytics.' },
   exec: { icon:'◈', body:
     'A one-page, read-only cockpit that crosses every layer — portfolio value (NPV / PI), cost & '
     +'spend map, capacity, talent risk and channel concentration — with a <strong>week planner</strong> '
@@ -31445,10 +31203,11 @@ function packBoardOpen(){
  * picker still SHOWS it (so the feature is discoverable before there's data)
  * but greys it and explains what is missing.
  *
- * Project-scoped deliverables — the Gantt and the project brief — are
- * deliberately NOT listed: they export whatever project you currently have
- * open, which is meaningless from a global menu. They keep their button on
- * their own view, where the scope is unambiguous. */
+ * The Gantt is still deliberately NOT listed: it exports whatever project you
+ * currently have open, which is meaningless from a global menu, so it keeps its
+ * button on its own view. The project brief WAS excluded for the same reason but
+ * is now listed (Track B #7) — it self-scopes via per-project toggles in the
+ * builder, so it's unambiguous from the global menu. */
 function exportDeliverables(){
   var anyPeople=engineers.filter(function(e){return !e.planningOnly;}).length;
   return [
@@ -31464,6 +31223,10 @@ function exportDeliverables(){
     {id:'pack-board', pack:true, label:t('Board pack'), domain:t('INSIGHTS'),
      hint:t('Executive scorecard, spend, risk and burn, plus headcount and talent mix.'),
      ready:!!(projects.length||anyPeople), missing:t('Add projects and a team first.'), open:packBoardOpen},
+
+    {id:'project-brief', label:t('Project brief'), domain:t('PORTFOLIO'),
+     hint:t('A print-ready page per project — KPIs plus optional team, risks, todos, milestones and Gantt. Pick which projects in the builder.'),
+     ready:!!projects.length, missing:t('Add projects first.'), open:exportProjectBriefOpen},
 
     {id:'exec', label:t('Executive summary'), domain:t('INSIGHTS'),
      hint:t('Scorecard, spend map, value vs risk, cost burn, attention list.'),
@@ -31574,6 +31337,8 @@ document.addEventListener('keydown',e=>{
     if(typeof exportBuilderClose==='function')exportBuilderClose();
     if(typeof exportClosePicker==='function')exportClosePicker();
     if(typeof rloClose==='function')rloClose();
+    if(typeof closeCompare==='function')closeCompare();   // Compare is a matrix sub-mode (RAIL_MODAL_OVERLAYS)
+    if(typeof dataMenuClose==='function')dataMenuClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }
@@ -31583,7 +31348,7 @@ document.addEventListener('keydown',e=>{
   if(inInput)return; // don't fire shortcuts while typing
   if(e.key==='?'||e.key==='/')openHelp();
   if(e.key==='n'||e.key==='N')openAddModal();
-  if(e.key==='s'||e.key==='S'){e.preventDefault();openSummary();}
+  if(e.key==='s'||e.key==='S'){e.preventDefault();if(typeof railGo==='function')railGo(null,'exec');}   // Summary view was cut → Executive summary is the successor
   if(e.key==='p'||e.key==='P')openRes();
   if(e.key==='o'||e.key==='O')openOrgChart();
   if(e.key==='c'||e.key==='C')openCompare();
@@ -31841,33 +31606,29 @@ railInit();   // render the persistent nav rail + land on the initial view
   <div id="res-body"></div>
 </div>
 
-<!-- FINANCIALS ANALYSIS (WORK › Financials analysis rail view) — panel, rail-inset -->
-<div id="cht-overlay">
-  <div id="cht-header">
-    <span id="cht-title">FINANCIALS ANALYSIS</span>
-    <span id="cht-pick"></span>
+<!-- PROJECT WORKSPACE (PORTFOLIO › Project workspace) — the four former per-project
+     charter panels (Financials / Trade-off / Channels / Design-to-cost) merged into
+     ONE tabbed, rail-inset shell. The per-panel body <div>s live here now and each
+     tab re-uses its original renderer unchanged (see sections/workspace.js). -->
+<div id="wk-overlay">
+  <div id="wk-header">
+    <span id="wk-title">PROJECT WORKSPACE</span>
+    <span id="wk-pick"></span>
     <div class="cht-head-meta" id="cht-head-meta"></div>
     <div style="flex:1"></div>
     <button class="sm" onclick="chtOpenDeck()">◨ Slides</button>
     <button class="sm" onclick="chtOpenSynopsis()">⧉ Synopsis</button>
-    <button class="sm primary" onclick="chtSaveNow()">SAVE</button>
-    <button onclick="chtBack('financials')" data-i18n="← BACK">← BACK</button>
+    <button class="sm primary" onclick="wkSaveNow()">SAVE</button>
+    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
   </div>
-  <div id="cht-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
-  <div id="cht-tabs"></div>
-  <div id="cht-body"></div>
-</div>
-
-<!-- TRADE-OFF DECISION (WORK › Trade-off decision rail view) — panel, rail-inset -->
-<div id="dec-overlay">
-  <div id="dec-header">
-    <span id="dec-title">TRADE-OFF DECISION</span>
-    <span id="dec-pick"></span>
-    <div style="flex:1"></div>
-    <button onclick="chtBack('decision')" data-i18n="← BACK">← BACK</button>
+  <div id="wk-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
+  <div id="wk-tabs"></div>
+  <div id="wk-body">
+    <div id="cht-body"></div>
+    <div id="dec-body"></div>
+    <div id="chan-body"></div>
+    <div id="dtc-body"></div>
   </div>
-  <div id="dec-presence" style="display:none;margin:4px 14px 0;font-family:IBM Plex Mono,monospace;font-size:11px;align-items:center;gap:8px;flex-wrap:wrap"></div>
-  <div id="dec-body"></div>
 </div>
 
 <!-- CHARTER SLIDE DECK (generated from the open charter) -->
@@ -31893,39 +31654,11 @@ railInit();   // render the persistent nav rail + land on the initial view
   <div id="cht-syn-body"></div>
 </div>
 
-<!-- CHARTERS HUB (WORK › Charters rail view) — lists every project's charter -->
-<div id="chthub-overlay">
-  <div id="chthub-header">
-    <span id="chthub-title">CHARTERS</span>
-    <div style="flex:1"></div>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="chthub-body"></div>
-</div>
+<!-- (Charters hub removed — the 4 charter panels are merged into #wk-overlay; the hub
+     card grid is gone. Track B #2 + cleanup.) -->
 
-<!-- DESIGN-TO-COST (OFFER MNGT › Design to cost rail view) -->
-<div id="dtc-overlay">
-  <div id="dtc-header">
-    <span id="dtc-title">DESIGN TO COST</span>
-    <label class="cht-hl" style="margin-left:10px">PROJECT</label>
-    <select id="dtc-picker" class="cht-sel" onchange="dtcSelectProject(this.value)"></select>
-    <div style="flex:1"></div>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="dtc-body"></div>
-</div>
-
-<!-- CHANNEL MIX (OFFER MNGT › Channel mix rail view) — go-to-market synoptic -->
-<div id="chan-overlay">
-  <div id="chan-header">
-    <span id="chan-title">CHANNEL MIX</span>
-    <span id="chan-pick"></span>
-    <div style="flex:1"></div>
-    <button class="sm primary" onclick="chanSaveNow()">SAVE</button>
-    <button onclick="chtBack('channels')" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="chan-body"></div>
-</div>
+<!-- (Design-to-cost & Channel-mix panels merged into #wk-overlay above — their
+     #dtc-body / #chan-body containers live there now.) -->
 
 <!-- ICON PICKER (permanent, outside ptw-body) -->
 <div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
@@ -32367,44 +32100,8 @@ railInit();   // render the persistent nav rail + land on the initial view
 
 
 <!-- PROJECT BRIEF (WORK › Project brief rail view) — panel, rail-inset -->
-<div id="brief-overlay">
-  <div id="brief-header">
-    <span id="brief-title">📄 PROJECT BRIEF</span>
-    <div style="flex:1"></div>
-    <button class="sm primary" onclick="exportProjectBriefOpen()">📄 EXPORT</button>
-    <button onclick="railBack()" data-i18n="← BACK">← BACK</button>
-  </div>
-  <div id="brief-body">
-    <div class="brief-wrap">
-      <div class="brief-intro">Pick the projects and the sections to include, then export a print-ready brief as PDF or a standalone HTML file.</div>
-
-      <section class="brief-sec">
-        <div class="brief-sec-head">
-          <span class="brief-sec-title">SELECT PROJECTS</span>
-          <div class="brief-sec-tools">
-            <button class="sm" onclick="briefSelectAll(true)">✓ All</button>
-            <button class="sm" onclick="briefSelectAll(false)">✕ None</button>
-            <button class="sm" onclick="briefSelectVisible()">≡ Visible only</button>
-          </div>
-        </div>
-        <div id="brief-proj-list" class="brief-proj-grid"></div>
-      </section>
-
-      <div class="brief-2col">
-        <section class="brief-sec">
-          <div class="brief-sec-title">ALLOCATION PERIOD</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="month" id="brief-from" class="brief-month">
-            <span style="font-size:11px;color:var(--muted)">→</span>
-            <input type="month" id="brief-to" class="brief-month">
-            <button class="sm" onclick="briefSetPeriodFromPlan()" style="font-size:9px;padding:2px 8px" title="Copy FROM/TO from the resource planning period">↙ From Plan</button>
-            <button class="sm" onclick="document.getElementById('brief-from').value='';document.getElementById('brief-to').value=''" style="font-size:9px;padding:2px 8px">✕ All time</button>
-          </div>
-          <div style="font-size:9px;color:var(--dim);margin-top:8px">Leave blank to include all allocation data.</div>
-        </section>
-      </div>
-    </div>
-  </div>
-</div>
+  <!-- (Project brief is now a deliverable on the shared Export engine — reached from
+       the Export door, project scope chosen via per-project toggles in the builder.
+       Its old #brief-overlay rail view was removed in Track B #7.) -->
   <script src="matrix-tour.js"></script>
 </body>

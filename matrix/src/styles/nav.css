@@ -229,47 +229,11 @@ body{padding-left:var(--rail);}
    Keep the rail visible while any full-screen overlay is open. These overlays
    are defined with inset:0 in layout.css; nav.css loads last so left:var(--rail)
    wins. (#org-overlay is styled inline in index.html and is inset there instead.) */
-#help-overlay, #compare-overlay, #summary-overlay, #res-overlay, #snap-overlay{
+#help-overlay, #compare-overlay, #res-overlay, #snap-overlay{
   left:var(--rail);
 }
 
-/* ── PROJECT BRIEF (WORK › Project brief rail view) ──────
-   A rail-inset panel (like Design-to-cost / Trade-off decision), NOT a modal.
-   z-index:400 = view level, so rail-spawned modals (Settings) still sit above. */
-#brief-overlay{
-  display:none; position:fixed; inset:0; left:var(--rail);
-  background:var(--bg); z-index:400; flex-direction:column;
-}
-#brief-overlay.show{ display:flex; }
-#brief-header{
-  display:flex; align-items:center; gap:8px;
-  padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
-}
-#brief-title{ font-weight:700; font-size:15px; color:var(--text); letter-spacing:.02em; }
-#brief-header button{ margin-left:4px; }
-#brief-body{ flex:1; overflow:auto; padding:18px 22px; }
-.brief-wrap{ max-width:1000px; }
-.brief-intro{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
-.brief-sec{
-  background:var(--surface); border:1px solid var(--border); border-radius:8px;
-  padding:14px 16px; margin-bottom:16px;
-}
-.brief-sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
-.brief-sec-title{
-  font-family:IBM Plex Mono,monospace; font-size:9px; color:var(--muted);
-  letter-spacing:.06em; display:block; margin-bottom:10px;
-}
-.brief-sec-head .brief-sec-title{ margin-bottom:0; flex:1; }
-.brief-sec-tools{ display:flex; gap:6px; }
-.brief-proj-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px; }
-.brief-2col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
-@media (max-width:720px){ .brief-2col{ grid-template-columns:1fr; } }
-.brief-opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
-.brief-opt{ display:flex; align-items:center; gap:7px; font-size:11px; cursor:pointer; }
-.brief-month{
-  background:var(--bg); border:1px solid var(--border); color:var(--text);
-  font-family:IBM Plex Mono,monospace; font-size:11px; padding:3px 7px; border-radius:4px;
-}
+/* (Project-brief overlay + Summary overlay CSS removed — both were cut/merged in Track B.) */
 
 /* Rail-spawned modals (Settings, first-run landing, the export builder) must sit
    ABOVE the full-screen view overlays (z-index:400) — they open as actions without
@@ -279,6 +243,24 @@ body{padding-left:var(--rail);}
 #settings-overlay, #landing-firstrun, #export-builder-overlay, #export-picker-overlay{
   z-index:1100; left:var(--rail);
 }
+
+/* Data utility menu (rail foot → Snapshots / Backup / Restore) */
+#data-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
+  align-items:center; justify-content:center; }
+#data-menu-overlay.show{ display:flex; }
+.dm-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px;
+  width:340px; max-width:92vw; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+.dm-head{ display:flex; align-items:center; justify-content:space-between; font-family:IBM Plex Mono,monospace;
+  font-size:11px; letter-spacing:.08em; color:var(--muted); margin-bottom:12px; }
+.dm-x{ background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; }
+.dm-item{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--bg);
+  border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:8px; cursor:pointer; color:var(--text); }
+.dm-item:hover{ border-color:var(--accent); }
+.dm-item:last-child{ margin-bottom:0; }
+.dm-ico{ font-size:18px; flex-shrink:0; width:24px; text-align:center; }
+.dm-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.dm-txt b{ font-size:13px; font-weight:600; }
+.dm-txt small{ font-size:10px; color:var(--muted); }
 /* the picker hands off to the builder, so the builder must sit ABOVE it */
 #export-builder-overlay{ z-index:1110; }
 #export-picker-overlay .exp-pick:hover{ border-color:var(--accent); }

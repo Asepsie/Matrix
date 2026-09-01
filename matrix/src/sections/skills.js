@@ -732,8 +732,28 @@ export function ktPlanHTML(skillName,plans){
 }
 
 // renders the skill-risk (SPOF) analysis tab
+/* ── Skills view: two lenses (Matrix | Risk) in one tab (Track B #4) ──────────
+   The former separate "Skill risk" rail view is merged in as the Risk lens of the
+   Skills view. renderSkills() is the single entry point; each lens renderer sets
+   _skLens itself so the toggle always reflects what is on screen. skGo() is the
+   deep-link opener (used by the dashboard SPOF chip + the exec SPOF KPI). */
+var _skLens='matrix';
+function renderSkills(){ if(_skLens==='risk') renderSkillRisk(); else renderSkillsTab(); }
+function skSetLens(l){ if(l==='risk') renderSkillRisk(); else renderSkillsTab(); }
+function skGo(ev,lens){ _skLens=(lens==='risk')?'risk':'matrix'; if(typeof railGo==='function') railGo(ev,'skills'); }
+function skLensBar(){
+  const mk=function(id,label){ const on=_skLens===id;
+    return '<button onclick="skSetLens(\''+id+'\')" style="background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      +';border:1px solid '+(on?'var(--accent)':'var(--border)')+';color:'+(on?'var(--accent)':'var(--muted)')
+      +';font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:3px 12px;border-radius:5px;cursor:pointer">'+escH(label)+'</button>'; };
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0">'
+    +'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--accent);letter-spacing:.06em">◎ SKILLS</span>'
+    +'<div style="display:flex;gap:6px">'+mk('matrix',t('Matrix'))+mk('risk',t('Risk'))+'</div></div>';
+}
+
 export function renderSkillRisk(){
   const body=G('res-body');if(!body)return;
+  _skLens='risk';
   const skillMap=buildSkillMap();
   const catOrder={crit:0,diff:1,mand:2};
   const allSkills=Object.values(skillMap).sort(function(a,b){
@@ -765,6 +785,7 @@ export function renderSkillRisk(){
   const CAT_COL=getSkillCatCol();
   const LEVEL_LABEL=['','Awareness','Basic','Proficient','Advanced','Expert'];
   let h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=skLensBar();
   const ktTotal=Object.keys(_ktPlans).reduce(function(s,k){return s+(_ktPlans[k]||[]).length;},0);
   const ktDone=Object.keys(_ktPlans).reduce(function(s,k){return s+(_ktPlans[k]||[]).filter(function(p){return p.status==='Done';}).length;},0);
   const kpis=[
@@ -1002,6 +1023,7 @@ export function clearActivePill(){
 // renders the skills overview tab
 export function renderSkillsTab(){
   const body=G('res-body');if(!body)return;
+  _skLens='matrix';
   const sm=buildSkillMap();
   const allSkills=Object.values(sm).sort(function(a,b){return a.name.localeCompare(b.name);});
   const CAT_COL=getSkillCatCol();const CAT_LABEL=getSkillCatLabel(true);
@@ -1015,6 +1037,7 @@ export function renderSkillsTab(){
   if(domF)  vis=vis.filter(s=>s.domain===domF);
   const domains=[''].concat([...new Set(allSkills.map(s=>s.domain).filter(Boolean))].sort());
   let h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=skLensBar();
   const totalEng=engineers.filter(e=>!e.vacant).length;
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0">';
   var _kpiTiles=[{val:allSkills.length,label:'TOTAL SKILLS',col:'var(--accent2)'}];

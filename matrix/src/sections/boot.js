@@ -24,6 +24,8 @@ document.addEventListener('keydown',e=>{
     if(typeof exportBuilderClose==='function')exportBuilderClose();
     if(typeof exportClosePicker==='function')exportClosePicker();
     if(typeof rloClose==='function')rloClose();
+    if(typeof closeCompare==='function')closeCompare();   // Compare is a matrix sub-mode (RAIL_MODAL_OVERLAYS)
+    if(typeof dataMenuClose==='function')dataMenuClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }
@@ -33,7 +35,7 @@ document.addEventListener('keydown',e=>{
   if(inInput)return; // don't fire shortcuts while typing
   if(e.key==='?'||e.key==='/')openHelp();
   if(e.key==='n'||e.key==='N')openAddModal();
-  if(e.key==='s'||e.key==='S'){e.preventDefault();openSummary();}
+  if(e.key==='s'||e.key==='S'){e.preventDefault();if(typeof railGo==='function')railGo(null,'exec');}   // Summary view was cut → Executive summary is the successor
   if(e.key==='p'||e.key==='P')openRes();
   if(e.key==='o'||e.key==='O')openOrgChart();
   if(e.key==='c'||e.key==='C')openCompare();

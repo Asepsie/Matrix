@@ -20,9 +20,18 @@
 // Spend-map controls (UI-only, mirrors the Portfolio-analytics treemap).
 var _xsSpend={ by:'cost', group:'none' };
 
+// Drill-to-source onclick for a target id. The former 'econ' / 'portfolio' views are
+// now the two lenses of Portfolio analytics, so route those through pfOpenLens (which
+// selects the lens before opening 'portfolio'); everything else is a plain railGo.
+function xsNav(to){
+  if(to==='econ')      return "pfOpenLens(event,'economics')";
+  if(to==='portfolio') return "pfOpenLens(event,'overview')";
+  if(to==='skillrisk') return "skGo(event,'risk')";   // Skills view, Risk lens
+  return "railGo(event,'"+to+"')";
+}
 // KPI card. `sub` may contain HTML. `clickTo` = a rail view id → drill to source tab.
 function xsKpi(val,label,sub,color,clickTo){
-  const click=clickTo?' onclick="railGo(event,\''+clickTo+'\')" title="'+escH(t('Open {v}',{v:clickTo}))+'"':'';
+  const click=clickTo?' onclick="'+xsNav(clickTo)+'" title="'+escH(t('Open {v}',{v:clickTo}))+'"':'';
   return '<div class="xs-kpi" style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 13px'+(clickTo?';cursor:pointer':'')+'"'+click+'>'
     +'<div style="font-size:20px;font-weight:700;color:'+(color||'var(--text)')+';line-height:1.1">'+val+'</div>'
     +'<div style="font-size:9px;color:var(--muted);font-family:IBM Plex Mono,monospace;letter-spacing:.05em;text-transform:uppercase;margin-top:4px">'+escH(label)+'</div>'
@@ -505,7 +514,7 @@ function xsAttention(months){
   if(!items.length) return '<div style="font-size:12px;color:var(--accent2);font-family:IBM Plex Mono,monospace">'+t('✓ Nothing flagged — no talent-risk, delivery or concentration alerts.')+'</div>';
   let h='<div style="display:flex;flex-direction:column;gap:2px">';
   items.forEach(function(it){
-    h+='<div onclick="railGo(event,\''+it.to+'\')" style="display:flex;align-items:center;gap:9px;font-size:12px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">'
+    h+='<div onclick="'+xsNav(it.to)+'" style="display:flex;align-items:center;gap:9px;font-size:12px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">'
       +'<span style="color:'+it.iconCol+';flex-shrink:0;width:16px;text-align:center">'+it.icon+'</span>'
       +'<span style="color:var(--text)">'+it.text+'</span></div>';
   });

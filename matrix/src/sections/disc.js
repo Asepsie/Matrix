@@ -82,6 +82,7 @@ function _discPeopleHTML(key,placements,engList,photoCache,forExport){
 // renders the DISC matrix with drag-and-drop people chips
 export function renderDiscMatrix(){
   var body=G('res-body');if(!body)return;
+  _tpLens='disc';
   if(!_discPlacements)_discPlacements={};
   var QUADRANTS=_discQuadrants();
   var placedSet=new Set(Object.keys(_discPlacements));   // keys are uids
@@ -89,6 +90,7 @@ export function renderDiscMatrix(){
   var unplaced=talentEngsD.filter(function(e){return !placedSet.has(e.uid)||!QUADRANTS.find(function(q){return q.key===_discPlacements[e.uid];});});
 
   var h='<div style="display:flex;flex-direction:column;height:100%;gap:0">';
+  h+=tpLensBar();
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<h3 style="margin:0;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">DISC BEHAVIORAL PROFILE</h3>'
     +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">'+Object.keys(_discPlacements).length+' profiled · '+unplaced.length+' unassigned</span>'

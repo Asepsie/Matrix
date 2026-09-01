@@ -56,10 +56,44 @@
  */
 
 /** Renders the full allocation plan table with filter/view toolbar, fill bar, and grouped rows. */
+/* ── Merged PLAN view: one mode axis across the editable grid + the timeline views
+   (Track B #5). GRID = renderResPlan (edit allocations); GANTT / RIBBON / CAPACITY reuse
+   the timeline renderers UNCHANGED (renderTimeline dispatches on _tlState.mode). _planMode
+   is the single active mode; planSetMode switches + re-renders; renderPlan() is the nav
+   entry point; planGo() is the deep-link opener (balancer cross-links). Both surfaces share
+   the global FROM/TO period, so switching mode never loses context. */
+var _planMode='grid';
+function planModeBar(){
+  var cur=_planMode||'grid';
+  var b=function(m,label){ var on=cur===m;
+    return '<button onclick="planSetMode(\''+m+'\')" class="sm'+(on?' active':'')+'" style="font-size:9px;padding:2px 10px'
+      +(on?';border-color:var(--accent);color:var(--accent);background:rgba(200,241,53,.08)':'')+'">'+label+'</button>'; };
+  return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">'
+    +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.06em">'+t('MODE')+'</span>'
+    +b('grid','▤ '+t('Grid'))+b('gantt','▦ '+t('Gantt'))+b('resource','◧ '+t('Ribbon'))+b('plan','⛰ '+t('Capacity'))+'</div>';
+}
+function planSetMode(m){
+  _planMode=(m==='gantt'||m==='resource'||m==='plan')?m:'grid';
+  if(_planMode==='grid') renderResPlan();
+  else { if(typeof _tlState!=='undefined') _tlState.mode=_planMode; renderTimeline(); }
+}
+// Nav entry for the 'plan' tab — dispatch to the grid or the active timeline mode.
+function renderPlan(){
+  if(_planMode && _planMode!=='grid' && typeof renderTimeline==='function'){
+    if(typeof _tlState!=='undefined') _tlState.mode=_planMode; renderTimeline();
+  } else renderResPlan();
+}
+// Deep-link opener: land the Plan view on a given mode (used by the balancer buttons).
+function planGo(ev,mode){
+  _planMode=(mode==='gantt'||mode==='resource'||mode==='plan')?mode:'grid';
+  if(typeof railGo==='function') railGo(ev,'plan');
+}
+
 export function renderResPlan(){
   const months=getMonthRange();
   const cur=curMonth();
-  let h='';
+  _planMode='grid';
+  let h=planModeBar();
 
   // ── Filter & view toolbar ──
   const allEngNamesP=[...new Set(engineers.map(e=>e.name))].sort();
@@ -68,7 +102,7 @@ export function renderResPlan(){
   const selStyle='background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:4px 8px;border-radius:4px;outline:none';
 
   h+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('VIEW:')}</span>
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted)">${t('GROUP:')}</span>
     <button class="sm${planViewMode==='flat'?' active':''}" onclick="setPlanView('flat')">${t('FLAT')}</button>
     ${planViewMode==='flat' ? `
     <span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--dim)">${t('sort:')}</span>
@@ -385,7 +419,7 @@ export function renderResPlan(){
 }
 
 /** Refreshes the active resource tab (plan or dashboard). */
-export function buildAllocTable(){ if(resActiveTab==='plan')renderResPlan(); else renderResDashboard(); }
+export function buildAllocTable(){ if(resActiveTab==='plan')renderPlan(); else renderResDashboard(); }
 
 /** Updates the CSS class on an allocation input based on its numeric value. */
 export function colorCell(inp){

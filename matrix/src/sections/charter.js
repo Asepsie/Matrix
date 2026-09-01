@@ -1,18 +1,13 @@
-/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter — now two rail-inset
- * PANELS (like Design-to-cost), not a full-cover modal:
- *   • Financials analysis (#cht-overlay) — overview / demands / financials tabs
- *   • Trade-off decision  (#dec-overlay) — the configurable triangle(s) + lists
- * Both share one selected project (`_chtProjId`) and a project-picker MODE read
- * from Settings (`chtPickerMode()`): 'hub' (card grid, as before) or 'dropdown'
- * (a top <select>, like DTC).
+/* ►► SECTION: CHARTER ◄◄ Cross-functional project charter. The Financials and
+ * Trade-off panels are now TABS of the Project workspace (#wk-overlay, workspace.js)
+ * — this file keeps their renderers (chtShowTab → #cht-body; chtRenderDecision →
+ * #dec-body) + the financial engine glue. All share one selected project (`_chtProjId`).
  *
- *   chtOpenFinancials / chtOpenDecisionView — rail-view entry points (per mode)
- *   openCharterHub(target)  — the card grid; a card opens the financials OR the
- *                             decision panel depending on `target`
- *   openCharter(projId)     — open the Financials panel for a project
- *   chtOpenDecision(projId) — open the Trade-off decision panel for a project
- *   chtClose / chtCloseDecision — close a panel
- *   chtShowTab(tab)         — switch Financials tab and render it
+ *   openCharter(projId, tab) — redirect to the workspace on the Financials family
+ *   chtOpenDecision(projId)  — redirect to the workspace Trade-off tab
+ *   chtClose / chtCloseDecision — delegate to closeWorkspace
+ *   chtShowTab(tab)          — render a charter tab body (overview/demands/financials)
+ *   chtRenderDecision        — render the trade-off body
  *
  * All state lives on the project (makeCharter) so it flows through save/backup
  * automatically. Money is EUR. There is no approval workflow by design.
@@ -29,13 +24,6 @@ const CHT_TABS = [
   ['financials', 'FINANCIALS'],
 ];
 
-// Project-picker mode, set in Settings (railnav owns the pref). 'hub' = card grid
-// (default), 'dropdown' = a top <select> like Design-to-cost.
-function chtPickerMode(){
-  return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub';
-}
-// First project id, or null (used when the dropdown mode opens with no selection).
-function chtFirstProj(){ return projects.length ? projects[0].id : null; }
 // The 5 functions: section key → label.
 const CHT_FUNCS = [
   ['strategy',          'Strategy'],
@@ -62,39 +50,24 @@ function chtStanceWarn(d){
   return '';
 }
 
-// ── rail-view entry points (honour the picker mode) ──────────────────────────
-// WORK › Financials analysis.
-export function chtOpenFinancials(){
-  if(chtPickerMode()==='dropdown') openCharter(chtFirstProj());
-  else openCharterHub('financials');
-}
-// WORK › Trade-off decision.
-export function chtOpenDecisionView(){
-  if(chtPickerMode()==='dropdown') chtOpenDecision(chtFirstProj());
-  else openCharterHub('decision');
-}
+// ── rail-view entry points ───────────────────────────────────────────────────
+// The four former charter panels are merged into the Project workspace shell
+// (sections/workspace.js). These entry points + the deep-link openers below all
+// redirect there, opening on the correct tab.
+export function chtOpenFinancials(){ if(typeof wkOpen==='function') wkOpen('financials'); }
+export function chtOpenDecisionView(){ if(typeof wkOpen==='function') wkOpen('decision'); }
 
-// ── Financials panel (open / close) ──────────────────────────────────────────
-export function openCharter(projId){
-  const p = projid2proj(projId);
-  _chtProjId = p ? p.id : null;
-  if(p && (!p.charter || typeof p.charter!=='object')) p.charter = makeCharter();
-  _chtTab = 'overview';
-  G('cht-overlay').classList.add('show');
-  chtRenderPicker('financials');
-  chtRenderHeader();
-  chtRenderTabStrip();
-  chtShowTab('overview');
-  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
-}
-export function chtClose(){ G('cht-overlay').classList.remove('show'); chtSyncRailAfterClose();
-  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
+// ── deep-link opener (redirects to the workspace) ────────────────────────────
+// Opens the workspace for `projId` on `tab` (default 'overview'). Kept as the
+// public name every deep-link (Home / Pipeline / matrix context menu) still calls.
+export function openCharter(projId, tab){ if(typeof wkOpen==='function') wkOpen(tab||'overview', projId); }
+export function chtClose(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
 // If closing a panel reveals the BASE matrix (no charter surface left showing) and
 // we're not mid-navigation, sync the rail highlight back to matrix. When the hub
 // is still visible beneath (hub mode) it stays highlighted as the charter view.
 // Reads railnav module state directly (one shared bundle scope).
 function chtSyncRailAfterClose(){
-  const anyShown=['cht-overlay','dec-overlay','chan-overlay','chthub-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
+  const anyShown=['wk-overlay'].some(id=>{ const e=G(id); return e&&e.classList.contains('show'); });
   if(anyShown) return;
   if(typeof railRouting!=='undefined' && railRouting) return;
   if(typeof activeView!=='undefined' && activeView!=='matrix'){
@@ -105,103 +78,8 @@ function chtSyncRailAfterClose(){
 }
 // Resolve a project by id (coerces the numeric string from a <select>), or null.
 function projid2proj(projId){ return projects.find(x=>x.id===+projId)||null; }
-// Dropdown-mode project switch (Financials).
-export function chtSelectProject(id){ openCharter(id); }
-// Hub-mode back — hide the panel, reveal the card grid. Now invoked only by chtBack().
-export function chtBackToHub(target){
-  if(target==='decision') chtCloseDecision(); else chtClose();
-  openCharterHub(target);
-}
-// Single, context-aware BACK for the charter / decision / channels panels. If the card-grid
-// hub is open beneath the panel (you drilled in from it), step back to the hub; otherwise go
-// back through the rail history (the previous view). Consolidates the former dual controls
-// ("← BACK" + "‹ Projects") into one predictable button.
-export function chtBack(target){
-  const hub=G('chthub-overlay');
-  if(hub && hub.classList.contains('show')){
-    if(target==='channels'){ if(typeof chanBackToHub==='function') chanBackToHub(); else chtClose(); }
-    else chtBackToHub(target);
-  } else if(typeof railBack==='function'){ railBack(); }
-}
-
-// Render the header picker slot (#cht-pick / #dec-pick) for the given panel.
-//   dropdown mode → a <select> of every project
-//   hub mode      → a "‹ Projects" button back to the card grid
-function chtRenderPicker(target){
-  const slot = G(target==='decision'?'dec-pick':'cht-pick'); if(!slot) return;
-  if(chtPickerMode()==='dropdown'){
-    const set = target==='decision' ? 'chtDecSelectProject' : 'chtSelectProject';
-    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chtProjId);
-    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
-      <select class="cht-sel" onchange="${set}(this.value)">
-        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chtProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
-                          : '<option>— no projects —</option>'}
-      </select>`;
-  } else {
-    // Hub mode: the ← BACK button already returns to the hub, so show the project NAME
-    // here for context instead of a redundant second back control.
-    const p = projects.find(x=>x.id===_chtProjId);
-    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
-  }
-}
-
-// ── Charters hub (card grid) — one grid serving both panels via `target` ─────
-// A card opens the Financials panel (target='financials') or the Trade-off
-// decision panel (target='decision'), which stacks on top. Closing it reveals
-// the hub again.
-let _chtHubTarget='financials';
-export function openCharterHub(target){
-  _chtHubTarget = (target==='decision'||target==='channels') ? target : 'financials';
-  const t=G('chthub-title');
-  if(t) t.textContent = _chtHubTarget==='decision' ? 'TRADE-OFF DECISION'
-                      : _chtHubTarget==='channels' ? 'CHANNEL MIX'
-                      : 'FINANCIALS ANALYSIS';
-  G('chthub-overlay').classList.add('show');
-  chtRenderHub();
-}
-export function closeCharterHub(){ G('chthub-overlay').classList.remove('show'); }
-
-function chtRenderHub(){
-  const body=G('chthub-body'); if(!body) return;
-  const opener = _chtHubTarget==='decision' ? 'chtOpenDecision'
-               : _chtHubTarget==='channels' ? 'openChannels'
-               : 'openCharter';
-  if(!projects.length){
-    body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add one on the Portfolio matrix, then open it here.</div>';
-    return;
-  }
-  body.innerHTML='<div class="chthub-grid">'+projects.map(p=>{
-    const c = (p.charter&&typeof p.charter==='object') ? p.charter : makeCharter();
-    const r = calculateFinancials(c.financials);
-    const prio = c.priority||'—';
-    const prioCls = c.priority==='High'?'hi':c.priority==='Medium'?'med':c.priority==='Low'?'lo':'';
-    let badges;
-    if(_chtHubTarget==='channels'){
-      // Channel-mix summary: number of channels + whether the shares sum to 100%.
-      const m = chanMixSummary(c);
-      badges = `<span class="chthub-metric">${m.count} channel${m.count===1?'':'s'}</span>`
-             + `<span class="chthub-metric ${m.ok?'ok':(m.count?'conflict':'')}">Σ ${m.total}%</span>`;
-    } else {
-      const conflicts = chtConflicts(c).length;
-      const madeTradeoff = Object.values(c.decision.stances||{}).includes('sacrifice');
-      badges = `<span class="chthub-metric">NPV ${r.display.npv}</span>`
-             + `<span class="chthub-metric">IRR ${r.display.irr}</span>`
-             + (conflicts?`<span class="chthub-metric conflict">⚠ ${conflicts} conflict${conflicts>1?'s':''}</span>`
-                        :`<span class="chthub-metric${madeTradeoff?' ok':''}">${madeTradeoff?'✓ trade-off':'trade-off pending'}</span>`);
-    }
-    return `<div class="chthub-card" onclick="${opener}(${p.id})" title="Open">
-      <div class="chthub-top">
-        <span class="chthub-name">${escH(p.name||'Untitled project')}</span>
-        <span class="chthub-status">${escH(c.status||'Draft')}</span>
-      </div>
-      <div class="chthub-badges">
-        <span class="chthub-prio ${prioCls}">${escH(prio)}</span>
-        ${badges}
-      </div>
-    </div>`;
-  }).join('')+'</div>';
-}
-
+// Project switch from the shared workspace picker (Financials family).
+export function chtSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 // The charter object for the open project (or null).
 function chtCharter(){
   const p = projects.find(x=>x.id===_chtProjId);
@@ -237,8 +115,9 @@ export function chtSetTop(key,value){
 function chtRenderHeader(){
   const p = projects.find(x=>x.id===_chtProjId);
   const c = chtCharter();
-  if(!p||!c){ G('cht-title').textContent='FINANCIALS ANALYSIS'; const m=G('cht-head-meta'); if(m) m.innerHTML=''; return; }
-  G('cht-title').textContent = p.name || 'PROJECT';
+  const tt = G('cht-title');   // absent in the merged workspace shell — guard it
+  if(!p||!c){ if(tt) tt.textContent='FINANCIALS ANALYSIS'; const m=G('cht-head-meta'); if(m) m.innerHTML=''; return; }
+  if(tt) tt.textContent = p.name || 'PROJECT';
   const prio = ['','High','Medium','Low'];
   const stat = ['Draft','In Review','Approved','Rejected'];
   G('cht-head-meta').innerHTML =
@@ -250,11 +129,6 @@ function chtRenderHeader(){
      <select class="cht-sel" onchange="chtSetTop('status',this.value)">
        ${stat.map(v=>`<option${c.status===v?' selected':''}>${v}</option>`).join('')}
      </select>`;
-}
-function chtRenderTabStrip(){
-  G('cht-tabs').innerHTML = CHT_TABS.map(([id,label])=>
-    `<div class="cht-tab${_chtTab===id?' active':''}" id="cht-tab-${id}" onclick="chtShowTab('${id}')">${label}</div>`
-  ).join('');
 }
 
 export function chtShowTab(tab){
@@ -753,18 +627,9 @@ function chtCumCashSVG(f){
 // A configurable TRIANGLE: the primary trade-off plus up to 2 named comparison
 // scenarios. Each triangle plots 3 of the 4 dimensions; the full 4-stance set is
 // kept underneath (so conflicts + design guidelines still work off the primary).
-export function chtOpenDecision(projId){
-  const p=projid2proj(projId);
-  _chtProjId = p ? p.id : null;
-  if(p && (!p.charter || typeof p.charter!=='object')) p.charter=makeCharter();
-  G('dec-overlay').classList.add('show');
-  chtRenderPicker('decision');
-  chtRenderDecision();
-  if(typeof collabPublishPresence==='function') collabPublishPresence();   // broadcast "editing this project" (live presence)
-}
-export function chtCloseDecision(){ G('dec-overlay').classList.remove('show'); chtSyncRailAfterClose();
-  if(typeof collabPublishPresence==='function') collabPublishPresence(); }   // clear my "editing" focus for teammates
-export function chtDecSelectProject(id){ chtOpenDecision(id); }
+export function chtOpenDecision(projId){ if(typeof wkOpen==='function') wkOpen('decision', projId); }
+export function chtCloseDecision(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
+export function chtDecSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 
 function chtRenderDecision(){
   const p=projects.find(x=>x.id===_chtProjId);

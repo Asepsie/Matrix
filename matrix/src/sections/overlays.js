@@ -1,4 +1,5 @@
-/* ►► SECTION: OVERLAYS ◄◄ Help, Compare (dual Y-mode), and Summary dashboard overlays
+/* ►► SECTION: OVERLAYS ◄◄ Help + Compare (dual Y-mode) overlays.
+ * (The Summary dashboard was cut — Track B #8 — and its renderer removed.)
  *
  * Functions defined in this file:
  *   openHelp        — opens the help overlay
@@ -7,9 +8,6 @@
  *   closeCompare    — closes the compare overlay
  *   renderCompare   — renders both compare panels for the selected Y-modes
  *   renderCompareSVG — renders one compare matrix panel for a given Y-mode
- *   openSummary     — opens the portfolio summary dashboard
- *   closeSummary    — closes the summary dashboard
- *   renderSummary   — renders the summary KPIs, project breakdown, and team workload
  */
 
 // opens the help overlay
@@ -21,6 +19,18 @@ function closeHelp(){
   clearActivePill();G('help-overlay').classList.remove('show');}
 
 const _cmpRO=new ResizeObserver(()=>{if(G('compare-overlay').classList.contains('show'))renderCompare();});
+// Matrix toolbar entry (Track B #3 — Compare is now a matrix sub-mode, not a rail view):
+// seed the left panel with the matrix's CURRENT Y-mode and the right with a different one,
+// so the split opens showing a genuine comparison, then open the two-panel overlay.
+function matrixOpenCompare(){
+  const modes=['impact','visibility','enabler'];
+  const left=(typeof yMode!=='undefined')?yMode:'impact';
+  const right=modes.filter(m=>m!==left)[0]||'visibility';
+  const l=G('cmp-left'), r=G('cmp-right');
+  if(l) l.value=left;
+  if(r) r.value=right;
+  openCompare();
+}
 // opens the compare overlay and starts observing resize
 function openCompare(){
   setActivePill('COMPARE');
@@ -158,112 +168,3 @@ function renderCompareSVG(svgId,wrapId,mode){
   svg.innerHTML=h;
 }
 
-// opens the portfolio summary dashboard
-function openSummary(){
-  setActivePill('SUMMARY');G('summary-overlay').classList.add('show');renderSummary();}
-// closes the summary dashboard
-function closeSummary(){
-  clearActivePill();G('summary-overlay').classList.remove('show');}
-
-// renders the summary KPIs, project breakdown, and team workload
-function renderSummary(){
-  const body=G('summary-body');
-  const vis=projects.filter(p=>p.visible);
-  const allRisks=projects.flatMap(p=>p.risks||[]);
-  const allActions=projects.flatMap(p=>p.actions||[]);
-  const allTodos=projects.flatMap(p=>p.todos||[]);
-  const allMs=projects.flatMap(p=>p.milestones||[]);
-
-  const riskHi=allRisks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;
-  const riskMd=allRisks.filter(r=>{const rpn=(r.sev||1)*(r.occ||1)*(r.det||1);return rpn>=100&&rpn<300;}).length;
-  const actionsDone=allActions.filter(a=>a.status==='Done').length;
-  const actionsBlocked=allActions.filter(a=>a.status==='Blocked').length;
-  const todosDone=allTodos.filter(t=>t.done).length;
-  const msOverdue=allMs.filter(m=>m.end&&!m.done&&new Date(m.end)<new Date()).length;
-  const msDone=allMs.filter(m=>m.done).length;
-  const withGate=projects.filter(p=>p.gate).length;
-  const avgImpact=vis.length?(vis.reduce((s,p)=>s+p.y,0)/vis.length).toFixed(1):'-';
-  const avgVis=vis.length?(vis.reduce((s,p)=>s+(p.vis||5),0)/vis.length).toFixed(1):'-';
-  const avgEna=vis.length?(vis.reduce((s,p)=>s+(p.ena||5),0)/vis.length).toFixed(1):'-';
-
-  let h=`
-  <div class="sum-grid">
-    <div class="kpi-card"><div class="kpi-val">${projects.length}</div><div class="kpi-label">${t('TOTAL PROJECTS')}</div><div class="kpi-sub">${t('{n} visible on matrix',{n:vis.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--danger)">${riskHi}</div><div class="kpi-label">${t('HIGH RISKS (RPN≥300)')}</div><div class="kpi-sub">${t('{m} medium · {n} total',{m:riskMd,n:allRisks.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${actionsDone}<span style="font-size:14px;color:var(--muted)">/${allActions.length}</span></div><div class="kpi-label">${t('ACTIONS COMPLETE')}</div><div class="kpi-sub">${t('{n} blocked',{n:actionsBlocked})}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${todosDone}<span style="font-size:14px;color:var(--muted)">/${allTodos.length}</span></div><div class="kpi-label">${t('TASKS DONE')}</div><div class="kpi-sub">${allTodos.length?Math.round(todosDone/allTodos.length*100):0}% ${t('completion')}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:${msOverdue>0?'var(--danger)':'var(--accent)'}">${msOverdue}</div><div class="kpi-label">${t('OVERDUE MILESTONES')}</div><div class="kpi-sub">${t('{d} completed · {n} total',{d:msDone,n:allMs.length})}</div></div>
-    <div class="kpi-card"><div class="kpi-val" style="color:var(--accent2)">${withGate}</div><div class="kpi-label">${t('PROJECTS WITH GATE')}</div><div class="kpi-sub">${t('Next gate defined')}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${avgImpact}</div><div class="kpi-label">${t('AVG IMPACT')}</div><div class="kpi-sub">${t('Visibility {v} · Enabler {e}',{v:avgVis,e:avgEna})}</div></div>
-    <div class="kpi-card"><div class="kpi-val">${sections.length}</div><div class="kpi-label">${t('SECTIONS')}</div><div class="kpi-sub">${t('{n} unsectioned',{n:projects.filter(p=>!p.sectionId).length})}</div></div>
-  </div>`;
-
-  // Per-section breakdown
-  const allGroups=[
-    {name:t('UNSECTIONED'),color:'var(--muted)',projs:projects.filter(p=>!p.sectionId)},
-    ...sections.map(s=>({name:s.name,color:s.color,projs:projects.filter(p=>p.sectionId===s.id)}))
-  ].filter(g=>g.projs.length);
-
-  h+=`<div class="sum-section-title">${t('PROJECT BREAKDOWN')}</div>`;
-  for(const grp of allGroups){
-    h+=`<div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(grp.color)};flex-shrink:0"></div>
-        <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">${escH(grp.name)}</span>
-      </div>`;
-    for(const p of grp.projs){
-      const pRisks=p.risks||[],pActs=p.actions||[],pTodos=p.todos||[];
-      const rpnHi=pRisks.filter(r=>(r.sev||1)*(r.occ||1)*(r.det||1)>=300).length;
-      const actPct=pActs.length?Math.round(pActs.filter(a=>a.status==='Done').length/pActs.length*100):null;
-      const todoPct=pTodos.length?Math.round(pTodos.filter(t=>t.done).length/pTodos.length*100):null;
-      const pMs=p.milestones||[];
-      const msOvd=pMs.filter(m=>m.end&&!m.done&&new Date(m.end)<new Date()).length;
-      h+=`<div class="proj-sum-row">
-        <div style="width:8px;height:8px;border-radius:50%;background:${safeColor(p.color)};flex-shrink:0"></div>
-        <div class="psr-name" style="color:${safeColor(p.color)}">${escH(p.name)}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace;white-space:nowrap">
-          I:${p.y} V:${p.vis||5} E:${p.ena||5}
-        </div>
-        <div class="psr-badges">
-          ${rpnHi?`<span class="badge badge-risk-hi">⚠ ${t('{n} HI',{n:rpnHi})}</span>`:''}
-          ${msOvd?`<span class="badge" style="background:rgba(241,67,53,.12);color:#f14335">📅 ${t('{n} late',{n:msOvd})}</span>`:''}
-          ${p.currentGate?`<span class="badge" style="background:rgba(120,120,140,.12);color:var(--muted);font-size:9px;padding:1px 5px;border-radius:3px">🏁 ${escH(p.currentGate.slice(0,12))} →</span>` :''} ${p.gate?`<span class="badge badge-gate">🏁 ${escH(p.gate.slice(0,14))}</span>`:''}
-          ${pTodos.length?`<span class="badge badge-todo">☑ ${todoPct}%</span>`:''}
-          ${pActs.length?`<span class="badge" style="background:rgba(167,139,250,.1);color:#a78bfa">👥 ${actPct}%</span>`:''}
-        </div>
-      </div>
-      ${(todoPct!==null||actPct!==null)?`
-      <div style="padding:2px 0 4px 15px">
-        ${todoPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-bottom:2px"><span style="width:36px">${t('Tasks')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${todoPct}%"></div></div><span>${todoPct}%</span></div>`:''}
-        ${actPct!==null?`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)"><span style="width:36px">${t('Actions')}</span><div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" style="width:${actPct}%;background:#a78bfa"></div></div><span>${actPct}%</span></div>`:''}
-      </div>`:''}`;
-    }
-    h+='</div>';
-  }
-
-  // Team workload
-  const memberMap={};
-  projects.forEach(p=>(p.actions||[]).forEach(a=>{
-    const m=a.member||t('Unassigned');
-    if(!memberMap[m])memberMap[m]={total:0,done:0,blocked:0,projects:new Set()};
-    memberMap[m].total++;memberMap[m].projects.add(p.name);
-    if(a.status==='Done')memberMap[m].done++;
-    if(a.status==='Blocked')memberMap[m].blocked++;
-  }));
-  if(Object.keys(memberMap).length){
-    h+=`<div class="sum-section-title" style="margin-top:8px">${t('TEAM WORKLOAD')}</div>
-    <div class="sum-grid">`;
-    for(const [name,s] of Object.entries(memberMap)){
-      const pct=Math.round(s.done/s.total*100);
-      h+=`<div class="kpi-card">
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent2);margin-bottom:6px">${escH(name)}</div>
-        <div style="font-size:12px">${t('{n} actions',{n:s.total})} &nbsp;·&nbsp; <span style="color:var(--accent)">${pct}%</span> ${t('done')}</div>
-        ${s.blocked?`<div style="font-size:10px;color:var(--danger);margin-top:2px">⚠ ${t('{n} blocked',{n:s.blocked})}</div>`:''}
-        <div class="progress-bar-wrap" style="margin-top:8px"><div class="progress-bar" style="width:${pct}%"></div></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">${[...s.projects].slice(0,2).map(p=>p.slice(0,16)).join(', ')}${s.projects.size>2?'…':''}</div>
-      </div>`;
-    }
-    h+='</div>';
-  }
-  body.innerHTML=h;
-}

@@ -1,7 +1,7 @@
-/* ►► SECTION: CHANNEL-MIX ◄◄ OFFER MNGT › Channel mix rail view.
- *   openChannelsView()   — rail entry point (honours the shared picker mode)
- *   openChannels(projId) — open the panel for one project
- *   closeChannels()      — close the panel (syncs the rail highlight)
+/* ►► SECTION: CHANNEL-MIX ◄◄ The Channels tab of the Project workspace.
+ *   openChannels(projId) — redirect to the workspace Channels tab
+ *   closeChannels()      — delegate to closeWorkspace
+ *   chanRender()         — render the channel body into #chan-body
  *
  * A per-project go-to-market synoptic: Company/Project → Channels → Segments.
  * Each channel has a share % (basis = revenue | volume | emphasis), a margin %,
@@ -10,10 +10,8 @@
  * charter and is back-filled by sanitiseCharter. Everything is `chan`-prefixed
  * and reuses the charter `cht-*` / `dtc-*` styles. Money is EUR.
  *
- * Shares the Charters HUB (target 'channels') + the Settings picker mode with
- * Financials / Trade-off / Design-to-cost (railChartPicker → hub | dropdown).
  * Pure helpers (chanMixSummary, chanChannelValue, chanAggregate) are reused by
- * the hub badges and by Portfolio analytics.
+ * Portfolio analytics.
  */
 
 let _chanProjId = null;
@@ -23,29 +21,13 @@ const CHAN_PALETTE = ['#5be5c8','#c8f135','#f1a435','#7aa2ff','#f14335','#c07af0
 function chanColor(ch,i){ return safeColor((ch&&ch.color) || CHAN_PALETTE[i%CHAN_PALETTE.length]); }
 function chanHexOr(col){ return /^#[0-9a-f]{6}$/i.test(col) ? col : '#5be5c8'; }
 
-// Picker mode (shared with the charter panels).
-function chanPickerMode(){ return (typeof railChartPicker==='function' && railChartPicker()==='dropdown') ? 'dropdown' : 'hub'; }
-function chanFirstProj(){ return projects.length ? projects[0].id : null; }
-
-// ── open / close (rail view) ─────────────────────────────────────────────────
-export function openChannelsView(){
-  if(chanPickerMode()==='dropdown') openChannels(chanFirstProj());
-  else openCharterHub('channels');
-}
-export function openChannels(projId){
-  const p = projects.find(x=>x.id===+projId);
-  _chanProjId = p ? p.id : (projects.length ? projects[0].id : null);
-  const pp = projects.find(x=>x.id===_chanProjId);
-  if(pp && (!pp.charter || typeof pp.charter!=='object')) pp.charter = makeCharter();
-  const o=G('chan-overlay'); if(o) o.classList.add('show');
-  chanRender();
-}
-export function closeChannels(){
-  const o=G('chan-overlay'); if(o) o.classList.remove('show');
-  if(typeof chtSyncRailAfterClose==='function') chtSyncRailAfterClose();
-}
-export function chanSelectProject(id){ openChannels(id); }
-export function chanBackToHub(){ closeChannels(); openCharterHub('channels'); }
+// ── open / close (merged into the Project workspace shell) ───────────────────
+// The Channel-mix panel is now a tab of the Project workspace (workspace.js);
+// these openers redirect there, landing on the Channels tab.
+export function openChannelsView(){ if(typeof wkOpen==='function') wkOpen('channels'); }
+export function openChannels(projId){ if(typeof wkOpen==='function') wkOpen('channels', projId); }
+export function closeChannels(){ if(typeof closeWorkspace==='function') closeWorkspace(); }
+export function chanSelectProject(id){ if(typeof wkSelectProject==='function') wkSelectProject(id); }
 
 // ── data access + save ───────────────────────────────────────────────────────
 function chanProject(){ return projects.find(x=>x.id===_chanProjId) || null; }
@@ -194,29 +176,11 @@ export function chanConcentration(projList){
 // ── render ───────────────────────────────────────────────────────────────────
 function chanRender(){
   const body=G('chan-body'); if(!body) return;
-  chanRenderPicker();
   const p=chanProject();
   const ttl=G('chan-title'); if(ttl) ttl.textContent = p ? (p.name||'PROJECT') : 'CHANNEL MIX';
   if(!projects.length){ body.innerHTML='<div class="cht-muted" style="padding:20px">No projects yet — add a project on the Portfolio matrix.</div>'; return; }
   const c=chanCharter(); if(!c){ body.innerHTML=''; return; }
   body.innerHTML = chanHeadForm(c,p) + chanSynopticWrap(c,p) + chanTotalsBar(c) + chanEditor(c);
-}
-
-function chanRenderPicker(){
-  const slot=G('chan-pick'); if(!slot) return;
-  if(chanPickerMode()==='dropdown'){
-    const pickable = projects.filter(p=>(typeof projIsArchived!=='function')||!projIsArchived(p)||p.id===_chanProjId);
-    slot.innerHTML = `<label class="cht-hl">PROJECT</label>
-      <select class="cht-sel" onchange="chanSelectProject(this.value)">
-        ${pickable.length ? pickable.map(p=>`<option value="${p.id}"${p.id===_chanProjId?' selected':''}>${escH(p.name||'Untitled project')}${(typeof projIsArchived==='function'&&projIsArchived(p))?' ('+escH(t('archived'))+')':''}</option>`).join('')
-                          : '<option>— no projects —</option>'}
-      </select>`;
-  } else {
-    // Hub mode: ← BACK already returns to the hub — show the project NAME for context
-    // instead of a redundant second back control.
-    const p = projects.find(x=>x.id===_chanProjId);
-    slot.innerHTML = `<span class="cht-hl" style="opacity:.85">${escH(p?(p.name||'Untitled project'):'—')}</span>`;
-  }
 }
 
 function chanHeadForm(c,p){
