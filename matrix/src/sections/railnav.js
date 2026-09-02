@@ -132,6 +132,14 @@ var railBadgeScope='all';    // sidebar project-row badge counts: 'all' items | 
 var railViewOrder={};        // domId -> [viewId,...] custom page order within a domain (persisted)
 var railViewDomain={};       // viewId -> overridden domId (cross-domain page moves; persisted)
 var railScrollbar='thin';    // rail scrollbar width preset: thin|medium|wide (persisted)
+var railGuideOff=false;      // value-spine strip permanently dismissed ("don't show again"; persisted, per-device)
+var railAdvanced=true;       // false = Basics only (progressive disclosure). Default true so an
+                             // EXISTING user is never surprised by hidden views; a genuine first
+                             // run (no rail prefs saved) starts false — see railLoadPrefs.
+// The Basics set a newcomer starts with — a focused subset that spells the value spine
+// (Home · Roster · Matrix · Plan · Balancer). Everything else is revealed by "Show advanced".
+var RAIL_BASIC_VIEWS={home:1,roster:1,matrix:1,plan:1,dashboard:1};
+var RAIL_BASIC_UTIL_HIDE={collab:1,ai:1};   // utilities hidden in Basics (advanced / network-dependent)
 var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
 var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
@@ -141,12 +149,18 @@ var RAIL_PREFS_KEY='eim_rail_prefs';   // tiny UI-only key, separate from app st
 
 // load persisted rail UI prefs (hover-drawer on/off + default landing + collapsed width)
 function railLoadPrefs(){
-  try{ var p=JSON.parse(localStorage.getItem(RAIL_PREFS_KEY)||'null');
+  try{ var raw=localStorage.getItem(RAIL_PREFS_KEY);
+       if(!raw){ railAdvanced=false; return; }   // genuine first run → start in Basics only
+       var p=JSON.parse(raw||'null');
+       // Existing prefs written before this feature have no `advanced` key → keep the full
+       // rail (true), so a returning user is never surprised by hidden views.
+       railAdvanced = (typeof p.advanced==='boolean') ? p.advanced : true;
        if(p){ if(typeof p.hoverMode==='boolean') railHoverMode=p.hoverMode;
               if(typeof p.landing==='string')  railLanding=p.landing;
               if(p.chartPicker==='dropdown'||p.chartPicker==='hub') railChartMode=p.chartPicker;
               if(p.badgeScope==='tasks'||p.badgeScope==='all') railBadgeScope=p.badgeScope;
               if(p.scrollbar==='thin'||p.scrollbar==='medium'||p.scrollbar==='wide') railScrollbar=p.scrollbar;
+              if(typeof p.guideOff==='boolean') railGuideOff=p.guideOff;
               if(p.tpLens==='disc'||p.tpLens==='ninebox') _tpLens=p.tpLens;   // Talent placement remember-last lens
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
@@ -154,7 +168,7 @@ function railLoadPrefs(){
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens,guideOff:railGuideOff,advanced:railAdvanced})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -380,6 +394,7 @@ function railLand(){
   if(railLanding&&railDomainFor(railLanding)) railGo(null,railLanding);
   else                                        railFirstRunLanding();
   railUpdateCrumb();
+  if(typeof spineRender==='function') spineRender();   // paint the guide even on first-run (behind the chooser)
 }
 
 // returns the domain object that owns a given view id (null if none)
@@ -397,7 +412,12 @@ function railRender(){
   var activeDomId=activeDom?activeDom.id:'';
   railScrollEl.innerHTML=RAIL_DOMAINS.map(function(d){
     var holds=d.id===activeDomId, exp=railIsOpen()&&holds;
-    var subs=d.views.map(function(v){
+    // Progressive disclosure: in Basics mode keep only the basic views (plus whatever
+    // view is currently active, so "you are here" is always shown). A domain with no
+    // visible views is hidden entirely.
+    var views=railAdvanced ? d.views : d.views.filter(function(v){ return RAIL_BASIC_VIEWS[v.id]||v.id===activeView; });
+    if(!views.length) return '';
+    var subs=views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
       return '<div class="rn-sub'+(on?' active':'')+'" draggable="true" data-view="'+v.id+'" onclick="railGo(event,\''+v.id+'\')"'
            + ' ondragstart="railSubDragStart(event,\''+d.id+'\',\''+v.id+'\')"'
@@ -417,17 +437,29 @@ function railRender(){
          +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
          + '</div><div class="rn-subs">'+subs+'</div></div>';
   }).join('');
-  railFootEl.innerHTML=RAIL_UTIL.map(function(u){
+  railFootEl.innerHTML=RAIL_UTIL.filter(function(u){ return railAdvanced || !RAIL_BASIC_UTIL_HIDE[u.id]; }).map(function(u){
     var badge=(u.id==='collab')?'<span id="rn-collab-badge" class="rn-util-badge" style="display:none"></span>':'';
     return '<div class="rn-util" onclick="railAction(\''+u.id+'\')" title="'+u.name+'">'
          + '<span class="rn-util-ico" style="position:relative">'+u.ico+badge+'</span>'
          + '<span class="rn-util-name mono">'+u.name+'</span></div>';
   }).join('')
   + '<div class="rn-mode-sep"></div>'
+  // Progressive-disclosure toggle: Basics only ↔ Show advanced (persisted, per-device).
+  + '<div class="rn-util rn-mode'+(railAdvanced?' on':'')+'" onclick="railToggleAdvanced()"'
+  + ' title="'+escH(t('Show every domain, or keep the rail to the basics (Home · Roster · Matrix · Plan · Balancer)'))+'">'
+  +   '<span class="rn-util-ico" style="font-size:16px">'+(railAdvanced?'◒':'◍')+'</span>'
+  +   '<span class="rn-util-name mono">'+escH(railAdvanced?t('Basics only'):t('Show advanced'))+'</span></div>'
   + '<div class="rn-util rn-mode'+(railHoverMode?' on':'')+'" onclick="railToggleHoverMode()"'
   + ' title="Auto-hide: open the rail when the pointer is over it, collapse it when the pointer leaves">'
   +   '<span class="rn-util-ico">'+RAIL_I.auto+'</span>'
   +   '<span class="rn-util-name mono">Auto-hide '+(railHoverMode?'ON':'OFF')+'</span></div>';
+}
+
+// Flip Basics ↔ Advanced and persist (per-device). Re-renders the rail.
+function railToggleAdvanced(){
+  railAdvanced=!railAdvanced;
+  railSavePrefs();
+  railRender();
 }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
@@ -476,13 +508,16 @@ function railGo(ev,viewId){
   var dom=railDomainFor(viewId); if(!dom) return;
   var view=dom.views.find(function(x){return x.id===viewId;});
   if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
+  // Progressive disclosure: navigating to an advanced view (deep-link, spine, search)
+  // auto-reveals the full rail so the user can see where they are and get back.
+  if(!railAdvanced && !RAIL_BASIC_VIEWS[viewId]){ railAdvanced=true; railSavePrefs(); }
   if(!railBackNav && activeView && activeView!==viewId){ railNavStack.push(activeView); if(railNavStack.length>60) railNavStack.shift(); }
   activeView=viewId;
   railHideFly();
   if(railPinned&&window.innerWidth<=640) railTogglePin();
   railRouting=true;             // suppress the overlay-close→'matrix' sync during nav
   try{ railRoute(viewId); }
-  finally{ railRouting=false; railRender(); railUpdateCrumb(); }  // never leave the guard stuck
+  finally{ railRouting=false; railRender(); railUpdateCrumb(); if(typeof spineRender==='function') spineRender(); if(typeof _undoUpdateButtons==='function') _undoUpdateButtons(); }  // never leave the guard stuck
   if(typeof collabPublishPresence==='function') collabPublishPresence();   // tell teammates which page I moved to (live presence)
 }
 

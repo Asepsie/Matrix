@@ -53,6 +53,18 @@
   </div>
 </div>
 
+<!-- VALUE-SPINE STRIP ("you are here") — data-driven onboarding guide (spine.js).
+     A fixed global band above the z-400 view overlays; visibility + the --spine-h
+     layout offset are driven entirely from JS (spineRender). Empty until rendered. -->
+<div id="spine-band" hidden></div>
+
+<!-- UNDO / REDO dock (undo.js). Fixed + always-visible because the #topbar is covered by
+     the full-screen view overlays. Buttons disable when their stack is empty / in a room. -->
+<div id="undo-dock" hidden>
+  <button id="undo-btn" class="undo-fab" onclick="undoRedo(false)" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↺</button>
+  <button id="redo-btn" class="undo-fab" onclick="undoRedo(true)" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>↻</button>
+</div>
+
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
   <div id="help-box">
@@ -61,11 +73,17 @@
       <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px" data-i18n="WHAT IS PROJECT MATRIX?">WHAT IS PROJECT MATRIX?</strong><br>
       <span data-i18n-html="Prioritize R&amp;D initiatives on an impact/effort matrix. Use &lt;strong&gt;Resources&lt;/strong&gt; to plan team allocation and track costs. Use &lt;strong&gt;Org Chart&lt;/strong&gt; to visualize reporting structure and plan headcount. Use &lt;strong&gt;Skill Risk&lt;/strong&gt; to identify knowledge gaps and single points of failure.">Prioritize R&amp;D initiatives on an impact/effort matrix. Use <strong style="color:var(--text)">Resources</strong> to plan team allocation and track costs. Use <strong style="color:var(--text)">Org Chart</strong> to visualize reporting structure and plan headcount. Use <strong style="color:var(--text)">Skill Risk</strong> to identify knowledge gaps and single points of failure.</span>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="sm" onclick="closeHelp();spineShow()" data-i18n="↳ Show setup guide">↳ Show setup guide</button>
+      <span style="font-size:10px;color:var(--muted)" data-i18n="Re-open the &quot;you are here&quot; onboarding strip.">Re-open the "you are here" onboarding strip.</span>
+    </div>
     <div class="help-section">
       <h3 data-i18n="NAVIGATION">NAVIGATION</h3>
       <div class="help-grid">
         <div class="help-row"><span class="help-key">?</span><span class="help-desc" data-i18n="Open this help panel">Open this help panel</span></div>
         <div class="help-row"><span class="help-key">Esc</span><span class="help-desc" data-i18n="Close any open panel">Close any open panel</span></div>
+        <div class="help-row"><span class="help-key">Ctrl+Z</span><span class="help-desc" data-i18n="Undo the last change">Undo the last change</span></div>
+        <div class="help-row"><span class="help-key">Ctrl+Shift+Z</span><span class="help-desc" data-i18n="Redo (also Ctrl+Y)">Redo (also Ctrl+Y)</span></div>
         <div class="help-row"><span class="help-key">S</span><span class="help-desc" data-i18n="Open Summary dashboard">Open Summary dashboard</span></div>
         <div class="help-row"><span class="help-key">C</span><span class="help-desc" data-i18n="Open Compare view">Open Compare view</span></div>
         <div class="help-row"><span class="help-key">P</span><span class="help-desc" data-i18n="Open Resource Plan">Open Resource Plan</span></div>
@@ -507,6 +525,12 @@
       </button>
       <button style="justify-content:flex-start" onclick="railChooseLanding('matrix')">
         ◎ <span data-i18n="Portfolio matrix — start with the project matrix">Portfolio matrix — start with the project matrix</span>
+      </button>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <p style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 8px" data-i18n="New here? Load a ready-made sample (40 people, 6 projects) to see every view alive — you can clear it anytime.">New here? Load a ready-made sample (40 people, 6 projects) to see every view alive — you can clear it anytime.</p>
+      <button class="primary" style="justify-content:flex-start;width:100%" onclick="loadSampleData()">
+        🎬 <span data-i18n="Load sample data">Load sample data</span>
       </button>
     </div>
   </div>

@@ -7,13 +7,121 @@
 :root{
   --rail:58px; --rail-open:238px;
   --rail-bg:#131519; --surface2:#1f2329; --dim:#5a5f66;
+  --spine-h:0px;   /* value-spine strip height when visible; 0 = retired (spine.js sets it) */
 }
 
 /* Reserve the rail gutter for the whole app. body is a flex column (base.css)
    holding the header/topbar + <main> (which includes #sidebar at its left edge);
    padding-left keeps every one of them clear of the fixed rail. Overlays are
-   viewport-fixed, so they get their own left:var(--rail) below. */
-body{padding-left:var(--rail);}
+   viewport-fixed, so they get their own left:var(--rail) below.
+   padding-top reserves the value-spine band (var --spine-h, 0 when the guide is
+   retired) so the flow content — topbar + matrix canvas — sits below it. */
+body{padding-left:var(--rail); padding-top:var(--spine-h);}
+
+/* ── VALUE-SPINE STRIP ("you are here") ───────────────────────────────
+   A fixed global band ABOVE the z-400 view overlays; the view overlays + body are
+   offset by --spine-h so nothing is covered. Hidden → display:none + --spine-h:0. */
+#spine-band{
+  position:fixed; top:0; left:var(--rail); right:0; height:40px; z-index:450;
+  display:flex; align-items:center; gap:12px; padding:0 12px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  font-size:11px; overflow:hidden;
+}
+#spine-band[hidden]{ display:none; }
+.spine-lead{ display:flex; align-items:baseline; gap:7px; flex:none; }
+.spine-kicker{ font-family:IBM Plex Mono,monospace; font-size:9px; letter-spacing:.12em; color:var(--dim); }
+.spine-prog{ font-family:IBM Plex Mono,monospace; font-size:10px; color:var(--muted); }
+.spine-track{ display:flex; align-items:center; gap:2px; flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.spine-track::-webkit-scrollbar{ display:none; }
+.spine-arrow{ color:var(--dim); flex:none; font-size:11px; }
+.spine-node{
+  display:flex; align-items:center; gap:7px; flex:none; cursor:pointer;
+  background:transparent; border:1px solid transparent; border-radius:7px;
+  padding:4px 9px; color:var(--text); font:inherit; white-space:nowrap;
+}
+.spine-node:hover{ border-color:var(--border); background:var(--bg); }
+.spine-dot{
+  width:18px; height:18px; border-radius:50%; flex:none;
+  display:grid; place-items:center; font-size:10px; font-weight:700;
+  background:var(--border); color:var(--text);
+}
+.spine-lbl{ display:flex; flex-direction:column; line-height:1.15; text-align:left; }
+.spine-lbl b{ font-size:11px; font-weight:600; }
+.spine-lbl i{ font-size:9px; font-style:normal; color:var(--muted); }
+/* state colouring */
+.spine-node.s-done .spine-dot{ background:var(--accent2); color:#0f0f11; }
+.spine-node.s-done .spine-lbl b{ color:var(--muted); }
+.spine-node.s-current{ border-color:var(--accent); background:rgba(200,241,53,.06); }
+.spine-node.s-current .spine-dot{ background:var(--accent); color:#0f0f11; }
+.spine-node.s-locked{ opacity:.55; }
+.spine-node.s-locked .spine-dot{ font-size:8px; }
+.spine-node.s-ready{ border-color:var(--accent2); }
+.spine-node.s-ready .spine-dot{ background:var(--accent2); color:#0f0f11; }
+.spine-node.here .spine-lbl b{ color:var(--text); }
+.spine-actions{ display:flex; align-items:center; gap:8px; flex:none; }
+.spine-never{ background:none; border:none; color:var(--muted); font-size:10px; cursor:pointer; text-decoration:underline; padding:2px; white-space:nowrap; }
+.spine-never:hover{ color:var(--text); }
+.spine-x{ background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; line-height:1; padding:2px 4px; }
+.spine-x:hover{ color:var(--text); }
+@media (max-width:820px){
+  .spine-lbl i{ display:none; }
+  .spine-never{ display:none; }
+}
+@media (max-width:560px){
+  .spine-lead{ display:none; }
+  .spine-lbl b{ display:none; }
+}
+
+/* View overlays start BELOW the spine band (var --spine-h; 0 when retired). !important
+   beats #org-overlay's inline top:0; the others inherit top:0 from their inset:0. */
+#res-overlay, #home-overlay, #org-overlay, #wk-overlay, #compare-overlay, #snap-overlay{
+  top:var(--spine-h,0) !important;
+}
+
+/* ── TEACHING EMPTY STATE (spine.js › teachEmpty) ─────────────────────────────
+   Generalises the Balancer's suppression banner: a zero-data view says WHY it is
+   empty and links the fix. Accent-tinted (guidance), vs the warn-tinted db-suppress. */
+.teach-empty{
+  display:flex; align-items:flex-start; gap:12px; margin:0 0 14px; padding:14px 16px;
+  border:1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-left:3px solid var(--accent); border-radius:9px;
+  background:color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.teach-ic{ font-size:20px; line-height:1; flex:none; }
+.teach-tx{ flex:1; min-width:0; }
+.teach-h{ font-size:13px; font-weight:600; color:var(--text); }
+.teach-s{ font-size:11px; color:var(--muted); margin-top:4px; line-height:1.55; }
+.teach-cta{
+  align-self:center; flex:none; background:var(--accent); border:1px solid var(--accent);
+  color:#0f0f11; border-radius:6px; padding:7px 12px; font-size:11px; font-weight:600;
+  cursor:pointer; white-space:nowrap;
+}
+.teach-cta:hover{ background:#b0d82a; }
+
+/* ── UNDO / REDO dock + toast (undo.js) ───────────────────────────────────────
+   Fixed bottom-right (the #topbar is covered by full-screen view overlays), above
+   the overlays so it stays reachable on every view. */
+#undo-dock{
+  position:fixed; right:16px; bottom:16px; z-index:460;
+  display:flex; gap:2px; padding:3px;
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+#undo-dock[hidden]{ display:none; }
+.undo-fab{
+  width:34px; height:34px; border-radius:8px; border:1px solid transparent;
+  background:transparent; color:var(--text); font-size:17px; line-height:1; cursor:pointer;
+  display:grid; place-items:center;
+}
+.undo-fab:hover:not(:disabled){ border-color:var(--accent); color:var(--accent); }
+.undo-fab:disabled{ opacity:.32; cursor:default; }
+#undo-toast{
+  position:fixed; right:16px; bottom:60px; z-index:461;
+  background:var(--surface2,#1f2329); color:var(--text); border:1px solid var(--border);
+  border-radius:8px; padding:8px 13px; font-size:12px; box-shadow:0 6px 20px rgba(0,0,0,.5);
+  opacity:0; transform:translateY(6px); transition:opacity .16s, transform .16s; pointer-events:none;
+}
+#undo-toast.show{ opacity:1; transform:translateY(0); }
 
 /* ── RAIL SHELL ─────────────────────────────────────── */
 #railnav{

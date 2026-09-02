@@ -10,13 +10,15 @@ finish with **`npm run verify`** green (build + unit + smoke).
 
 ---
 
-## ► NEXT UP — new-user onboarding & safety (P1, designed 2026-09-02)
+## ✓ SHIPPED — new-user onboarding & safety (P1, designed + built 2026-09-02)
 
-The problem: every valuable view is a **join** over data entered elsewhere, so a new user lands on
-zeros / "set FROM–TO dates first" and doesn't know the order. The fix is to make the app *safe to
-explore* with three coordinated features. Design was settled with the user — **do not re-litigate**
-the principles below (data-driven not scripted; dismissible; undo single-user-first). Build in this
-suggested order (each de-risks the next); **confirm scope + ask questions before starting each.**
+**All three features (C · A · B) shipped 2026-09-02** — see each sub-section below. The supporting
+`[P2]` lifecycle-`proposed` trap and the `[P3]` items remain open. Kept here (not deleted) because
+the sub-sections document the shipped design; move detail into ARCHITECTURE.md if it needs expanding.
+
+The problem it solved: every valuable view is a **join** over data entered elsewhere, so a new user
+lands on zeros / "set FROM–TO dates first" and doesn't know the order. The fix made the app *safe to
+explore* with three coordinated features (data-driven not scripted; dismissible; undo single-user-first).
 
 **The value spine (the ordered path to first value) — the shared model behind A + the empty states:**
 
@@ -29,55 +31,65 @@ suggested order (each de-risks the next); **confirm scope + ask questions before
 | Review | Balancer · Exec · Home · Analytics | unlocked once the 4 above are done (destination, never "done") |
 | Deepen (optional) | Charter € · Gate · Skills · nine-box/DISC · risks | enriches Review; sub-progress, never blocking |
 
-### C. One-click "Load sample data"  ·  smallest, highest immediate value — suggested first
-- A first-run **"Load sample data"** button (Home / first-run landing) that imports the bundled
-  `demo/matrix_demo_backup.json` (40 people / 6 projects) so a newcomer sees every view alive in
-  one click, plus a **"Clear & start mine"** counterpart. Reuse `importFullBackup`'s apply path
-  (see `backup.js`) but read the bundled asset instead of a file input (the smoke net already has a
-  headless replica of that apply logic in `tests/smoke.mjs` → `applyBackupState`, use it as the map).
-- **Gotcha:** the demo predates the lifecycle model (no `gateConfig`), so imported projects migrate
-  to `proposed` and their capacity is suppressed → set them `active` on load (as the smoke net does),
-  OR regenerate the demo against the current schema first (see *Known small debts*).
+### C. One-click "Load sample data"  ·  SHIPPED 2026-09-02
+- `build.js` embeds `demo/matrix_demo_backup.json` as the `SAMPLE_BACKUP` global (so the single-file
+  app needs no fetch — works from `file://`; emitted as `JSON.parse(<escaped-literal>)`, `</script>`
+  + U+2028/9 guarded; `null` when the asset is absent → both entry points self-disable).
+- `backup.js`: `importFullBackup`'s apply logic is now the shared `applyBackupState(d)` (returns the
+  id→uid map; force-actives a legacy no-gateConfig/no-lifecycle dataset so its capacity isn't
+  suppressed) — reused by `loadSampleData()` and mirrored by the smoke replica. `clearAndStartMine()`
+  is the "start mine" counterpart (snapshot → clear → reload, same path as `resetAll`).
+- Entry points: **🎬 Load sample data** on the first-run chooser + the Home empty-state banner;
+  a dismissible "you're exploring sample data · Clear & start mine" strip while the sample is loaded
+  (per-device `sampleLoaded` flag in `eim_home_prefs`). Smoke net covers the whole surface.
 
-### A. Data-driven value-spine strip ("you are here")  ·  the guided tour, reincarnated
-- A slim, persistent strip (top of Home or a collapsible header band) rendering the spine above.
-  Each node's state is **computed live from data** (table above) — done / current / locked / optional
-  — so it's self-updating and **never a stale scripted tour** (that's why `tour.js` was removed; see
-  [Guided tour] below). "Current" = the first incomplete stage (or the view you're on). Clicking a
-  node deep-links via `railGo(null, viewId)`.
-- **Dismissible & self-retiring** (this is required): inline, never a modal, never blocks input;
-  **Dismiss** (hide now) + **Don't show again** (permanent), stored in a **per-device pref** like
-  `eim_home_prefs` / rail prefs — NOT app state, NOT backups, NOT collab. Auto-hides once the spine
-  is complete; re-openable from Help ("Show setup guide").
-- Pair with **teaching empty states**: generalize the Balancer's suppression-banner pattern so every
-  empty view says *why* it's empty and links the fix ("No allocations yet — staff the Plan →").
+### A. Data-driven value-spine strip ("you are here")  ·  SHIPPED 2026-09-02
+- `src/sections/spine.js` renders a fixed global band (`#spine-band`) ABOVE the z-400 view overlays;
+  it publishes its height as CSS `--spine-h`, and `nav.css` offsets the view overlays + `body` by that
+  var, so when the strip retires (`--spine-h:0`) the layout is byte-identical to before. 5 live nodes
+  (Team→roster · Projects→matrix · Horizon→plan · Allocate→plan · Review→dashboard); each node's state
+  (done/current/locked/ready) is recomputed from data on every render (`spineStates()`), so it can't go
+  stale. Clicking deep-links via `railGo`. Re-rendered from `railGo` (nav) + `saveState` (`spineRefresh`).
+- **Dismissible & self-retiring:** `spineDismiss()` (session), `spineHideForever()` (permanent — rail
+  pref `railGuideOff`, per-device, NOT app state/backup/collab), auto-retires once steps 1–4 are done,
+  re-openable from Help → "↳ Show setup guide" (`spineShow`).
+- **Teaching empty states:** `teachEmpty({icon,title,msg,ctaLabel,ctaView})` (spine.js) generalises the
+  Balancer's `db-suppress` banner (accent-tinted, escapes input, CTA deep-links). Wired into the Plan
+  (no people/projects/dates/allocations) and the Balancer ("nothing to balance yet"). Smoke covers the
+  strip (visible on empty, 5 nodes, handlers resolve, auto-retire) + teachEmpty escaping.
 
-### B. Global undo / redo (Ctrl-Z / Ctrl-Shift-Z)  ·  the biggest confidence win, largest effort
-- Removes the "I'll break something" fear that blocks new users. Feasible because every mutation
-  funnels through `saveState()`/`saveNow()` and the main state (`engineers`/`projects`/`allocRows` +
-  in-memory nine-box/DISC placements) is plain JSON. Implement a **ring buffer (~30–50) of prior
-  state snapshots**; Ctrl-Z restores previous + re-renders; hook at the **committed (post-debounce)**
-  save so one undo = one logical edit.
-- **Caveats (scope carefully):** (1) do NOT hijack Ctrl-Z while focused in input/textarea/select —
-  reuse boot.js's existing `inInput` gate, let the field's native undo win; (2) include placements in
-  the snapshot, leave **photos** to Snapshots (IndexedDB, rarer destructive ops); (3) **collab room**
-  is the hard part — a naive full-state restore re-pushes old values and can clobber a teammate's
-  concurrent edit, so ship **v1 single-user-robust** and either treat undo as a normal local change
-  or later adopt Yjs `Y.UndoManager`; (4) add **redo** and a small toast ("Undid: added project
-  Alpha") reusing the change descriptions already built for the collab audit log.
-- Relationship: **undo = fine-grained recent edits; Snapshots = coarse named checkpoints** — they
-  complement, don't replace.
+### B. Global undo / redo (Ctrl-Z / Ctrl-Shift-Z)  ·  SHIPPED 2026-09-02
+- `src/core/undo.js`: a ring buffer (`_UNDO_MAX=50`) of deep-cloned `captureScope('full')` snapshots.
+  `_doSave` calls `_undoRecordCommit()` (post-debounce → **one undo = one logical edit**), guarded by
+  `_undoApplying` so an undo's own save doesn't re-record. `undoRedo(isRedo)` swaps undo/redo stacks,
+  `_undoApply(d)` assigns the clone back intra-dataset (uids ride in the clone — no reuse dance) +
+  `uidMigrate`, `saveNow()`, then `_undoRerender()`.
+- Keys in `boot.js` (`Ctrl/Cmd+Z` · `Ctrl+Shift+Z`/`Ctrl+Y`) behind the `inInput` gate so a field's
+  native undo wins; placed before the bare-`z` Snapshot shortcut. Small count-delta toast
+  ("Undo · −1 project"). Help panel lists the shortcuts.
+- **Discoverability:** always-visible `#undo-dock` (bottom-right — the `#topbar` is covered by the
+  z-400 view overlays); buttons disable when their stack is empty. **Collab:** disabled while
+  `collabInRoom()` (v1 single-user-first; a whole-state restore could clobber a teammate — Y.UndoManager
+  is the future fix). Photos stay with Snapshots. Smoke covers the add→undo→redo round-trip.
 
 ### Supporting (fold in alongside)
 - `[P2]` **Lifecycle-`proposed` trap:** a freshly added project defaults to `proposed` → capacity
   suppressed → Balancer reads 0% → new user thinks it's broken. Default a manually-added project to
   `active`, or make the suppression loud + self-explaining on first encounter.
-- `[P3]` **Progressive rail disclosure:** start a new user in a basics set (Home, Roster, Matrix,
-  Plan, Balancer) and reveal advanced domains (Gate & PI, DTC, Channels, Pipeline, deep Analytics,
-  Collaborate) behind a "Show advanced" toggle.
-- `[P3]` **Degrade the network-dependent features gracefully:** Collaborate (Yjs) and AI advisor
-  (WebLLM) dynamically import from esm.sh + need the relay — make both clearly optional with a plain
-  "needs a network connection" message so a newcomer never hits a confusing failure.
+- ✓ **Progressive rail disclosure (SHIPPED 2026-09-02):** `railAdvanced` pref (rail prefs,
+  per-device). A genuine first run (no rail prefs) starts in **Basics** — `RAIL_BASIC_VIEWS`
+  = Home · Matrix · Plan · Balancer · Roster, with Collaborate + AI advisor hidden
+  (`RAIL_BASIC_UTIL_HIDE`); everything else is behind a rail-foot **"Show advanced" / "Basics only"**
+  toggle (`railToggleAdvanced`). railRender filters domains/views/utils (the active view is always
+  kept visible). Existing users (prefs without the `advanced` key) default to the full rail — never
+  disrupted. `railGo` auto-reveals when you navigate to an advanced view; `loadSampleData` reveals it
+  too. Smoke: `rail-disclosure` (Basics renders fewer doms/views/utils; toggle present).
+- ✓ **Graceful network degrade (SHIPPED 2026-09-02):** shared `netOnline()` + `netOfflineBanner(feature)`
+  in `helpers.js`. Collaborate (`collabRefreshPanel` banner + disabled Connect; `collabConnect` bails
+  before the CDN load) and AI advisor (`aiShowModelPicker` banner + disabled Select; `aiOpenChat`
+  routes offline users to the picker) now show a plain "needs a network connection" notice instead of
+  a cryptic import/fetch failure. `boot.js` online/offline listeners refresh open panels live. Smoke:
+  `net-degrade` (banners appear offline, Connect disabled, clear when back online, banner escapes input).
 
 **Acceptance for all three:** `npm run verify` green, and extend `tests/smoke.mjs` — the spine strip
 renders with resolving handlers, undo/redo fire without throwing, and the sample-data button imports

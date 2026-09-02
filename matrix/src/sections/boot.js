@@ -11,9 +11,22 @@ document.addEventListener('input',e=>{
   if(e.target.id==='e-color')G('e-color-hex').textContent=e.target.value;
   if(e.target.id==='draw-color')render();
 });
+// Connectivity changes → refresh any open network-dependent panel so its "needs a network
+// connection" notice + disabled controls appear/clear live (Collaborate, AI advisor).
+['online','offline'].forEach(function(ev){ window.addEventListener(ev,function(){
+  if(document.getElementById('collab-dlg') && typeof collabRefreshPanel==='function') collabRefreshPanel();
+  if(document.getElementById('ai-model-dlg') && typeof aiShowModelPicker==='function') aiShowModelPicker();
+}); });
 document.addEventListener('keydown',e=>{
   const tag=document.activeElement.tagName;
   const inInput=(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
+  // Global undo/redo (Ctrl/Cmd+Z · Ctrl+Shift+Z / Ctrl+Y). Gated on !inInput so a text
+  // field's NATIVE undo wins while typing; handled before the bare-'z' Snapshot shortcut.
+  if((e.ctrlKey||e.metaKey)&&!inInput&&(e.key==='z'||e.key==='Z'||e.key==='y'||e.key==='Y')){
+    e.preventDefault();
+    if(typeof undoRedo==='function') undoRedo((e.key==='y'||e.key==='Y')||e.shiftKey);
+    return;
+  }
   if(e.key==='Escape'){
     // A modal/popup on top of a view? Dismiss just that (don't navigate back).
     var modalWasOpen=(typeof railAnyModalOpen==='function')&&railAnyModalOpen();
@@ -121,6 +134,12 @@ renderFocusBar();   // focus-star toggle + importance-formula panel in the matri
 checkDailySnap();
 updateSnapBadge();
 railInit();   // render the persistent nav rail + land on the initial view
+// Undo/redo: capture the loaded state as the baseline once the DOM (incl. the res-period
+// inputs restored by ensureResPeriod, also on DOMContentLoaded) is settled.
+if(typeof _undoInit==='function'){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_undoInit);
+  else _undoInit();
+}
 
 /* ═══════════════════ DRAGGABLE PROJECT WINDOW ═══════════════════ */
 // Runs after DOM ready

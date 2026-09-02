@@ -227,6 +227,169 @@ async function main() {
     }
     console.log(GREEN('✓ seed'), DIM(seedSrc + ' ' + JSON.stringify(seeded)));
 
+    // ── sample-data onboarding surface (Feature C) ────────────────────────────
+    // The embedded SAMPLE_BACKUP global + the real applyBackupState apply path must
+    // exist and import cleanly, and the lifecycle-'proposed' trap must be defused
+    // (a pre-lifecycle seed becomes 'active', never capacity-suppressed).
+    {
+      const before = pageErrors.length;
+      const r = await page.evaluate(`(() => {
+        const need = ['applyBackupState','loadSampleData','clearAndStartMine','workspaceIsEmpty','sampleDataAvailable'];
+        const missing = need.filter(n => { try { return eval('typeof '+n) !== 'function'; } catch(e){ return true; } });
+        const hasSample = (typeof SAMPLE_BACKUP !== 'undefined' && SAMPLE_BACKUP && !!SAMPLE_BACKUP.state);
+        let applied = null, lifecyclesOk = false, err = null;
+        if (!missing.length && hasSample) {
+          try {
+            applyBackupState(SAMPLE_BACKUP.state);
+            applied = { projects: projects.length, engineers: engineers.filter(e=>!e.vacant).length, allocRows: allocRows.length };
+            lifecyclesOk = projects.length>0 && projects.every(p => p.lifecycle && p.lifecycle!=='proposed');
+          } catch(e){ err = String(e && e.message || e); }
+        }
+        return { missing, hasSample: !!hasSample, applied, lifecyclesOk, err };
+      })()`);
+      const threw = pageErrors.length - before;
+      const ok = !r.missing.length && r.hasSample && r.applied && r.applied.projects>0 && r.applied.engineers>0 && r.lifecyclesOk && !r.err && threw===0;
+      console.log(ok ? GREEN('  ✓ sample-data') : RED('  ✗ sample-data'),
+        DIM(JSON.stringify({ hasSample:r.hasSample, applied:r.applied, lifecyclesOk:r.lifecyclesOk })),
+        r.missing.length ? RED('missing: '+r.missing.join(',')) : '', r.err ? RED(r.err) : '', threw ? RED('threw '+threw) : '');
+      if (!ok) failures.push(`sample-data surface failed: ${r.err || (r.missing.length ? 'missing '+r.missing.join(',') : (!r.hasSample ? 'SAMPLE_BACKUP absent' : !r.lifecyclesOk ? 'a project stayed proposed (capacity-suppressed)' : threw ? 'threw '+threw : 'apply produced no data'))}`);
+    }
+
+    // ── value-spine strip + teaching empty states (Feature A) ─────────────────
+    // Force a partial (incomplete) workspace so the strip is visible, assert it renders
+    // 5 nodes whose handlers all resolve, teachEmpty escapes its input, and the strip
+    // auto-retires once the core path is complete; then restore the seed.
+    {
+      const before = pageErrors.length;
+      const r = await page.evaluate(`(() => {
+        const need = ['spineRender','spineStates','spineGo','spineDismiss','spineHideForever','spineShow','spineComplete','teachEmpty'];
+        const missing = need.filter(n => { try { return eval('typeof '+n) !== 'function'; } catch(e){ return true; } });
+        if (missing.length) return { missing };
+        const _e = engineers.slice(), _p = projects.slice(), _a = allocRows.slice();
+        engineers.length = 0; projects.length = 0; allocRows.length = 0;
+        if (typeof railGuideOff !== 'undefined') railGuideOff = false;
+        spineShow(); spineRender();
+        const band = document.getElementById('spine-band');
+        const out = {
+          missing: [],
+          visibleWhenEmpty: !!(band && !band.hidden),
+          nodeCount: band ? band.querySelectorAll('.spine-node').length : 0,
+          states: spineStates().map(s => s.state),
+        };
+        const te = teachEmpty({ icon:'x', title:'<b>x</b>', msg:'m', ctaLabel:'go', ctaView:'roster' });
+        out.teachEscapes = te.indexOf('<b>x</b>') === -1 && te.indexOf('&lt;b&gt;') !== -1;
+        return out;
+      })()`);
+      // scan the strip's live handlers (spineGo/spineDismiss/spineHideForever) while it is
+      // still visible — the measurement block left the workspace emptied and the strip up.
+      const bad = (!r.missing || !r.missing.length) ? await page.evaluate(handlerScanScript()) : [];
+      const threw = pageErrors.length - before;
+      const ok = r.missing && r.missing.length===0 && r.visibleWhenEmpty && r.nodeCount===5 && r.teachEscapes && bad.length===0 && threw===0;
+      console.log(ok ? GREEN('  ✓ value-spine') : RED('  ✗ value-spine'),
+        DIM(JSON.stringify({ visible:r.visibleWhenEmpty, nodes:r.nodeCount, states:r.states, teachEscapes:r.teachEscapes })),
+        (r.missing&&r.missing.length)?RED('missing: '+r.missing.join(',')):'',
+        bad.length?RED('undefined handler(s): '+bad.map(b=>b.name).join(',')):'', threw?RED('threw '+threw):'');
+      if (!ok) failures.push(`value-spine surface failed: ${(r.missing&&r.missing.length)?'missing '+r.missing.join(','):(!r.visibleWhenEmpty?'strip not visible on empty workspace':r.nodeCount!==5?'expected 5 nodes, got '+r.nodeCount:!r.teachEscapes?'teachEmpty did not escape input':bad.length?'undefined handler(s): '+bad.map(b=>b.name).join(','):'threw '+threw)}`);
+    }
+    // re-seed cleanly for the view loop (the spine block emptied then partially restored)
+    if (demo) await page.evaluate(applyBackupState, demo);
+
+    // ── global undo / redo (Feature B) ────────────────────────────────────────
+    // Assert the ring exists and an edit round-trips: add a project → commit → undo
+    // removes it → redo restores it → undo again to leave the seed clean.
+    {
+      const before = pageErrors.length;
+      const r = await page.evaluate(`(() => {
+        const need = ['undoRedo','_undoRecordCommit','_undoInit','_undoApply','_undoCapture','_undoUpdateButtons'];
+        const missing = need.filter(n => { try { return eval('typeof '+n) !== 'function'; } catch(e){ return true; } });
+        if (missing.length) return { missing };
+        _undoInit();
+        const p0 = projects.length;
+        const np = makeProject(); np.id = 999001; np.name = 'UndoTest'; np.lifecycle = 'active'; projects.push(np);
+        if (typeof saveNow === 'function') saveNow();      // _doSave → _undoRecordCommit
+        const p1 = projects.length;
+        undoRedo(false);
+        const p2 = projects.length, undid = !projects.some(p => p.id === 999001);
+        undoRedo(true);
+        const p3 = projects.length, redid = projects.some(p => p.id === 999001);
+        undoRedo(false);                                    // leave the seed clean
+        return { missing: [], p0, p1, p2, p3, undid, redid, cleaned: !projects.some(p => p.id === 999001) };
+      })()`);
+      const threw = pageErrors.length - before;
+      const ok = r.missing && r.missing.length===0 && r.p1===r.p0+1 && r.p2===r.p0 && r.undid && r.p3===r.p0+1 && r.redid && r.cleaned && threw===0;
+      console.log(ok ? GREEN('  ✓ undo-redo') : RED('  ✗ undo-redo'),
+        DIM(JSON.stringify({ p0:r.p0, p1:r.p1, p2:r.p2, p3:r.p3, undid:r.undid, redid:r.redid })),
+        (r.missing&&r.missing.length)?RED('missing: '+r.missing.join(',')):'', threw?RED('threw '+threw):'');
+      if (!ok) failures.push(`undo-redo surface failed: ${(r.missing&&r.missing.length)?'missing '+r.missing.join(','):(!r.undid?'undo did not remove the edit':!r.redid?'redo did not restore it':threw?'threw '+threw:'round-trip counts wrong '+JSON.stringify(r))}`);
+    }
+    // final clean re-seed for the view loop
+    if (demo) await page.evaluate(applyBackupState, demo);
+
+    // ── progressive rail disclosure (Feature P3) ──────────────────────────────
+    // Basics mode renders fewer domains/views/utils than Advanced, the toggle exists,
+    // and flipping back to Advanced restores the full rail (which the view loop needs).
+    {
+      const before = pageErrors.length;
+      const r = await page.evaluate(`(() => {
+        if (typeof railToggleAdvanced !== 'function' || typeof railAdvanced === 'undefined') return { missing:true };
+        railAdvanced = false; railRender();
+        const b = { doms: document.querySelectorAll('#rail-scroll .rn-dom').length,
+                    subs: document.querySelectorAll('#rail-scroll .rn-sub').length,
+                    utils: document.querySelectorAll('#rail-foot .rn-util:not(.rn-mode)').length };
+        const hasToggle = !!document.querySelector('#rail-foot .rn-mode[onclick*="railToggleAdvanced"]');
+        railAdvanced = true; railRender();     // restore full rail for the view loop below
+        const a = { doms: document.querySelectorAll('#rail-scroll .rn-dom').length,
+                    subs: document.querySelectorAll('#rail-scroll .rn-sub').length,
+                    utils: document.querySelectorAll('#rail-foot .rn-util:not(.rn-mode)').length };
+        return { missing:false, b, a, hasToggle };
+      })()`);
+      const threw = pageErrors.length - before;
+      const ok = !r.missing && r.hasToggle && r.b.subs < r.a.subs && r.b.doms <= r.a.doms && r.b.utils < r.a.utils && threw === 0;
+      console.log(ok ? GREEN('  ✓ rail-disclosure') : RED('  ✗ rail-disclosure'),
+        DIM(JSON.stringify({ basic:r.b, adv:r.a, toggle:r.hasToggle })), threw ? RED('threw ' + threw) : '');
+      if (!ok) failures.push(`rail-disclosure failed: ${r.missing ? 'railToggleAdvanced/railAdvanced missing' : !r.hasToggle ? 'no toggle rendered' : threw ? 'threw ' + threw : 'Basics did not reduce the rail ' + JSON.stringify(r)}`);
+    }
+
+    // ── graceful network degrade (Feature P3) ─────────────────────────────────
+    // Simulate offline and assert Collaborate + AI advisor show the plain "needs a
+    // network connection" notice (and Collaborate's Connect is disabled), instead of a
+    // confusing CDN/import failure. netOfflineBanner must escape its input.
+    {
+      const before = pageErrors.length;
+      const r = await page.evaluate(`(() => {
+        const need = ['netOnline','netOfflineBanner','collabOpen','collabRefreshPanel','collabClose','aiShowModelPicker'];
+        const missing = need.filter(n => { try { return eval('typeof '+n) !== 'function'; } catch(e){ return true; } });
+        if (missing.length) return { missing };
+        const escapes = netOfflineBanner('<b>x</b>').indexOf('<b>x</b>') === -1 && netOfflineBanner('<b>x</b>').indexOf('&lt;b&gt;') !== -1;
+        Object.defineProperty(navigator, 'onLine', { configurable:true, get:()=>false });
+        const off = netOnline() === false;
+        collabOpen(); collabRefreshPanel();
+        const cdlg = document.getElementById('collab-dlg');
+        const collabBanner = !!(cdlg && cdlg.innerHTML.indexOf('needs a network connection') > -1);
+        const cbtn = cdlg && cdlg.querySelector('button[onclick="collabConnect()"]');
+        const connectDisabled = !!(cbtn && cbtn.disabled);
+        if (typeof collabClose === 'function') collabClose();
+        aiShowModelPicker();
+        const adlg = document.getElementById('ai-model-dlg');
+        const aiBanner = !!(adlg && adlg.innerHTML.indexOf('needs a network connection') > -1);
+        if (typeof aiCloseModelPicker === 'function') aiCloseModelPicker();
+        // back online: reopen collab → banner should be gone
+        try { delete navigator.onLine; } catch(e) {}
+        Object.defineProperty(navigator, 'onLine', { configurable:true, get:()=>true });
+        collabOpen(); collabRefreshPanel();
+        const cdlg2 = document.getElementById('collab-dlg');
+        const bannerGoneOnline = !!(cdlg2 && cdlg2.innerHTML.indexOf('needs a network connection') === -1);
+        if (typeof collabClose === 'function') collabClose();
+        return { missing: [], escapes, off, collabBanner, connectDisabled, aiBanner, bannerGoneOnline };
+      })()`);
+      const threw = pageErrors.length - before;
+      const ok = !r.missing.length && r.escapes && r.off && r.collabBanner && r.connectDisabled && r.aiBanner && r.bannerGoneOnline && threw === 0;
+      console.log(ok ? GREEN('  ✓ net-degrade') : RED('  ✗ net-degrade'),
+        DIM(JSON.stringify({ collabBanner:r.collabBanner, connectDisabled:r.connectDisabled, aiBanner:r.aiBanner, clearsOnline:r.bannerGoneOnline })),
+        (r.missing&&r.missing.length)?RED('missing: '+r.missing.join(',')):'', threw?RED('threw '+threw):'');
+      if (!ok) failures.push(`net-degrade failed: ${(r.missing&&r.missing.length)?'missing '+r.missing.join(','):!r.escapes?'netOfflineBanner did not escape':!r.collabBanner?'collab offline banner missing':!r.connectDisabled?'Connect not disabled offline':!r.aiBanner?'AI offline banner missing':!r.bannerGoneOnline?'banner persisted when back online':'threw '+threw}`);
+    }
+
     // collect the view list from the page's own registry
     const views = await page.evaluate("RAIL_DOMAINS.flatMap(d => d.views.map(v => ({ id: v.id, dom: d.id })))");
 

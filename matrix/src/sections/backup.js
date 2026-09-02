@@ -98,6 +98,102 @@ export function exportFullBackup(){
     +t('This single file contains everything needed to restore\nyour complete workspace on another computer.'));
 }
 
+/* Apply a full-backup `state` object into the live globals — the shared, headless-
+ * friendly core reused by both importFullBackup (file restore, adds the photo/IDB swap
+ * around it) and loadSampleData (embedded seed, no photos). Returns the id→uid map from
+ * uidMigrate so a caller can remap uid-keyed side-stores (photos). Does NOT prompt, take
+ * a snapshot, or touch IndexedDB — those are the caller's concern. Mirrors the headless
+ * replica in tests/smoke.mjs (applyBackupState); keep the two in step. */
+export function applyBackupState(d){
+  // Legacy-active detection BEFORE sanitiseProjects: a pre-lifecycle dataset (no
+  // gateConfig AND no lifecycle on any project — e.g. the bundled demo) would be
+  // migrated to 'proposed' by sanitiseProjects → capacity suppressed → every Review
+  // view reads 0% and a newcomer thinks the app is broken. Detect that shape here and
+  // force such projects 'active' after sanitise, exactly as the smoke net does. A
+  // modern backup carries explicit lifecycles and is left untouched.
+  const _legacy = !d.gateConfig && Array.isArray(d.projects) && d.projects.length>0
+                  && d.projects.every(function(p){ return !p.lifecycle; });
+
+  // gateConfig MUST load before sanitiseProjects (see importFullBackup's note / the
+  // restore invariant in ARCHITECTURE.md): the lifecycle migration reads the active
+  // methodology's first stage to decide proposed-vs-active.
+  if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
+
+  if(d.projects)       {projects=d.projects;sanitiseProjects();}
+  if(_legacy) projects.forEach(function(p){ p.lifecycle='active'; });
+  if(d.sections)       sections=d.sections;
+  if(d.engineers)      {
+    engineers=d.engineers;
+    engineers.forEach(function(e){ sanitiseEngineer(e); });
+  }
+  if(d.engGroups)      engGroups=d.engGroups;
+  if(d.allocRows)      allocRows=d.allocRows;
+  if(d.skillDomains)   skillDomains=d.skillDomains;
+  if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
+  // Dataset SWAP — always reset finExclude (keyed by per-dataset eng.id).
+  _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
+  if(d.ktPlans)        _ktPlans=d.ktPlans;
+  if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
+  if(d.orgPositions)   _orgPositions=d.orgPositions;
+  if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;
+  if(d.orgLevelH)      _orgLevelH=d.orgLevelH;
+  if(d.orgLevelNames)  _orgLevelNames=d.orgLevelNames;
+  if(d.orgScale)       _orgScale=d.orgScale;
+  if(d.orgPanX!=null)  _orgPanX=d.orgPanX;
+  if(d.orgPanY!=null)  _orgPanY=d.orgPanY;
+  if(d.nineBoxPlacements&&typeof d.nineBoxPlacements==='object')_nineBoxPlacements=d.nineBoxPlacements;
+  if(d.nineBoxHistory&&typeof d.nineBoxHistory==='object')_nineBoxHistory=d.nineBoxHistory;
+  if(d.nbYear)_nbYear=d.nbYear;
+  if(d.nbCompareYear!=null)_nbCompareYear=d.nbCompareYear;
+  nbEnsureHistory();
+  if(d.discPlacements&&typeof d.discPlacements==='object')_discPlacements=d.discPlacements;
+  if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
+  if(d.planFilterEng&&Array.isArray(d.planFilterEng))planFilterEng=new Set(d.planFilterEng);
+  if(d.planFilterProj&&Array.isArray(d.planFilterProj))planFilterProj=new Set(d.planFilterProj);
+  if(d.engDashFilterEng&&Array.isArray(d.engDashFilterEng))engDashFilterEng=new Set(d.engDashFilterEng);
+  if(d.engDashFilterProj&&Array.isArray(d.engDashFilterProj))engDashFilterProj=new Set(d.engDashFilterProj);
+  if(d.engDashGroupBy) engDashGroupBy=d.engDashGroupBy;
+
+  if(d.nextId)          nextId=d.nextId;
+  if(d.nextTodoId)      nextTodoId=d.nextTodoId;
+  if(d.nextRiskId)      nextRiskId=d.nextRiskId;
+  if(d.nextMsId)        nextMsId=d.nextMsId;
+  if(d.nextSectionId)   nextSectionId=d.nextSectionId;
+  if(d.nextAnnotId)     nextAnnotId=d.nextAnnotId;
+  if(d.nextActionId)    nextActionId=d.nextActionId;
+  if(d.nextEngId)       nextEngId=d.nextEngId;
+  if(d.nextEngGroupId)  nextEngGroupId=d.nextEngGroupId;
+  if(d.nextAllocId)     nextAllocId=d.nextAllocId;
+
+  if(d.sepX!=null)sepX=d.sepX;if(d.sepY!=null)sepY=d.sepY;
+  if(d.scaleX){scaleX=d.scaleX;setScale('x',scaleX);}
+  if(d.scaleY){scaleY=d.scaleY;setScale('y',scaleY);}
+  if(d.yMode){yMode=d.yMode;['impact','visibility','enabler'].forEach(function(m){G('ym-'+m).classList.toggle('active',m===yMode);});G('y-label').textContent=Y_LABELS[yMode];}
+  if(d.zoom)zoom=d.zoom;
+  if(d.quadrantsByMode&&typeof d.quadrantsByMode==='object'){
+    ['impact','visibility','enabler'].forEach(function(m){if(d.quadrantsByMode[m])quadrantsByMode[m]=d.quadrantsByMode[m];});
+  }
+  if(d.annotations)annotations=d.annotations;
+  if(d.resTitle){const el=G('res-title-input');if(el)el.value=d.resTitle;}
+  if(d.resStart){const el=G('res-start');if(el)el.value=d.resStart;}
+  if(d.resEnd)  {const el=G('res-end');  if(el)el.value=d.resEnd;}
+  if(d.axis){
+    const a=d.axis;
+    SV('ax-x-name',a.xName||'Effort');SV('ax-x-min',a.xMin??0);SV('ax-x-max',a.xMax??10);
+    SV('ax-y-min',a.yMin??0);SV('ax-y-max',a.yMax??10);SV('ax-grid',a.grid??5);
+  }
+
+  // uid identity pass over the swapped-in dataset (backfills/keeps uids, re-keys the
+  // in-memory placements, returns the id→uid map for photo remapping).
+  var _idToUid={};
+  try{ _idToUid=uidMigrate()||{}; }catch(e){ console.warn('[EIM] uid migration (applyBackupState) failed:',e); }
+
+  saveState();
+  if(typeof _invalidateMemo==='function') _invalidateMemo();
+  onAxisChange();renderList();render();updateSnapBadge();
+  return _idToUid;
+}
+
 // reads and restores a full backup JSON file (state + photos)
 export function importFullBackup(){
   const inp=document.createElement('input');
@@ -150,86 +246,12 @@ export function importFullBackup(){
 
         takeSnap('Auto: before full backup restore','full','',true);
 
-        // gateConfig MUST load before sanitiseProjects: the one-time lifecycle migration
-        // (_projAtInitialGate) reads the active methodology's first stage to decide
-        // proposed-vs-active. A PRE-lifecycle backup carrying a CUSTOM methodology would
-        // otherwise be migrated against the CURRENT session's config (wrong first stage).
-        if(d.gateConfig&&typeof d.gateConfig==='object'){ gateConfig=d.gateConfig; try{ sanitiseGateConfig(); }catch(e){ gateConfig=makeGateConfig(); } }
-
-        if(d.projects)       {projects=d.projects;sanitiseProjects();}
-        if(d.sections)       sections=d.sections;
-        if(d.engineers)      {
-          engineers=d.engineers;
-          engineers.forEach(function(e){ sanitiseEngineer(e); });
-        }
-        if(d.engGroups)      engGroups=d.engGroups;
-        if(d.allocRows)      allocRows=d.allocRows;
-        if(d.skillDomains)   skillDomains=d.skillDomains;
-        if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
-        // Full backup is a dataset SWAP — always reset finExclude (keyed by the
-        // per-dataset eng.id) so a stale set can't bleed onto colliding new ids.
-        _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
-        if(d.ktPlans)        _ktPlans=d.ktPlans;
-        // (gateConfig already loaded above, before sanitiseProjects)
-        if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
-        if(d.orgPositions)   _orgPositions=d.orgPositions;
-        if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;
-        if(d.orgLevelH)      _orgLevelH=d.orgLevelH;
-        if(d.orgLevelNames)  _orgLevelNames=d.orgLevelNames;
-        if(d.orgScale)       _orgScale=d.orgScale;
-        if(d.orgPanX!=null)  _orgPanX=d.orgPanX;
-        if(d.orgPanY!=null)  _orgPanY=d.orgPanY;
-        if(d.nineBoxPlacements&&typeof d.nineBoxPlacements==='object')_nineBoxPlacements=d.nineBoxPlacements;
-        if(d.nineBoxHistory&&typeof d.nineBoxHistory==='object')_nineBoxHistory=d.nineBoxHistory;
-        if(d.nbYear)_nbYear=d.nbYear;
-        if(d.nbCompareYear!=null)_nbCompareYear=d.nbCompareYear;
-        nbEnsureHistory();
-        if(d.discPlacements&&typeof d.discPlacements==='object')_discPlacements=d.discPlacements;
-        if(d.nbSwapAxes!=null)_nbSwapAxes=!!d.nbSwapAxes;
-        if(d.planFilterEng&&Array.isArray(d.planFilterEng))planFilterEng=new Set(d.planFilterEng);
-        if(d.planFilterProj&&Array.isArray(d.planFilterProj))planFilterProj=new Set(d.planFilterProj);
-        if(d.engDashFilterEng&&Array.isArray(d.engDashFilterEng))engDashFilterEng=new Set(d.engDashFilterEng);
-        if(d.engDashFilterProj&&Array.isArray(d.engDashFilterProj))engDashFilterProj=new Set(d.engDashFilterProj);
-        if(d.engDashGroupBy) engDashGroupBy=d.engDashGroupBy;
-
-        if(d.nextId)          nextId=d.nextId;
-        if(d.nextTodoId)      nextTodoId=d.nextTodoId;
-        if(d.nextRiskId)      nextRiskId=d.nextRiskId;
-        if(d.nextMsId)        nextMsId=d.nextMsId;
-        if(d.nextSectionId)   nextSectionId=d.nextSectionId;
-        if(d.nextAnnotId)     nextAnnotId=d.nextAnnotId;
-        if(d.nextActionId)    nextActionId=d.nextActionId;
-        if(d.nextEngId)       nextEngId=d.nextEngId;
-        if(d.nextEngGroupId)  nextEngGroupId=d.nextEngGroupId;
-        if(d.nextAllocId)     nextAllocId=d.nextAllocId;
-
-        if(d.sepX!=null)sepX=d.sepX;if(d.sepY!=null)sepY=d.sepY;
-        if(d.scaleX){scaleX=d.scaleX;setScale('x',scaleX);}
-        if(d.scaleY){scaleY=d.scaleY;setScale('y',scaleY);}
-        if(d.yMode){yMode=d.yMode;['impact','visibility','enabler'].forEach(function(m){G('ym-'+m).classList.toggle('active',m===yMode);});G('y-label').textContent=Y_LABELS[yMode];}
-        if(d.zoom)zoom=d.zoom;
-        if(d.quadrantsByMode&&typeof d.quadrantsByMode==='object'){
-          ['impact','visibility','enabler'].forEach(function(m){if(d.quadrantsByMode[m])quadrantsByMode[m]=d.quadrantsByMode[m];});
-        }
-        if(d.annotations)annotations=d.annotations;
-        if(d.resTitle){const el=G('res-title-input');if(el)el.value=d.resTitle;}
-        if(d.resStart){const el=G('res-start');if(el)el.value=d.resStart;}
-        if(d.resEnd)  {const el=G('res-end');  if(el)el.value=d.resEnd;}
-        if(d.axis){
-          const a=d.axis;
-          SV('ax-x-name',a.xName||'Effort');SV('ax-x-min',a.xMin??0);SV('ax-x-max',a.xMax??10);
-          SV('ax-y-min',a.yMin??0);SV('ax-y-max',a.yMax??10);SV('ax-grid',a.grid??5);
-        }
-
-        // uid identity pass over the swapped-in dataset. An OLD backup has no uids
-        // and id-keyed side-stores; a NEW (post-migration) backup already carries
-        // uids and uid-keyed stores. uidMigrate backfills/keeps uids and re-keys the
-        // in-memory placements (nine-box/DISC/KT/finExclude) accordingly, returning
-        // the id→uid map. We remap the photo map with the SAME map so an old backup's
-        // id-keyed photos realign to the freshly-assigned uids (a new backup's uid
-        // keys pass straight through).
-        var _idToUid={};
-        try{ _idToUid=uidMigrate()||{}; }catch(e){ console.warn('[EIM] uid migration (backup restore) failed:',e); }
+        // Apply the state through the shared core (does the gateConfig-before-sanitise
+        // ordering, all field assignments, uidMigrate, saveState + re-render) and get
+        // back the id→uid map. Then remap the photo map with the SAME map so an old
+        // backup's id-keyed photos realign to the freshly-assigned uids (a new backup's
+        // uid keys pass straight through).
+        var _idToUid=applyBackupState(d);
         var photosU=uidRemapObj(photos,_idToUid);
 
         // Dataset swap: photos + talent placements are keyed by uid (per-dataset
@@ -238,9 +260,7 @@ export function importFullBackup(){
         // photos attached to colliding ids — the "wrong face on the wrong person" mixup).
         idbReplaceAllPhotos(photosU).then(function(){
           idbUpdateStatus();
-          saveState();
           talentIdbSave();   // make EIM_TalentData match the restored dataset
-          onAxisChange();renderList();render();updateSnapBadge();
           selId=null;G('editor').style.display='none';
           alert(t('Full backup restored successfully!')+'\n\n'
             +t('Restored:')+'\n'
@@ -248,7 +268,6 @@ export function importFullBackup(){
             +'  '+t('Engineers:')+'  '+engineers.filter(function(e){return !e.vacant;}).length+'\n'
             +'  '+t('Photos:')+'     '+nPhotos);
         }).catch(function(err){
-          saveState();onAxisChange();renderList();render();
           alert(t('Restore completed (photo restore error: {msg})',{msg:err.message}));
         });
 
@@ -260,4 +279,58 @@ export function importFullBackup(){
     reader.readAsText(file);
   };
   inp.click();
+}
+
+/* ►► SECTION: SAMPLE-DATA ◄◄ One-click seed / clear for a first-time user.
+ * SAMPLE_BACKUP is a build-time global (build.js embeds demo/matrix_demo_backup.json so
+ * the single-file app needs no fetch — works from file://). null when the asset was
+ * absent at build time, so both entry points self-disable gracefully. */
+
+// True when there is nothing meaningful in the workspace yet (no real people, no projects).
+export function workspaceIsEmpty(){
+  return engineers.filter(function(e){return !e.vacant;}).length===0 && projects.length===0;
+}
+
+// True when this build actually carries the embedded sample dataset.
+export function sampleDataAvailable(){
+  return typeof SAMPLE_BACKUP!=='undefined' && SAMPLE_BACKUP && SAMPLE_BACKUP.state;
+}
+
+// Load the bundled sample dataset (40 people / 6 projects) so a newcomer sees every
+// view alive in one click. Reuses the backup apply core; takes a safety snapshot first.
+export function loadSampleData(){
+  if(!sampleDataAvailable()){ alert(t('Sample data is not available in this build.')); return; }
+  if(!workspaceIsEmpty() && !confirm(
+      t('Load the sample dataset (40 people, 6 projects)?')+'\n\n'
+      +t('This REPLACES your current data. A safety snapshot is taken first, so you can roll back from Snapshots.')
+  )) return;
+  try{
+    takeSnap('Auto: before loading sample data','full','',true);
+    applyBackupState(SAMPLE_BACKUP.state);
+    if(typeof homeSetSampleFlag==='function') homeSetSampleFlag(true);
+    // The sample is meant to show EVERY view alive → reveal the full rail (undo Basics).
+    if(typeof railAdvanced!=='undefined'){ railAdvanced=true; if(typeof railSavePrefs==='function') railSavePrefs(); }
+    var ov=G('landing-firstrun'); if(ov) ov.classList.remove('show');
+    if(typeof railGo==='function') railGo(null,'home'); else { onAxisChange(); renderList(); render(); }
+    alert(t('Sample data loaded — explore any view. Use "Clear & start mine" on Home when you\'re ready to enter your own.'));
+  }catch(err){
+    console.error('[EIM] load sample data failed:',err);
+    alert(t('Could not load sample data:')+' '+err.message);
+  }
+}
+
+// "Clear & start mine" — wipe to an empty workspace and begin fresh. Snapshots + clears
+// main state, then reloads (same safe path as resetAll). The per-device sample flag is
+// cleared so the "viewing sample data" strip doesn't survive the reset.
+export function clearAndStartMine(){
+  if(!confirm(
+      t('Clear everything and start your own workspace?')+'\n\n'
+      +t('A safety snapshot is taken first, so you can roll back from Snapshots. The page will reload empty.')
+  )) return;
+  if(typeof homeSetSampleFlag==='function') homeSetSampleFlag(false);
+  saveNow();
+  takeSnap('Auto: before Clear & start mine','full','',true);
+  saveSnaps();
+  localStorage.removeItem(SK);
+  location.reload();
 }

@@ -499,7 +499,7 @@ function homeDefaultLayout(){
 function homeClampW(w){ w = +w||1; return w<1 ? 1 : (w>3 ? 3 : w); }
 
 function homeLoadPrefs(){
-  const p = { layout:homeDefaultLayout(), snoozed:{}, dismissed:{} };
+  const p = { layout:homeDefaultLayout(), snoozed:{}, dismissed:{}, sampleLoaded:false };
   try{
     const raw = localStorage.getItem(HOME_PREFS_KEY);
     if(raw){
@@ -512,6 +512,7 @@ function homeLoadPrefs(){
         }
         if(o.snoozed && typeof o.snoozed==='object') p.snoozed = o.snoozed;
         if(o.dismissed && typeof o.dismissed==='object') p.dismissed = o.dismissed;
+        p.sampleLoaded = !!o.sampleLoaded;
       }
     }
   }catch(e){}
@@ -519,6 +520,13 @@ function homeLoadPrefs(){
   return p;
 }
 function homeSavePrefs(p){ try{ localStorage.setItem(HOME_PREFS_KEY, JSON.stringify(p||_homePrefs)); }catch(e){} }
+
+// Per-device "viewing sample data" flag (stored in eim_home_prefs — a UI pref, never app
+// state / backups / collab). Set by loadSampleData; drives the Home reminder strip.
+function homeSetSampleFlag(on){ if(!_homePrefs) _homePrefs = homeLoadPrefs(); _homePrefs.sampleLoaded = !!on; homeSavePrefs(_homePrefs); }
+function homeIsSample(){ if(!_homePrefs) _homePrefs = homeLoadPrefs(); return !!_homePrefs.sampleLoaded; }
+// "Dismiss" on the sample strip only stops the reminder — it does NOT touch the data.
+function homeDismissSample(){ homeSetSampleFlag(false); renderHome(); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    4. WIDGET LIBRARY — curated, screen-sized read-outs of existing datasets
@@ -1041,11 +1049,38 @@ function openHome(){
 }
 function closeHome(){ const o = G('home-overlay'); if(o) o.classList.remove('show'); }
 
+// Onboarding strip at the top of Home: a teaching empty-state when the workspace has no
+// data yet (offer the sample seed + the first real step), or a dismissible reminder when
+// the user is exploring the loaded sample. Returns '' when neither applies. All handlers
+// (loadSampleData/clearAndStartMine/railGo) live in the flat global scope.
+function homeOnboardBanner(){
+  if(typeof workspaceIsEmpty==='function' && workspaceIsEmpty()){
+    const canSample = (typeof sampleDataAvailable==='function' && sampleDataAvailable());
+    let h = '<div class="home-onboard"><div class="home-onboard-txt"><strong>'
+      + escH(t('Your workspace is empty.')) + '</strong> '
+      + escH(t('Load a ready-made sample to see every view in action, or add your first person to start your own.'))
+      + '</div><div class="home-onboard-btns">';
+    if(canSample) h += '<button class="home-btn primary" onclick="loadSampleData()">'+escH(t('🎬 Load sample data'))+'</button>';
+    h += '<button class="home-btn" onclick="railGo(null,\'roster\')">'+escH(t('＋ Add your first person'))+'</button>';
+    return h + '</div></div>';
+  }
+  if(typeof homeIsSample==='function' && homeIsSample()){
+    return '<div class="home-onboard is-sample"><div class="home-onboard-txt">'
+      + escH(t('You\'re exploring sample data — every view is populated so you can see how it fits together.'))
+      + '</div><div class="home-onboard-btns">'
+      + '<button class="home-btn" onclick="clearAndStartMine()">'+escH(t('Clear & start mine'))+'</button>'
+      + '<button class="home-btn" onclick="homeDismissSample()">'+escH(t('Dismiss'))+'</button>'
+      + '</div></div>';
+  }
+  return '';
+}
+
 function renderHome(){
   const host = G('home-body'); if(!host) return;
   if(!_homePrefs) _homePrefs = homeLoadPrefs();
   const isDefault = (typeof railLanding!=='undefined' && railLanding==='home');
-  let h = '<div class="home-topbar"><div class="home-filters">';
+  let h = homeOnboardBanner();
+  h += '<div class="home-topbar"><div class="home-filters">';
   [['all','All'],['people','People'],['planner','Planner'],['portfolio','Portfolio'],['governance','Gov']].forEach(function(f){
     h += '<button class="home-fchip'+(_homeFilter===f[0]?' on':'')+'" onclick="homeSetFilter(\''+f[0]+'\')">'+escH(t(f[1]))+'</button>';
   });

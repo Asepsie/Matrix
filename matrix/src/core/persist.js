@@ -298,6 +298,8 @@ export function _doSave(){
     // Multi-user: mirror this save into the shared Y.Doc (no-op unless connected;
     // guarded against echo while applying a remote change). See sections/collab.js.
     if(typeof collabPush==='function') collabPush();
+    // Undo/redo: record this committed edit into the ring (no-op while applying an undo).
+    if(typeof _undoRecordCommit==='function') _undoRecordCommit();
   }catch(e){
     // localStorage full — surface clearly
     const el=G('save-indicator');
@@ -325,6 +327,9 @@ export function saveState(){
   // Debounce: wait 800ms after last change before writing
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(_doSave,800);
+  // Keep the value-spine strip ("you are here") in sync with the data (guarded — the
+  // module + its band may not exist yet during early boot; cheap enough to run per edit).
+  if(typeof spineRefresh==='function') spineRefresh();
 }
 
 export function saveNow(){

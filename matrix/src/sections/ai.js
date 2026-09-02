@@ -123,7 +123,7 @@ function aiShowModelPicker(){
         +'<div class="ai-model-stat" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-top:3px">'+aiModelStatHTML(m)+'</div>'
       +'</div>'
       +'<button class="primary" style="padding:5px 12px;font-size:11px;white-space:nowrap"'
-        +((gpuOk&&!_aiLoading)?'':' disabled')
+        +((gpuOk&&!_aiLoading&&(typeof netOnline!=='function'||netOnline()))?'':' disabled')
         +' onclick="aiSelectModel(\''+m.id+'\')">'+btnLabel+'</button>'
     +'</div>';
   }).join('');
@@ -131,6 +131,9 @@ function aiShowModelPicker(){
   var warn=gpuOk?'':
     '<div style="background:rgba(241,67,53,.1);border:1px solid var(--danger);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--danger)">'
     +t('⚠ This browser has no WebGPU support, so in-browser AI can’t run here. Try a recent Chrome or Edge.')+'</div>';
+  // Offline: the model + library download from a CDN and can't start — say so plainly
+  // (the Select buttons above are disabled while offline) instead of a failed fetch.
+  var offBanner=(typeof netOnline==='function'&&!netOnline())?netOfflineBanner(t('AI advisor')):'';
 
   var chatBtn=_aiEngine
     ?'<button class="primary" style="flex:1" onclick="aiOpenChat()">'+t('💬 Open chat')+'</button>'
@@ -147,6 +150,7 @@ function aiShowModelPicker(){
     +'<div style="font-size:11px;color:var(--muted);line-height:1.6">'
       +t('Runs entirely in your browser — no login, no API key, no data leaves this machine. The model downloads once (needs internet), then works offline.')
     +'</div>'
+    +offBanner
     +warn
     +'<div id="ai-model-list" style="overflow-y:auto">'+rows+'</div>'
     +'<div id="ai-model-foot" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dim)">'+t('Checking model availability…')+'</div>'
@@ -636,6 +640,10 @@ function aiScopeUpdateFoot(){
 // Entry/router: ensure an engine, then always show the scope menu first.
 function aiOpenChat(){
   if(!_aiEngine){
+    // Offline with no engine loaded yet → show the model picker (which carries the plain
+    // "needs a network connection" notice + disabled buttons) instead of a confirm that
+    // would kick off a doomed download. A model already loaded keeps working offline.
+    if(typeof netOnline==='function' && !netOnline()){ aiShowModelPicker(); return; }
     var saved=aiSavedModel();
     if(saved&&!_aiLoading){
       if(confirm(t('Load AI model?')+'\n\n'+saved+'\n\n'+t('(Uses the cached download if you already got it — otherwise downloads now.)')))

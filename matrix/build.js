@@ -1,9 +1,10 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import vm from 'node:vm';
 
 const SRC = './src';
 const OUT = './dist/matrix.html';
+const DEMO = './demo/matrix_demo_backup.json';
 
 // 1. Concatenate CSS
 const CSS_FILES = [
@@ -32,6 +33,7 @@ const JS_FILES = [
   'core/export.js',
   'core/financial.js',
   'core/persist.js',
+  'core/undo.js',      // global undo/redo ring (hooks _doSave; reuses captureScope)
   'core/photo.js',
   'sections/matrix.js',
   'sections/sections.js',
@@ -69,6 +71,7 @@ const JS_FILES = [
   'sections/pipeline.js',   // new-project intake & feasibility — reads ecDataset/gate/pipelineCapacity
   'sections/engagement.js',
   'sections/home.js',   // personal front door: reads analytics/gate/econ/engagement producers
+  'sections/spine.js',  // data-driven value-spine strip ("you are here") + teachEmpty() helper
   'sections/collab.js',
   'sections/archive.js', // closed/finished project browser (rail utility; reads projects, restores via projSetLifecycle)
   'sections/packs.js',   // after every section: composes their *ExportBlocks() registries
@@ -89,10 +92,31 @@ const js = JS_FILES
   .filter(c => c.length > 0)
   .join('\n');
 
+// 2b. Embed the bundled sample dataset (demo/matrix_demo_backup.json) as a global
+// so the single-file app can offer one-click "Load sample data" with no fetch (works
+// from file://). Emitted as JSON.parse(<js-string-literal-of-the-raw-json>) — robust
+// against the object-literal parse cost and any awkward content. We escape the three
+// sequences that are legal in JSON but would break embedding inside <script>: a literal
+// </script (closes the tag early) and the U+2028/2029 line separators (illegal in a
+// pre-ES2019 string literal). Missing asset → SAMPLE_BACKUP=null (button self-disables).
+let sampleDecl = 'var SAMPLE_BACKUP=null;\n';
+if (existsSync(DEMO)) {
+  const raw = readFileSync(DEMO, 'utf8');
+  const LS=String.fromCharCode(0x2028), PS=String.fromCharCode(0x2029);
+  const lit = JSON.stringify(raw)
+    .replace(/<\//g, '<\\/')
+    .split(LS).join('\\u2028')
+    .split(PS).join('\\u2029');
+  sampleDecl = `var SAMPLE_BACKUP=JSON.parse(${lit});\n`;
+  console.log(`✓ Embedded sample dataset (${Math.round(raw.length / 1024)} KB)`);
+} else {
+  console.log(`ℹ No ${DEMO} — SAMPLE_BACKUP=null (Load sample data disabled)`);
+}
+
 // 3. Inject into HTML shell
 const shell = readFileSync(join(SRC, 'index.html'), 'utf8');
 const cssBlock = css ? `<style>\n${css}\n</style>` : '<style></style>';
-const jsBlock  = js  ? `<script>\n${js}\n</script>` : '<script></script>';
+const jsBlock  = js  ? `<script>\n${sampleDecl}${js}\n</script>` : `<script>\n${sampleDecl}</script>`;
 const output = shell
   .replace('<!-- {{CSS}} -->', cssBlock)
   .replace('<!-- {{JS}} -->', jsBlock);

@@ -145,6 +145,20 @@ export function renderResPlan(){
   <button class="sm" onclick="exportPlanSelected()" style="font-size:9px;padding:2px 8px;border-color:var(--accent2);color:var(--accent2)">${t('↓ GO')}</button>
   </div>`;
 
+  // Teaching empty state (spine.js › teachEmpty): the Plan is a JOIN over people ×
+  // projects × dates, so a newcomer lands on a blank grid. Say WHY and link the fix
+  // rather than showing an empty table with no explanation.
+  if(typeof teachEmpty==='function'){
+    if(engineers.filter(e=>!e.vacant).length===0)
+      h+=teachEmpty({icon:'👥',title:t('No people to plan yet'),msg:t('Add your team first — then you can staff them onto projects here.'),ctaLabel:t('Go to Roster →'),ctaView:'roster'});
+    else if(projects.length===0)
+      h+=teachEmpty({icon:'◎',title:t('No projects to staff yet'),msg:t('Add projects on the portfolio matrix — then allocate people to them here.'),ctaLabel:t('Go to the matrix →'),ctaView:'matrix'});
+    else if(!months.length)
+      h+=teachEmpty({icon:'📅',title:t('Set your planning horizon'),msg:t('Choose the FROM and TO months above to open up the monthly allocation grid.')});
+    else if(!allocRows.length)
+      h+=teachEmpty({icon:'▦',title:t('No allocations yet'),msg:t('Add a row and assign people to projects, month by month, to build your resource plan.')});
+  }
+
   // ── Fill toolbar ──
   h+=`<div class="alloc-fill-bar">
     <label>${t('QUICK FILL')}</label>

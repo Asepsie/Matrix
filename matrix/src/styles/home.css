@@ -41,6 +41,21 @@
 .home-btn.primary{ background:var(--accent); border-color:var(--accent); color:#0f0f11; font-weight:600; }
 .home-btn.primary:hover{ background:#b0d82a; color:#0f0f11; }
 
+/* onboarding strip — teaching empty-state / sample-data reminder at the top of Home.
+   Inline (never a modal), accent-tinted so it reads as guidance, not an error. */
+.home-onboard{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  background:color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius:10px; padding:12px 14px; margin-bottom:16px;
+}
+.home-onboard.is-sample{
+  background:var(--surface); border-color:var(--border);
+}
+.home-onboard-txt{ flex:1; min-width:200px; font-size:12px; line-height:1.5; color:var(--muted); }
+.home-onboard-txt strong{ color:var(--text); }
+.home-onboard-btns{ display:flex; gap:8px; flex-wrap:wrap; }
+
 /* the grid — 3 flexible columns; widgets span 1–3 via inline grid-column */
 .home-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
 @media (max-width:1080px){ .home-grid{ grid-template-columns:repeat(2,1fr); } .home-w{ grid-column:span 1 !important; } .home-w.home-w-hero{ grid-column:span 2 !important; } }

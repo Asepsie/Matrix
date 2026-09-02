@@ -95,6 +95,11 @@ const _collabLastFields={};      // uid -> {path: JSON(value)} last-pushed PER F
 const COLLAB_KEYSEP=String.fromCharCode(1);  // composite Y.Map key = uid+SEP+dotted.path (SEP never in a uuid/path)
 let _collabCfg={relay:'',token:'',room:'',key:'',actor:'',auto:false};
 
+// Public accessor: are we live in a shared room? Read by undo.js — a whole-state undo is
+// disabled while connected (v1 is single-user-first; a full-state restore could clobber a
+// teammate's concurrent edit). See ARCHITECTURE › Multi-user collaboration.
+function collabInRoom(){ return !!_collabConnected; }
+
 /* Meta keys = everything in the saved payload that isn't an entity array. Synced
    whole-value per key (LWW). Each maps a Y.Map key to the real global (some are
    underscore-prefixed; finExclude is a Set). Deliberately EXCLUDES transient view
@@ -372,6 +377,9 @@ function collabLoadLibs(){
 
 /* ── Connect / disconnect ── */
 function collabConnect(){
+  // Offline: don't attempt the CDN library load (it would fail with a cryptic error).
+  // The panel already shows the plain "needs a network connection" notice.
+  if(typeof netOnline==='function' && !netOnline()){ _collabStatus='idle'; collabRefreshPanel(); return; }
   if(!_collabCfg.relay){ alert(t('Enter a relay URL first.')); return; }
   // Fresh room with no room id yet → also mint an E2E key (new rooms are encrypted by default).
   if(!_collabCfg.room){ _collabCfg.room=collabRndHex(16); if(!_collabCfg.key) _collabCfg.key=collabRndKey(); }
@@ -971,6 +979,7 @@ function collabRefreshPanel(){
     +'<p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0">'
       +t('Create a room and share its link to work on the same data live across computers. Edits made offline merge back in when you reconnect; conflicts are kept in the history.')
     +'</p>'
+    +((!connected && typeof netOnline==='function' && !netOnline())?netOfflineBanner(t('Collaborate')):'')
     +(connected?'':'<div style="border:1px solid var(--accent);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;background:rgba(200,241,53,.04)">'
       +'<div style="font-size:11px;font-weight:700;color:var(--accent);font-family:IBM Plex Mono,monospace">'+t('HAVE A LINK? JOIN A ROOM')+'</div>'
       +'<div style="font-size:10px;color:var(--muted);line-height:1.5">'+t('Paste the link a teammate shared with you (it carries the relay, room, token and encryption key). Works even if this computer has the app in a different folder.')+'</div>'
@@ -1004,7 +1013,7 @@ function collabRefreshPanel(){
         +(_collabLog.length?(' ('+_collabLog.length+(conflicts?(' · '+conflicts+'⚠'):'')+')'):'')+'</button>'
       +(connected
         ?'<button onclick="collabDisconnect()" style="padding:8px 16px;background:var(--bg);border:1px solid var(--danger);color:var(--danger);border-radius:6px;cursor:pointer;font-size:12px">'+t('Disconnect')+'</button>'
-        :'<button onclick="collabConnect()" class="primary" style="padding:8px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">'+t('Connect')+'</button>')
+        :'<button onclick="collabConnect()" class="primary" style="padding:8px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600"'+((typeof netOnline==='function'&&!netOnline())?' disabled title="'+escH(t('You appear to be offline'))+'"':'')+'>'+t('Connect')+'</button>')
     +'</div>'
   +'</div>';
   if(_fid){ var _f=document.getElementById(_fid); if(_f){ try{ _f.focus(); if(_ss!=null&&_f.setSelectionRange) _f.setSelectionRange(_ss,_se); }catch(e){} } }

@@ -241,7 +241,9 @@ function balExportOpen(){
 function _balProjectView(){
   var body=G('res-body'); if(!body) return;
   if(typeof projects==='undefined' || !projects.length){
-    body.innerHTML=_balEmpty(t('No projects yet — add projects on the matrix.'));
+    body.innerHTML=(typeof teachEmpty==='function')
+      ? teachEmpty({icon:'◎',title:t('Nothing to balance yet'),msg:t('The balancer reads your staffed projects. Add projects and allocate people first, then come back to spot over- and under-load.'),ctaLabel:t('Go to the matrix →'),ctaView:'matrix'})
+      : _balEmpty(t('No projects yet — add projects on the matrix.'));
     return;
   }
   var months=getMonthRange();

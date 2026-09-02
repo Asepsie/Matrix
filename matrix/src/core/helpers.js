@@ -35,6 +35,21 @@ export function curMonth(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
+/* Network-dependent features — Collaborate (Yjs + relay) and the AI advisor (WebLLM) —
+   load libraries/models from a CDN and can't start offline. netOnline() is the guard;
+   netOfflineBanner() is the plain, shared notice so a newcomer sees "needs a network
+   connection" up front instead of a confusing CDN/import failure. `feature` is a static
+   (already-localized) name, not user data. */
+export function netOnline(){ try{ return navigator.onLine!==false; }catch(e){ return true; } }
+export function netOfflineBanner(feature){
+  return '<div style="background:rgba(241,164,53,.1);border:1px solid var(--warn);border-radius:6px;'
+    +'padding:9px 11px;font-size:11px;color:var(--warn);line-height:1.5;display:flex;gap:9px;align-items:flex-start">'
+    +'<span style="font-size:14px;line-height:1">📡</span>'
+    +'<span><b>'+escH(feature)+' '+escH(t('needs a network connection.'))+'</b> '
+    +escH(t('It loads from the internet the first time and can\'t start while you\'re offline — reconnect and try again. Everything else in Matrix works offline.'))
+    +'</span></div>';
+}
+
 export function _dashCur(){ return curMonth(); }
 
 // Helper: convert alloc value to numeric FTE (0 for m/r, 1 for p, float for numeric)
