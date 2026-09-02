@@ -1062,6 +1062,7 @@ export function renderSkillsTab(){
   h+='<button class="sm primary" onclick="skAddSkillGlobal()">+ ADD SKILL</button>';
   h+='<button class="sm" onclick="srfOpenDictManager()">📖 DICTIONARY</button>';
   h+='<button class="sm" onclick="skManageDomains()">⚙ DOMAINS</button>';
+  h+='<button class="sm" onclick="skillsExportOpen()">📄 EXPORT</button>';
   h+='<button class="sm" onclick="skillsExportCSV()">↓ CSV</button>';
   h+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-left:auto">'+vis.length+'/'+allSkills.length+' skills</span>';
   h+='</div>';
@@ -1185,4 +1186,122 @@ export function doExportSkillsCSV(){
   const title=G('res-title-input')?G('res-title-input').value:'Skills';
   a.download=title.replace(/[^a-z0-9]/gi,'_')+'_skills.csv';
   a.click();URL.revokeObjectURL(url);
+}
+
+/* ►► SECTION: SKILLS-EXPORT ◄◄ Skills matrix + SPOF risk on the shared export engine.
+ * Themed, block-picker deliverables (matrix / SPOF risk / individual profiles) that
+ * also feed the global Export door and the Talent review pack — replacing the old
+ * unthemed document.write popup as the primary skills export. skl-prefixed. */
+function sklExportEngs(){
+  return engineers.filter(function(e){return !e.vacant&&!e.planningOnly;});
+}
+function skillsExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  var CAT_COL=getSkillCatCol();
+  var CAT_LABEL=getSkillCatLabel(false);
+  return [
+    {id:'matrix', label:t('Team skills matrix'), render:function(){
+      var engs=sklExportEngs();
+      var allSkillNames=[...new Set(engs.flatMap(function(e){return (e.skills||[]).map(function(s){return s.name;});}))].sort();
+      if(!engs.length||!allSkillNames.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Team skills matrix'))+'</h2>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:10px">';
+      h+='<thead><tr style="background:var(--surface)"><th style="text-align:left;padding:6px 8px;border:1px solid var(--border);min-width:140px;color:var(--muted);'+mono+';font-size:9px">'+escH(t('ENGINEER'))+'</th>';
+      allSkillNames.forEach(function(s){ h+='<th style="padding:4px 6px;border:1px solid var(--border);writing-mode:vertical-lr;transform:rotate(180deg);min-width:26px;font-weight:600;font-size:9px;color:var(--text)">'+escH(s)+'</th>'; });
+      h+='</tr></thead><tbody>';
+      engs.forEach(function(e){
+        var own=new Map((e.skills||[]).map(function(s){return [s.name,s];}));
+        h+='<tr><td style="padding:5px 8px;border:1px solid var(--border);font-weight:600;color:var(--text)">'+escH(e.name)+'<br><span style="font-weight:400;color:var(--muted);font-size:9px">'+escH(e.role||'')+(e.location?' · '+escH(e.location):'')+'</span></td>';
+        allSkillNames.forEach(function(sn){
+          var s=own.get(sn);
+          if(!s){ h+='<td style="border:1px solid var(--border);text-align:center;color:var(--dim)">—</td>'; return; }
+          var col=safeColor(CAT_COL[s.cat]||'var(--accent2)');
+          h+='<td style="border:1px solid var(--border);text-align:center;background:'+col+'1a;color:'+col+';font-weight:700">✓<sup style="font-size:8px">'+(s.level||3)+'</sup></td>';
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+      h+='<div style="display:flex;gap:16px;margin-top:8px;font-size:10px;'+mono+'">';
+      ['crit','diff','mand'].forEach(function(c){ h+='<span style="color:'+safeColor(CAT_COL[c])+'">&#9632; '+escH(CAT_LABEL[c])+'</span>'; });
+      h+='</div>';
+      return h;
+    }},
+    {id:'spof', label:t('Skill risk — single points of failure'), render:function(){
+      var sm=buildSkillMap();
+      var order={crit:0,diff:1,mand:2};
+      var spofs=Object.values(sm).filter(function(s){return s.holders.length===1;})
+        .sort(function(a,b){ return (order[a.cat]==null?3:order[a.cat])-(order[b.cat]==null?3:order[b.cat])||a.name.localeCompare(b.name); });
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text)">'+escH(t('Skill risk — single points of failure'))+'</h2>';
+      if(!spofs.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No single-holder skills — every skill has backup.'))+'</div>';
+      var h=head+'<div style="font-size:10px;color:var(--muted);margin-bottom:10px;'+mono+'">'+escH(t('{n} skill(s) held by exactly one person.',{n:spofs.length}))+'</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('SKILL'),t('CATEGORY'),t('DOMAIN'),t('SOLE HOLDER'),t('LEVEL')].forEach(function(c){h+='<th style="text-align:left;padding:6px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      spofs.forEach(function(s){
+        var col=safeColor(CAT_COL[s.cat]||'var(--muted)');
+        var holder=s.holders[0];
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:600;color:var(--text)">'+escH(s.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:'+col+';font-weight:600">'+escH(CAT_LABEL[s.cat]||s.cat)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--muted)">'+escH(s.domain||'General')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text)">'+escH(holder.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--accent2)">L'+(holder.level||3)+'</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+    {id:'profiles', label:t('Individual skill profiles'), render:function(){
+      var engs=sklExportEngs();
+      if(!engs.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Individual skill profiles'))+'</h2>';
+      engs.forEach(function(e){
+        // union of the managed domain list AND any domain actually present on this
+        // person's skills, so a skill in an unlisted/orphan domain still shows
+        var doms=[''].concat(skillDomains).concat((e.skills||[]).map(function(s){return s.domain||'';}));
+        doms=doms.filter(function(v,i,a){return a.indexOf(v)===i;});
+        var body='';
+        doms.forEach(function(dom){
+          var ds=(e.skills||[]).filter(function(s){return (s.domain||'')===dom;});
+          if(!ds.length) return;
+          body+='<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 3px;padding-top:6px;border-top:1px solid var(--border)">'+escH(dom||'General')+'</div>';
+          ['crit','diff','mand'].forEach(function(cat){
+            var cs=ds.filter(function(s){return s.cat===cat;});
+            if(!cs.length) return;
+            var col=safeColor(CAT_COL[cat]);
+            body+='<div style="margin-bottom:6px"><div style="font-size:9px;font-weight:700;color:'+col+';text-transform:uppercase;margin-bottom:3px">'+escH(CAT_LABEL[cat])+'</div>';
+            body+='<div style="display:flex;flex-wrap:wrap;gap:4px">'+cs.map(function(s){return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+col+'1a;color:'+col+';border:1px solid '+col+'55">'+escH(s.name)+'<sup style="font-size:8px;margin-left:2px">L'+(s.level||3)+'</sup></span>';}).join('')+'</div></div>';
+          });
+        });
+        if(!body) return;
+        h+='<div style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(e.name)+'</div>'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:4px">'+escH(e.role||'')+(e.location?' · '+escH(e.location):'')+'</div>'
+          +body+'</div>';
+      });
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for Skills / SPOF
+function skillsExportOpen(){
+  if(!engineers.some(function(e){return (e.skills||[]).length;})){ alert(t('Add skills to at least one person first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'skills',
+    title:t('Skills & SPOF'),
+    subtitleDefault:teamName,
+    blocks:skillsExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full report'), blocks:['matrix','spof','profiles']},
+      {id:'matrix', name:t('Matrix only'), blocks:['matrix']},
+      {id:'risk', name:t('Risk only'), blocks:['spof']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }

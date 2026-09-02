@@ -78,7 +78,9 @@ function renderPortfolioAnalytics(){
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
     +(lens==='economics' ? t('value · NPV · channel profit · decision quality')
         : (months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost')))
-    +'</span><div style="flex:1"></div>'+pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
+    +'</span><div style="flex:1"></div>'
+    +'<button class="sm" onclick="pfExportOpen()" title="'+escH(t('Export the portfolio analytics as a PDF or standalone HTML'))+'">📄 '+t('EXPORT')+'</button>'
+    +pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
   if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
   if(lens==='economics'){
     h+=(typeof ecBody==='function') ? ecBody(ecDataset()) : pfEmpty(t('Economics view unavailable.'));
@@ -96,6 +98,43 @@ function renderPortfolioAnalytics(){
   }
   h+='</div>';
   body.innerHTML=h;
+}
+
+/* ►► Portfolio analytics on the shared export engine. PDF/HTML only: the charts are
+ * SVG strings whose axis/label fills use var(--…), which resolve in a live print
+ * document but NOT in the PNG/SVG raster path (foreignObject) — so no image format. */
+function pfExportBlocks(){
+  var wrap=function(title,inner){
+    return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(title)+'</h2>'+inner;
+  };
+  return [
+    {id:'scorecard', label:t('Portfolio scorecard'), render:function(ctx){ return wrap(t('Portfolio scorecard'), pfScorecard(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'roi',       label:t('Value vs cost — ROI'), render:function(ctx){ return wrap(t('Value vs cost — ROI'), pfRoiChart(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'funnel',    label:t('Delivery pipeline — gates'), render:function(ctx){ return wrap(t('Delivery pipeline — gates'), pfGateFunnel(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'sectors',   label:t('Portfolio mix — sectors'), render:function(ctx){ return wrap(t('Portfolio mix — sectors'), pfSectorMix(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'risk',      label:t('Risk vs value'), render:function(ctx){ return wrap(t('Risk vs value'), pfRiskValue(ctx&&ctx.ds||pfBuildDataset())); }},
+  ];
+}
+// opens the shared export builder for Portfolio analytics
+function pfExportOpen(){
+  if(!projects.length){ alert(t('Add projects first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'portfolio',
+    title:t('Portfolio analytics'),
+    subtitleDefault:teamName,
+    blocks:pfExportBlocks(),
+    ctx:{ds:pfBuildDataset()},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['scorecard','roi','funnel','sectors','risk']},
+      {id:'exec', name:t('Scorecard + ROI'), blocks:['scorecard','roi']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // Section wrapper (title + hint + body card).

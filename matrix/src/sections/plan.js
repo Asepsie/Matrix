@@ -487,7 +487,7 @@ export function engCardHTML(e){
       ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">${t('⊘ EXCLUDED')}</span>` : ''}
       <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="${t('Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.')}">
         <input type="checkbox" ${e.excludeFromCalc?'checked':''} style="accent-color:var(--warn);cursor:pointer"
-          onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderRoster();}})(this)">
+          onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderResPlan();}})(this)">
         ${t('Exclude from calc')}
       </label>
     </div>

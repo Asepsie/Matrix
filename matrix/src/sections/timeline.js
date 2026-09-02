@@ -823,3 +823,102 @@ function renderTimelineResource(body, months, cur){
     setTimeout(function(){ var el=document.getElementById('tl-lane-'+fe); if(el&&el.scrollIntoView) el.scrollIntoView({block:'center'}); },40);
   }
 }
+
+/* ►► TIMELINE-EXPORT ◄◄ The timeline toolbar wired a button to exportTimelinePDF()
+ * that the original monolith never defined (a live "is not defined" throw). Now a
+ * real deliverable on the shared export engine: curated blocks (project × month
+ * allocation grid + resource-conflict list), themed, PDF/HTML. tlx-prefixed. */
+function tlxData(){
+  var months=getMonthRange();
+  var engMonth={};
+  engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
+    engMonth[e.id]={};
+    months.forEach(function(m){
+      engMonth[e.id][m]=allocRows.filter(function(r){return r.engId===e.id;})
+        .reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
+    });
+  });
+  var active=projects.filter(function(p){
+    return allocRows.some(function(r){return r.projectId===p.id&&months.some(function(m){return r.allocs&&r.allocs[m]>0;});});
+  });
+  return {months:months, engMonth:engMonth, active:active};
+}
+function tlxMonthLbl(m){ return m.slice(5,7)+'/'+m.slice(2,4); }
+function tlExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  return [
+    {id:'grid', label:t('Project timeline'), render:function(){
+      var d=tlxData(); var months=d.months;
+      if(!months.length||!d.active.length) return '';
+      var cur=curMonth();
+      var cell=function(v){
+        if(v<=0) return '<td style="border:1px solid var(--border);text-align:center;color:var(--dim)">·</td>';
+        var col=v>1.005?'var(--danger)':(v>=.5?'var(--accent)':'var(--accent2)');
+        return '<td style="border:1px solid var(--border);text-align:center;background:'+col+'22;color:'+col+';font-weight:700;font-size:9px">'+(Math.round(v*100)/100)+'</td>';
+      };
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Project timeline'))+'</h2>';
+      h+='<div style="font-size:10px;color:var(--muted);margin-bottom:10px;'+mono+'">'+escH(t('Total allocated FTE per project per month.'))+'</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="background:var(--surface)">';
+      h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted);min-width:130px">'+escH(t('PROJECT'))+'</th>';
+      months.forEach(function(m){ var isCur=m===cur; h+='<th style="padding:4px;border:1px solid var(--border);'+mono+';font-size:8px;color:'+(isCur?'var(--accent)':'var(--muted)')+'">'+escH(tlxMonthLbl(m))+'</th>'; });
+      h+='</tr></thead><tbody>';
+      d.active.forEach(function(p){
+        var rows=allocRows.filter(function(r){return r.projectId===p.id;});
+        h+='<tr><td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+safeColor(p.color||'var(--accent)')+';margin-right:6px"></span>'+escH(p.name||t('Untitled'))+'</td>';
+        months.forEach(function(m){
+          var v=rows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
+          h+=cell(v);
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+      h+='<div style="display:flex;gap:14px;margin-top:8px;font-size:9px;'+mono+'"><span style="color:var(--accent2)">&#9632; partial</span><span style="color:var(--accent)">&#9632; allocated</span><span style="color:var(--danger)">&#9632; conflict &gt;100%</span></div>';
+      return h;
+    }},
+    {id:'conflicts', label:t('Resource conflicts'), render:function(){
+      var d=tlxData(); var months=d.months;
+      var rows=[];
+      engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
+        var over=months.filter(function(m){return d.engMonth[e.id]&&d.engMonth[e.id][m]>1.005;});
+        if(over.length) rows.push({eng:e, over:over});
+      });
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Resource conflicts'))+'</h2>';
+      if(!rows.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No over-allocations in this period.'))+'</div>';
+      var h=head+'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('MONTHS OVER 100%'),t('PEAK')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      rows.forEach(function(r){
+        var peak=Math.max.apply(null,months.map(function(m){return d.engMonth[r.eng.id][m]||0;}));
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--danger)">'+r.over.map(function(m){return escH(tlxMonthLbl(m));}).join(', ')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--danger);font-weight:700">'+Math.round(peak*100)+'%</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for the project timeline (formerly a dead onclick)
+function exportTimelinePDF(){
+  var months=getMonthRange();
+  if(!months.length){ alert(t('Set FROM and TO dates in the header first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'timeline',
+    title:t('Project timeline'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} month(s)',{n:months.length}),
+    blocks:tlExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Timeline + conflicts'), blocks:['grid','conflicts']},
+      {id:'grid', name:t('Timeline only'), blocks:['grid']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}

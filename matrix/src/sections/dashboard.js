@@ -123,6 +123,121 @@ function _balModeToggle(){
     +'</div>';
 }
 
+/* ►► BALANCER-EXPORT ◄◄ Resource balancer (capacity + per-resource utilisation) on the
+ * shared export engine. Curated blocks — capacity summary, per-person utilisation table,
+ * over-allocation conflicts — built from the SAME _buildEngUtil / _costCounts engine the
+ * BALANCE view reads, so the export and the on-screen numbers agree. balx-prefixed. */
+function balxData(){
+  var months=getMonthRange();
+  var engUtil=(typeof _buildEngUtil==='function')?_buildEngUtil(months):{};
+  var counted=Object.values(engUtil).filter(function(eu){return _costCounts(eu.eng);});
+  function inactive(eu,m){ var s=eu.monthStatus&&eu.monthStatus[m]; return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0; }
+  var supply=0,engaged=0,demand=0;
+  counted.forEach(function(eu){ months.forEach(function(m){ if(inactive(eu,m))return; supply+=1; var a=eu.monthAllocs[m]||0; engaged+=Math.min(a,1); demand+=a; }); });
+  var rows=counted.map(function(eu){
+    var vals=months.map(function(m){return eu.monthAllocs[m]||0;}).concat([0]);
+    var peak=Math.max.apply(null,vals);
+    return { eng:eu.eng, util:Math.round((eu.utilizationRate||0)*100), peak:Math.round(peak*100), over:eu.overMonths||[] };
+  }).sort(function(a,b){return b.util-a.util;});
+  return {
+    months:months, counted:counted, rows:rows,
+    supply:supply, engaged:engaged, idle:Math.max(0,supply-engaged), over:Math.max(0,demand-engaged),
+    util:supply>0?Math.round(engaged/supply*100):0,
+    overCount:counted.filter(function(eu){return (eu.overMonths||[]).length>0;}).length,
+    benchCount:rows.filter(function(r){return r.peak===0;}).length,
+  };
+}
+function balxGroupName(eng){ var g=engGroups.find(function(g){return g.id===eng.groupId;}); return g?g.name:''; }
+function balxGroupColor(eng){ var g=engGroups.find(function(g){return g.id===eng.groupId;}); return safeColor(g?g.color:'var(--muted)','var(--muted)'); }
+function balExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  var tile=function(val,label,sub,color){
+    return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:120px;flex:1">'
+      +'<div style="font-size:22px;font-weight:700;color:'+(color||'var(--text)')+';line-height:1.1">'+val+'</div>'
+      +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.06em;margin-top:5px">'+escH(label)+'</div>'
+      +(sub?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escH(sub)+'</div>':'')+'</div>';
+  };
+  return [
+    {id:'summary', label:t('Capacity summary'), render:function(){
+      var d=balxData();
+      if(!d.months.length) return '<div style="font-size:11px;color:var(--muted)">'+escH(t('Set a FROM/TO period to compute capacity.'))+'</div>';
+      var rnd=function(v){return Math.round(v);};
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Capacity summary'))+'</h2>';
+      h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+      h+=tile(rnd(d.supply), t('SUPPLY (FTE·mo)'), t('counted capacity over period'), 'var(--accent2)');
+      h+=tile(rnd(d.engaged), t('ENGAGED (FTE·mo)'), d.util+'% '+t('utilisation'), 'var(--accent)');
+      h+=tile(rnd(d.idle), t('IDLE (FTE·mo)'), t('bench headroom'));
+      h+=tile(rnd(d.over), t('OVER (FTE·mo)'), t('demand beyond 1.0 FTE'), d.over>0?'var(--danger)':'var(--text)');
+      h+=tile(d.overCount, t('OVER-ALLOCATED'), t('{n} on bench',{n:d.benchCount}), d.overCount?'var(--danger)':'var(--text)');
+      h+='</div>';
+      return h;
+    }},
+    {id:'people', label:t('Per-resource utilisation'), render:function(){
+      var d=balxData();
+      if(!d.rows.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Per-resource utilisation'))+'</h2>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('GROUP'),t('UTILISATION'),t('PEAK'),t('STATUS')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      d.rows.forEach(function(r){
+        var uc=r.util>100?'var(--danger)':(r.util>=60?'var(--accent)':'var(--accent2)');
+        var status=r.peak===0?t('on bench'):(r.over.length?t('over-allocated'):t('ok'));
+        var sc=r.peak===0?'var(--muted)':(r.over.length?'var(--danger)':'var(--accent)');
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+(r.eng.role?'<br><span style="font-weight:400;color:var(--muted);font-size:9px">'+escH(r.eng.role)+'</span>':'')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border)"><span style="color:'+balxGroupColor(r.eng)+'">'+escH(balxGroupName(r.eng))+'</span></td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);min-width:120px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--border);border-radius:3px;height:6px;overflow:hidden"><div style="height:6px;border-radius:3px;background:'+uc+';width:'+Math.min(100,r.util)+'%"></div></div><span style="'+mono+';color:'+uc+';font-weight:700">'+r.util+'%</span></div></td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:'+(r.peak>100?'var(--danger)':'var(--muted)')+'">'+r.peak+'%</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:'+sc+';font-weight:600">'+escH(status)+'</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+    {id:'conflicts', label:t('Over-allocation conflicts'), render:function(){
+      var d=balxData();
+      var over=d.rows.filter(function(r){return r.over.length;});
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Over-allocation conflicts'))+'</h2>';
+      if(!over.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No over-allocations in this period.'))+'</div>';
+      var h=head+'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('MONTHS OVER 100%'),t('PEAK')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      over.forEach(function(r){
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--danger)">'+r.over.map(function(m){return escH(m.slice(0,7));}).join(', ')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--danger);font-weight:700">'+r.peak+'%</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for the Resource balancer
+function balExportOpen(){
+  if(typeof projects==='undefined'||!projects.length){ alert(t('No projects yet — add projects on the matrix.')); return; }
+  if(!getMonthRange().length){ alert(t('Set FROM and TO dates in the header first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  var n=getMonthRange().length;
+  exportOpenBuilder({
+    deliverableId:'balancer',
+    title:t('Resource balancer'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} month(s)',{n:n}),
+    blocks:balExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['summary','people','conflicts']},
+      {id:'summary', name:t('Summary + conflicts'), blocks:['summary','conflicts']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
+
 // ── PROJECT mode — per-project resourcing (picker + gate roadmap + team/time/cost). Numbers
 // are ABSOLUTE (no share-of-portfolio); computed off allocRows so an archived project still shows.
 function _balProjectView(){
@@ -292,11 +407,9 @@ function _balPortfolioView(){
    +multiSelectHTML('dash-eng',allEngNames,engDashFilterEng,'onDashFilterEngChange',t('Engineers'))
    +multiSelectHTML('dash-proj',allProjNames,engDashFilterProj,'onDashFilterProjChange',t('Projects'))
    +clearBtn
-   +'<div class="db-tb-actions">'
-   +'<button class="sm" onclick="planGo(event,\'gantt\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
-   +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
-   +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
-   +'</div></div>';
+   +'<div style="flex:1"></div>'
+   +'<button class="sm" onclick="balExportOpen()" title="'+escH(t('Export capacity summary + per-resource utilisation as PDF or HTML'))+'">📄 '+t('EXPORT')+'</button>'
+   +'</div>';
 
   // ── Suppression banner — why some people read 0% / bench ────────
   if(_hiddenProjIds.length){

@@ -64,6 +64,7 @@ function packTalentOpen(){
   var blocks=[]
     .concat(packBlocksFrom('nb',t('Nine-box'),nbExportBlocks()))
     .concat(packBlocksFrom('disc','DISC',discExportBlocks()))
+    .concat(packBlocksFrom('skl',t('Skills'),skillsExportBlocks()))
     .concat([packProfileCardsBlock()]);
   exportOpenBuilder({
     deliverableId:'pack-talent',
@@ -73,7 +74,7 @@ function packTalentOpen(){
     ctx:{},
     orientation:'landscape', pageSize:'A3', rasterWidth:1600,
     builtinTemplates:[
-      {id:'full', name:t('Full review'), blocks:['nb.grid','nb.distribution','disc.quadrants','disc.mix','profiles.cards']},
+      {id:'full', name:t('Full review'), blocks:['nb.grid','nb.distribution','disc.quadrants','disc.mix','skl.spof','profiles.cards']},
       {id:'matrices', name:t('Matrices only'), blocks:['nb.grid','disc.quadrants']},
       {id:'calibration', name:t('Calibration'), blocks:['nb.grid','nb.distribution','nb.unplaced']},
     ],
@@ -195,6 +196,24 @@ function exportDeliverables(){
     {id:'profiles-all', label:t('Full profiles'), domain:t('TALENT'),
      hint:t('One full page per person.'),
      ready:!!anyPeople, missing:t('Add people first.'), open:profilesExportAllOpen},
+
+    {id:'skills', label:t('Skills & SPOF'), domain:t('TEAM'),
+     hint:t('Team skills matrix, single-point-of-failure risk and individual skill profiles.'),
+     ready:!!engineers.some(function(e){return (e.skills||[]).length;}),
+     missing:t('Add skills to at least one person first.'), open:skillsExportOpen},
+
+    {id:'portfolio', label:t('Portfolio analytics'), domain:t('INSIGHTS'),
+     hint:t('Portfolio scorecard, ROI scatter, gate funnel, sector mix and risk-vs-value.'),
+     ready:!!projects.length, missing:t('Add projects first.'), open:pfExportOpen},
+
+    {id:'balancer', label:t('Resource balancer'), domain:t('PLAN'),
+     hint:t('Capacity summary, per-resource utilisation and over-allocation conflicts over the FROM/TO period.'),
+     ready:!!(projects.length&&getMonthRange().length),
+     missing:t('Add projects and set a FROM/TO period first.'), open:balExportOpen},
+
+    {id:'timeline', label:t('Project timeline'), domain:t('PLAN'),
+     hint:t('Project × month allocation grid plus the resource-conflict list.'),
+     ready:!!getMonthRange().length, missing:t('Set a FROM/TO period first.'), open:exportTimelinePDF},
   ];
 }
 

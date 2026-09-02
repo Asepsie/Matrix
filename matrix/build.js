@@ -15,7 +15,6 @@ const CSS_FILES = [
   'styles/nav.css',
   'styles/charter.css',
   'styles/dashboard.css',
-  'styles/tour.css',
   'styles/home.css',
 ];
 const css = CSS_FILES
@@ -72,7 +71,6 @@ const JS_FILES = [
   'sections/home.js',   // personal front door: reads analytics/gate/econ/engagement producers
   'sections/collab.js',
   'sections/archive.js', // closed/finished project browser (rail utility; reads projects, restores via projSetLifecycle)
-  'sections/tour.js',    // guided tour (hub menu from RAIL_DOMAINS) — needs railnav + helpers
   'sections/packs.js',   // after every section: composes their *ExportBlocks() registries
   'sections/boot.js',
 ];

@@ -1372,122 +1372,6 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 .bal-mode-btn{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.03em; color:var(--muted); background:transparent; border:0; border-radius:6px; padding:5px 12px; cursor:pointer; }
 .bal-mode-btn:hover{ color:var(--text); }
 .bal-mode-btn.on{ background:var(--accent); color:#0f0f11; font-weight:600; }
-/* Guided tour (tour.js) — hub menu + spotlight walkthrough.
-   Themed with the shell's CSS vars so it follows light/dark/paper. */
-
-#tour-overlay{
-  position:fixed; inset:0; z-index:1189;
-  background:rgba(0,0,0,.55);
-  opacity:0; pointer-events:none;
-  transition:opacity .2s;
-}
-#tour-overlay.show{ opacity:1; }
-
-#tour-spot{
-  position:fixed; z-index:1190; display:none;
-  border-radius:8px; pointer-events:none;
-  box-shadow:0 0 0 9999px rgba(0,0,0,.62), 0 0 0 2px var(--accent);
-  transition:left .28s cubic-bezier(.4,0,.2,1), top .28s cubic-bezier(.4,0,.2,1),
-             width .28s cubic-bezier(.4,0,.2,1), height .28s cubic-bezier(.4,0,.2,1);
-}
-
-#tour-pop{
-  position:fixed; z-index:1200; display:none;
-  width:min(380px,92vw);
-  background:var(--surface); color:var(--text);
-  border:1px solid var(--border); border-top:2px solid var(--accent);
-  border-radius:10px; padding:18px 20px 14px;
-  box-shadow:0 8px 40px rgba(0,0,0,.55);
-  font-size:13px; line-height:1.5;
-}
-#tour-pop.show{ display:block; }
-
-/* menu variant is wider + centered (steps set explicit inline left/top instead) */
-#tour-pop.tour-menu{
-  width:min(560px,94vw);
-  left:50%; top:50%; transform:translate(-50%,-50%);
-}
-
-.tour-tag{
-  font-size:9px; letter-spacing:.12em; text-transform:uppercase;
-  color:var(--accent); margin-bottom:6px;
-}
-.tour-title{
-  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
-  color:var(--text); margin-bottom:8px; line-height:1.3;
-}
-.tour-lead, .tour-body{ font-size:12px; line-height:1.65; color:var(--muted); }
-.tour-body strong, .tour-lead strong{ color:var(--text); font-weight:600; }
-.tour-body code{
-  font-family:'IBM Plex Mono',monospace; font-size:10px;
-  background:color-mix(in srgb,var(--accent) 14%,transparent);
-  color:var(--accent); padding:1px 5px; border-radius:3px;
-}
-
-.tour-lead{ margin-bottom:14px; }
-
-/* ── Menu (hub) ── */
-.tour-start-basics{
-  display:block; width:100%; text-align:left;
-  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700;
-  background:var(--accent); color:#0a0c10; border:none;
-  padding:11px 14px; border-radius:8px; cursor:pointer; margin-bottom:14px;
-  transition:filter .15s;
-}
-.tour-start-basics:hover{ filter:brightness(1.08); }
-
-.tour-cards{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-@media (max-width:520px){ .tour-cards{ grid-template-columns:1fr; } }
-
-.tour-card{
-  display:flex; align-items:center; gap:10px; text-align:left; min-width:0;
-  background:var(--bg); border:1px solid var(--border); border-radius:8px;
-  padding:10px 12px; cursor:pointer; color:var(--text);
-  transition:border-color .15s, transform .1s;
-}
-.tour-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
-.tour-card-ico{ color:var(--accent); display:flex; flex:0 0 auto; }
-.tour-card-ico svg{ width:18px; height:18px; }
-.tour-card-body{ display:flex; flex-direction:column; min-width:0; }
-.tour-card-name{ font-size:11px; font-weight:700; letter-spacing:.04em; }
-.tour-card-sub{
-  font-size:9.5px; color:var(--dim); margin-top:2px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-
-.tour-menu-foot{ margin-top:16px; text-align:right; }
-
-/* ── Step footer ── */
-.tour-foot{
-  display:flex; align-items:center; gap:8px;
-  margin-top:14px; padding-top:10px; border-top:1px solid var(--border);
-}
-.tour-prog{ font-size:9px; color:var(--dim); flex:1; }
-
-.tour-btn{
-  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.04em;
-  padding:5px 12px; border-radius:5px; cursor:pointer;
-  border:1px solid var(--border); background:var(--bg); color:var(--muted);
-  transition:.15s;
-}
-.tour-btn:hover{ border-color:var(--muted); color:var(--text); }
-.tour-btn.tour-primary{
-  background:var(--accent); border-color:var(--accent); color:#0a0c10; font-weight:700;
-}
-.tour-btn.tour-primary:hover{ filter:brightness(1.08); }
-
-/* Help-panel launcher */
-#help-tour-launch{
-  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
-  background:color-mix(in srgb,var(--accent) 8%,transparent);
-  border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);
-  border-radius:8px; padding:12px 14px; margin-bottom:16px; cursor:pointer;
-  color:var(--text); transition:border-color .15s, background .15s;
-}
-#help-tour-launch:hover{ border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); }
-#help-tour-launch .htl-play{ font-size:18px; color:var(--accent); flex:0 0 auto; }
-#help-tour-launch .htl-t{ font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; }
-#help-tour-launch .htl-s{ font-size:10px; color:var(--muted); margin-top:2px; }
 /* ── HOME (personal front door — customizable widget grid) ──────────────────
    #home-overlay is a rail-inset VIEW (like #brief-overlay): position:fixed;
    inset:0; left:var(--rail); z-index:400. Everything is home-prefixed. */
@@ -1729,13 +1613,6 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
   <div id="help-box">
-    <button id="help-tour-launch" onclick="tourStart()">
-      <span class="htl-play">▶</span>
-      <span>
-        <span class="htl-t" data-i18n="Take a guided tour">Take a guided tour</span>
-        <span class="htl-s" data-i18n="A 3-minute walkthrough — then pick any section to explore in depth.">A 3-minute walkthrough — then pick any section to explore in depth.</span>
-      </span>
-    </button>
     <h2 data-i18n="⌨ KEYBOARD SHORTCUTS">⌨ KEYBOARD SHORTCUTS</h2>
     <div style="background:rgba(200,241,53,.06);border:1px solid rgba(200,241,53,.12);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
       <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px" data-i18n="WHAT IS PROJECT MATRIX?">WHAT IS PROJECT MATRIX?</strong><br>
@@ -9738,7 +9615,7 @@ function renderRosterTab(){
     <button class="add-row-btn" onclick="addPlanningResource()" title="${t('Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles')}" style="border-color:var(--accent2);color:var(--accent2)">${t('+ PLANNING RESOURCE')}</button>
     <span id="eng-add-hint" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('click a group to target it')}</span>
     <div style="width:1px;background:var(--border);height:16px"></div>
-    <button class="add-row-btn" onclick="exportSkillsPDF()" style="border-color:var(--accent);color:var(--accent)">${t('↓ SKILLS PDF')}</button>
+    <button class="add-row-btn" onclick="skillsExportOpen()" style="border-color:var(--accent);color:var(--accent)">${t('↓ SKILLS EXPORT')}</button>
     <button class="add-row-btn" onclick="exportRoster()">${t('↓ ROSTER')}</button>
     <button class="add-row-btn" onclick="importRoster()">${t('↑ ROSTER')}</button>
     <span class="roster-saved" id="roster-save-ind">${t('✓ SAVED')}</span>
@@ -9821,7 +9698,7 @@ function addPlanningResource(){
   });
   if(gid){ var g=engGroups.find(function(g){return g.id===gid;}); if(g)g.collapsed=false; }
   saveState();
-  renderRoster();
+  renderRosterTab();
 }
 
 /* ►► SECTION: ROSTER-AUTOSAVE ◄◄ Roster auto-save debounce */
@@ -10333,7 +10210,7 @@ function engCardHTML(e){
       ${e.excludeFromCalc ? `<span style="font-family:IBM Plex Mono,monospace;font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(241,164,53,.12);color:var(--warn);border:1px solid rgba(241,164,53,.3)">${t('⊘ EXCLUDED')}</span>` : ''}
       <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)" title="${t('Exclude from all calculations (dashboard, financial, development, skills analysis). Still visible in roster and planning.')}">
         <input type="checkbox" ${e.excludeFromCalc?'checked':''} style="accent-color:var(--warn);cursor:pointer"
-          onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderRoster();}})(this)">
+          onchange="(function(cb){var eng=engineers.find(e=>e.id===${e.id});if(eng){eng.excludeFromCalc=cb.checked;saveState();renderResPlan();}})(this)">
         ${t('Exclude from calc')}
       </label>
     </div>
@@ -11294,6 +11171,121 @@ function _balModeToggle(){
     +'</div>';
 }
 
+/* ►► BALANCER-EXPORT ◄◄ Resource balancer (capacity + per-resource utilisation) on the
+ * shared export engine. Curated blocks — capacity summary, per-person utilisation table,
+ * over-allocation conflicts — built from the SAME _buildEngUtil / _costCounts engine the
+ * BALANCE view reads, so the export and the on-screen numbers agree. balx-prefixed. */
+function balxData(){
+  var months=getMonthRange();
+  var engUtil=(typeof _buildEngUtil==='function')?_buildEngUtil(months):{};
+  var counted=Object.values(engUtil).filter(function(eu){return _costCounts(eu.eng);});
+  function inactive(eu,m){ var s=eu.monthStatus&&eu.monthStatus[m]; return (s==='m'||s==='r')&&(eu.monthAllocs[m]||0)===0; }
+  var supply=0,engaged=0,demand=0;
+  counted.forEach(function(eu){ months.forEach(function(m){ if(inactive(eu,m))return; supply+=1; var a=eu.monthAllocs[m]||0; engaged+=Math.min(a,1); demand+=a; }); });
+  var rows=counted.map(function(eu){
+    var vals=months.map(function(m){return eu.monthAllocs[m]||0;}).concat([0]);
+    var peak=Math.max.apply(null,vals);
+    return { eng:eu.eng, util:Math.round((eu.utilizationRate||0)*100), peak:Math.round(peak*100), over:eu.overMonths||[] };
+  }).sort(function(a,b){return b.util-a.util;});
+  return {
+    months:months, counted:counted, rows:rows,
+    supply:supply, engaged:engaged, idle:Math.max(0,supply-engaged), over:Math.max(0,demand-engaged),
+    util:supply>0?Math.round(engaged/supply*100):0,
+    overCount:counted.filter(function(eu){return (eu.overMonths||[]).length>0;}).length,
+    benchCount:rows.filter(function(r){return r.peak===0;}).length,
+  };
+}
+function balxGroupName(eng){ var g=engGroups.find(function(g){return g.id===eng.groupId;}); return g?g.name:''; }
+function balxGroupColor(eng){ var g=engGroups.find(function(g){return g.id===eng.groupId;}); return safeColor(g?g.color:'var(--muted)','var(--muted)'); }
+function balExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  var tile=function(val,label,sub,color){
+    return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:120px;flex:1">'
+      +'<div style="font-size:22px;font-weight:700;color:'+(color||'var(--text)')+';line-height:1.1">'+val+'</div>'
+      +'<div style="'+mono+';font-size:9px;color:var(--muted);letter-spacing:.06em;margin-top:5px">'+escH(label)+'</div>'
+      +(sub?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escH(sub)+'</div>':'')+'</div>';
+  };
+  return [
+    {id:'summary', label:t('Capacity summary'), render:function(){
+      var d=balxData();
+      if(!d.months.length) return '<div style="font-size:11px;color:var(--muted)">'+escH(t('Set a FROM/TO period to compute capacity.'))+'</div>';
+      var rnd=function(v){return Math.round(v);};
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Capacity summary'))+'</h2>';
+      h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+      h+=tile(rnd(d.supply), t('SUPPLY (FTE·mo)'), t('counted capacity over period'), 'var(--accent2)');
+      h+=tile(rnd(d.engaged), t('ENGAGED (FTE·mo)'), d.util+'% '+t('utilisation'), 'var(--accent)');
+      h+=tile(rnd(d.idle), t('IDLE (FTE·mo)'), t('bench headroom'));
+      h+=tile(rnd(d.over), t('OVER (FTE·mo)'), t('demand beyond 1.0 FTE'), d.over>0?'var(--danger)':'var(--text)');
+      h+=tile(d.overCount, t('OVER-ALLOCATED'), t('{n} on bench',{n:d.benchCount}), d.overCount?'var(--danger)':'var(--text)');
+      h+='</div>';
+      return h;
+    }},
+    {id:'people', label:t('Per-resource utilisation'), render:function(){
+      var d=balxData();
+      if(!d.rows.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Per-resource utilisation'))+'</h2>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('GROUP'),t('UTILISATION'),t('PEAK'),t('STATUS')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      d.rows.forEach(function(r){
+        var uc=r.util>100?'var(--danger)':(r.util>=60?'var(--accent)':'var(--accent2)');
+        var status=r.peak===0?t('on bench'):(r.over.length?t('over-allocated'):t('ok'));
+        var sc=r.peak===0?'var(--muted)':(r.over.length?'var(--danger)':'var(--accent)');
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+(r.eng.role?'<br><span style="font-weight:400;color:var(--muted);font-size:9px">'+escH(r.eng.role)+'</span>':'')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border)"><span style="color:'+balxGroupColor(r.eng)+'">'+escH(balxGroupName(r.eng))+'</span></td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);min-width:120px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--border);border-radius:3px;height:6px;overflow:hidden"><div style="height:6px;border-radius:3px;background:'+uc+';width:'+Math.min(100,r.util)+'%"></div></div><span style="'+mono+';color:'+uc+';font-weight:700">'+r.util+'%</span></div></td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:'+(r.peak>100?'var(--danger)':'var(--muted)')+'">'+r.peak+'%</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:'+sc+';font-weight:600">'+escH(status)+'</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+    {id:'conflicts', label:t('Over-allocation conflicts'), render:function(){
+      var d=balxData();
+      var over=d.rows.filter(function(r){return r.over.length;});
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Over-allocation conflicts'))+'</h2>';
+      if(!over.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No over-allocations in this period.'))+'</div>';
+      var h=head+'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('MONTHS OVER 100%'),t('PEAK')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      over.forEach(function(r){
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--danger)">'+r.over.map(function(m){return escH(m.slice(0,7));}).join(', ')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--danger);font-weight:700">'+r.peak+'%</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for the Resource balancer
+function balExportOpen(){
+  if(typeof projects==='undefined'||!projects.length){ alert(t('No projects yet — add projects on the matrix.')); return; }
+  if(!getMonthRange().length){ alert(t('Set FROM and TO dates in the header first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  var n=getMonthRange().length;
+  exportOpenBuilder({
+    deliverableId:'balancer',
+    title:t('Resource balancer'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} month(s)',{n:n}),
+    blocks:balExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['summary','people','conflicts']},
+      {id:'summary', name:t('Summary + conflicts'), blocks:['summary','conflicts']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
+
 // ── PROJECT mode — per-project resourcing (picker + gate roadmap + team/time/cost). Numbers
 // are ABSOLUTE (no share-of-portfolio); computed off allocRows so an archived project still shows.
 function _balProjectView(){
@@ -11463,11 +11455,9 @@ function _balPortfolioView(){
    +multiSelectHTML('dash-eng',allEngNames,engDashFilterEng,'onDashFilterEngChange',t('Engineers'))
    +multiSelectHTML('dash-proj',allProjNames,engDashFilterProj,'onDashFilterProjChange',t('Projects'))
    +clearBtn
-   +'<div class="db-tb-actions">'
-   +'<button class="sm" onclick="planGo(event,\'gantt\')" style="border-color:#5be5c8;color:#5be5c8">'+t('⊟ TIMELINE')+'</button>'
-   +'<button class="sm" onclick="showResTab(\'development\')" style="border-color:#c8f135;color:#c8f135">'+t('★ TEAM DEVELOPMENT')+'</button>'
-   +'<button class="sm" onclick="exportDashboardPDF()" style="border-color:var(--accent2);color:var(--accent2)">&#8595; PDF</button>'
-   +'</div></div>';
+   +'<div style="flex:1"></div>'
+   +'<button class="sm" onclick="balExportOpen()" title="'+escH(t('Export capacity summary + per-resource utilisation as PDF or HTML'))+'">📄 '+t('EXPORT')+'</button>'
+   +'</div>';
 
   // ── Suppression banner — why some people read 0% / bench ────────
   if(_hiddenProjIds.length){
@@ -13437,6 +13427,105 @@ function renderTimelineResource(body, months, cur){
     setTimeout(function(){ var el=document.getElementById('tl-lane-'+fe); if(el&&el.scrollIntoView) el.scrollIntoView({block:'center'}); },40);
   }
 }
+
+/* ►► TIMELINE-EXPORT ◄◄ The timeline toolbar wired a button to exportTimelinePDF()
+ * that the original monolith never defined (a live "is not defined" throw). Now a
+ * real deliverable on the shared export engine: curated blocks (project × month
+ * allocation grid + resource-conflict list), themed, PDF/HTML. tlx-prefixed. */
+function tlxData(){
+  var months=getMonthRange();
+  var engMonth={};
+  engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
+    engMonth[e.id]={};
+    months.forEach(function(m){
+      engMonth[e.id][m]=allocRows.filter(function(r){return r.engId===e.id;})
+        .reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
+    });
+  });
+  var active=projects.filter(function(p){
+    return allocRows.some(function(r){return r.projectId===p.id&&months.some(function(m){return r.allocs&&r.allocs[m]>0;});});
+  });
+  return {months:months, engMonth:engMonth, active:active};
+}
+function tlxMonthLbl(m){ return m.slice(5,7)+'/'+m.slice(2,4); }
+function tlExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  return [
+    {id:'grid', label:t('Project timeline'), render:function(){
+      var d=tlxData(); var months=d.months;
+      if(!months.length||!d.active.length) return '';
+      var cur=curMonth();
+      var cell=function(v){
+        if(v<=0) return '<td style="border:1px solid var(--border);text-align:center;color:var(--dim)">·</td>';
+        var col=v>1.005?'var(--danger)':(v>=.5?'var(--accent)':'var(--accent2)');
+        return '<td style="border:1px solid var(--border);text-align:center;background:'+col+'22;color:'+col+';font-weight:700;font-size:9px">'+(Math.round(v*100)/100)+'</td>';
+      };
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Project timeline'))+'</h2>';
+      h+='<div style="font-size:10px;color:var(--muted);margin-bottom:10px;'+mono+'">'+escH(t('Total allocated FTE per project per month.'))+'</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="background:var(--surface)">';
+      h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted);min-width:130px">'+escH(t('PROJECT'))+'</th>';
+      months.forEach(function(m){ var isCur=m===cur; h+='<th style="padding:4px;border:1px solid var(--border);'+mono+';font-size:8px;color:'+(isCur?'var(--accent)':'var(--muted)')+'">'+escH(tlxMonthLbl(m))+'</th>'; });
+      h+='</tr></thead><tbody>';
+      d.active.forEach(function(p){
+        var rows=allocRows.filter(function(r){return r.projectId===p.id;});
+        h+='<tr><td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+safeColor(p.color||'var(--accent)')+';margin-right:6px"></span>'+escH(p.name||t('Untitled'))+'</td>';
+        months.forEach(function(m){
+          var v=rows.reduce(function(s,r){return s+(r.allocs&&r.allocs[m]!=null?_allocNum(r.allocs[m]):0);},0);
+          h+=cell(v);
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+      h+='<div style="display:flex;gap:14px;margin-top:8px;font-size:9px;'+mono+'"><span style="color:var(--accent2)">&#9632; partial</span><span style="color:var(--accent)">&#9632; allocated</span><span style="color:var(--danger)">&#9632; conflict &gt;100%</span></div>';
+      return h;
+    }},
+    {id:'conflicts', label:t('Resource conflicts'), render:function(){
+      var d=tlxData(); var months=d.months;
+      var rows=[];
+      engineers.filter(function(e){return !e.vacant;}).forEach(function(e){
+        var over=months.filter(function(m){return d.engMonth[e.id]&&d.engMonth[e.id][m]>1.005;});
+        if(over.length) rows.push({eng:e, over:over});
+      });
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">'+escH(t('Resource conflicts'))+'</h2>';
+      if(!rows.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No over-allocations in this period.'))+'</div>';
+      var h=head+'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('PERSON'),t('MONTHS OVER 100%'),t('PEAK')].forEach(function(c){h+='<th style="text-align:left;padding:5px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      rows.forEach(function(r){
+        var peak=Math.max.apply(null,months.map(function(m){return d.engMonth[r.eng.id][m]||0;}));
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text);font-weight:600">'+escH(r.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--danger)">'+r.over.map(function(m){return escH(tlxMonthLbl(m));}).join(', ')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--danger);font-weight:700">'+Math.round(peak*100)+'%</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for the project timeline (formerly a dead onclick)
+function exportTimelinePDF(){
+  var months=getMonthRange();
+  if(!months.length){ alert(t('Set FROM and TO dates in the header first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'timeline',
+    title:t('Project timeline'),
+    subtitleDefault:teamName+(teamName?' · ':'')+t('{n} month(s)',{n:months.length}),
+    blocks:tlExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Timeline + conflicts'), blocks:['grid','conflicts']},
+      {id:'grid', name:t('Timeline only'), blocks:['grid']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
+}
 /* ◄◄ END: sections/timeline.js ►► */
 
 /*
@@ -14786,6 +14875,7 @@ function renderSkillsTab(){
   h+='<button class="sm primary" onclick="skAddSkillGlobal()">+ ADD SKILL</button>';
   h+='<button class="sm" onclick="srfOpenDictManager()">📖 DICTIONARY</button>';
   h+='<button class="sm" onclick="skManageDomains()">⚙ DOMAINS</button>';
+  h+='<button class="sm" onclick="skillsExportOpen()">📄 EXPORT</button>';
   h+='<button class="sm" onclick="skillsExportCSV()">↓ CSV</button>';
   h+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-left:auto">'+vis.length+'/'+allSkills.length+' skills</span>';
   h+='</div>';
@@ -14909,6 +14999,124 @@ function doExportSkillsCSV(){
   const title=G('res-title-input')?G('res-title-input').value:'Skills';
   a.download=title.replace(/[^a-z0-9]/gi,'_')+'_skills.csv';
   a.click();URL.revokeObjectURL(url);
+}
+
+/* ►► SECTION: SKILLS-EXPORT ◄◄ Skills matrix + SPOF risk on the shared export engine.
+ * Themed, block-picker deliverables (matrix / SPOF risk / individual profiles) that
+ * also feed the global Export door and the Talent review pack — replacing the old
+ * unthemed document.write popup as the primary skills export. skl-prefixed. */
+function sklExportEngs(){
+  return engineers.filter(function(e){return !e.vacant&&!e.planningOnly;});
+}
+function skillsExportBlocks(){
+  var mono='font-family:IBM Plex Mono,monospace';
+  var CAT_COL=getSkillCatCol();
+  var CAT_LABEL=getSkillCatLabel(false);
+  return [
+    {id:'matrix', label:t('Team skills matrix'), render:function(){
+      var engs=sklExportEngs();
+      var allSkillNames=[...new Set(engs.flatMap(function(e){return (e.skills||[]).map(function(s){return s.name;});}))].sort();
+      if(!engs.length||!allSkillNames.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Team skills matrix'))+'</h2>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:10px">';
+      h+='<thead><tr style="background:var(--surface)"><th style="text-align:left;padding:6px 8px;border:1px solid var(--border);min-width:140px;color:var(--muted);'+mono+';font-size:9px">'+escH(t('ENGINEER'))+'</th>';
+      allSkillNames.forEach(function(s){ h+='<th style="padding:4px 6px;border:1px solid var(--border);writing-mode:vertical-lr;transform:rotate(180deg);min-width:26px;font-weight:600;font-size:9px;color:var(--text)">'+escH(s)+'</th>'; });
+      h+='</tr></thead><tbody>';
+      engs.forEach(function(e){
+        var own=new Map((e.skills||[]).map(function(s){return [s.name,s];}));
+        h+='<tr><td style="padding:5px 8px;border:1px solid var(--border);font-weight:600;color:var(--text)">'+escH(e.name)+'<br><span style="font-weight:400;color:var(--muted);font-size:9px">'+escH(e.role||'')+(e.location?' · '+escH(e.location):'')+'</span></td>';
+        allSkillNames.forEach(function(sn){
+          var s=own.get(sn);
+          if(!s){ h+='<td style="border:1px solid var(--border);text-align:center;color:var(--dim)">—</td>'; return; }
+          var col=safeColor(CAT_COL[s.cat]||'var(--accent2)');
+          h+='<td style="border:1px solid var(--border);text-align:center;background:'+col+'1a;color:'+col+';font-weight:700">✓<sup style="font-size:8px">'+(s.level||3)+'</sup></td>';
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+      h+='<div style="display:flex;gap:16px;margin-top:8px;font-size:10px;'+mono+'">';
+      ['crit','diff','mand'].forEach(function(c){ h+='<span style="color:'+safeColor(CAT_COL[c])+'">&#9632; '+escH(CAT_LABEL[c])+'</span>'; });
+      h+='</div>';
+      return h;
+    }},
+    {id:'spof', label:t('Skill risk — single points of failure'), render:function(){
+      var sm=buildSkillMap();
+      var order={crit:0,diff:1,mand:2};
+      var spofs=Object.values(sm).filter(function(s){return s.holders.length===1;})
+        .sort(function(a,b){ return (order[a.cat]==null?3:order[a.cat])-(order[b.cat]==null?3:order[b.cat])||a.name.localeCompare(b.name); });
+      var head='<h2 style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text)">'+escH(t('Skill risk — single points of failure'))+'</h2>';
+      if(!spofs.length) return head+'<div style="font-size:11px;color:var(--muted)">'+escH(t('No single-holder skills — every skill has backup.'))+'</div>';
+      var h=head+'<div style="font-size:10px;color:var(--muted);margin-bottom:10px;'+mono+'">'+escH(t('{n} skill(s) held by exactly one person.',{n:spofs.length}))+'</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--surface)">';
+      [t('SKILL'),t('CATEGORY'),t('DOMAIN'),t('SOLE HOLDER'),t('LEVEL')].forEach(function(c){h+='<th style="text-align:left;padding:6px 8px;border:1px solid var(--border);'+mono+';font-size:9px;color:var(--muted)">'+escH(c)+'</th>';});
+      h+='</tr></thead><tbody>';
+      spofs.forEach(function(s){
+        var col=safeColor(CAT_COL[s.cat]||'var(--muted)');
+        var holder=s.holders[0];
+        h+='<tr>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:600;color:var(--text)">'+escH(s.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:'+col+';font-weight:600">'+escH(CAT_LABEL[s.cat]||s.cat)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--muted)">'+escH(s.domain||'General')+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);color:var(--text)">'+escH(holder.eng.name)+'</td>'
+          +'<td style="padding:5px 8px;border:1px solid var(--border);'+mono+';color:var(--accent2)">L'+(holder.level||3)+'</td>'
+          +'</tr>';
+      });
+      h+='</tbody></table>';
+      return h;
+    }},
+    {id:'profiles', label:t('Individual skill profiles'), render:function(){
+      var engs=sklExportEngs();
+      if(!engs.length) return '';
+      var h='<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(t('Individual skill profiles'))+'</h2>';
+      engs.forEach(function(e){
+        // union of the managed domain list AND any domain actually present on this
+        // person's skills, so a skill in an unlisted/orphan domain still shows
+        var doms=[''].concat(skillDomains).concat((e.skills||[]).map(function(s){return s.domain||'';}));
+        doms=doms.filter(function(v,i,a){return a.indexOf(v)===i;});
+        var body='';
+        doms.forEach(function(dom){
+          var ds=(e.skills||[]).filter(function(s){return (s.domain||'')===dom;});
+          if(!ds.length) return;
+          body+='<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 3px;padding-top:6px;border-top:1px solid var(--border)">'+escH(dom||'General')+'</div>';
+          ['crit','diff','mand'].forEach(function(cat){
+            var cs=ds.filter(function(s){return s.cat===cat;});
+            if(!cs.length) return;
+            var col=safeColor(CAT_COL[cat]);
+            body+='<div style="margin-bottom:6px"><div style="font-size:9px;font-weight:700;color:'+col+';text-transform:uppercase;margin-bottom:3px">'+escH(CAT_LABEL[cat])+'</div>';
+            body+='<div style="display:flex;flex-wrap:wrap;gap:4px">'+cs.map(function(s){return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+col+'1a;color:'+col+';border:1px solid '+col+'55">'+escH(s.name)+'<sup style="font-size:8px;margin-left:2px">L'+(s.level||3)+'</sup></span>';}).join('')+'</div></div>';
+          });
+        });
+        if(!body) return;
+        h+='<div style="border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+escH(e.name)+'</div>'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:4px">'+escH(e.role||'')+(e.location?' · '+escH(e.location):'')+'</div>'
+          +body+'</div>';
+      });
+      return h;
+    }},
+  ];
+}
+// opens the shared export builder for Skills / SPOF
+function skillsExportOpen(){
+  if(!engineers.some(function(e){return (e.skills||[]).length;})){ alert(t('Add skills to at least one person first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'skills',
+    title:t('Skills & SPOF'),
+    subtitleDefault:teamName,
+    blocks:skillsExportBlocks(),
+    ctx:{},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full report'), blocks:['matrix','spof','profiles']},
+      {id:'matrix', name:t('Matrix only'), blocks:['matrix']},
+      {id:'risk', name:t('Risk only'), blocks:['spof']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 /* ◄◄ END: sections/skills.js ►► */
 
@@ -20539,7 +20747,9 @@ function renderPortfolioAnalytics(){
     +'<span style="font-size:10px;color:var(--muted);font-family:IBM Plex Mono,monospace">'
     +(lens==='economics' ? t('value · NPV · channel profit · decision quality')
         : (months.length?t('cost over {n} month(s) · FROM/TO period',{n:months.length}):t('set a FROM/TO period for cost')))
-    +'</span><div style="flex:1"></div>'+pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
+    +'</span><div style="flex:1"></div>'
+    +'<button class="sm" onclick="pfExportOpen()" title="'+escH(t('Export the portfolio analytics as a PDF or standalone HTML'))+'">📄 '+t('EXPORT')+'</button>'
+    +pfLensToggle()+analyticsArchivedToggle('renderPortfolioAnalytics')+'</div>';
   if(!projects.length){ body.innerHTML=h+pfEmpty(t('No projects yet — add projects on the matrix to see analytics.'))+'</div>'; return; }
   if(lens==='economics'){
     h+=(typeof ecBody==='function') ? ecBody(ecDataset()) : pfEmpty(t('Economics view unavailable.'));
@@ -20557,6 +20767,43 @@ function renderPortfolioAnalytics(){
   }
   h+='</div>';
   body.innerHTML=h;
+}
+
+/* ►► Portfolio analytics on the shared export engine. PDF/HTML only: the charts are
+ * SVG strings whose axis/label fills use var(--…), which resolve in a live print
+ * document but NOT in the PNG/SVG raster path (foreignObject) — so no image format. */
+function pfExportBlocks(){
+  var wrap=function(title,inner){
+    return '<h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text)">'+escH(title)+'</h2>'+inner;
+  };
+  return [
+    {id:'scorecard', label:t('Portfolio scorecard'), render:function(ctx){ return wrap(t('Portfolio scorecard'), pfScorecard(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'roi',       label:t('Value vs cost — ROI'), render:function(ctx){ return wrap(t('Value vs cost — ROI'), pfRoiChart(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'funnel',    label:t('Delivery pipeline — gates'), render:function(ctx){ return wrap(t('Delivery pipeline — gates'), pfGateFunnel(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'sectors',   label:t('Portfolio mix — sectors'), render:function(ctx){ return wrap(t('Portfolio mix — sectors'), pfSectorMix(ctx&&ctx.ds||pfBuildDataset())); }},
+    {id:'risk',      label:t('Risk vs value'), render:function(ctx){ return wrap(t('Risk vs value'), pfRiskValue(ctx&&ctx.ds||pfBuildDataset())); }},
+  ];
+}
+// opens the shared export builder for Portfolio analytics
+function pfExportOpen(){
+  if(!projects.length){ alert(t('Add projects first.')); return; }
+  var teamName=(G('res-title-input')?G('res-title-input').value:'')||'';
+  exportOpenBuilder({
+    deliverableId:'portfolio',
+    title:t('Portfolio analytics'),
+    subtitleDefault:teamName,
+    blocks:pfExportBlocks(),
+    ctx:{ds:pfBuildDataset()},
+    orientation:'landscape', pageSize:'A3', rasterWidth:1600,
+    builtinTemplates:[
+      {id:'full', name:t('Full'), blocks:['scorecard','roi','funnel','sectors','risk']},
+      {id:'exec', name:t('Scorecard + ROI'), blocks:['scorecard','roi']},
+    ],
+    formats:[
+      {id:'pdf', label:t('PDF (print)')},
+      {id:'html', label:t('HTML (standalone)')},
+    ],
+  });
 }
 
 // Section wrapper (title + hint + body card).
@@ -30790,276 +31037,6 @@ function archView(pid){
 }
 /* ◄◄ END: sections/archive.js ►► */
 
-/* ►► SECTION: TOUR ◄◄ Guided tour, embedded in the Help panel
- *
- * A hub-and-spoke walkthrough: a MENU lists the app's domains (generated from
- * RAIL_DOMAINS so new views auto-appear and the tour never drifts); picking one
- * runs a short per-section walkthrough that drives railGo() to the real view and
- * spotlights its rail entry, then returns to the menu so the user can pick another.
- *
- * All identifiers are tour-prefixed (flat-bundle no-duplicate-declaration rule).
- * Themed with var(--…) and localized via t(), like the rest of the shell.
- *
- * Functions defined in this file:
- *   tourStart        — open the hub menu (entry point; Help panel + `?`-less launcher)
- *   tourStop         — close the tour and restore rail state
- *   tourShowMenu     — render the section-picker hub
- *   tourRunTrack     — begin a named walkthrough (basics | a domain id)
- *   tourNext/tourPrev — step navigation
- *   tourStep         — render the current step (spotlight + tooltip)
- *   tourDomainTrack  — build the step list for one RAIL_DOMAINS domain
- *
- * Deliberately NOT persisted and NOT part of app state — it's pure UI help.
- */
-
-/* ── Authored narration for the key views (others get a generated stub) ────────
-   Keyed by rail view id. Kept light; the menu/step scaffold is data-driven, this
-   copy is the actual value. Add a view id here to upgrade its stub to full copy. */
-var TOUR_COPY = {
-  matrix: { icon:'📊', body:
-    'Projects are plotted as bubbles: the <strong>X axis</strong> is effort/complexity, '
-    +'the <strong>Y axis</strong> is impact — switchable to <strong>visibility</strong> or '
-    +'<strong>enabler</strong> from the toolbar. <strong>Click</strong> a bubble to select, '
-    +'<strong>drag</strong> to reposition, <strong>scroll</strong> to zoom, drag empty space to pan. '
-    +'This is the portfolio front door — everything else describes the people and money behind it.' },
-  roster: { icon:'👥', body:
-    'Your team list. Add engineers and set monthly cost, group and role. '
-    +'Open any card’s <strong>ID Card</strong> for the full profile — photo, skills, '
-    +'nine-box placement, compa-ratio, succession and engagement cadence. '
-    +'Everyone here flows into cost, skills, talent and analytics.' },
-  plan: { icon:'📅', body:
-    'Allocate engineers to projects month by month (0–100% FTE) in <strong>Grid</strong> mode — a cell can '
-    +'carry a status (<code>M</code> medical · <code>P</code> PTO · <code>R</code> resigned) that changes how it '
-    +'costs; this grid is the single source every cost number is summed from. The mode bar also gives you '
-    +'<strong>Gantt</strong> (project bars over time), <strong>Ribbon</strong> (per-person capacity crossover) '
-    +'and <strong>Capacity</strong> (schedule forward demand against free bench) — all on the same allocation data.' },
-  dashboard: { icon:'⚖', body:
-    'The capacity cockpit: team supply vs demand, a monthly <strong>demand-vs-capacity</strong> chart, '
-    +'capacity balance by function, per-engineer utilisation and over/under-allocation alerts. '
-    +'Overloaded someone? A <strong>suggested swap</strong> and <strong>Find replacements</strong> '
-    +'surface available substitutes; the availability panel shows who is free and what they can do.' },
-  skills: { icon:'🛡', body:
-    'Your skill inventory in two lenses. <strong>Matrix</strong> is the dictionary — every skill '
-    +'with its category, domain, holders and levels, plus rename / merge / split. <strong>Risk</strong> '
-    +'surfaces <strong>Single Points of Failure</strong> (skills held by one person), coverage and '
-    +'knowledge-transfer plans — where fragility becomes visible before someone resigns.' },
-  placement: { icon:'⊞', body:
-    'Calibrate your team on two grids, switchable by the lens toggle. <strong>Nine-box</strong> is '
-    +'the classic <strong>Performance × Potential</strong> grid — placements feed development '
-    +'priorities, salary signals and the org-chart KPI panel, and are tracked per year so you can see '
-    +'a person’s trajectory over time. <strong>DISC</strong> plots behavioural style across four '
-    +'quadrants. Both feed the talent story views in People analytics.' },
-  exec: { icon:'◈', body:
-    'A one-page, read-only cockpit that crosses every layer — portfolio value (NPV / PI), cost & '
-    +'spend map, capacity, talent risk and channel concentration — with a <strong>week planner</strong> '
-    +'for the touchpoints and to-dos you’ve pinned. Start here when you want the whole picture at a glance.' },
-};
-
-/* ── Track: the "basics" starter (concept-level, before the section tours) ── */
-function tourBasicsTrack(){
-  return [
-    { kind:'center', tag:t('Welcome'), title:'👋 '+t('Welcome to Project Matrix'), body:
-        t('Your R&D portfolio tool — it connects projects, people, skills and money in one place. '
-        +'This quick tour explains the layout, then lets you dive into whichever section you like.')
-        +'<br><br>'+t('Use <strong>Next</strong> / <strong>Back</strong>, or the <code>→</code> / <code>←</code> arrow keys.') },
-    { kind:'rail', tag:t('Navigation'), title:'☰ '+t('The navigation rail'), body:
-        t('Everything lives on this left rail, grouped into domains — <strong>Team</strong>, '
-        +'<strong>Offer Mngt</strong>, <strong>Plan</strong>, <strong>Skills</strong>, <strong>Talent</strong> and '
-        +'<strong>Insights</strong>. Hover to expand it; click any page to open it. The foot holds actions: '
-        +'export, backup, AI advisor, settings and this help.') },
-    { kind:'view', view:'matrix', tag:t('Start'), title:(TOUR_COPY.matrix.icon)+' '+t('The portfolio matrix'), body:TOUR_COPY.matrix.body },
-    { kind:'center', tag:t('Your turn'), title:'✓ '+t('Now pick a section'), body:
-        t('That’s the shape of it. Back on the menu, choose any domain to walk through its pages — '
-        +'or just close this and explore. You can reopen the tour any time from <strong>Help</strong>.') },
-  ];
-}
-
-/* ── Track: one RAIL_DOMAINS domain → intro + a step per view ──────────────── */
-function tourDomainTrack(domId){
-  var dom=null;
-  for(var i=0;i<RAIL_DOMAINS.length;i++) if(RAIL_DOMAINS[i].id===domId) dom=RAIL_DOMAINS[i];
-  if(!dom) return [];
-  var steps=[ { kind:'center', tag:t('Section'), title:dom.name, body:
-      t('{n} page(s) in this section. We’ll open each one so you can see it live.',{n:dom.views.length}) } ];
-  dom.views.forEach(function(v){
-    var copy=TOUR_COPY[v.id];
-    steps.push({
-      kind:'view', view:v.id, tag:dom.name,
-      title:(copy?copy.icon+' ':'')+v.label,
-      body: copy ? copy.body
-                 : t('Opens <strong>{label}</strong>. Explore it now, or press Next to continue.',{label:v.label})
-    });
-  });
-  steps.push({ kind:'menu-end', tag:t('Done'), title:'✓ '+t('Section complete'), body:
-      t('Back to the menu — pick another section, or close the tour.') });
-  return steps;
-}
-
-/* ── State ─────────────────────────────────────────────────────────────────── */
-var _tourActive=false;
-var _tourSteps=[];        // current track
-var _tourIdx=0;
-var _tourRailPinPrev=null; // rail pin state to restore on close
-
-/* ── Build the tour DOM once (lazily; overlays sit after {{JS}} so build at use) ─ */
-function tourBuildDOM(){
-  if(G('tour-pop')) return;
-  var ov=document.createElement('div'); ov.id='tour-overlay';
-  var sp=document.createElement('div'); sp.id='tour-spot';
-  var pop=document.createElement('div'); pop.id='tour-pop';
-  document.body.appendChild(ov);
-  document.body.appendChild(sp);
-  document.body.appendChild(pop);
-}
-
-/* ── Entry: open the hub menu ────────────────────────────────────────────────── */
-function tourStart(){
-  if(typeof closeHelp==='function') closeHelp();   // launched from Help; get it out of the way
-  tourBuildDOM();
-  _tourActive=true;
-  // Pin the rail open so its page entries are visible to spotlight; remember prior state.
-  if(typeof railPinned!=='undefined'){
-    _tourRailPinPrev=railPinned;
-    if(!railPinned && typeof railTogglePin==='function') railTogglePin();
-  }
-  G('tour-overlay').classList.add('show');
-  tourShowMenu();
-}
-
-function tourStop(){
-  _tourActive=false;
-  ['tour-overlay','tour-spot','tour-pop'].forEach(function(id){ var e=G(id); if(e) e.classList.remove('show'); });
-  var sp=G('tour-spot'); if(sp) sp.style.display='none';
-  // Restore the rail's pre-tour pin state.
-  if(_tourRailPinPrev===false && typeof railPinned!=='undefined' && railPinned && typeof railTogglePin==='function') railTogglePin();
-  _tourRailPinPrev=null;
-}
-
-/* ── Hub: the section picker, generated from RAIL_DOMAINS ─────────────────────── */
-function tourShowMenu(){
-  _tourSteps=[]; _tourIdx=0;
-  var sp=G('tour-spot'); if(sp) sp.style.display='none';
-  var ov=G('tour-overlay'); if(ov) ov.classList.add('show');   // dim backdrop behind the menu card
-  var cards=RAIL_DOMAINS.map(function(d){
-    var pages=d.views.map(function(v){return escH(v.label);}).join(' · ');
-    return '<button class="tour-card" onclick="tourRunTrack(\''+d.id+'\')">'
-         + '<span class="tour-card-ico">'+d.ico+'</span>'
-         + '<span class="tour-card-body"><span class="tour-card-name mono">'+escH(d.name)+'</span>'
-         + '<span class="tour-card-sub">'+pages+'</span></span></button>';
-  }).join('');
-  var pop=G('tour-pop');
-  pop.className='tour-menu';
-  pop.innerHTML=
-      '<div class="tour-tag mono">'+escH(t('Guided tour'))+'</div>'
-    + '<div class="tour-title">'+escH(t('Where would you like to start?'))+'</div>'
-    + '<div class="tour-lead">'+escH(t('Take the quick basics tour, or jump straight into any section. You can come back to this menu any time.'))+'</div>'
-    + '<button class="tour-start-basics" onclick="tourRunTrack(\'basics\')">▶ '+escH(t('Start here — the basics'))+'</button>'
-    + '<div class="tour-cards">'+cards+'</div>'
-    + '<div class="tour-menu-foot"><button class="tour-btn" onclick="tourStop()">'+escH(t('Close'))+'</button></div>';
-  pop.classList.add('show');
-  // center it
-  pop.style.left=''; pop.style.top='';
-}
-
-/* ── Run a track by name: 'basics' or a domain id ────────────────────────────── */
-function tourRunTrack(name){
-  _tourSteps = (name==='basics') ? tourBasicsTrack() : tourDomainTrack(name);
-  _tourIdx=0;
-  if(!_tourSteps.length){ tourShowMenu(); return; }
-  tourStep();
-}
-
-function tourNext(){
-  if(_tourIdx>=_tourSteps.length-1){ tourShowMenu(); return; }  // end of track → hub
-  _tourIdx++; tourStep();
-}
-function tourPrev(){ if(_tourIdx>0){ _tourIdx--; tourStep(); } }
-
-/* ── Render the current step ─────────────────────────────────────────────────── */
-function tourStep(){
-  var step=_tourSteps[_tourIdx];
-  if(!step){ tourShowMenu(); return; }
-
-  // Drive the app to the right surface for 'view' steps, then spotlight the rail entry.
-  var anchor=null;
-  if(step.kind==='view' && step.view && typeof railGo==='function'){
-    try{ railGo(null, step.view); }catch(e){}
-    anchor=document.querySelector('.rn-sub[data-view="'+step.view+'"]');
-  } else if(step.kind==='rail'){
-    anchor=G('railnav');
-  }
-
-  var last=(_tourIdx===_tourSteps.length-1);
-  var pop=G('tour-pop');
-  pop.className='tour-step';
-  pop.innerHTML=
-      '<div class="tour-tag mono">'+escH(step.tag||'')+'</div>'
-    + '<div class="tour-title">'+escH(step.title||'')+'</div>'
-    + '<div class="tour-body">'+(step.body||'')+'</div>'
-    + '<div class="tour-foot">'
-    +   '<div class="tour-prog mono">'+escH(t('Step {a} of {b}',{a:_tourIdx+1,b:_tourSteps.length}))+'</div>'
-    +   '<button class="tour-btn" onclick="tourShowMenu()">'+escH(t('Menu'))+'</button>'
-    +   (_tourIdx>0?'<button class="tour-btn" onclick="tourPrev()">'+escH(t('Back'))+'</button>':'')
-    +   '<button class="tour-btn tour-primary" onclick="tourNext()">'+escH(last?('✓ '+t('Menu')):(t('Next')+' →'))+'</button>'
-    + '</div>';
-  pop.classList.add('show');
-  tourPlaceSpot(anchor);
-  tourPlacePop(anchor, step.kind);
-}
-
-/* ── Spotlight the anchor element (or a full dim backdrop for center steps) ─────
-   Exactly one dims the screen: the spot's box-shadow (anchored) OR the overlay
-   (center/menu). Showing both would dim the highlighted item too. */
-function tourPlaceSpot(anchor){
-  var sp=G('tour-spot'), ov=G('tour-overlay'); if(!sp) return;
-  if(!anchor){ sp.style.display='none'; if(ov) ov.classList.add('show'); return; }
-  if(ov) ov.classList.remove('show');
-  var r=anchor.getBoundingClientRect();
-  var pad=6;
-  sp.style.display='block';
-  sp.style.left=(r.left-pad)+'px';
-  sp.style.top=(r.top-pad)+'px';
-  sp.style.width=(r.width+pad*2)+'px';
-  sp.style.height=(r.height+pad*2)+'px';
-}
-
-/* ── Position the popup relative to the anchor (right of the rail), else center ─ */
-function tourPlacePop(anchor, kind){
-  var pop=G('tour-pop');
-  var vw=window.innerWidth, vh=window.innerHeight;
-  var pw=pop.offsetWidth||360, ph=pop.offsetHeight||240;
-  var gap=16;
-  if(!anchor){ pop.style.left=Math.round((vw-pw)/2)+'px'; pop.style.top=Math.round((vh-ph)/2)+'px'; return; }
-  var r=anchor.getBoundingClientRect();
-  var left=r.right+gap, top=r.top+r.height/2-ph/2;
-  if(left+pw>vw-16) left=Math.max(16, r.left-pw-gap);      // fall back to the left side
-  top=Math.max(16, Math.min(vh-ph-16, top));
-  pop.style.left=Math.round(left)+'px';
-  pop.style.top=Math.round(top)+'px';
-}
-
-/* ── Keyboard: capture arrows/esc while active so app shortcuts don't fire ────── */
-document.addEventListener('keydown', function(e){
-  if(!_tourActive) return;
-  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); tourStop(); return; }
-  // Menu state: let Escape close; ignore arrows.
-  if(G('tour-pop') && G('tour-pop').classList.contains('tour-menu')) return;
-  if(e.key==='ArrowRight'||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); tourNext(); }
-  else if(e.key==='ArrowLeft'){ e.preventDefault(); e.stopPropagation(); tourPrev(); }
-  else { e.stopPropagation(); }   // keep the tour modal — no app shortcuts underneath
-}, true);
-
-/* Keep the spotlight/popup glued to the rail item if the viewport resizes mid-tour. */
-window.addEventListener('resize', function(){
-  if(!_tourActive) return;
-  var pop=G('tour-pop'); if(!pop||pop.classList.contains('tour-menu')) return;
-  var step=_tourSteps[_tourIdx]; if(!step) return;
-  var anchor=(step.kind==='view'&&step.view)?document.querySelector('.rn-sub[data-view="'+step.view+'"]')
-            :(step.kind==='rail'?G('railnav'):null);
-  tourPlaceSpot(anchor); tourPlacePop(anchor, step.kind);
-});
-/* ◄◄ END: sections/tour.js ►► */
-
 /* ►► SECTION: EXPORT-PACKS ◄◄ The global "Export" door + cross-view packs.
  *
  * Two things live here, both sitting ON TOP of the export engine
@@ -31126,6 +31103,7 @@ function packTalentOpen(){
   var blocks=[]
     .concat(packBlocksFrom('nb',t('Nine-box'),nbExportBlocks()))
     .concat(packBlocksFrom('disc','DISC',discExportBlocks()))
+    .concat(packBlocksFrom('skl',t('Skills'),skillsExportBlocks()))
     .concat([packProfileCardsBlock()]);
   exportOpenBuilder({
     deliverableId:'pack-talent',
@@ -31135,7 +31113,7 @@ function packTalentOpen(){
     ctx:{},
     orientation:'landscape', pageSize:'A3', rasterWidth:1600,
     builtinTemplates:[
-      {id:'full', name:t('Full review'), blocks:['nb.grid','nb.distribution','disc.quadrants','disc.mix','profiles.cards']},
+      {id:'full', name:t('Full review'), blocks:['nb.grid','nb.distribution','disc.quadrants','disc.mix','skl.spof','profiles.cards']},
       {id:'matrices', name:t('Matrices only'), blocks:['nb.grid','disc.quadrants']},
       {id:'calibration', name:t('Calibration'), blocks:['nb.grid','nb.distribution','nb.unplaced']},
     ],
@@ -31257,6 +31235,24 @@ function exportDeliverables(){
     {id:'profiles-all', label:t('Full profiles'), domain:t('TALENT'),
      hint:t('One full page per person.'),
      ready:!!anyPeople, missing:t('Add people first.'), open:profilesExportAllOpen},
+
+    {id:'skills', label:t('Skills & SPOF'), domain:t('TEAM'),
+     hint:t('Team skills matrix, single-point-of-failure risk and individual skill profiles.'),
+     ready:!!engineers.some(function(e){return (e.skills||[]).length;}),
+     missing:t('Add skills to at least one person first.'), open:skillsExportOpen},
+
+    {id:'portfolio', label:t('Portfolio analytics'), domain:t('INSIGHTS'),
+     hint:t('Portfolio scorecard, ROI scatter, gate funnel, sector mix and risk-vs-value.'),
+     ready:!!projects.length, missing:t('Add projects first.'), open:pfExportOpen},
+
+    {id:'balancer', label:t('Resource balancer'), domain:t('PLAN'),
+     hint:t('Capacity summary, per-resource utilisation and over-allocation conflicts over the FROM/TO period.'),
+     ready:!!(projects.length&&getMonthRange().length),
+     missing:t('Add projects and set a FROM/TO period first.'), open:balExportOpen},
+
+    {id:'timeline', label:t('Project timeline'), domain:t('PLAN'),
+     hint:t('Project × month allocation grid plus the resource-conflict list.'),
+     ready:!!getMonthRange().length, missing:t('Set a FROM/TO period first.'), open:exportTimelinePDF},
   ];
 }
 
@@ -31664,7 +31660,7 @@ railInit();   // render the persistent nav rail + land on the initial view
 <div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
   <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:8px">SELECT MILESTONE ICON</div>
   <div class="ms-icon-sel" id="icon-picker-grid" style="max-width:260px"></div>
-  <button class="sm" style="margin-top:8px;width:100%" onclick="closeIconPicker()">CLOSE</button>
+  <button class="sm" style="margin-top:8px;width:100%" onclick="this.closest('#icon-picker').style.display='none'">CLOSE</button>
 </div>
 
 <!-- SNAPSHOT OVERLAY -->
@@ -32103,5 +32099,4 @@ railInit();   // render the persistent nav rail + land on the initial view
   <!-- (Project brief is now a deliverable on the shared Export engine — reached from
        the Export door, project scope chosen via per-project toggles in the builder.
        Its old #brief-overlay rail view was removed in Track B #7.) -->
-  <script src="matrix-tour.js"></script>
 </body>

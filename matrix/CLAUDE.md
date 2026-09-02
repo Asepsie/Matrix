@@ -5,11 +5,10 @@ A single-file HTML R&D portfolio management tool that outputs dist/matrix.html.
 Source lives in src/. Build with: node build.js
 
 ## Architecture context
-See **ARCHITECTURE.md** for non-obvious design context (read it before touching
-data/persistence). It currently covers data & persistence — the three storage
-layers, the per-dataset `eng.id` identity gotcha, and the restore invariant.
-Append a new section there whenever you learn something non-obvious about another
-area.
+Read **ARCHITECTURE.md** first — a short, distilled set of the load-bearing, non-obvious
+invariants (bundle/scope model, the innerHTML + escH/safeColor render model, persistence &
+uid identity, lifecycle capacity suppression, collab, the export engine, and the test/ship
+gate). Forward work is in **BACKLOG.md**. Keep both lean.
 
 ## Module map (read the relevant file, not the whole project)
 
@@ -30,31 +29,36 @@ area.
 | Channel mix / go-to-market synoptic | src/sections/channels.js (+ ARCHITECTURE.md) |
 | Portfolio economics (now the "Economics" lens of Portfolio analytics) | src/sections/econ.js (`ecBody`) + portfolio.js lens toggle (+ ARCHITECTURE.md) |
 | Executive summary (one-page cockpit) | src/sections/exec.js (+ ARCHITECTURE.md) |
-| Project pipeline / intake & feasibility (candidate ranking, budget vs capacity frontier) | src/sections/pipeline.js (+ ARCHITECTURE.md › Pipeline board; **PIPELINE-PLAN.md** for the running TODO) |
+| Project pipeline / intake & feasibility (candidate ranking, budget vs capacity frontier) | src/sections/pipeline.js |
 | Project lifecycle (fund/hold/kill/maintenance/withdraw/EoL; capacity suppression) | src/core/globals.js (PROJECT_LIFECYCLE) + src/core/helpers.js (accessors, projSetLifecycle) (+ ARCHITECTURE.md › Project lifecycle) |
-| Export deliverables (PDF/print, drag-drop block picker, templates, theme) | src/core/export.js (+ ARCHITECTURE.md › Export engine, matrix/OUTPUT-LAYER-PLAN.md) |
+| Export deliverables (PDF/print, drag-drop block picker, templates, theme) | src/core/export.js + src/sections/packs.js (global Export door = `exportDeliverables()`) (+ ARCHITECTURE.md › Export engine) |
 | Talent engagement planner (cadence/touchpoints) | src/sections/engagement.js (+ ARCHITECTURE.md) |
 | Change org chart rendering | src/sections/org.js |
 | Change nine-box logic | src/sections/ninebox.js |
 | Fix ID card modal (engineer) | src/sections/idcard.js |
 | Add a tab | src/sections/nav.js + new src/sections/mytab.js |
 | Change CSS | src/styles/*.css (don't touch dist/) |
-| Localization / translate a string (EN/FR/ZH) | src/core/i18n.js + **I18N.md** (status, how-to, TODO) |
-| Guided tour (hub menu + spotlight walkthrough, in Help) | src/sections/tour.js, src/styles/tour.css (+ ARCHITECTURE.md › Guided tour) |
-| Personal Home (customizable widget grid + cross-domain Action Queue) | src/sections/home.js, src/styles/home.css (+ ARCHITECTURE.md › Home; HOME-PLAN.md for the original spec/history) |
+| Localization / translate a string (EN/FR/ZH) | src/core/i18n.js (status & remaining work in BACKLOG.md) |
+| Personal Home (customizable widget grid + cross-domain Action Queue) | src/sections/home.js, src/styles/home.css |
 
-## Build
-node build.js → dist/matrix.html
-node --test tests/*.test.js → run unit tests
+## Build & ship gate
+```
+node build.js     → dist/matrix.html
+npm test          → unit tests (pure engine functions)
+npm run smoke     → real-browser smoke net (tests/smoke.mjs)
+npm run verify    → build + unit + smoke = "can this ship?"  ← run before calling anything done
+```
+A green `node build.js` only PROVES the bundle parses — it does NOT prove it runs (see
+ARCHITECTURE.md › bundle model). **`npm run verify` is the gate.**
 
 ## Full-app smoke test
-After the Track B nav-simplification work, **SMOKE-TEST.md** is a self-contained
-checklist (build/serve/seed + click-through of every merged view) to verify the app
-end-to-end in a fresh session. Run it in-browser over localhost (file:// won't work in
-the pane). Current rail = 17 views across HOME/PORTFOLIO/PLAN/PEOPLE/REVIEW + 7 utilities
-(Nine-box + DISC are merged into one **Talent placement** view with a Nine-box|DISC lens
-toggle — `renderTalentPlacement`/`tpSetLens`/`tpGo` in ninebox.js; lens is remember-last,
-`_tpLens` persisted in rail prefs).
+`npm run smoke` (tests/smoke.mjs) replaces the old manual SMOKE-TEST.md checklist: it boots the
+built app in your installed Chrome/Edge (via puppeteer-core, no download), seeds data, and asserts
+every rail view renders, **every wired handler resolves to a real function** (catches the dead
+`onclick` class), and every ready export opens. Current rail = 17 views across
+HOME/PORTFOLIO/PLAN/PEOPLE/REVIEW + utilities (Nine-box + DISC are merged into one **Talent
+placement** view with a Nine-box|DISC lens toggle — `renderTalentPlacement`/`tpSetLens`/`tpGo` in
+ninebox.js; lens persisted in rail prefs).
 
 ## Critical invariants (checked by build.js)
 1. No </script> inside JS strings — split as '<scr'+'ipt>'

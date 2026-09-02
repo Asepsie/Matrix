@@ -56,13 +56,6 @@
 <!-- HELP OVERLAY -->
 <div id="help-overlay">
   <div id="help-box">
-    <button id="help-tour-launch" onclick="tourStart()">
-      <span class="htl-play">▶</span>
-      <span>
-        <span class="htl-t" data-i18n="Take a guided tour">Take a guided tour</span>
-        <span class="htl-s" data-i18n="A 3-minute walkthrough — then pick any section to explore in depth.">A 3-minute walkthrough — then pick any section to explore in depth.</span>
-      </span>
-    </button>
     <h2 data-i18n="⌨ KEYBOARD SHORTCUTS">⌨ KEYBOARD SHORTCUTS</h2>
     <div style="background:rgba(200,241,53,.06);border:1px solid rgba(200,241,53,.12);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
       <strong style="color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:10px" data-i18n="WHAT IS PROJECT MATRIX?">WHAT IS PROJECT MATRIX?</strong><br>
@@ -717,7 +710,7 @@
 <div id="icon-picker" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;z-index:700;box-shadow:0 8px 24px rgba(0,0,0,.7)">
   <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:8px">SELECT MILESTONE ICON</div>
   <div class="ms-icon-sel" id="icon-picker-grid" style="max-width:260px"></div>
-  <button class="sm" style="margin-top:8px;width:100%" onclick="closeIconPicker()">CLOSE</button>
+  <button class="sm" style="margin-top:8px;width:100%" onclick="this.closest('#icon-picker').style.display='none'">CLOSE</button>
 </div>
 
 <!-- SNAPSHOT OVERLAY -->
@@ -1156,5 +1149,4 @@
   <!-- (Project brief is now a deliverable on the shared Export engine — reached from
        the Export door, project scope chosen via per-project toggles in the builder.
        Its old #brief-overlay rail view was removed in Track B #7.) -->
-  <script src="matrix-tour.js"></script>
 </body>

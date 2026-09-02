@@ -20,7 +20,7 @@ export function renderRosterTab(){
     <button class="add-row-btn" onclick="addPlanningResource()" title="${t('Adds a planning-only resource — visible in planning but excluded from all calculations, dashboards, and profiles')}" style="border-color:var(--accent2);color:var(--accent2)">${t('+ PLANNING RESOURCE')}</button>
     <span id="eng-add-hint" style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted)">${t('click a group to target it')}</span>
     <div style="width:1px;background:var(--border);height:16px"></div>
-    <button class="add-row-btn" onclick="exportSkillsPDF()" style="border-color:var(--accent);color:var(--accent)">${t('↓ SKILLS PDF')}</button>
+    <button class="add-row-btn" onclick="skillsExportOpen()" style="border-color:var(--accent);color:var(--accent)">${t('↓ SKILLS EXPORT')}</button>
     <button class="add-row-btn" onclick="exportRoster()">${t('↓ ROSTER')}</button>
     <button class="add-row-btn" onclick="importRoster()">${t('↑ ROSTER')}</button>
     <span class="roster-saved" id="roster-save-ind">${t('✓ SAVED')}</span>
@@ -103,7 +103,7 @@ export function addPlanningResource(){
   });
   if(gid){ var g=engGroups.find(function(g){return g.id===gid;}); if(g)g.collapsed=false; }
   saveState();
-  renderRoster();
+  renderRosterTab();
 }
 
 /* ►► SECTION: ROSTER-AUTOSAVE ◄◄ Roster auto-save debounce */
