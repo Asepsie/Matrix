@@ -5,8 +5,6 @@
  *   _buildCostMaps     — computes project cost maps with optional engineer/project filters
  *   renderResDashboard — renders the Resource Balancer: capacity supply/demand, availability, utilisation, over-allocation & rebalancing
  *   setEngDashGroup    — sets the engineer utilisation group-by mode and re-renders
- *   exportDashboardPDF — switches to the dashboard tab (if needed) then triggers PDF export
- *   _doExportDashboardPDF — builds and opens the print-ready dashboard HTML in a new window
  *   transferPlanCosts  — transfers resource plan costs to each project's planCost field
  *   showDashReplacements — shows/hides the replacement-candidate panel for an overloaded engineer
  *   toggleDashSector   — toggles a collapsible cost-by-project sector row
@@ -1008,93 +1006,6 @@ function _balResourcing(proj, months){
 
 // Sets the engineer utilisation group-by mode and re-renders the dashboard.
 export function setEngDashGroup(by){ engDashGroupBy=by; renderResDashboard(); }
-
-/* ►► SECTION: DASH-EXPORT ◄◄ Dashboard PDF export */
-// switches to the dashboard tab (if needed) then triggers PDF export
-export function exportDashboardPDF(){
-  var wasOnDashboard=(resActiveTab==='dashboard');
-  if(!wasOnDashboard){
-    showResTab('dashboard');
-    setTimeout(function(){_doExportDashboardPDF();},120);
-  } else {
-    _doExportDashboardPDF();
-  }
-}
-
-// builds and opens the print-ready dashboard HTML in a new window
-export function _doExportDashboardPDF(){
-  var body=G('res-body');
-  if(!body||!body.innerHTML.trim()){
-    alert('No dashboard content. Set FROM and TO dates first, then open the Dashboard tab.');
-    return;
-  }
-
-  var content=body.innerHTML;
-  var planName=(G('res-title-input')?G('res-title-input').value:'Resource Plan');
-  // The balancer is per-project now — name the selected project in the title/subtitle.
-  var balProj=(typeof projects!=='undefined')?projects.find(function(p){return p.id===_balProjId;}):null;
-  var projName=balProj?(balProj.name||'Untitled'):'';
-  var title=planName+' — Resource Balancer'+(projName?(' · '+projName):'');
-  var dateStr=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
-
-  // Pull the live bal-* (and legacy db-*) class rules from the page so the print window
-  // renders the real design. With print-tuned :root tokens below, every var(--…) reference
-  // (inline styles, SVG fills AND these classes) resolves to a print-legible colour.
-  var dbRules='';
-  try{
-    [].forEach.call(document.styleSheets,function(ss){
-      var rules; try{ rules=ss.cssRules; }catch(e){ return; }
-      if(!rules) return;
-      [].forEach.call(rules,function(r){
-        if(r.selectorText && (r.selectorText.indexOf('.bal-')>=0 || r.selectorText.indexOf('.db-')>=0)) dbRules+=r.cssText+'\n';
-      });
-    });
-  }catch(e){}
-
-  var win=window.open('','_blank');
-  if(!win){alert('Pop-up blocked — please allow pop-ups.');return;}
-
-  // Print-tuned token overrides (light ground; lime→dark-green so it reads on paper).
-  var css=':root{'
-    +'--bg:#ffffff;--surface:#ffffff;--surface2:#f4f6f8;--border:#dee2e6;'
-    +'--text:#1a1a2e;--muted:#5f6b7a;--dim:#9aa3ad;'
-    +'--accent:#2d6a1f;--accent2:#1e6b5e;--danger:#c0271b;--warn:#b45309;'
-    +'--db-mono:\'IBM Plex Mono\',ui-monospace,Menlo,monospace;--db-r:9px;--db-track:#e6e9ec;}'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;background:#fff;padding:20px;font-size:12px;font-variant-numeric:tabular-nums}'
-    +dbRules
-    // static print: drop interactive controls, un-clip the scrollable chart/grid/roadmap
-    +'.db-toolbar,.bal-toolbar,button,select,input[type=range],input[type=checkbox]{display:none!important}'
-    +'.db-chart-card,.bal-grid-wrap,.bal-rm-track{overflow:visible!important}'
-    +'.bal-rm-track{flex-wrap:wrap}'
-    +'.bal-grid th{position:static!important}'   // sticky header prints as static
-    +'.bal-grid,.bal-grid td,.bal-grid th{border-color:#dee2e6!important}'
-    +'.report-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #2d6a1f}'
-    +'.report-title{font-size:20px;font-weight:700;color:#1a1a2e}'
-    +'.report-date{font-size:10px;color:#5f6b7a;margin-top:3px}'
-    +'.report-footer{margin-top:20px;padding-top:10px;border-top:1px solid #dee2e6;font-size:9px;color:#9aa3ad;display:flex;justify-content:space-between}'
-    +'@media print{@page{size:A3 landscape;margin:8mm}body{padding:6px}}';
-
-  win.document.write('<!DOCTYPE html><html><head>'
-    +'<meta charset="UTF-8">'
-    +'<title>'+escH(title)+'</title>'
-    +'<style>'+css+'</style></head><body>'
-    +'<div class="report-header">'
-    +'<div><div class="report-title">'+escH(title)+'</div>'
-    +'<div class="report-date">Generated '+dateStr
-    +(projName?' · Project: '+escH(projName):'')
-    +'</div></div>'
-    +'<div style="font-size:9px;color:#9aa3ad;text-align:right;font-family:monospace">Project Matrix</div>'
-    +'</div>'
-    +content
-    +'<div class="report-footer">'
-    +'<span>'+escH(title)+'</span>'
-    +'<span>Project Matrix · '+dateStr+'</span>'
-    +'</div>'
-    +'<scr'+'ipt>window.addEventListener("load",function(){setTimeout(window.print,500);});<\/script>'
-    +'</body></html>');
-  win.document.close();
-}
 
 // Transfers resource plan costs to each project's planCost field and saves state.
 export function transferPlanCosts(){

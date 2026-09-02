@@ -1,0 +1,18 @@
+#!/bin/sh
+# Ship gate — runs before every `git push`.
+# Build + unit tests + real-browser smoke net must all pass, or the push is blocked.
+# In a genuine emergency you can bypass with:  git push --no-verify
+#
+# Enable once per clone with:  git config core.hooksPath .githooks
+
+cd matrix || { echo "pre-push: cannot find matrix/ — run from the repo root"; exit 1; }
+
+echo "▶ pre-push ship gate: npm run verify (build + unit + smoke)…"
+if npm run verify; then
+  echo "✓ ship gate passed — pushing."
+  exit 0
+else
+  echo ""
+  echo "✗ ship gate FAILED — push blocked. Fix the above, or bypass with: git push --no-verify"
+  exit 1
+fi

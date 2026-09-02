@@ -98,6 +98,47 @@ function seedScript() {
   `;
 }
 
+// Load the realistic demo dataset (40 people / 6 projects) if the asset exists.
+async function loadDemoState() {
+  try {
+    const raw = await readFile(path.join(__dirname, '..', 'demo', 'matrix_demo_backup.json'), 'utf8');
+    const b = JSON.parse(raw);
+    return (b && b.state) ? b.state : null;
+  } catch { return null; }
+}
+
+// Apply a full-backup `state` in the page — the headless-friendly core of
+// importFullBackup (no file input / confirm / IndexedDB photo swap). Runs in the
+// page, so it references the app's globals directly.
+function applyBackupState(d) {
+  try {
+    if (d.gateConfig && typeof d.gateConfig === 'object') { try { gateConfig = d.gateConfig; if (typeof sanitiseGateConfig === 'function') sanitiseGateConfig(); } catch (e) { if (typeof makeGateConfig === 'function') gateConfig = makeGateConfig(); } }
+    if (d.projects) { projects = d.projects; if (typeof sanitiseProjects === 'function') sanitiseProjects(); }
+    if (d.sections) sections = d.sections;
+    if (d.engineers) { engineers = d.engineers; if (typeof sanitiseEngineer === 'function') engineers.forEach(function (e) { sanitiseEngineer(e); }); }
+    if (d.engGroups) engGroups = d.engGroups;
+    if (d.allocRows) allocRows = d.allocRows;
+    if (d.skillDomains) skillDomains = d.skillDomains;
+    if (d.skillCats && Array.isArray(d.skillCats) && d.skillCats.length) skillCats = d.skillCats;
+    if (d.ktPlans) _ktPlans = d.ktPlans;
+    if (d.nineBoxPlacements && typeof d.nineBoxPlacements === 'object') _nineBoxPlacements = d.nineBoxPlacements;
+    if (d.nineBoxHistory && typeof d.nineBoxHistory === 'object') _nineBoxHistory = d.nineBoxHistory;
+    if (typeof nbEnsureHistory === 'function') { try { nbEnsureHistory(); } catch (e) {} }
+    if (d.discPlacements && typeof d.discPlacements === 'object') _discPlacements = d.discPlacements;
+    var _s = document.getElementById('res-start'), _e = document.getElementById('res-end'), _tt = document.getElementById('res-title-input');
+    if (_s && d.resStart) _s.value = d.resStart;
+    if (_e && d.resEnd) _e.value = d.resEnd;
+    if (_tt && d.resTitle) _tt.value = d.resTitle;
+    // The demo predates the lifecycle model → mark every project active so its
+    // capacity isn't suppressed and the balancer/timeline views show real load.
+    projects.forEach(function (p) { p.lifecycle = 'active'; });
+    try { if (typeof uidMigrate === 'function') uidMigrate(); } catch (e) {}
+    if (typeof saveState === 'function') saveState();
+    if (typeof _invalidateMemo === 'function') _invalidateMemo();
+    return { engineers: engineers.length, projects: projects.length, allocRows: allocRows.length, nineBox: Object.keys(_nineBoxPlacements || {}).length, disc: Object.keys(_discPlacements || {}).length, months: (typeof getMonthRange === 'function' ? getMonthRange().length : 0) };
+  } catch (err) { return { error: String(err && err.stack || err) }; }
+}
+
 // ── the handler-existence scan (runs in the page over the LIVE dom) ──────────
 function handlerScanScript() {
   return `(() => {
@@ -176,9 +217,15 @@ async function main() {
     if (bootErrors) failures.push(`boot threw ${bootErrors} uncaught error(s): ${pageErrors.join(' | ')}`);
     console.log(bootErrors ? RED('✗ boot') : GREEN('✓ boot'), DIM(`(${path.basename(exe)})`));
 
-    // seed
-    const seeded = await page.evaluate(new Function(seedScript()));
-    console.log(GREEN('✓ seed'), DIM(JSON.stringify(seeded)));
+    // seed — prefer the realistic demo backup (40 people / 6 projects); fall back to synthetic
+    let seeded, seedSrc = 'synthetic';
+    const demo = await loadDemoState();
+    if (demo) { seeded = await page.evaluate(applyBackupState, demo); seedSrc = 'demo backup'; }
+    if (!demo || (seeded && seeded.error)) {
+      if (seeded && seeded.error) console.log(RED('  demo apply error: ' + seeded.error), DIM('— falling back to synthetic'));
+      seeded = await page.evaluate(new Function(seedScript())); seedSrc = 'synthetic';
+    }
+    console.log(GREEN('✓ seed'), DIM(seedSrc + ' ' + JSON.stringify(seeded)));
 
     // collect the view list from the page's own registry
     const views = await page.evaluate("RAIL_DOMAINS.flatMap(d => d.views.map(v => ({ id: v.id, dom: d.id })))");
@@ -199,7 +246,45 @@ async function main() {
       if (bad.length) failures.push(`view "${v.id}" has undefined handler(s): ${bad.map(b => b.name + ' (' + b.attr + ')').join(', ')}`);
     }
 
-    // 2) every READY export deliverable opens and renders its blocks
+    // 2) heavy JS-built modals + utility panels — their handlers only enter the DOM
+    //    once opened, so the static scan can't see them until we open each surface.
+    const surfaces = [
+      { name: 'idcard',        open: "(()=>{var e=engineers.find(x=>!x.vacant&&!x.planningOnly)||engineers[0]; if(!e||typeof openIdCardModal!=='function')return false; openIdCardModal(e.id); return true;})()", close: "typeof closeIdCardModal==='function'&&closeIdCardModal()" },
+      { name: 'util:collab',   open: "typeof collabOpen==='function'&&(collabOpen(),true)",           close: "typeof collabClose==='function'&&collabClose()" },
+      { name: 'util:archive',  open: "typeof openArchive==='function'&&(openArchive(),true)",          close: "typeof closeArchive==='function'&&closeArchive()" },
+      { name: 'util:data',     open: "typeof dataMenuOpen==='function'&&(dataMenuOpen(),true)",        close: "typeof dataMenuClose==='function'&&dataMenuClose()" },
+      { name: 'util:settings', open: "typeof railOpenSettings==='function'&&(railOpenSettings(),true)", close: "(function(){var o=document.getElementById('settings-overlay');if(o)o.classList.remove('show');})()" },
+      { name: 'util:help',     open: "typeof openHelp==='function'&&(openHelp(),true)",                close: "typeof closeHelp==='function'&&closeHelp()" },
+      { name: 'util:ai',       open: "typeof aiOpenChat==='function'&&(aiOpenChat(),true)",            close: "typeof aiCloseChat==='function'&&aiCloseChat()" },
+    ];
+    for (const s of surfaces) {
+      const before = pageErrors.length;
+      let opened = false;
+      try { opened = await page.evaluate(s.open); } catch (e) { failures.push(`surface "${s.name}" open threw: ${e.message}`); }
+      await new Promise(r => setTimeout(r, 150));
+      const bad = opened ? await page.evaluate(handlerScanScript()) : [];
+      try { await page.evaluate(s.close); } catch (e) {}
+      await new Promise(r => setTimeout(r, 40));
+      const threw = pageErrors.length - before;
+      const ok = threw === 0 && bad.length === 0;
+      console.log(ok ? GREEN('  ✓ ' + s.name) : RED('  ✗ ' + s.name),
+        opened ? '' : DIM('(open skipped)'),
+        bad.length ? RED('undefined handler(s): ' + bad.map(b => b.name).join(', ')) : '', threw ? RED(`threw ${threw}`) : '');
+      if (threw) failures.push(`surface "${s.name}" threw ${threw} uncaught error(s)`);
+      if (bad.length) failures.push(`surface "${s.name}" undefined handler(s): ${bad.map(b => b.name + ' (' + b.attr + ')').join(', ')}`);
+    }
+
+    // 3) the Esc chain (boot.js keydown handler) must not call a removed function
+    {
+      const before = pageErrors.length;
+      await page.evaluate("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))");
+      await new Promise(r => setTimeout(r, 80));
+      const threw = pageErrors.length - before;
+      console.log(threw ? RED(`  ✗ esc-chain threw ${threw}`) : GREEN('  ✓ esc-chain'));
+      if (threw) failures.push(`Esc chain threw ${threw} uncaught error(s)`);
+    }
+
+    // 4) every READY export deliverable opens and renders its blocks
     const deliverables = await page.evaluate(
       "(typeof exportDeliverables==='function' ? exportDeliverables() : []).map(d => ({ id: d.id, ready: !!d.ready }))"
     );

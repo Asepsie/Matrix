@@ -127,12 +127,16 @@ Scope is **visual/print deliverables only** — CSV/JSON dumps stay raw (out of 
   (allocation/cost, lifecycle, collab merge/crypto/refs, home actions, export template logic).
   Keep these functions global-free so they import cleanly in Node.
 - **Smoke test** (`npm run smoke` → `tests/smoke.mjs`) is the real-browser net: it drives your
-  installed Chrome/Edge (via `puppeteer-core`, no download), boots `dist/matrix.html`, seeds data,
-  and asserts the app **boots with no uncaught error, every rail view renders, every wired handler
-  resolves to a real function, and every ready export opens**. The handler scan is what catches the
-  dead-`onclick` class the build can't see.
-- **`npm run verify` = build + unit + smoke = "can this ship?"** Run it before calling anything done.
-  (Override the browser with `CHROME_PATH` / `PUPPETEER_EXECUTABLE_PATH`.)
+  installed Chrome/Edge (via `puppeteer-core`, no download), boots `dist/matrix.html`, seeds the
+  realistic demo backup, and asserts the app **boots with no uncaught error; every rail view, the
+  ID card, and every utility panel (collab/archive/data/settings/help/ai) render; every wired
+  handler resolves to a real function; the Esc chain doesn't throw; and every ready export opens.**
+  The handler scan is what catches the dead-`onclick` class the build can't see. (`vm.Script` in
+  the build only parses and can miss even a stray top-level `}` — the smoke net is the real guard.)
+- **`npm run verify` = build + unit + smoke = "can this ship?"** Enforced by a `.githooks/pre-push`
+  hook that blocks a push on red (enable once per clone: `git config core.hooksPath .githooks`;
+  emergency bypass: `git push --no-verify`). Override the browser with `CHROME_PATH` /
+  `PUPPETEER_EXECUTABLE_PATH`.
 
 ---
 

@@ -20,15 +20,23 @@ finish with **`npm run verify`** green (build + unit + smoke).
   and dead-handler bug classes. A full migration is out of scope, but: (a) keep the smoke net
   green as the guardrail, (b) don't grow the pattern where a small component could be isolated.
 
-## Testing / safety net (just shipped — keep growing it)
+## Testing / safety net (shipped — keep growing it)
 
-- `[P2]` Extend the smoke test to **open the JS-built modals** too (ID card, skills dialog,
-  charter/decision panels), so their handlers are covered by the same existence scan — today it
-  covers static overlays + every rail view + every ready export. `tests/smoke.mjs`.
+Shipped: `npm run verify` (build + unit + smoke) enforced by a `.githooks/pre-push` hook
+(enable per clone: `git config core.hooksPath .githooks`). The smoke net (`tests/smoke.mjs`)
+seeds the realistic demo backup and covers every rail view + the ID card + every utility panel
+(collab/archive/data/settings/help/ai) + the Esc chain + every ready export.
+
+- `[P3]` Extend the modal coverage to the **charter / decision editor panels** (`cht-overlay`,
+  `dec-overlay`) — the ID card and utility panels are covered, these two aren't yet.
 - `[P3]` Light **click-crawl**: after rendering each view, actually invoke a sample of its
   buttons in a sandbox to catch throws the static scan can't (guarded so it can't mutate/persist).
-- `[P3]` Wire `npm run verify` into CI (GitHub Actions) with a headless Chrome so the ship gate
-  runs on every push, not just locally.
+- `[P3]` Also wire `npm run verify` into **CI** (GitHub Actions, headless Chrome) as a second
+  gate — the pre-push hook is local-only and can be bypassed with `--no-verify`.
+- `[P3]` **Harden the build's parse gate.** `build.js`'s `vm.Script` step let a stray top-level
+  `}` (from a bad edit) through — the browser caught it, the build didn't. Confirm the parse gate
+  hard-fails on a `SyntaxError` (the smoke net caught this one via boot failure, but the build
+  should too).
 
 ## Guided tour (removed 2026-09-01 — keep the idea)
 
@@ -85,8 +93,10 @@ finish with **`npm run verify`** green (build + unit + smoke).
 
 ## Known small debts
 
-- `[P3]` `dashboard.js` still defines the legacy `exportDashboardPDF`/`_doExportDashboardPDF`
-  (old `document.write` path) with no caller since the balancer moved onto the export engine —
-  safe to delete.
-- `[P3]` `#icon-picker` in `index.html` looks orphaned (nothing opens it; the live milestone
-  picker is `#sched-icon-picker` in `modals.js`) — verify and remove the dead markup.
+- `[P3]` The demo backup (`demo/matrix_demo_backup.json`) predates the gate/lifecycle model — it
+  has no `gateConfig`, so the smoke net force-sets every project `active` after import. Regenerate
+  it against the current schema (incl. nine-box placements, which it also lacks) so the seed is
+  faithful and the nine-box export gets smoke coverage.
+- `[P3]` Stale code-comment pointers to the deleted `*-PLAN.md` docs remain in a few source files
+  (export.js, persist.js, model.js, exec.js, timeline.js) and `reference document/matrix-redevelopment.md`
+  still says the tour is "supported" — cosmetic, update opportunistically.

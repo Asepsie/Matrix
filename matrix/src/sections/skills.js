@@ -32,9 +32,6 @@
  *   renderSkillCatList       — renders the editable skill-category list
  *   addSkillCat              — adds a new skill category
  *   deleteSkillCatIdx        — deletes a skill category by index
- *   closeSkillsPdfDlg        — closes the skills PDF options dialog
- *   exportSkillsPDF          — opens the skills PDF export options dialog
- *   doExportSkillsPDF        — builds and prints the skills matrix PDF
  *   buildSkillMap            — builds a name→holders skill map across all engineers
  *   srfRenameSkill           — prompts to rename a skill across all engineers
  *   srfChangeSkillCat        — changes a skill's category across all engineers
@@ -63,7 +60,6 @@
  *   skMergeDomains           — merges one domain into another from the skills tab
  *   skSplitSkill             — splits a skill into two by proficiency level
  *   skillsExportCSV          — exports skills as CSV (alias of skillRiskExportCSV)
- *   doExportSkillsCSV        — builds and downloads the skills CSV
  */
 // returns the global skill dictionary (deduped across all engineers)
 export function getSkillDict(){
@@ -443,159 +439,6 @@ export function deleteSkillCatIdx(i){
   saveState();renderSkillCatList();
 }
 
-/* ►► SECTION: SKILLS-PDF ◄◄ Skills PDF/CSV export dialog */
-// closes the skills PDF options dialog
-export function closeSkillsPdfDlg(){const dlg=G('skills-pdf-dlg');if(dlg)dlg.remove();}
-
-// opens the skills PDF export options dialog
-export function exportSkillsPDF(){
-  closeSkillsPdfDlg();
-  const groups=[{id:'all',name:'All Groups'},...engGroups.map(g=>({id:g.id,name:g.name}))];
-  const locations=[...new Set(engineers.map(e=>e.location).filter(Boolean))];
-  const grpSel=groups.map(g=>`<option value="${g.id}">${escH(g.name)}</option>`).join('');
-  const locSel=['<option value="all">All Locations</option>',...locations.map(l=>`<option value="${escH(l)}">${escH(l)}</option>`)].join('');
-  const dlg=document.createElement('div');
-  dlg.id='skills-pdf-dlg';
-  dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:900;display:flex;align-items:center;justify-content:center';
-  dlg.addEventListener('click',function(e){if(e.target===dlg)closeSkillsPdfDlg();});
-  dlg.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px 24px;width:min(380px,95vw);display:flex;flex-direction:column;gap:12px;box-shadow:0 16px 48px rgba(0,0,0,.8)" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;gap:8px">
-      <h2 style="font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--accent);margin:0;flex:1">EXPORT SKILLS REPORT</h2>
-      <button onclick="closeSkillsPdfDlg()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">FILTER BY GROUP</label>
-      <select id="pdf-grp-sel" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none">${grpSel}</select>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">FILTER BY LOCATION</label>
-      <select id="pdf-loc-sel" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:4px;outline:none">${locSel}</select>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">SKILL CATEGORIES TO INCLUDE</label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-cat-crit" checked style="accent-color:#f14335;width:13px;height:13px"><span style="color:#f14335;font-family:IBM Plex Mono,monospace;font-size:10px">🔴 CRITICAL</span></label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-cat-diff" checked style="accent-color:#a78bfa;width:13px;height:13px"><span style="color:#a78bfa;font-family:IBM Plex Mono,monospace;font-size:10px">🟣 DIFFERENTIATING</span></label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-cat-mand" checked style="accent-color:#f1a435;width:13px;height:13px"><span style="color:#f1a435;font-family:IBM Plex Mono,monospace;font-size:10px">🟡 MANDATORY</span></label>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:.05em">INCLUDE IN REPORT</label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-inc-profile" checked style="accent-color:var(--accent);width:13px;height:13px"> Profile (seniority, contract, manager)</label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-inc-aspir" style="accent-color:var(--accent);width:13px;height:13px"> Career aspirations &amp; strengths</label>
-      <label style="font-size:11px;display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="pdf-inc-matrix" checked style="accent-color:var(--accent);width:13px;height:13px"> Skills matrix table</label>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:2px">
-      <button class="primary" onclick="doExportSkillsPDF()" style="flex:1;padding:7px">↓ PDF REPORT</button>
-      <button class="primary" onclick="doExportSkillsCSV()" style="flex:1;padding:7px;border-color:var(--accent2);color:var(--accent2)">↓ CSV / EXCEL</button>
-      <button onclick="closeSkillsPdfDlg()" style="padding:7px">CANCEL</button>
-    </div>
-  </div>`;
-  document.body.appendChild(dlg);
-}
-
-// builds and prints the skills matrix PDF
-export function doExportSkillsPDF(){
-  const grpId=G('pdf-grp-sel').value;
-  const locFilter=G('pdf-loc-sel').value;
-  const incProfile=G('pdf-inc-profile')&&G('pdf-inc-profile').checked;
-  const incAspir=G('pdf-inc-aspir')&&G('pdf-inc-aspir').checked;
-  const incMatrix=!G('pdf-inc-matrix')||G('pdf-inc-matrix').checked;
-  const cats=[];
-  if(G('pdf-cat-crit')&&G('pdf-cat-crit').checked)cats.push('crit');
-  if(G('pdf-cat-diff')&&G('pdf-cat-diff').checked)cats.push('diff');
-  if(G('pdf-cat-mand')&&G('pdf-cat-mand').checked)cats.push('mand');
-  closeSkillsPdfDlg();
-  let engs=engineers.filter(e=>(e.skills||[]).some(s=>cats.length===0||cats.includes(s.cat)));
-  if(grpId!=='all') engs=engs.filter(e=>String(e.groupId)===String(grpId));
-  if(locFilter!=='all') engs=engs.filter(e=>e.location===locFilter);
-  const title=G('res-title-input')?G('res-title-input').value:'Resource Plan';
-  const now=new Date().toLocaleDateString('en',{year:'numeric',month:'long',day:'numeric'});
-  const CAT_LABELS=getSkillCatLabel(false);
-  const CAT_COLORS={crit:'#c0392b',diff:'#7d5fb5',mand:'#c87700'};
-  const CAT_BG={crit:'#fdf0ee',diff:'#f4f0fb',mand:'#fdf6e3'};
-  let body='';
-  const allSkillNames=[...new Set(engs.flatMap(e=>(e.skills||[]).map(s=>s.name)))].sort();
-  if(incMatrix&&allSkillNames.length){
-    body+=`<h2 style="font-size:14px;margin:24px 0 8px;color:#222">TEAM SKILLS MATRIX</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:24px">
-      <thead><tr style="background:#f5f5f5">
-        <th style="text-align:left;padding:6px 8px;border:1px solid #ddd;min-width:140px">ENGINEER</th>
-        ${allSkillNames.map(s=>`<th style="padding:4px 6px;border:1px solid #ddd;writing-mode:vertical-lr;transform:rotate(180deg);min-width:28px;font-weight:600;font-size:9px">${s}</th>`).join('')}
-      </tr></thead><tbody>`;
-    engs.forEach((e,ei)=>{
-      const ownSkills=new Map((e.skills||[]).map(s=>[s.name,s.cat]));
-      body+=`<tr style="background:${ei%2?'#fafafa':'white'}">
-        <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600">${escH(e.name)}<br><span style="font-weight:400;color:#777;font-size:9px">${escH(e.role||'')}${e.location?' \xb7 '+escH(e.location):''}</span></td>
-        ${allSkillNames.map(s2=>{
-          const cat=ownSkills.get(s2);
-          if(!cat)return`<td style="border:1px solid #ddd;text-align:center;color:#ccc">—</td>`;
-          const skillObj=(e.skills||[]).find(sk=>sk.name===s2);
-          const lvl=skillObj?skillObj.level||3:3;
-          return`<td style="border:1px solid #ddd;text-align:center;background:${CAT_BG[cat]};color:${CAT_COLORS[cat]};font-weight:700">✓<sup style="font-size:8px">${lvl}</sup></td>`;
-        }).join('')}
-      </tr>`;
-    });
-    body+='</tbody></table>';
-    body+=`<div style="display:flex;gap:16px;margin-bottom:24px;font-size:10px">
-      <span style="color:${CAT_COLORS.crit}">■ Critical</span>
-      <span style="color:${CAT_COLORS.diff}">■ Differentiating</span>
-      <span style="color:${CAT_COLORS.mand}">■ Mandatory</span>
-    </div>`;
-  }
-  body+=`<h2 style="font-size:14px;margin:24px 0 8px;color:#222;page-break-before:always">INDIVIDUAL PROFILES</h2>`;
-  engs.forEach((e)=>{
-    const c=e.idcard||{};
-    body+=`<div style="border:1px solid #ddd;border-radius:6px;padding:14px 18px;margin-bottom:16px;page-break-inside:avoid">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a2e">${escH(e.name)}</div>
-          <div style="font-size:11px;color:#555;margin-top:2px">${escH(e.role||'')} ${e.location?'\xb7 '+escH(e.location):''}</div>
-        </div>
-        <div style="text-align:right;font-size:10px;color:#777">
-          ${incProfile&&c.seniority?`<div>${escH(c.seniority)}</div>`:''}
-          ${incProfile&&c.contract?`<div>${escH(c.contract)}</div>`:''}
-          ${incProfile&&c.manager?`<div>Mgr: ${escH(c.manager)}</div>`:''}
-        </div>
-      </div>`;
-    const pdfDomains=[''].concat(skillDomains);
-    pdfDomains.forEach(function(dom){
-      var domSkillsAll=(e.skills||[]).filter(function(s){return (s.domain||'')===(dom)&&(cats.length===0||cats.includes(s.cat));});
-      if(!domSkillsAll.length)return;
-      var domLbl=dom||'General';
-      body+='<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 3px;padding-top:6px;border-top:1px solid #eee">'+escH(domLbl)+'</div>';
-      ['crit','diff','mand'].filter(function(cat){return cats.length===0||cats.includes(cat);}).forEach(function(cat){
-        var catSkills=domSkillsAll.filter(function(s){return s.cat===cat;});
-        if(!catSkills.length)return;
-        body+='<div style="margin-bottom:7px">'
-          +'<div style="font-size:9px;font-weight:700;color:'+CAT_COLORS[cat]+';text-transform:uppercase;margin-bottom:3px">'+CAT_LABELS[cat]+'</div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
-          +catSkills.map(function(s){
-            return '<span style="padding:2px 8px;border-radius:10px;font-size:10px;background:'+CAT_BG[cat]+';color:'+CAT_COLORS[cat]+';border:1px solid '+CAT_COLORS[cat]+'40">'
-              +escH(s.name)+'<sup style="font-size:8px;margin-left:2px">L'+(s.level||3)+'</sup></span>';
-          }).join('')
-          +'</div></div>';
-      });
-    });
-    if(incAspir&&c.aspirations){
-      body+='<div style="margin-top:8px;font-size:10px;color:#555;border-top:1px solid #eee;padding-top:7px">'
-        +'<span style="font-weight:700;color:#333">Career aspirations: </span>'+escH(c.aspirations)+'</div>';
-    }
-    body+='</div>';
-  });
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Skills Report — ${escH(title)}</title>
-  <style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#222;margin:0;padding:20px 30px;}h1{font-size:18px;color:#1a1a2e;margin:0 0 4px;}@media print{@page{margin:15mm 12mm}body{padding:0}}</style>
-  </head><body>
-  <h1>Team Skills Report — ${escH(title)}</h1>
-  <div style="font-size:10px;color:#777;margin-bottom:20px">Generated ${now} \xb7 ${engs.length} engineers</div>
-  ${body}
-<div id="org-overlay" style="display:none"></div>
-<div id="org-arrow-ctx" style="display:none"></div>
-<div id="org-ctx-menu" style="display:none"></div>
-</body></html>`;
-  const w=window.open('','_blank','width=1000,height=800');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(()=>w.print(),400);
-}
 
 /* ►► SECTION: SKILL-RISK ◄◄ Skill risk analysis: SPOF, KT planner, dict manager */
 // builds a name→holders skill map across all engineers
@@ -1154,39 +997,6 @@ export function skSplitSkill(skillName){
 }
 // exports skills as CSV (alias of skillRiskExportCSV)
 export function skillsExportCSV(){skillRiskExportCSV();}
-// builds and downloads the skills CSV
-export function doExportSkillsCSV(){
-  const grpId=G('pdf-grp-sel')?G('pdf-grp-sel').value:'all';
-  const locFilter=G('pdf-loc-sel')?G('pdf-loc-sel').value:'all';
-  const cats=[];
-  if(G('pdf-cat-crit')&&G('pdf-cat-crit').checked)cats.push('crit');
-  if(G('pdf-cat-diff')&&G('pdf-cat-diff').checked)cats.push('diff');
-  if(G('pdf-cat-mand')&&G('pdf-cat-mand').checked)cats.push('mand');
-  closeSkillsPdfDlg();
-  let engs=engineers.filter(e=>(e.skills||[]).some(s=>cats.length===0||cats.includes(s.cat)));
-  if(grpId!=='all')engs=engs.filter(e=>String(e.groupId)===String(grpId));
-  if(locFilter!=='all')engs=engs.filter(e=>e.location===locFilter);
-  const CAT_LABELS=getSkillCatLabel(false);
-  const rows=[['Engineer Name','Manager','Location','Group','Skill','Domain','Category','Maturity','Maturity Label','Gaps','Risks/Dependencies','Notes','Comment']];
-  engs.forEach(eng=>{
-    const c=eng.idcard||{};
-    const grp=engGroups.find(g=>g.id===eng.groupId);const grpName=grp?grp.name:'';
-    const filtered=(eng.skills||[]).filter(s=>cats.length===0||cats.includes(s.cat));
-    if(!filtered.length){rows.push([eng.name,c.manager||'',eng.location||'',grpName,'','','','','','','','','']);return;}
-    filtered.forEach(s=>{
-      const lvl=s.level||3;
-      rows.push([eng.name,c.manager||'',eng.location||'',grpName,s.name,s.domain||'',CAT_LABELS[s.cat]||s.cat,'L'+lvl,SKILL_LVL_LABELS[lvl]||'',s.gaps||'',s.risks||'',s.notes||'',s.comment||'']);
-    });
-  });
-  function csvCell(v){const s=String(v==null?'':v);if(s.includes(',')||s.includes('"')||s.indexOf('\n')>=0||s.indexOf('\r')>=0)return '"'+s.replace(/"/g,'""')+'"';return s;}
-  const csv=rows.map(function(r){return r.map(csvCell).join(',');}).join('\r\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;
-  const title=G('res-title-input')?G('res-title-input').value:'Skills';
-  a.download=title.replace(/[^a-z0-9]/gi,'_')+'_skills.csv';
-  a.click();URL.revokeObjectURL(url);
-}
 
 /* ►► SECTION: SKILLS-EXPORT ◄◄ Skills matrix + SPOF risk on the shared export engine.
  * Themed, block-picker deliverables (matrix / SPOF risk / individual profiles) that
