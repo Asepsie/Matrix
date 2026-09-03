@@ -130,6 +130,27 @@ select option{background:var(--surface);color:var(--text);}
 .bl-due-ro{width:120px;flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--muted);text-align:right;}
 .bl-open{flex-shrink:0;color:var(--accent2);cursor:pointer;font-size:13px;text-decoration:none;padding:0 6px;}
 .bl-open:hover{color:var(--accent);}
+/* project tag on each row (dot + name), click to filter to that project */
+.bl-projtag{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;max-width:130px;cursor:pointer;
+  font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);
+  background:rgba(120,120,140,.10);padding:1px 6px 1px 4px;border-radius:3px;transition:color .12s,background .12s;}
+.bl-projtag:hover{color:var(--text);background:rgba(120,120,140,.20);}
+.bl-projdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.bl-projtag-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* colour-coded priority dropdown (set a value directly) */
+.bl-prio-sel{flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:9px;padding:2px 3px;border-radius:4px;
+  background:var(--bg);border:1px solid var(--border);border-left-width:3px;outline:none;cursor:pointer;}
+.bl-prio-sel.p-high{border-left-color:var(--danger);color:var(--danger);}
+.bl-prio-sel.p-medium{border-left-color:var(--warn);color:var(--warn);}
+.bl-prio-sel.p-low{border-left-color:var(--accent2);color:var(--accent2);}
+.bl-prio-sel.p-none{border-left-color:var(--border);color:var(--dim);}
+/* legend under the add bar explaining the priority picker + pin */
+.bl-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:6px 12px;
+  font-family:IBM Plex Mono,monospace;font-size:9.5px;color:var(--muted);line-height:1.5;}
+.bl-legend span{display:inline-flex;align-items:center;gap:5px;}
+/* brief highlight when a row moves after a priority change */
+.bl-flash{animation:blFlashPulse 1.3s ease-out;}
+@keyframes blFlashPulse{0%{background:rgba(200,241,53,.30);}60%{background:rgba(200,241,53,.16);}100%{background:transparent;}}
 
 /* MATRIX */
 #matrix-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -734,6 +755,18 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
 .rlo-card-ctl .sm:disabled{opacity:.3; cursor:default;}
 .rlo-move{flex:1; min-width:0; font-family:IBM Plex Mono,monospace; font-size:9.5px; padding:2px 4px;
   background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:4px;}
+/* ★ Basics toggle on every card (views + utility panels) */
+.rlo-basic{flex:none; background:none; border:none; cursor:pointer; font-size:14px; line-height:1;
+  padding:0 1px; color:var(--dim); transition:color .12s, transform .1s;}
+.rlo-basic:hover{transform:scale(1.18); color:var(--muted);}
+.rlo-basic.on{color:var(--accent);}
+.rlo-basic.on:hover{color:var(--accent);}
+/* Utility-panels column (Basics-toggle only; no drag / no domain move) */
+.rlo-col-util{border-style:dashed;}
+.rlo-card-util{cursor:default;}
+.rlo-card-util .rlo-card-top{margin-bottom:0;}
+.rlo-util-ico2{display:inline-flex; color:var(--muted); flex:none;}
+.rlo-util-ico2 svg{width:14px; height:14px;}
 
 .rn-foot{border-top:1px solid var(--border); padding:8px 0;}
 .rn-util{
@@ -844,9 +877,9 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
 }
 
 /* Data utility menu (rail foot → Snapshots / Backup / Restore) */
-#data-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
+#data-menu-overlay,#more-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
   align-items:center; justify-content:center; }
-#data-menu-overlay.show{ display:flex; }
+#data-menu-overlay.show,#more-menu-overlay.show{ display:flex; }
 .dm-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px;
   width:340px; max-width:92vw; box-shadow:0 12px 40px rgba(0,0,0,.6); }
 .dm-head{ display:flex; align-items:center; justify-content:space-between; font-family:IBM Plex Mono,monospace;
@@ -856,6 +889,9 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
   border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:8px; cursor:pointer; color:var(--text); }
 .dm-item:hover{ border-color:var(--accent); }
 .dm-item:last-child{ margin-bottom:0; }
+/* destructive item (Reset data) — hint danger, redden on hover */
+.dm-danger .dm-ico{ color:var(--danger); }
+.dm-danger:hover{ border-color:var(--danger); }
 .dm-ico{ font-size:18px; flex-shrink:0; width:24px; text-align:center; }
 .dm-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
 .dm-txt b{ font-size:13px; font-weight:600; }
@@ -2093,6 +2129,24 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
       <span class="dm-ico">⭱</span>
       <span class="dm-txt"><b data-i18n="Restore">Restore</b><small data-i18n="Load a full backup file (replaces current data)">Load a full backup file (replaces current data)</small></span>
     </button>
+    <button class="dm-item dm-danger" onclick="dataMenuGo('reset')">
+      <span class="dm-ico">↺</span>
+      <span class="dm-txt"><b data-i18n="Reset data">Reset data</b><small data-i18n="Wipe everything back to defaults (a snapshot is taken first)">Wipe everything back to defaults (a snapshot is taken first)</small></span>
+    </button>
+  </div>
+</div>
+<!-- SETTINGS & HELP MENU (rail foot → choose Settings or Help) -->
+<div id="more-menu-overlay">
+  <div class="dm-card">
+    <div class="dm-head"><span data-i18n="MENU">MENU</span><button class="dm-x" onclick="moreMenuClose()" title="Close">✕</button></div>
+    <button class="dm-item" onclick="moreMenuGo('settings')">
+      <span class="dm-ico">⚙</span>
+      <span class="dm-txt"><b data-i18n="Settings">Settings</b><small data-i18n="Preferences, language, rail layout & export branding">Preferences, language, rail layout &amp; export branding</small></span>
+    </button>
+    <button class="dm-item" onclick="moreMenuGo('help')">
+      <span class="dm-ico">?</span>
+      <span class="dm-txt"><b data-i18n="Help">Help</b><small data-i18n="Keyboard shortcuts, quick guide & danger zone">Keyboard shortcuts, quick guide &amp; danger zone</small></span>
+    </button>
   </div>
 </div>
 
@@ -2179,10 +2233,14 @@ h1.cht-slide-h{ font-size:26px; color:var(--accent); }
 <div id="rail-layout-overlay" class="overlay">
   <div class="modal-box" style="width:min(920px,96vw);max-height:88vh;overflow-y:auto">
     <h2 data-i18n="⚖ ORGANISE RAIL LAYOUT">⚖ ORGANISE RAIL LAYOUT</h2>
-    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 6px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <p data-i18n-html="Tap a card's &lt;strong&gt;★&lt;/strong&gt; to include that page — or a utility panel — in &lt;strong&gt;Basics&lt;/strong&gt; (simplified) mode. Basics keeps the rail to just those; &quot;Show advanced&quot; on the rail foot reveals everything." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Tap a card's <strong style="color:var(--accent)">★</strong> to include that page — or a utility panel — in <strong style="color:var(--text)">Basics</strong> (simplified) mode. Basics keeps the rail to just those; "Show advanced" on the rail foot reveals everything.</p>
     <div id="rlo-board" class="rlo-board"></div>
     <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
-      <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+      <div style="display:flex;gap:8px">
+        <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+        <button class="sm" data-i18n="★ RESET BASICS" onclick="railBasicReset()">★ RESET BASICS</button>
+      </div>
       <button class="primary" data-i18n="DONE" onclick="rloClose()">DONE</button>
     </div>
   </div>
@@ -4046,6 +4104,15 @@ let _srfSearch='';
 
 /* ── KT (knowledge transfer) plans ── */
 let _ktPlans={};
+
+/* ── People-Analytics saved views (user-owned shortcuts) ──
+   The customizable list of analytics view shortcuts (built-in story views seeded
+   as editable examples + user-pinned compare views). Rides save/backup/snapshot so
+   it travels with the dataset and is cleared by reset. `null` = "not seeded yet":
+   analytics.js's anEnsureViews() lazily seeds the defaults + migrates any old
+   device-local pins. A loaded value is an array (possibly empty = user deleted all).
+   Distinct from _anState.show (panel show/hide toggles), which stays device-local. */
+let _anViews=null;
 
 /* ── Gate & PI (configurable stage-gate + increment planning) ──
    Portfolio-level governance config (active methodology + template library +
@@ -5948,6 +6015,8 @@ function _doSave(){
       // Skills
       skillDomains,skillCats,ktPlans:_ktPlans,
       finExclude:[..._finExclude],
+      // People-Analytics saved views (null until seeded — see globals _anViews)
+      anViews:_anViews,
       // Gate & PI governance config (active methodology + templates + increments)
       gateConfig,
       // Org chart
@@ -6053,6 +6122,7 @@ function loadState(){
     }
     if(d.skillDomains&&Array.isArray(d.skillDomains))skillDomains=d.skillDomains;
     if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
+    if(Array.isArray(d.anViews))_anViews=d.anViews;   // else stays null → analytics lazily seeds defaults
     if(d.finExclude&&Array.isArray(d.finExclude))_finExclude=new Set(d.finExclude);
     if(d.orgAnnotations&&Array.isArray(d.orgAnnotations))_orgAnnotations=d.orgAnnotations;
     if(d.orgLevelH&&typeof d.orgLevelH==='object')_orgLevelH=d.orgLevelH;
@@ -6523,6 +6593,7 @@ function captureScope(scope){
     skillDomains,skillCats,
     finExclude:[..._finExclude],
     ktPlans:_ktPlans,
+    anViews:_anViews,
     gateConfig,
     orgAnnotations:_orgAnnotations,
     orgPositions:_orgPositions,
@@ -6710,6 +6781,7 @@ function restoreSnap(id){
       if(d.engDashFilterEng&&Array.isArray(d.engDashFilterEng))engDashFilterEng=new Set(d.engDashFilterEng);
       if(d.engDashFilterProj&&Array.isArray(d.engDashFilterProj))engDashFilterProj=new Set(d.engDashFilterProj);
       if(d.ktPlans&&typeof d.ktPlans==='object')_ktPlans=d.ktPlans;
+      if(Array.isArray(d.anViews))_anViews=d.anViews;   // only when the snapshot carried it (intra-dataset)
       if(d.orgAnnotations&&Array.isArray(d.orgAnnotations))_orgAnnotations=d.orgAnnotations;
       if(d.orgPositions&&typeof d.orgPositions==='object')_orgPositions=d.orgPositions;
       if(d.orgCollapsed&&typeof d.orgCollapsed==='object')_orgCollapsed=d.orgCollapsed;
@@ -19168,11 +19240,76 @@ let _anState = {
   dimB:     null,          // dimension id or null
   template: null,          // selected template id
   filters:  { group:new Set(), location:new Set(), seniority:new Set() },
-  show:     { kpi:true, insights:true },   // collapsible header panels (persisted)
+  show:     { kpi:true, insights:true },   // collapsible header panels (persisted, device-local)
 };
-// Restore collapsible-panel preferences (persists across reloads)
-try { const _sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null'); if (_sv) Object.assign(_anState.show, _sv); } catch (e) {}
-function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify(_anState.show)); } catch (e) {} }
+let _anEditViews = false;  // panel "✎ Edit views" mode: reveal ✕/✎ on chips + the add-example picker
+// Restore the panel show/hide toggles. Device-local + UI-only (same tier as export
+// branding). NOTE: the saved-VIEWS list is NOT here any more — it now lives in app
+// state (globals _anViews) so it travels with backup/restore and is cleared by reset;
+// anEnsureViews() one-time-migrates any legacy device-local pins out of this key.
+try {
+  const _sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null');
+  if (_sv) Object.assign(_anState.show, _sv.show || _sv);   // back-compat: old value stored the show fields at top level
+} catch (e) {}
+function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify({ show:_anState.show })); } catch (e) {} }
+
+/* ══ Saved analytics views (globals _anViews) ══════════════════════════════
+   One user-owned list, seeded from the built-in story views as editable EXAMPLES
+   and grown by "★ Pin view". Each entry is either a LIBRARY reference (`lib` = a
+   built-in story-template id, whose bespoke chart stays in code) OR a COMPARE view
+   (`dimA`/`dimB`/`template`). Both carry a `name` and captured `filters`. The list
+   drives BOTH the panel chips and the export blocks, and rides app state. */
+function anDefaultViews(){
+  return ANALYTICS_TEMPLATES.filter(x => x.isStoryView).map(s => ({
+    id:'lib_'+s.id, name:s.name, lib:s.id,
+    filters:{ group:[], location:[], seniority:[] },
+  }));
+}
+// Seed the list the first time it's needed (fresh app / legacy dataset with no
+// saved list), migrating any legacy device-local pins from the old eim_an_view key.
+// A dataset that HAS a saved list (array, even empty) is left exactly as loaded.
+function anEnsureViews(){
+  if (Array.isArray(_anViews)) return;
+  const seed = anDefaultViews();
+  try {
+    const sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null');
+    if (sv && Array.isArray(sv.views) && sv.views.length){
+      sv.views.forEach(v => seed.push({
+        id:v.id || anNewViewId(),
+        name:v.name || t('View'),
+        lib:v.story || undefined,
+        dimA:v.dimA || undefined, dimB:v.dimB || undefined, template:v.template || undefined,
+        filters:v.filters || { group:[], location:[], seniority:[] },
+      }));
+      // Strip the migrated pins from the device-local key so they can't re-migrate.
+      localStorage.setItem('eim_an_view', JSON.stringify({ show:_anState.show }));
+    }
+  } catch (e) {}
+  _anViews = seed;
+}
+function anNewViewId(){ return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+// The built-in template a saved view renders through (lib story, or compare template).
+function anViewTemplate(v){ return ANALYTICS_TEMPLATES.find(x => x.id === (v.lib || v.template)) || null; }
+// Display icon for a chip / export heading (live from the referenced template).
+function anViewIcon(v){ const tpl = anViewTemplate(v); return tpl ? tpl.icon : '📊'; }
+// Render a saved view's chart against a dataset (lib → render(data); compare → render(data,A,B)).
+function anRenderView(v, data){
+  const tpl = anViewTemplate(v); if (!tpl) return null;
+  return v.lib ? tpl.render(data) : tpl.render(data, anDim(v.dimA), anDim(v.dimB));
+}
+// Set-membership filters from a saved view's array-form filters (Sets don't JSON-serialise).
+function anViewFilterSets(v){ const f=(v&&v.filters)||{}; return { group:new Set(f.group||[]), location:new Set(f.location||[]), seniority:new Set(f.seniority||[]) }; }
+// Does the live panel state exactly match a saved view? (highlights the active chip)
+function anSetEqArr(set, arr){ arr=arr||[]; if(set.size!==arr.length) return false; for(const x of arr){ if(!set.has(x)) return false; } return true; }
+function anViewMatches(v){
+  const s=_anState;
+  const kindMatch = v.lib
+    ? (v.lib === (s.story||null))
+    : (!s.story && (v.dimA||null)===(s.dimA||null) && (v.dimB||null)===(s.dimB||null) && (v.template||null)===(s.template||null));
+  return kindMatch
+    && anSetEqArr(s.filters.group,(v.filters||{}).group) && anSetEqArr(s.filters.location,(v.filters||{}).location)
+    && anSetEqArr(s.filters.seniority,(v.filters||{}).seniority);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    1. DATASET — one row per active engineer with all computed fields
@@ -20394,16 +20531,26 @@ function renderAnalyticsTab(){
     '<optgroup label="'+escH(grp)+'">' + dimsByGroup[grp].map(d =>
       '<option value="'+d.id+'"'+(sel===d.id?' selected':'')+'>'+escH(d.label)+'</option>').join('') + '</optgroup>').join('');
 
-  const stories = ANALYTICS_TEMPLATES.filter(t => t.isStoryView);
+  anEnsureViews();                    // seed / migrate the saved-views list (globals _anViews) on first render
   const ds = buildAnalyticsDataset();
   const groups = [...new Set(ds.map(d => d.group))].sort();
   const locs   = [...new Set(ds.map(d => d.location))].sort();
   const sens   = SENIORITY_ORDER.filter(s => ds.some(d => d.seniority === s));
 
-  const pill = (id, name, icon, active) =>
-    '<button onclick="anPickStory(\''+id+'\')" style="background:'+(active?'rgba(200,241,53,.12)':'var(--bg)')
-    + ';border:1px solid '+(active?'var(--accent)':'var(--border)')+';color:'+(active?'var(--accent)':'var(--text)')
-    + ';font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer">'+icon+' '+escH(name)+'</button>';
+  // One saved-view chip: click to show it; in Edit mode reveal ✎ (rename) + ✕ (remove).
+  const viewChip = v => { const on = anViewMatches(v);
+    let s = '<span style="display:inline-flex;align-items:center;gap:6px;background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      + ';border:1px solid '+(on?'var(--accent)':'var(--border)')+';border-radius:6px;padding:5px 8px 5px 11px">'
+      + '<button onclick="anApplyView(\''+v.id+'\')" title="'+escH(t('Show this view'))+'" style="background:none;border:none;color:'+(on?'var(--accent)':'var(--text)')+';font-family:IBM Plex Mono,monospace;font-size:11px;cursor:pointer;padding:0">'+anViewIcon(v)+' '+escH(v.name)+'</button>';
+    if (_anEditViews) s += '<button onclick="anRenameView(event,\''+v.id+'\')" title="'+escH(t('Rename'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:0">✎</button>'
+      + '<button onclick="anRemoveView(event,\''+v.id+'\')" title="'+escH(t('Remove'))+'" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;line-height:1;padding:0">✕</button>';
+    return s + '</span>'; };
+  // Edit-mode picker to (re)add a built-in story view as a fresh example.
+  const addPicker = () => '<select onchange="anAddLibView(this.value);this.selectedIndex=0" title="'+escH(t('Add a built-in view'))+'" '
+    + 'style="background:var(--bg);border:1px dashed var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:6px;cursor:pointer">'
+    + '<option value="">＋ '+escH(t('Add example…'))+'</option>'
+    + ANALYTICS_TEMPLATES.filter(x => x.isStoryView).map(s => '<option value="'+s.id+'">'+escH(s.icon+' '+s.name)+'</option>').join('')
+    + '</select>';
 
   const selStyle = 'background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;min-width:170px';
 
@@ -20414,15 +20561,34 @@ function renderAnalyticsTab(){
       + ';color:'+(on?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">'
       + (on?'▾ ':'▸ ')+label+'</button>'; };
 
+  // Small mono action button (Pin / CSV / Export), sized to match the panel toggles.
+  const actStyle = accent => 'background:var(--bg);border:1px solid '+(accent?'var(--accent)':'var(--border)')
+    + ';color:'+(accent?'var(--accent)':'var(--text)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer';
+  const vsep = '<span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>';
+
   let h = '<div style="padding:14px 16px">';
   h += peopleLensBar();
-  // Story pills + view toggles
-  h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('STORY VIEWS')+'</span>'
-    + '<span style="display:flex;gap:6px;align-items:center"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('PANELS')+'</span>'
-    + vtog('kpi', t('KPIs')) + vtog('insights', t('Insights')) + '</span></div>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-    + stories.map(s => pill(s.id, s.name, s.icon, _anState.story === s.id)).join('') + '</div>';
+  // Story-views label + right-side action cluster: panel toggles, then the data
+  // actions (Pin the current view, CSV, full Export) — moved up here so they sit
+  // beside the KPI/Insights panel toggles instead of below the chart.
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('VIEWS')+'</span>'
+    + '<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('PANELS')+'</span>'
+    + vtog('kpi', t('KPIs')) + vtog('insights', t('Insights')) + vsep
+    + '<button onclick="anPinView()" title="'+escH(t('Save the current view to the list + export'))+'" style="'+actStyle(false)+'">★ '+escH(t('Pin view'))+'</button>'
+    + '<button onclick="anToggleEditViews()" title="'+escH(t('Edit the views list — rename, remove, add examples'))+'" style="background:'+(_anEditViews?'rgba(200,241,53,.10)':'var(--bg)')+';border:1px solid '+(_anEditViews?'var(--accent)':'var(--border)')+';color:'+(_anEditViews?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">✎ '+escH(_anEditViews?t('Done'):t('Edit'))+'</button>'
+    + vsep
+    + '<button onclick="anExportCSV()" title="'+escH(t('Download the filtered dataset as CSV'))+'" style="'+actStyle(false)+'">↓ CSV</button>'
+    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="'+actStyle(true)+'">📄 '+escH(t('EXPORT'))+'</button>'
+    + '</span></div>';
+  // Unified saved-views list: built-in story views (seeded examples) + pinned compares.
+  // Click a chip to show it; Edit mode reveals rename/remove + the "add example" picker.
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">'
+    + (_anViews || []).map(viewChip).join('')
+    + (_anEditViews ? addPicker() : '')
+    + (((_anViews || []).length === 0 && !_anEditViews)
+        ? '<span style="font-size:11px;color:var(--muted)">'+escH(t('No views yet — set up a chart below and “★ Pin view”, or ✎ Edit to add examples.'))+'</span>' : '')
+    + '</div>';
   // Compare row
   h += '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">'
     + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('COMPARE')+'</span>'
@@ -20445,8 +20611,8 @@ function renderAnalyticsTab(){
   anRenderMain();
 }
 
-function anApplyFilters(data){
-  const f = _anState.filters;
+function anApplyFilters(data, f){
+  f = f || _anState.filters;
   return data.filter(d =>
     (f.group.size === 0 || f.group.has(d.group)) &&
     (f.location.size === 0 || f.location.has(d.location)) &&
@@ -20527,12 +20693,6 @@ function anRenderMain(){
   h += '</div>';
   h += '</div>';
 
-  // Export bar
-  h += '<div style="display:flex;gap:8px;margin-top:12px">'
-    + '<button onclick="anExportCSV()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ CSV</button>'
-    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="background:var(--bg);border:1px solid var(--accent);color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">📄 '+escH(t('EXPORT'))+'</button>'
-    + '</div>';
-
   main.innerHTML = h;
   anBindTips(G('an-chart'));
   anBindDrill(G('an-chart'));
@@ -20564,6 +20724,65 @@ function anClearFilters(){
   _anState.filters = { group:new Set(), location:new Set(), seniority:new Set() };
   renderAnalyticsTab();
 }
+
+/* ── Saved views (globals _anViews) ── One user-owned list: the built-in story
+   views seeded as editable EXAMPLES + user-pinned compares. Each is a recall chip
+   in the panel AND an export block, and rides app state (travels with backup/restore,
+   cleared by reset). Mutations persist via saveState() (the app-state debounced save,
+   NOT the device-local anSaveView which only holds the panel show/hide toggles). */
+function anPinView(){
+  const tpl = anActiveTemplate();
+  if (!tpl){ alert(t('Pick a dimension or story view first, then pin it.')); return; }
+  const dflt = _anState.story ? tpl.name : anTplName(tpl, anDim(_anState.dimA), anDim(_anState.dimB));
+  let name = prompt(t('Name this view:'), dflt);
+  if (name == null) return;                       // cancelled
+  name = (name.trim() || dflt);
+  anEnsureViews();
+  _anViews.push(_anState.story
+    ? { id:anNewViewId(), name, lib:_anState.story,
+        filters:{ group:[..._anState.filters.group], location:[..._anState.filters.location], seniority:[..._anState.filters.seniority] } }
+    : { id:anNewViewId(), name, dimA:_anState.dimA || null, dimB:_anState.dimB || null, template:_anState.template || null,
+        filters:{ group:[..._anState.filters.group], location:[..._anState.filters.location], seniority:[..._anState.filters.seniority] } });
+  saveState();
+  renderAnalyticsTab();
+}
+// Add a built-in story view as a fresh example entry (edit-mode picker).
+function anAddLibView(libId){
+  if (!libId) return;
+  const s = ANALYTICS_TEMPLATES.find(x => x.id === libId && x.isStoryView); if (!s) return;
+  anEnsureViews();
+  _anViews.push({ id:anNewViewId(), name:s.name, lib:s.id, filters:{ group:[], location:[], seniority:[] } });
+  saveState();
+  renderAnalyticsTab();
+}
+function anApplyView(id){
+  anEnsureViews();
+  const v = _anViews.find(x => x.id === id); if (!v) return;
+  _anState.story = v.lib || null;
+  _anState.dimA = v.lib ? null : (v.dimA || null);
+  _anState.dimB = v.lib ? null : (v.dimB || null);
+  _anState.template = v.lib ? null : (v.template || null);
+  _anState.filters = anViewFilterSets(v);
+  renderAnalyticsTab();
+}
+function anRenameView(ev, id){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  anEnsureViews();
+  const v = _anViews.find(x => x.id === id); if (!v) return;
+  const name = prompt(t('Rename this view:'), v.name);
+  if (name == null) return;
+  v.name = name.trim() || v.name;
+  saveState();
+  renderAnalyticsTab();
+}
+function anRemoveView(ev, id){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  anEnsureViews();
+  _anViews = _anViews.filter(x => x.id !== id);
+  saveState();
+  renderAnalyticsTab();
+}
+function anToggleEditViews(){ _anEditViews = !_anEditViews; renderAnalyticsTab(); }
 
 /* ══════════════════════════════════════════════════════════════════
    7. Exports — CSV (flat dataset) + PNG (svg→canvas)
@@ -20623,7 +20842,7 @@ function anExportDimOptions(){
 }
 
 function anExportBlocks(){
-  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  anEnsureViews();
   const blocks = [
     { id:'scorecard', label:t('KPI scorecard'), render(ctx){
         return anWithPalette(ctx.theme, () => anScorecard(anExportData(ctx))); } },
@@ -20639,13 +20858,18 @@ function anExportBlocks(){
         return anWithPalette(ctx.theme, () =>
           anExportChart(tpl.icon+' '+anTplName(tpl, dimA, dimB), tpl.render(data, dimA, dimB))); } },
   ];
-  stories.forEach(s => blocks.push({
-    id:'story.'+s.id,
-    label:s.icon+' '+s.name,
+  // One block per saved view (built-in examples + user-pinned). Each renders its OWN
+  // captured combo + filters — independent of the builder's live SCOPE control — so a
+  // saved view exports exactly as it sits in the panel. Label is escaped by the builder.
+  (_anViews || []).forEach(v => blocks.push({
+    id:'view.'+v.id,
+    label:anViewIcon(v)+' '+v.name,
     render(ctx){
-      const data = anExportData(ctx);
+      const data = anApplyFilters(buildAnalyticsDataset(), anViewFilterSets(v));
       if (!data.length) return '';
-      return anWithPalette(ctx.theme, () => anExportChart(s.icon+' '+s.name, s.render(data)));
+      const out = anRenderView(v, data);
+      if (!out) return '';
+      return anWithPalette(ctx.theme, () => anExportChart(anViewIcon(v)+' '+v.name, out));
     },
   }));
   return blocks;
@@ -20666,7 +20890,12 @@ function anExportOpen(){
   if (!all.length) { alert(t('No people to analyse yet.')); return; }
   const filtered = anApplyFilters(all);
   const scopeLabel = anExportScopeLabel();
-  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  anEnsureViews();
+  // Curated presets resolve to whatever saved views reference those built-in charts,
+  // so they stay correct after the user renames/removes/re-adds — and skip gracefully
+  // (the builder filters unknown block ids) when a referenced example was deleted.
+  const viewsForLibs = (...libs) => (_anViews || []).filter(v => v.lib && libs.indexOf(v.lib) >= 0).map(v => 'view.'+v.id);
+  const allViewBlocks = (_anViews || []).map(v => 'view.'+v.id);
 
   exportOpenBuilder({
     deliverableId:'analytics',
@@ -20702,13 +20931,13 @@ function anExportOpen(){
     },
     builtinTemplates:[
       { id:'review', name:t('Talent review'),
-        blocks:['scorecard','insights','story.talent_risk','story.retention_risk','story.succession'] },
+        blocks:['scorecard','insights'].concat(viewsForLibs('talent_risk','retention_risk','succession')) },
       { id:'comp', name:t('Compensation'),
-        blocks:['scorecard','story.pay_equity_full','story.pay_progression'] },
+        blocks:['scorecard'].concat(viewsForLibs('pay_equity_full','pay_progression')) },
       { id:'capacity', name:t('Capacity & skills'),
-        blocks:['scorecard','story.capacity_health','story.skill_coverage'] },
+        blocks:['scorecard'].concat(viewsForLibs('capacity_health','skill_coverage')) },
       { id:'all', name:t('Everything'),
-        blocks:['scorecard','insights','compare'].concat(stories.map(s => 'story.'+s.id)) },
+        blocks:['scorecard','insights','compare'].concat(allViewBlocks) },
       { id:'current', name:t('Just my chart'), blocks:['compare'] },
     ],
     formats:[
@@ -21413,7 +21642,8 @@ function pfParetoSvg(ds,metric){
  *   blToggleType / blSetGroup        — view controls
  *   _blSetProjectFilter / blSetProjectFilter — project scope (⤢ from the panel)
  *   blQuickAdd                        — add a task to a project
- *   blToggleDone/blCyclePrio/blSetText/blSetAssignee/blSetField/blDelete/blOpenTab — inline edit
+ *   blToggleDone/blSetPrio/blSetText/blSetAssignee/blSetField/blDelete/blOpenTab — inline edit
+ *   blTogglePin                       — pin/unpin to the Executive summary "this week" list
  */
 
 // Active work-item types (module state; not persisted).
@@ -21423,6 +21653,10 @@ var _blGroupBy  = 'project';
 // Project scope: null = all projects; else a project id (set by the panel ⤢ button).
 var _blProjFilter = null;
 var _blPrioFilter = null;   // unset shows all; else 'High' | 'Medium' | 'Low'
+// Row to briefly highlight after its priority changed — set the row can jump between
+// priority groups (or filter in/out) on the re-render, so we flash + scroll it into
+// view so the change is easy to follow. Format: 'pid_kind_id'. Cleared after render.
+var _blFlash = null;
 
 // Type presentation: label + accent colour used for badges/toggles.
 var _BL_TYPE_META = {
@@ -21482,15 +21716,35 @@ function _blProjectOptions(selVal){
     .map(function(p){return '<option value="'+p.id+'"'+(selVal===p.id?' selected':'')+'>'+escH(p.name)+'</option>';}).join('');
 }
 
+// A compact project tag (colour dot + name, truncated) with the full name as a tooltip.
+// Shown on every row EXCEPT when the list is already grouped by project (redundant there).
+function _blProjTag(r){
+  return '<span class="bl-projtag" title="'+escH(r.pname||'')+'" onclick="blSetProjectFilter(\''+r.pid+'\')">'
+    +'<span class="bl-projdot" style="background:'+safeColor(r.pcolor)+'"></span>'
+    +'<span class="bl-projtag-lbl">'+escH(r.pname||t('(unnamed project)'))+'</span></span>';
+}
+// A colour-coded priority dropdown — sets the priority to the chosen value directly
+// (replaces the old cycle-on-click dot, so you can jump straight to High/Med/Low/None).
+function _blPrioSelect(r){
+  var cur=r.priority||'';
+  var cls=cur==='High'?'p-high':cur==='Medium'?'p-medium':cur==='Low'?'p-low':'p-none';
+  var opts=[['High',t('High')],['Medium',t('Med')],['Low',t('Low')],['',t('— None')]].map(function(o){
+    return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>';
+  }).join('');
+  return '<select class="bl-prio-sel '+cls+'" title="'+t('Set priority')+'" onchange="blSetPrio('+r.pid+',\''+r.kind+'\','+r.id+',this.value)">'+opts+'</select>';
+}
+
 // one editable backlog row (tasks: full edit; risks/actions: lighter)
-function _blRowHTML(r){
+// showProj: include the project tag (suppressed when grouped by project).
+function _blRowHTML(r,showProj){
   var m=_BL_TYPE_META[r.kind], isTask=r.kind==='todo', raw=r.ref||{};
   var freeText=(raw.assigneeId==null)?(raw.owner||raw.member||''):'';
-  var prTitle=(r.priority||t('No priority'))+' — '+t('click to change');
-  var h='<div class="bl-row'+(r.done?' bl-done':'')+'">'
+  var key=r.pid+'_'+r.kind+'_'+r.id, flash=(_blFlash===key);
+  var h='<div class="bl-row'+(r.done?' bl-done':'')+(flash?' bl-flash':'')+'" id="blrow_'+key+'">'
     +'<input type="checkbox" class="bl-check" '+(r.done?'checked':'')+' onchange="blToggleDone('+r.pid+',\''+r.kind+'\','+r.id+')">'
     +_blChip(t(m.label),m.color)
-    +'<button class="todo-prio '+(r.priority==='High'?'p-high':r.priority==='Medium'?'p-medium':r.priority==='Low'?'p-low':'p-none')+'" title="'+prTitle+'" onclick="blCyclePrio('+r.pid+',\''+r.kind+'\','+r.id+')"></button>'
+    +(showProj?_blProjTag(r):'')
+    +_blPrioSelect(r)
     +'<button class="bl-pin" title="'+(raw.execPin?t('Pinned to Executive summary — click to unpin'):t('Pin to Executive summary (plan your week)'))+'" onclick="blTogglePin('+r.pid+',\''+r.kind+'\','+r.id+')" style="background:none;border:none;cursor:pointer;font-size:12px;line-height:1;padding:0 2px;opacity:'+(raw.execPin?'1':'.3')+';filter:'+(raw.execPin?'none':'grayscale(1)')+'">📌</button>'
     +(isTask
        ?'<input class="bl-text" value="'+escH(r.text)+'" onchange="blSetText('+r.pid+',\'todo\','+r.id+',this.value)">'
@@ -21569,6 +21823,15 @@ function renderBacklogTab(){
      +'</div>';
   }
 
+  // ── Legend: explain the priority picker + the pin, which aren't self-evident ────
+  h+='<div class="bl-legend">'
+   +'<span><select class="bl-prio-sel p-high" disabled style="pointer-events:none"><option>'+t('High')+'</option></select> '
+   +t('Set a priority directly — the row flashes if it moves to another group.')+'</span>'
+   +'<span style="opacity:.5">·</span>'
+   +'<span><span style="font-size:12px">📌</span> '
+   +t('Pin an item to surface it on your Executive summary and Home "this week".')+'</span>'
+   +'</div>';
+
   // ── Analytics KPIs ─────────────────────────────────────────────
   h+='<div class="alloc-kpi-grid" style="margin-bottom:14px">'
    +'<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-label">'+t('BACKLOG ITEMS')+'</div>'
@@ -21610,11 +21873,19 @@ function renderBacklogTab(){
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(gk)+'</span>'
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">'+t('{n} open',{n:gOpen})+' · '+g.rows.length+' '+t('total')+'</span>'
      +'</div><div>';
-    g.rows.forEach(function(r){ h+=_blRowHTML(r); });
+    g.rows.forEach(function(r){ h+=_blRowHTML(r,_blGroupBy!=='project'); });
     h+='</div></div>';
   });
 
   body.innerHTML=h;
+
+  // A just-reprioritised row may have hopped to a different group (or been filtered
+  // out) — bring the flashed row into view so the change is easy to follow, then clear.
+  if(_blFlash){
+    var fe=G('blrow_'+_blFlash);
+    if(fe&&fe.scrollIntoView) fe.scrollIntoView({block:'nearest'});
+    _blFlash=null;
+  }
 }
 
 // helper: find a project by id
@@ -21644,7 +21915,8 @@ function blQuickAdd(){
 // inline edits ---------------------------------------------------------------
 function blToggleDone(pid,type,id){ var p=_blProj(pid); if(!p)return; projToggleItemDone(p,type,id); saveState(); renderBacklogTab(); }
 function blTogglePin(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; r.execPin=!r.execPin; saveState(); renderBacklogTab(); }
-function blCyclePrio(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; var i=ITEM_PRIOS.indexOf(r.priority||''); projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]); saveState(); renderBacklogTab(); }
+// Set an item's priority to a chosen value (High|Medium|Low|'' none) and flash the row.
+function blSetPrio(pid,type,id,v){ var p=_blProj(pid); if(!p)return; if(!projItemRaw(p,type,id))return; projSetItemPriority(p,type,id,v||''); _blFlash=pid+'_'+type+'_'+id; saveState(); renderBacklogTab(); }
 function blSetText(pid,type,id,v){ var p=_blProj(pid); if(!p)return; projSetItemText(p,type,id,v); saveState(); }
 function blSetAssignee(pid,type,id,v){ var p=_blProj(pid); if(!p)return; var raw=projItemRaw(p,type,id); if(!raw)return; applyAssigneeSelect(raw,type==='action'?'member':'owner',v); saveState(); renderBacklogTab(); }
 function blSetField(pid,type,id,field,v){ var p=_blProj(pid); if(!p)return; projSetItemField(p,type,id,field,v); saveState(); }
@@ -21702,6 +21974,7 @@ function exportFullBackup(){
     nextMsId,nextSectionId,nextAnnotId,nextActionId,
     sepX,sepY,scaleX,scaleY,yMode,quadrantsByMode,annotations,zoom,
     engDashGroupBy,skillDomains,skillCats,finExclude:[..._finExclude],ktPlans:_ktPlans,gateConfig,
+    anViews:_anViews,
     orgAnnotations:_orgAnnotations,orgLevelH:_orgLevelH,
     orgLevelNames:_orgLevelNames,orgPositions:_orgPositions,
     orgCollapsed:_orgCollapsed,orgScale:_orgScale,
@@ -21788,6 +22061,9 @@ function applyBackupState(d){
   // Dataset SWAP — always reset finExclude (keyed by per-dataset eng.id).
   _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
   if(d.ktPlans)        _ktPlans=d.ktPlans;
+  // Dataset SWAP — adopt the backup's saved analytics views, or reset to null so the
+  // new dataset re-seeds the default examples rather than inheriting the old list.
+  _anViews = Array.isArray(d.anViews) ? d.anViews : null;
   if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
   if(d.orgPositions)   _orgPositions=d.orgPositions;
   if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;
@@ -23165,9 +23441,10 @@ var RAIL_UTIL = [
   {id:'archive',  name:t('Archive'),   ico:RAIL_I.archive},
   {id:'data',     name:t('Data'),      ico:RAIL_I.data},
   {id:'ai',       name:t('AI advisor'),ico:RAIL_I.ai},
-  {id:'settings', name:t('Settings'),  ico:RAIL_I.settings},
-  {id:'help',     name:t('Help'),      ico:RAIL_I.help},
+  {id:'more',     name:t('Settings & Help'), ico:RAIL_I.settings},
 ];
+// Set of live utility ids — used to sanitise the persisted Basics selection.
+var RAIL_UTIL_IDS={}; RAIL_UTIL.forEach(function(u){ RAIL_UTIL_IDS[u.id]=1; });
 
 /* ── Module state (rail-prefixed; unique across the flat bundle) ── */
 var railPinned=false;        // locked open via the pin button (survives mouse-leave)
@@ -23187,10 +23464,28 @@ var railGuideOff=false;      // value-spine strip permanently dismissed ("don't 
 var railAdvanced=true;       // false = Basics only (progressive disclosure). Default true so an
                              // EXISTING user is never surprised by hidden views; a genuine first
                              // run (no rail prefs saved) starts false — see railLoadPrefs.
-// The Basics set a newcomer starts with — a focused subset that spells the value spine
+// DEFAULT Basics set a newcomer starts with — a focused subset that spells the value spine
 // (Home · Roster · Matrix · Plan · Balancer). Everything else is revealed by "Show advanced".
+// These are only the SEED; the live selection (railBasicViews / railBasicUtilHide, below) is
+// user-editable in the Rail Layout organiser and persisted, so anyone can decide exactly which
+// views and utility panels make up their own simplified rail.
 var RAIL_BASIC_VIEWS={home:1,roster:1,matrix:1,plan:1,dashboard:1};
 var RAIL_BASIC_UTIL_HIDE={collab:1,ai:1};   // utilities hidden in Basics (advanced / network-dependent)
+// Live Basics selection (persisted, per-device). `railBasicViews` = which views show in Basics;
+// `railBasicUtilHide` = which utility panels are HIDDEN in Basics (kept as a hide-set so the
+// default — everything shown except these two — needs no enumeration). Null until railLoadPrefs
+// seeds them from the defaults above (and/or the saved prefs).
+var railBasicViews=null, railBasicUtilHide=null;
+// (Re)seed the live Basics selection from the hardcoded defaults.
+function railBasicDefaults(){
+  railBasicViews={};    Object.keys(RAIL_BASIC_VIEWS).forEach(function(k){ railBasicViews[k]=1; });
+  railBasicUtilHide={}; Object.keys(RAIL_BASIC_UTIL_HIDE).forEach(function(k){ railBasicUtilHide[k]=1; });
+}
+// Keep only ids that still exist (tolerate a saved selection referencing a removed view/util).
+function railNormSet(obj,valid){ var o={}; if(obj) Object.keys(obj).forEach(function(k){ if(obj[k]&&valid[k]) o[k]=1; }); return o; }
+// Accessors used by the renderer (null-safe).
+function railViewInBasic(id){ return !!(railBasicViews&&railBasicViews[id]); }
+function railUtilHiddenInBasic(id){ return !!(railBasicUtilHide&&railBasicUtilHide[id]); }
 var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
 var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
@@ -23200,6 +23495,7 @@ var RAIL_PREFS_KEY='eim_rail_prefs';   // tiny UI-only key, separate from app st
 
 // load persisted rail UI prefs (hover-drawer on/off + default landing + collapsed width)
 function railLoadPrefs(){
+  railBasicDefaults();                        // seed the Basics selection; saved prefs override below
   try{ var raw=localStorage.getItem(RAIL_PREFS_KEY);
        if(!raw){ railAdvanced=false; return; }   // genuine first run → start in Basics only
        var p=JSON.parse(raw||'null');
@@ -23215,11 +23511,13 @@ function railLoadPrefs(){
               if(p.tpLens==='disc'||p.tpLens==='ninebox') _tpLens=p.tpLens;   // Talent placement remember-last lens
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
+              if(p.basicViews&&typeof p.basicViews==='object')    railBasicViews=railNormSet(p.basicViews,RAIL_ALL_VIEWS);
+              if(p.basicUtilHide&&typeof p.basicUtilHide==='object') railBasicUtilHide=railNormSet(p.basicUtilHide,RAIL_UTIL_IDS);
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens,guideOff:railGuideOff,advanced:railAdvanced})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens,guideOff:railGuideOff,advanced:railAdvanced,basicViews:railBasicViews,basicUtilHide:railBasicUtilHide})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -23284,12 +23582,16 @@ function rloRenderBoard(){
       var opts=RAIL_DOMAINS.map(function(o){
         return '<option value="'+o.id+'"'+(o.id===d.id?' selected':'')+'>'+escH(o.name)+'</option>';
       }).join('');
+      var inBasic=railViewInBasic(v.id);
       return '<div class="rlo-card" draggable="true" data-view="'+v.id+'"'
         + ' ondragstart="rloDragStart(event,\''+v.id+'\')" ondragover="rloCardOver(event)"'
         + ' ondragleave="rloCardLeave(event)" ondrop="rloCardDrop(event,\''+d.id+'\',\''+v.id+'\')"'
         + ' ondragend="rloDragEnd(event)">'
         + '<div class="rlo-card-top"><span class="rlo-grip" aria-hidden="true">⠿</span>'
-        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>'
+        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')
+        +   '<button class="rlo-basic'+(inBasic?' on':'')+'" aria-pressed="'+(inBasic?'true':'false')+'"'
+        +     ' onclick="railBasicToggleView(\''+v.id+'\')" title="'+escH(t('Show this page in Basics (simplified) mode'))+'">'+(inBasic?'★':'☆')+'</button>'
+        + '</div>'
         + '<div class="rlo-card-ctl">'
         +   '<button class="sm" '+(idx===0?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',-1)" title="'+t('Move up')+'">▲</button>'
         +   '<button class="sm" '+(idx===d.views.length-1?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',1)" title="'+t('Move down')+'">▼</button>'
@@ -23302,7 +23604,24 @@ function rloRenderBoard(){
       +   '<span class="rlo-col-name">'+escH(d.name)+'</span><span class="rlo-col-count">'+d.views.length+'</span></div>'
       + '<div class="rlo-col-body">'+(cards||'<div class="rlo-empty">'+t('(no pages)')+'</div>')+'</div>'
       + '</div>';
-  }).join('');
+  }).join('')
+  // Utility panels — not draggable / not domain-owned, but each carries the same ★
+  // Basics toggle so the simplified rail's foot is configurable too.
+  + '<div class="rlo-col rlo-col-util">'
+  +   '<div class="rlo-col-head"><span class="rlo-col-ico">'+RAIL_I.settings+'</span>'
+  +     '<span class="rlo-col-name">'+escH(t('UTILITY PANELS'))+'</span></div>'
+  +   '<div class="rlo-col-body">'
+  +     RAIL_UTIL.map(function(u){
+          var shown=!railUtilHiddenInBasic(u.id);
+          return '<div class="rlo-card rlo-card-util">'
+            + '<div class="rlo-card-top"><span class="rlo-util-ico2" aria-hidden="true">'+u.ico+'</span>'
+            +   '<span class="rlo-card-lbl">'+escH(u.name)+'</span>'
+            +   '<button class="rlo-basic'+(shown?' on':'')+'" aria-pressed="'+(shown?'true':'false')+'"'
+            +     ' onclick="railBasicToggleUtil(\''+u.id+'\')" title="'+escH(t('Show this panel in Basics (simplified) mode'))+'">'+(shown?'★':'☆')+'</button>'
+            + '</div></div>';
+        }).join('')
+  +   '</div>'
+  + '</div>';
 }
 // Move a page to another domain (organiser dropdown; lands at that domain's end).
 function railLayoutSetDomain(viewId,domId){
@@ -23466,7 +23785,7 @@ function railRender(){
     // Progressive disclosure: in Basics mode keep only the basic views (plus whatever
     // view is currently active, so "you are here" is always shown). A domain with no
     // visible views is hidden entirely.
-    var views=railAdvanced ? d.views : d.views.filter(function(v){ return RAIL_BASIC_VIEWS[v.id]||v.id===activeView; });
+    var views=railAdvanced ? d.views : d.views.filter(function(v){ return railViewInBasic(v.id)||v.id===activeView; });
     if(!views.length) return '';
     var subs=views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
@@ -23488,7 +23807,7 @@ function railRender(){
          +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
          + '</div><div class="rn-subs">'+subs+'</div></div>';
   }).join('');
-  railFootEl.innerHTML=RAIL_UTIL.filter(function(u){ return railAdvanced || !RAIL_BASIC_UTIL_HIDE[u.id]; }).map(function(u){
+  railFootEl.innerHTML=RAIL_UTIL.filter(function(u){ return railAdvanced || !railUtilHiddenInBasic(u.id); }).map(function(u){
     var badge=(u.id==='collab')?'<span id="rn-collab-badge" class="rn-util-badge" style="display:none"></span>':'';
     return '<div class="rn-util" onclick="railAction(\''+u.id+'\')" title="'+u.name+'">'
          + '<span class="rn-util-ico" style="position:relative">'+u.ico+badge+'</span>'
@@ -23497,7 +23816,7 @@ function railRender(){
   + '<div class="rn-mode-sep"></div>'
   // Progressive-disclosure toggle: Basics only ↔ Show advanced (persisted, per-device).
   + '<div class="rn-util rn-mode'+(railAdvanced?' on':'')+'" onclick="railToggleAdvanced()"'
-  + ' title="'+escH(t('Show every domain, or keep the rail to the basics (Home · Roster · Matrix · Plan · Balancer)'))+'">'
+  + ' title="'+escH(t('Show every domain, or keep the rail to the basics you pick (set them in Settings › Organise rail layout)'))+'">'
   +   '<span class="rn-util-ico" style="font-size:16px">'+(railAdvanced?'◒':'◍')+'</span>'
   +   '<span class="rn-util-name mono">'+escH(railAdvanced?t('Basics only'):t('Show advanced'))+'</span></div>'
   + '<div class="rn-util rn-mode'+(railHoverMode?' on':'')+'" onclick="railToggleHoverMode()"'
@@ -23512,6 +23831,26 @@ function railToggleAdvanced(){
   railSavePrefs();
   railRender();
 }
+
+/* ══ BASICS SELECTION ═══════════════════════════════════════════════════
+   Which views + utility panels make up the simplified ("Basics") rail is a
+   per-device choice, edited from the Rail Layout organiser (a ★ on each card).
+   Toggling persists and live-refreshes both the rail and the organiser. */
+// Toggle whether a VIEW appears while the rail is in Basics mode.
+function railBasicToggleView(viewId){
+  if(!railBasicViews) railBasicDefaults();
+  if(railBasicViews[viewId]) delete railBasicViews[viewId]; else railBasicViews[viewId]=1;
+  railSavePrefs(); railRender(); rloRenderBoard();
+}
+// Toggle whether a UTILITY panel appears in Basics (the model is a hide-set, so
+// "shown" == absent from railBasicUtilHide).
+function railBasicToggleUtil(utilId){
+  if(!railBasicUtilHide) railBasicDefaults();
+  if(railBasicUtilHide[utilId]) delete railBasicUtilHide[utilId]; else railBasicUtilHide[utilId]=1;
+  railSavePrefs(); railRender(); rloRenderBoard();
+}
+// Reset ONLY the Basics selection back to the shipped defaults (leaves layout moves alone).
+function railBasicReset(){ railBasicDefaults(); railSavePrefs(); railRender(); rloRenderBoard(); }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
 var RAIL_RES_TABS={roster:1,plan:1,skills:1,placement:1,development:1,analytics:1,dashboard:1,portfolio:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
@@ -23561,7 +23900,7 @@ function railGo(ev,viewId){
   if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
   // Progressive disclosure: navigating to an advanced view (deep-link, spine, search)
   // auto-reveals the full rail so the user can see where they are and get back.
-  if(!railAdvanced && !RAIL_BASIC_VIEWS[viewId]){ railAdvanced=true; railSavePrefs(); }
+  if(!railAdvanced && !railViewInBasic(viewId)){ railAdvanced=true; railSavePrefs(); }
   if(!railBackNav && activeView && activeView!==viewId){ railNavStack.push(activeView); if(railNavStack.length>60) railNavStack.shift(); }
   activeView=viewId;
   railHideFly();
@@ -23599,7 +23938,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','archive-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay'];
+  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay','more-menu-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -23613,8 +23952,7 @@ function railAction(id){
   else if(id==='archive')  openArchive();
   else if(id==='data')     dataMenuOpen();
   else if(id==='ai')       aiOpenChat();
-  else if(id==='settings') railOpenSettings();
-  else if(id==='help')     openHelp();
+  else if(id==='more')     moreMenuOpen();
 }
 
 /* ── DATA utility (Track B #9) — one rail door grouping the three dataset-lifecycle
@@ -23634,6 +23972,23 @@ function dataMenuGo(action){
   if(action==='snap'    && typeof openSnap==='function')          openSnap();
   else if(action==='backup'  && typeof exportFullBackup==='function') exportFullBackup();
   else if(action==='restore' && typeof importFullBackup==='function') importFullBackup();
+  else if(action==='reset'   && typeof resetAll==='function')         resetAll();   // confirms + auto-snapshots first
+}
+
+/* ── SETTINGS & HELP menu — the two "app chrome" utility doors (Settings and Help)
+   collapsed into one rail button (#more-menu-overlay). Same lightweight menu pattern
+   as the DATA door above; each item fires the existing opener and closes the menu.
+   Registered in RAIL_MODAL_OVERLAYS + the boot.js Esc chain. */
+function moreMenuOpen(){
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  var ov=G('more-menu-overlay'); if(ov) ov.classList.add('show');
+}
+function moreMenuClose(){ var ov=G('more-menu-overlay'); if(ov) ov.classList.remove('show'); }
+function moreMenuGo(action){
+  moreMenuClose();
+  if(action==='settings' && typeof railOpenSettings==='function') railOpenSettings();
+  else if(action==='help' && typeof openHelp==='function')        openHelp();
 }
 
 // collapsed: tap toggles the flyout · pinned: expand accordion + go to first view
@@ -31789,6 +32144,7 @@ document.addEventListener('keydown',e=>{
     if(typeof rloClose==='function')rloClose();
     if(typeof closeCompare==='function')closeCompare();   // Compare is a matrix sub-mode (RAIL_MODAL_OVERLAYS)
     if(typeof dataMenuClose==='function')dataMenuClose();
+    if(typeof moreMenuClose==='function')moreMenuClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }

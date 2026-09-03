@@ -106,11 +106,76 @@ export let _anState = {
   dimB:     null,          // dimension id or null
   template: null,          // selected template id
   filters:  { group:new Set(), location:new Set(), seniority:new Set() },
-  show:     { kpi:true, insights:true },   // collapsible header panels (persisted)
+  show:     { kpi:true, insights:true },   // collapsible header panels (persisted, device-local)
 };
-// Restore collapsible-panel preferences (persists across reloads)
-try { const _sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null'); if (_sv) Object.assign(_anState.show, _sv); } catch (e) {}
-function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify(_anState.show)); } catch (e) {} }
+let _anEditViews = false;  // panel "✎ Edit views" mode: reveal ✕/✎ on chips + the add-example picker
+// Restore the panel show/hide toggles. Device-local + UI-only (same tier as export
+// branding). NOTE: the saved-VIEWS list is NOT here any more — it now lives in app
+// state (globals _anViews) so it travels with backup/restore and is cleared by reset;
+// anEnsureViews() one-time-migrates any legacy device-local pins out of this key.
+try {
+  const _sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null');
+  if (_sv) Object.assign(_anState.show, _sv.show || _sv);   // back-compat: old value stored the show fields at top level
+} catch (e) {}
+function anSaveView(){ try { localStorage.setItem('eim_an_view', JSON.stringify({ show:_anState.show })); } catch (e) {} }
+
+/* ══ Saved analytics views (globals _anViews) ══════════════════════════════
+   One user-owned list, seeded from the built-in story views as editable EXAMPLES
+   and grown by "★ Pin view". Each entry is either a LIBRARY reference (`lib` = a
+   built-in story-template id, whose bespoke chart stays in code) OR a COMPARE view
+   (`dimA`/`dimB`/`template`). Both carry a `name` and captured `filters`. The list
+   drives BOTH the panel chips and the export blocks, and rides app state. */
+function anDefaultViews(){
+  return ANALYTICS_TEMPLATES.filter(x => x.isStoryView).map(s => ({
+    id:'lib_'+s.id, name:s.name, lib:s.id,
+    filters:{ group:[], location:[], seniority:[] },
+  }));
+}
+// Seed the list the first time it's needed (fresh app / legacy dataset with no
+// saved list), migrating any legacy device-local pins from the old eim_an_view key.
+// A dataset that HAS a saved list (array, even empty) is left exactly as loaded.
+function anEnsureViews(){
+  if (Array.isArray(_anViews)) return;
+  const seed = anDefaultViews();
+  try {
+    const sv = JSON.parse(localStorage.getItem('eim_an_view') || 'null');
+    if (sv && Array.isArray(sv.views) && sv.views.length){
+      sv.views.forEach(v => seed.push({
+        id:v.id || anNewViewId(),
+        name:v.name || t('View'),
+        lib:v.story || undefined,
+        dimA:v.dimA || undefined, dimB:v.dimB || undefined, template:v.template || undefined,
+        filters:v.filters || { group:[], location:[], seniority:[] },
+      }));
+      // Strip the migrated pins from the device-local key so they can't re-migrate.
+      localStorage.setItem('eim_an_view', JSON.stringify({ show:_anState.show }));
+    }
+  } catch (e) {}
+  _anViews = seed;
+}
+function anNewViewId(){ return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+// The built-in template a saved view renders through (lib story, or compare template).
+function anViewTemplate(v){ return ANALYTICS_TEMPLATES.find(x => x.id === (v.lib || v.template)) || null; }
+// Display icon for a chip / export heading (live from the referenced template).
+function anViewIcon(v){ const tpl = anViewTemplate(v); return tpl ? tpl.icon : '📊'; }
+// Render a saved view's chart against a dataset (lib → render(data); compare → render(data,A,B)).
+function anRenderView(v, data){
+  const tpl = anViewTemplate(v); if (!tpl) return null;
+  return v.lib ? tpl.render(data) : tpl.render(data, anDim(v.dimA), anDim(v.dimB));
+}
+// Set-membership filters from a saved view's array-form filters (Sets don't JSON-serialise).
+function anViewFilterSets(v){ const f=(v&&v.filters)||{}; return { group:new Set(f.group||[]), location:new Set(f.location||[]), seniority:new Set(f.seniority||[]) }; }
+// Does the live panel state exactly match a saved view? (highlights the active chip)
+function anSetEqArr(set, arr){ arr=arr||[]; if(set.size!==arr.length) return false; for(const x of arr){ if(!set.has(x)) return false; } return true; }
+function anViewMatches(v){
+  const s=_anState;
+  const kindMatch = v.lib
+    ? (v.lib === (s.story||null))
+    : (!s.story && (v.dimA||null)===(s.dimA||null) && (v.dimB||null)===(s.dimB||null) && (v.template||null)===(s.template||null));
+  return kindMatch
+    && anSetEqArr(s.filters.group,(v.filters||{}).group) && anSetEqArr(s.filters.location,(v.filters||{}).location)
+    && anSetEqArr(s.filters.seniority,(v.filters||{}).seniority);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    1. DATASET — one row per active engineer with all computed fields
@@ -1332,16 +1397,26 @@ export function renderAnalyticsTab(){
     '<optgroup label="'+escH(grp)+'">' + dimsByGroup[grp].map(d =>
       '<option value="'+d.id+'"'+(sel===d.id?' selected':'')+'>'+escH(d.label)+'</option>').join('') + '</optgroup>').join('');
 
-  const stories = ANALYTICS_TEMPLATES.filter(t => t.isStoryView);
+  anEnsureViews();                    // seed / migrate the saved-views list (globals _anViews) on first render
   const ds = buildAnalyticsDataset();
   const groups = [...new Set(ds.map(d => d.group))].sort();
   const locs   = [...new Set(ds.map(d => d.location))].sort();
   const sens   = SENIORITY_ORDER.filter(s => ds.some(d => d.seniority === s));
 
-  const pill = (id, name, icon, active) =>
-    '<button onclick="anPickStory(\''+id+'\')" style="background:'+(active?'rgba(200,241,53,.12)':'var(--bg)')
-    + ';border:1px solid '+(active?'var(--accent)':'var(--border)')+';color:'+(active?'var(--accent)':'var(--text)')
-    + ';font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer">'+icon+' '+escH(name)+'</button>';
+  // One saved-view chip: click to show it; in Edit mode reveal ✎ (rename) + ✕ (remove).
+  const viewChip = v => { const on = anViewMatches(v);
+    let s = '<span style="display:inline-flex;align-items:center;gap:6px;background:'+(on?'rgba(200,241,53,.12)':'var(--bg)')
+      + ';border:1px solid '+(on?'var(--accent)':'var(--border)')+';border-radius:6px;padding:5px 8px 5px 11px">'
+      + '<button onclick="anApplyView(\''+v.id+'\')" title="'+escH(t('Show this view'))+'" style="background:none;border:none;color:'+(on?'var(--accent)':'var(--text)')+';font-family:IBM Plex Mono,monospace;font-size:11px;cursor:pointer;padding:0">'+anViewIcon(v)+' '+escH(v.name)+'</button>';
+    if (_anEditViews) s += '<button onclick="anRenameView(event,\''+v.id+'\')" title="'+escH(t('Rename'))+'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:0">✎</button>'
+      + '<button onclick="anRemoveView(event,\''+v.id+'\')" title="'+escH(t('Remove'))+'" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;line-height:1;padding:0">✕</button>';
+    return s + '</span>'; };
+  // Edit-mode picker to (re)add a built-in story view as a fresh example.
+  const addPicker = () => '<select onchange="anAddLibView(this.value);this.selectedIndex=0" title="'+escH(t('Add a built-in view'))+'" '
+    + 'style="background:var(--bg);border:1px dashed var(--border);color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 8px;border-radius:6px;cursor:pointer">'
+    + '<option value="">＋ '+escH(t('Add example…'))+'</option>'
+    + ANALYTICS_TEMPLATES.filter(x => x.isStoryView).map(s => '<option value="'+s.id+'">'+escH(s.icon+' '+s.name)+'</option>').join('')
+    + '</select>';
 
   const selStyle = 'background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:4px 8px;border-radius:4px;min-width:170px';
 
@@ -1352,15 +1427,34 @@ export function renderAnalyticsTab(){
       + ';color:'+(on?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">'
       + (on?'▾ ':'▸ ')+label+'</button>'; };
 
+  // Small mono action button (Pin / CSV / Export), sized to match the panel toggles.
+  const actStyle = accent => 'background:var(--bg);border:1px solid '+(accent?'var(--accent)':'var(--border)')
+    + ';color:'+(accent?'var(--accent)':'var(--text)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer';
+  const vsep = '<span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>';
+
   let h = '<div style="padding:14px 16px">';
   h += peopleLensBar();
-  // Story pills + view toggles
-  h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">'
-    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('STORY VIEWS')+'</span>'
-    + '<span style="display:flex;gap:6px;align-items:center"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('PANELS')+'</span>'
-    + vtog('kpi', t('KPIs')) + vtog('insights', t('Insights')) + '</span></div>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-    + stories.map(s => pill(s.id, s.name, s.icon, _anState.story === s.id)).join('') + '</div>';
+  // Story-views label + right-side action cluster: panel toggles, then the data
+  // actions (Pin the current view, CSV, full Export) — moved up here so they sit
+  // beside the KPI/Insights panel toggles instead of below the chart.
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
+    + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('VIEWS')+'</span>'
+    + '<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('PANELS')+'</span>'
+    + vtog('kpi', t('KPIs')) + vtog('insights', t('Insights')) + vsep
+    + '<button onclick="anPinView()" title="'+escH(t('Save the current view to the list + export'))+'" style="'+actStyle(false)+'">★ '+escH(t('Pin view'))+'</button>'
+    + '<button onclick="anToggleEditViews()" title="'+escH(t('Edit the views list — rename, remove, add examples'))+'" style="background:'+(_anEditViews?'rgba(200,241,53,.10)':'var(--bg)')+';border:1px solid '+(_anEditViews?'var(--accent)':'var(--border)')+';color:'+(_anEditViews?'var(--accent)':'var(--muted)')+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 9px;border-radius:5px;cursor:pointer">✎ '+escH(_anEditViews?t('Done'):t('Edit'))+'</button>'
+    + vsep
+    + '<button onclick="anExportCSV()" title="'+escH(t('Download the filtered dataset as CSV'))+'" style="'+actStyle(false)+'">↓ CSV</button>'
+    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="'+actStyle(true)+'">📄 '+escH(t('EXPORT'))+'</button>'
+    + '</span></div>';
+  // Unified saved-views list: built-in story views (seeded examples) + pinned compares.
+  // Click a chip to show it; Edit mode reveals rename/remove + the "add example" picker.
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">'
+    + (_anViews || []).map(viewChip).join('')
+    + (_anEditViews ? addPicker() : '')
+    + (((_anViews || []).length === 0 && !_anEditViews)
+        ? '<span style="font-size:11px;color:var(--muted)">'+escH(t('No views yet — set up a chart below and “★ Pin view”, or ✎ Edit to add examples.'))+'</span>' : '')
+    + '</div>';
   // Compare row
   h += '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">'
     + '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:.08em">'+t('COMPARE')+'</span>'
@@ -1383,8 +1477,8 @@ export function renderAnalyticsTab(){
   anRenderMain();
 }
 
-function anApplyFilters(data){
-  const f = _anState.filters;
+function anApplyFilters(data, f){
+  f = f || _anState.filters;
   return data.filter(d =>
     (f.group.size === 0 || f.group.has(d.group)) &&
     (f.location.size === 0 || f.location.has(d.location)) &&
@@ -1465,12 +1559,6 @@ function anRenderMain(){
   h += '</div>';
   h += '</div>';
 
-  // Export bar
-  h += '<div style="display:flex;gap:8px;margin-top:12px">'
-    + '<button onclick="anExportCSV()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">↓ CSV</button>'
-    + '<button onclick="anExportOpen()" title="'+escH(t('Export People Analytics'))+'" style="background:var(--bg);border:1px solid var(--accent);color:var(--accent);font-family:IBM Plex Mono,monospace;font-size:11px;padding:5px 12px;border-radius:4px;cursor:pointer">📄 '+escH(t('EXPORT'))+'</button>'
-    + '</div>';
-
   main.innerHTML = h;
   anBindTips(G('an-chart'));
   anBindDrill(G('an-chart'));
@@ -1502,6 +1590,65 @@ export function anClearFilters(){
   _anState.filters = { group:new Set(), location:new Set(), seniority:new Set() };
   renderAnalyticsTab();
 }
+
+/* ── Saved views (globals _anViews) ── One user-owned list: the built-in story
+   views seeded as editable EXAMPLES + user-pinned compares. Each is a recall chip
+   in the panel AND an export block, and rides app state (travels with backup/restore,
+   cleared by reset). Mutations persist via saveState() (the app-state debounced save,
+   NOT the device-local anSaveView which only holds the panel show/hide toggles). */
+export function anPinView(){
+  const tpl = anActiveTemplate();
+  if (!tpl){ alert(t('Pick a dimension or story view first, then pin it.')); return; }
+  const dflt = _anState.story ? tpl.name : anTplName(tpl, anDim(_anState.dimA), anDim(_anState.dimB));
+  let name = prompt(t('Name this view:'), dflt);
+  if (name == null) return;                       // cancelled
+  name = (name.trim() || dflt);
+  anEnsureViews();
+  _anViews.push(_anState.story
+    ? { id:anNewViewId(), name, lib:_anState.story,
+        filters:{ group:[..._anState.filters.group], location:[..._anState.filters.location], seniority:[..._anState.filters.seniority] } }
+    : { id:anNewViewId(), name, dimA:_anState.dimA || null, dimB:_anState.dimB || null, template:_anState.template || null,
+        filters:{ group:[..._anState.filters.group], location:[..._anState.filters.location], seniority:[..._anState.filters.seniority] } });
+  saveState();
+  renderAnalyticsTab();
+}
+// Add a built-in story view as a fresh example entry (edit-mode picker).
+export function anAddLibView(libId){
+  if (!libId) return;
+  const s = ANALYTICS_TEMPLATES.find(x => x.id === libId && x.isStoryView); if (!s) return;
+  anEnsureViews();
+  _anViews.push({ id:anNewViewId(), name:s.name, lib:s.id, filters:{ group:[], location:[], seniority:[] } });
+  saveState();
+  renderAnalyticsTab();
+}
+export function anApplyView(id){
+  anEnsureViews();
+  const v = _anViews.find(x => x.id === id); if (!v) return;
+  _anState.story = v.lib || null;
+  _anState.dimA = v.lib ? null : (v.dimA || null);
+  _anState.dimB = v.lib ? null : (v.dimB || null);
+  _anState.template = v.lib ? null : (v.template || null);
+  _anState.filters = anViewFilterSets(v);
+  renderAnalyticsTab();
+}
+export function anRenameView(ev, id){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  anEnsureViews();
+  const v = _anViews.find(x => x.id === id); if (!v) return;
+  const name = prompt(t('Rename this view:'), v.name);
+  if (name == null) return;
+  v.name = name.trim() || v.name;
+  saveState();
+  renderAnalyticsTab();
+}
+export function anRemoveView(ev, id){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  anEnsureViews();
+  _anViews = _anViews.filter(x => x.id !== id);
+  saveState();
+  renderAnalyticsTab();
+}
+export function anToggleEditViews(){ _anEditViews = !_anEditViews; renderAnalyticsTab(); }
 
 /* ══════════════════════════════════════════════════════════════════
    7. Exports — CSV (flat dataset) + PNG (svg→canvas)
@@ -1561,7 +1708,7 @@ function anExportDimOptions(){
 }
 
 function anExportBlocks(){
-  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  anEnsureViews();
   const blocks = [
     { id:'scorecard', label:t('KPI scorecard'), render(ctx){
         return anWithPalette(ctx.theme, () => anScorecard(anExportData(ctx))); } },
@@ -1577,13 +1724,18 @@ function anExportBlocks(){
         return anWithPalette(ctx.theme, () =>
           anExportChart(tpl.icon+' '+anTplName(tpl, dimA, dimB), tpl.render(data, dimA, dimB))); } },
   ];
-  stories.forEach(s => blocks.push({
-    id:'story.'+s.id,
-    label:s.icon+' '+s.name,
+  // One block per saved view (built-in examples + user-pinned). Each renders its OWN
+  // captured combo + filters — independent of the builder's live SCOPE control — so a
+  // saved view exports exactly as it sits in the panel. Label is escaped by the builder.
+  (_anViews || []).forEach(v => blocks.push({
+    id:'view.'+v.id,
+    label:anViewIcon(v)+' '+v.name,
     render(ctx){
-      const data = anExportData(ctx);
+      const data = anApplyFilters(buildAnalyticsDataset(), anViewFilterSets(v));
       if (!data.length) return '';
-      return anWithPalette(ctx.theme, () => anExportChart(s.icon+' '+s.name, s.render(data)));
+      const out = anRenderView(v, data);
+      if (!out) return '';
+      return anWithPalette(ctx.theme, () => anExportChart(anViewIcon(v)+' '+v.name, out));
     },
   }));
   return blocks;
@@ -1604,7 +1756,12 @@ function anExportOpen(){
   if (!all.length) { alert(t('No people to analyse yet.')); return; }
   const filtered = anApplyFilters(all);
   const scopeLabel = anExportScopeLabel();
-  const stories = ANALYTICS_TEMPLATES.filter(x => x.isStoryView);
+  anEnsureViews();
+  // Curated presets resolve to whatever saved views reference those built-in charts,
+  // so they stay correct after the user renames/removes/re-adds — and skip gracefully
+  // (the builder filters unknown block ids) when a referenced example was deleted.
+  const viewsForLibs = (...libs) => (_anViews || []).filter(v => v.lib && libs.indexOf(v.lib) >= 0).map(v => 'view.'+v.id);
+  const allViewBlocks = (_anViews || []).map(v => 'view.'+v.id);
 
   exportOpenBuilder({
     deliverableId:'analytics',
@@ -1640,13 +1797,13 @@ function anExportOpen(){
     },
     builtinTemplates:[
       { id:'review', name:t('Talent review'),
-        blocks:['scorecard','insights','story.talent_risk','story.retention_risk','story.succession'] },
+        blocks:['scorecard','insights'].concat(viewsForLibs('talent_risk','retention_risk','succession')) },
       { id:'comp', name:t('Compensation'),
-        blocks:['scorecard','story.pay_equity_full','story.pay_progression'] },
+        blocks:['scorecard'].concat(viewsForLibs('pay_equity_full','pay_progression')) },
       { id:'capacity', name:t('Capacity & skills'),
-        blocks:['scorecard','story.capacity_health','story.skill_coverage'] },
+        blocks:['scorecard'].concat(viewsForLibs('capacity_health','skill_coverage')) },
       { id:'all', name:t('Everything'),
-        blocks:['scorecard','insights','compare'].concat(stories.map(s => 'story.'+s.id)) },
+        blocks:['scorecard','insights','compare'].concat(allViewBlocks) },
       { id:'current', name:t('Just my chart'), blocks:['compare'] },
     ],
     formats:[

@@ -114,9 +114,10 @@ var RAIL_UTIL = [
   {id:'archive',  name:t('Archive'),   ico:RAIL_I.archive},
   {id:'data',     name:t('Data'),      ico:RAIL_I.data},
   {id:'ai',       name:t('AI advisor'),ico:RAIL_I.ai},
-  {id:'settings', name:t('Settings'),  ico:RAIL_I.settings},
-  {id:'help',     name:t('Help'),      ico:RAIL_I.help},
+  {id:'more',     name:t('Settings & Help'), ico:RAIL_I.settings},
 ];
+// Set of live utility ids — used to sanitise the persisted Basics selection.
+var RAIL_UTIL_IDS={}; RAIL_UTIL.forEach(function(u){ RAIL_UTIL_IDS[u.id]=1; });
 
 /* ── Module state (rail-prefixed; unique across the flat bundle) ── */
 var railPinned=false;        // locked open via the pin button (survives mouse-leave)
@@ -136,10 +137,28 @@ var railGuideOff=false;      // value-spine strip permanently dismissed ("don't 
 var railAdvanced=true;       // false = Basics only (progressive disclosure). Default true so an
                              // EXISTING user is never surprised by hidden views; a genuine first
                              // run (no rail prefs saved) starts false — see railLoadPrefs.
-// The Basics set a newcomer starts with — a focused subset that spells the value spine
+// DEFAULT Basics set a newcomer starts with — a focused subset that spells the value spine
 // (Home · Roster · Matrix · Plan · Balancer). Everything else is revealed by "Show advanced".
+// These are only the SEED; the live selection (railBasicViews / railBasicUtilHide, below) is
+// user-editable in the Rail Layout organiser and persisted, so anyone can decide exactly which
+// views and utility panels make up their own simplified rail.
 var RAIL_BASIC_VIEWS={home:1,roster:1,matrix:1,plan:1,dashboard:1};
 var RAIL_BASIC_UTIL_HIDE={collab:1,ai:1};   // utilities hidden in Basics (advanced / network-dependent)
+// Live Basics selection (persisted, per-device). `railBasicViews` = which views show in Basics;
+// `railBasicUtilHide` = which utility panels are HIDDEN in Basics (kept as a hide-set so the
+// default — everything shown except these two — needs no enumeration). Null until railLoadPrefs
+// seeds them from the defaults above (and/or the saved prefs).
+var railBasicViews=null, railBasicUtilHide=null;
+// (Re)seed the live Basics selection from the hardcoded defaults.
+function railBasicDefaults(){
+  railBasicViews={};    Object.keys(RAIL_BASIC_VIEWS).forEach(function(k){ railBasicViews[k]=1; });
+  railBasicUtilHide={}; Object.keys(RAIL_BASIC_UTIL_HIDE).forEach(function(k){ railBasicUtilHide[k]=1; });
+}
+// Keep only ids that still exist (tolerate a saved selection referencing a removed view/util).
+function railNormSet(obj,valid){ var o={}; if(obj) Object.keys(obj).forEach(function(k){ if(obj[k]&&valid[k]) o[k]=1; }); return o; }
+// Accessors used by the renderer (null-safe).
+function railViewInBasic(id){ return !!(railBasicViews&&railBasicViews[id]); }
+function railUtilHiddenInBasic(id){ return !!(railBasicUtilHide&&railBasicUtilHide[id]); }
 var railDragDom=null, railDragView=null, railDragging=false;  // page drag-reorder scratch state
 var RAIL_SB={thin:6,medium:11,wide:16};                // scrollbar preset -> px width
 var RAIL_W_MIN=48, RAIL_W_MAX=96, RAIL_W_DEFAULT=58;   // clamp keeps the layout intact
@@ -149,6 +168,7 @@ var RAIL_PREFS_KEY='eim_rail_prefs';   // tiny UI-only key, separate from app st
 
 // load persisted rail UI prefs (hover-drawer on/off + default landing + collapsed width)
 function railLoadPrefs(){
+  railBasicDefaults();                        // seed the Basics selection; saved prefs override below
   try{ var raw=localStorage.getItem(RAIL_PREFS_KEY);
        if(!raw){ railAdvanced=false; return; }   // genuine first run → start in Basics only
        var p=JSON.parse(raw||'null');
@@ -164,11 +184,13 @@ function railLoadPrefs(){
               if(p.tpLens==='disc'||p.tpLens==='ninebox') _tpLens=p.tpLens;   // Talent placement remember-last lens
               if(p.viewOrder&&typeof p.viewOrder==='object') railViewOrder=p.viewOrder;
               if(p.viewDomain&&typeof p.viewDomain==='object') railViewDomain=p.viewDomain;
+              if(p.basicViews&&typeof p.basicViews==='object')    railBasicViews=railNormSet(p.basicViews,RAIL_ALL_VIEWS);
+              if(p.basicUtilHide&&typeof p.basicUtilHide==='object') railBasicUtilHide=railNormSet(p.basicUtilHide,RAIL_UTIL_IDS);
               if(p.railWidth!=null)             railWidth=railClampWidth(p.railWidth); } }catch(e){}
 }
 // persist rail UI prefs
 function railSavePrefs(){
-  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens,guideOff:railGuideOff,advanced:railAdvanced})); }catch(e){}
+  try{ localStorage.setItem(RAIL_PREFS_KEY,JSON.stringify({hoverMode:railHoverMode,landing:railLanding,railWidth:railWidth,chartPicker:railChartMode,badgeScope:railBadgeScope,scrollbar:railScrollbar,viewOrder:railViewOrder,viewDomain:railViewDomain,tpLens:_tpLens,guideOff:railGuideOff,advanced:railAdvanced,basicViews:railBasicViews,basicUtilHide:railBasicUtilHide})); }catch(e){}
 }
 // scrollbar preset accessor + apply: writes --rail-sb (px) on documentElement; nav.css keys off it
 function railApplyScrollbar(){
@@ -233,12 +255,16 @@ function rloRenderBoard(){
       var opts=RAIL_DOMAINS.map(function(o){
         return '<option value="'+o.id+'"'+(o.id===d.id?' selected':'')+'>'+escH(o.name)+'</option>';
       }).join('');
+      var inBasic=railViewInBasic(v.id);
       return '<div class="rlo-card" draggable="true" data-view="'+v.id+'"'
         + ' ondragstart="rloDragStart(event,\''+v.id+'\')" ondragover="rloCardOver(event)"'
         + ' ondragleave="rloCardLeave(event)" ondrop="rloCardDrop(event,\''+d.id+'\',\''+v.id+'\')"'
         + ' ondragend="rloDragEnd(event)">'
         + '<div class="rlo-card-top"><span class="rlo-grip" aria-hidden="true">⠿</span>'
-        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')+'</div>'
+        +   '<span class="rlo-card-lbl">'+escH(v.label)+'</span>'+(v.bdg?'<span class="rn-bdg">'+v.bdg+'</span>':'')
+        +   '<button class="rlo-basic'+(inBasic?' on':'')+'" aria-pressed="'+(inBasic?'true':'false')+'"'
+        +     ' onclick="railBasicToggleView(\''+v.id+'\')" title="'+escH(t('Show this page in Basics (simplified) mode'))+'">'+(inBasic?'★':'☆')+'</button>'
+        + '</div>'
         + '<div class="rlo-card-ctl">'
         +   '<button class="sm" '+(idx===0?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',-1)" title="'+t('Move up')+'">▲</button>'
         +   '<button class="sm" '+(idx===d.views.length-1?'disabled':'')+' onclick="railLayoutNudge(\''+v.id+'\',1)" title="'+t('Move down')+'">▼</button>'
@@ -251,7 +277,24 @@ function rloRenderBoard(){
       +   '<span class="rlo-col-name">'+escH(d.name)+'</span><span class="rlo-col-count">'+d.views.length+'</span></div>'
       + '<div class="rlo-col-body">'+(cards||'<div class="rlo-empty">'+t('(no pages)')+'</div>')+'</div>'
       + '</div>';
-  }).join('');
+  }).join('')
+  // Utility panels — not draggable / not domain-owned, but each carries the same ★
+  // Basics toggle so the simplified rail's foot is configurable too.
+  + '<div class="rlo-col rlo-col-util">'
+  +   '<div class="rlo-col-head"><span class="rlo-col-ico">'+RAIL_I.settings+'</span>'
+  +     '<span class="rlo-col-name">'+escH(t('UTILITY PANELS'))+'</span></div>'
+  +   '<div class="rlo-col-body">'
+  +     RAIL_UTIL.map(function(u){
+          var shown=!railUtilHiddenInBasic(u.id);
+          return '<div class="rlo-card rlo-card-util">'
+            + '<div class="rlo-card-top"><span class="rlo-util-ico2" aria-hidden="true">'+u.ico+'</span>'
+            +   '<span class="rlo-card-lbl">'+escH(u.name)+'</span>'
+            +   '<button class="rlo-basic'+(shown?' on':'')+'" aria-pressed="'+(shown?'true':'false')+'"'
+            +     ' onclick="railBasicToggleUtil(\''+u.id+'\')" title="'+escH(t('Show this panel in Basics (simplified) mode'))+'">'+(shown?'★':'☆')+'</button>'
+            + '</div></div>';
+        }).join('')
+  +   '</div>'
+  + '</div>';
 }
 // Move a page to another domain (organiser dropdown; lands at that domain's end).
 function railLayoutSetDomain(viewId,domId){
@@ -415,7 +458,7 @@ function railRender(){
     // Progressive disclosure: in Basics mode keep only the basic views (plus whatever
     // view is currently active, so "you are here" is always shown). A domain with no
     // visible views is hidden entirely.
-    var views=railAdvanced ? d.views : d.views.filter(function(v){ return RAIL_BASIC_VIEWS[v.id]||v.id===activeView; });
+    var views=railAdvanced ? d.views : d.views.filter(function(v){ return railViewInBasic(v.id)||v.id===activeView; });
     if(!views.length) return '';
     var subs=views.map(function(v){
       var on=holds&&v.id===activeView&&!v.action;
@@ -437,7 +480,7 @@ function railRender(){
          +   '<span class="rn-dom-chev">'+RAIL_I.chev+'</span>'
          + '</div><div class="rn-subs">'+subs+'</div></div>';
   }).join('');
-  railFootEl.innerHTML=RAIL_UTIL.filter(function(u){ return railAdvanced || !RAIL_BASIC_UTIL_HIDE[u.id]; }).map(function(u){
+  railFootEl.innerHTML=RAIL_UTIL.filter(function(u){ return railAdvanced || !railUtilHiddenInBasic(u.id); }).map(function(u){
     var badge=(u.id==='collab')?'<span id="rn-collab-badge" class="rn-util-badge" style="display:none"></span>':'';
     return '<div class="rn-util" onclick="railAction(\''+u.id+'\')" title="'+u.name+'">'
          + '<span class="rn-util-ico" style="position:relative">'+u.ico+badge+'</span>'
@@ -446,7 +489,7 @@ function railRender(){
   + '<div class="rn-mode-sep"></div>'
   // Progressive-disclosure toggle: Basics only ↔ Show advanced (persisted, per-device).
   + '<div class="rn-util rn-mode'+(railAdvanced?' on':'')+'" onclick="railToggleAdvanced()"'
-  + ' title="'+escH(t('Show every domain, or keep the rail to the basics (Home · Roster · Matrix · Plan · Balancer)'))+'">'
+  + ' title="'+escH(t('Show every domain, or keep the rail to the basics you pick (set them in Settings › Organise rail layout)'))+'">'
   +   '<span class="rn-util-ico" style="font-size:16px">'+(railAdvanced?'◒':'◍')+'</span>'
   +   '<span class="rn-util-name mono">'+escH(railAdvanced?t('Basics only'):t('Show advanced'))+'</span></div>'
   + '<div class="rn-util rn-mode'+(railHoverMode?' on':'')+'" onclick="railToggleHoverMode()"'
@@ -461,6 +504,26 @@ function railToggleAdvanced(){
   railSavePrefs();
   railRender();
 }
+
+/* ══ BASICS SELECTION ═══════════════════════════════════════════════════
+   Which views + utility panels make up the simplified ("Basics") rail is a
+   per-device choice, edited from the Rail Layout organiser (a ★ on each card).
+   Toggling persists and live-refreshes both the rail and the organiser. */
+// Toggle whether a VIEW appears while the rail is in Basics mode.
+function railBasicToggleView(viewId){
+  if(!railBasicViews) railBasicDefaults();
+  if(railBasicViews[viewId]) delete railBasicViews[viewId]; else railBasicViews[viewId]=1;
+  railSavePrefs(); railRender(); rloRenderBoard();
+}
+// Toggle whether a UTILITY panel appears in Basics (the model is a hide-set, so
+// "shown" == absent from railBasicUtilHide).
+function railBasicToggleUtil(utilId){
+  if(!railBasicUtilHide) railBasicDefaults();
+  if(railBasicUtilHide[utilId]) delete railBasicUtilHide[utilId]; else railBasicUtilHide[utilId]=1;
+  railSavePrefs(); railRender(); rloRenderBoard();
+}
+// Reset ONLY the Basics selection back to the shipped defaults (leaves layout moves alone).
+function railBasicReset(){ railBasicDefaults(); railSavePrefs(); railRender(); rloRenderBoard(); }
 
 /* The 12 former Resources tabs — all route through openRes()+showResTab(). */
 var RAIL_RES_TABS={roster:1,plan:1,skills:1,placement:1,development:1,analytics:1,dashboard:1,portfolio:1,exec:1,gate:1,pipeline:1,engagement:1,backlog:1};
@@ -510,7 +573,7 @@ function railGo(ev,viewId){
   if(view&&view.action){ railAction(viewId); return; }   // action-only rail items (none in WORK now)
   // Progressive disclosure: navigating to an advanced view (deep-link, spine, search)
   // auto-reveals the full rail so the user can see where they are and get back.
-  if(!railAdvanced && !RAIL_BASIC_VIEWS[viewId]){ railAdvanced=true; railSavePrefs(); }
+  if(!railAdvanced && !railViewInBasic(viewId)){ railAdvanced=true; railSavePrefs(); }
   if(!railBackNav && activeView && activeView!==viewId){ railNavStack.push(activeView); if(railNavStack.length>60) railNavStack.shift(); }
   activeView=viewId;
   railHideFly();
@@ -548,7 +611,7 @@ function railEscMaybeBack(){
 var RAIL_MODAL_OVERLAYS=['help-overlay','q-panel','add-overlay','add-modal','settings-overlay',
   'rail-layout-overlay','landing-firstrun','cht-deck-overlay','cht-syn-overlay','snap-overlay','archive-overlay','alloc-ctx',
   'skills-modal-overlay','idcard-modal-overlay','org-kpi-panel','org-arrow-ctx','focus-panel',
-  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay'];
+  'export-builder-overlay','export-picker-overlay','compare-overlay','data-menu-overlay','more-menu-overlay'];
 function railAnyModalOpen(){
   return RAIL_MODAL_OVERLAYS.some(function(id){ var e=G(id); return e && e.classList.contains('show'); });
 }
@@ -562,8 +625,7 @@ function railAction(id){
   else if(id==='archive')  openArchive();
   else if(id==='data')     dataMenuOpen();
   else if(id==='ai')       aiOpenChat();
-  else if(id==='settings') railOpenSettings();
-  else if(id==='help')     openHelp();
+  else if(id==='more')     moreMenuOpen();
 }
 
 /* ── DATA utility (Track B #9) — one rail door grouping the three dataset-lifecycle
@@ -583,6 +645,23 @@ function dataMenuGo(action){
   if(action==='snap'    && typeof openSnap==='function')          openSnap();
   else if(action==='backup'  && typeof exportFullBackup==='function') exportFullBackup();
   else if(action==='restore' && typeof importFullBackup==='function') importFullBackup();
+  else if(action==='reset'   && typeof resetAll==='function')         resetAll();   // confirms + auto-snapshots first
+}
+
+/* ── SETTINGS & HELP menu — the two "app chrome" utility doors (Settings and Help)
+   collapsed into one rail button (#more-menu-overlay). Same lightweight menu pattern
+   as the DATA door above; each item fires the existing opener and closes the menu.
+   Registered in RAIL_MODAL_OVERLAYS + the boot.js Esc chain. */
+function moreMenuOpen(){
+  railHideFly();
+  if(railPinned&&window.innerWidth<=640) railTogglePin();
+  var ov=G('more-menu-overlay'); if(ov) ov.classList.add('show');
+}
+function moreMenuClose(){ var ov=G('more-menu-overlay'); if(ov) ov.classList.remove('show'); }
+function moreMenuGo(action){
+  moreMenuClose();
+  if(action==='settings' && typeof railOpenSettings==='function') railOpenSettings();
+  else if(action==='help' && typeof openHelp==='function')        openHelp();
 }
 
 // collapsed: tap toggles the flyout · pinned: expand accordion + go to first view

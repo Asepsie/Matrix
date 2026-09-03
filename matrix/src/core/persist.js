@@ -272,6 +272,8 @@ export function _doSave(){
       // Skills
       skillDomains,skillCats,ktPlans:_ktPlans,
       finExclude:[..._finExclude],
+      // People-Analytics saved views (null until seeded — see globals _anViews)
+      anViews:_anViews,
       // Gate & PI governance config (active methodology + templates + increments)
       gateConfig,
       // Org chart
@@ -377,6 +379,7 @@ export function loadState(){
     }
     if(d.skillDomains&&Array.isArray(d.skillDomains))skillDomains=d.skillDomains;
     if(d.skillCats&&Array.isArray(d.skillCats)&&d.skillCats.length)skillCats=d.skillCats;
+    if(Array.isArray(d.anViews))_anViews=d.anViews;   // else stays null → analytics lazily seeds defaults
     if(d.finExclude&&Array.isArray(d.finExclude))_finExclude=new Set(d.finExclude);
     if(d.orgAnnotations&&Array.isArray(d.orgAnnotations))_orgAnnotations=d.orgAnnotations;
     if(d.orgLevelH&&typeof d.orgLevelH==='object')_orgLevelH=d.orgLevelH;
@@ -847,6 +850,7 @@ function captureScope(scope){
     skillDomains,skillCats,
     finExclude:[..._finExclude],
     ktPlans:_ktPlans,
+    anViews:_anViews,
     gateConfig,
     orgAnnotations:_orgAnnotations,
     orgPositions:_orgPositions,
@@ -1034,6 +1038,7 @@ function restoreSnap(id){
       if(d.engDashFilterEng&&Array.isArray(d.engDashFilterEng))engDashFilterEng=new Set(d.engDashFilterEng);
       if(d.engDashFilterProj&&Array.isArray(d.engDashFilterProj))engDashFilterProj=new Set(d.engDashFilterProj);
       if(d.ktPlans&&typeof d.ktPlans==='object')_ktPlans=d.ktPlans;
+      if(Array.isArray(d.anViews))_anViews=d.anViews;   // only when the snapshot carried it (intra-dataset)
       if(d.orgAnnotations&&Array.isArray(d.orgAnnotations))_orgAnnotations=d.orgAnnotations;
       if(d.orgPositions&&typeof d.orgPositions==='object')_orgPositions=d.orgPositions;
       if(d.orgCollapsed&&typeof d.orgCollapsed==='object')_orgCollapsed=d.orgCollapsed;

@@ -121,6 +121,7 @@ function applyBackupState(d) {
     if (d.skillDomains) skillDomains = d.skillDomains;
     if (d.skillCats && Array.isArray(d.skillCats) && d.skillCats.length) skillCats = d.skillCats;
     if (d.ktPlans) _ktPlans = d.ktPlans;
+    _anViews = Array.isArray(d.anViews) ? d.anViews : null;   // dataset swap → adopt or re-seed defaults
     if (d.nineBoxPlacements && typeof d.nineBoxPlacements === 'object') _nineBoxPlacements = d.nineBoxPlacements;
     if (d.nineBoxHistory && typeof d.nineBoxHistory === 'object') _nineBoxHistory = d.nineBoxHistory;
     if (typeof nbEnsureHistory === 'function') { try { nbEnsureHistory(); } catch (e) {} }
@@ -416,6 +417,7 @@ async function main() {
       { name: 'util:collab',   open: "typeof collabOpen==='function'&&(collabOpen(),true)",           close: "typeof collabClose==='function'&&collabClose()" },
       { name: 'util:archive',  open: "typeof openArchive==='function'&&(openArchive(),true)",          close: "typeof closeArchive==='function'&&closeArchive()" },
       { name: 'util:data',     open: "typeof dataMenuOpen==='function'&&(dataMenuOpen(),true)",        close: "typeof dataMenuClose==='function'&&dataMenuClose()" },
+      { name: 'util:more',     open: "typeof moreMenuOpen==='function'&&(moreMenuOpen(),true)",        close: "typeof moreMenuClose==='function'&&moreMenuClose()" },
       { name: 'util:settings', open: "typeof railOpenSettings==='function'&&(railOpenSettings(),true)", close: "(function(){var o=document.getElementById('settings-overlay');if(o)o.classList.remove('show');})()" },
       { name: 'util:help',     open: "typeof openHelp==='function'&&(openHelp(),true)",                close: "typeof closeHelp==='function'&&closeHelp()" },
       { name: 'util:ai',       open: "typeof aiOpenChat==='function'&&(aiOpenChat(),true)",            close: "typeof aiCloseChat==='function'&&aiCloseChat()" },

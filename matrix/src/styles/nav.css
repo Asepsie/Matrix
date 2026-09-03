@@ -243,6 +243,18 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
 .rlo-card-ctl .sm:disabled{opacity:.3; cursor:default;}
 .rlo-move{flex:1; min-width:0; font-family:IBM Plex Mono,monospace; font-size:9.5px; padding:2px 4px;
   background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:4px;}
+/* ★ Basics toggle on every card (views + utility panels) */
+.rlo-basic{flex:none; background:none; border:none; cursor:pointer; font-size:14px; line-height:1;
+  padding:0 1px; color:var(--dim); transition:color .12s, transform .1s;}
+.rlo-basic:hover{transform:scale(1.18); color:var(--muted);}
+.rlo-basic.on{color:var(--accent);}
+.rlo-basic.on:hover{color:var(--accent);}
+/* Utility-panels column (Basics-toggle only; no drag / no domain move) */
+.rlo-col-util{border-style:dashed;}
+.rlo-card-util{cursor:default;}
+.rlo-card-util .rlo-card-top{margin-bottom:0;}
+.rlo-util-ico2{display:inline-flex; color:var(--muted); flex:none;}
+.rlo-util-ico2 svg{width:14px; height:14px;}
 
 .rn-foot{border-top:1px solid var(--border); padding:8px 0;}
 .rn-util{
@@ -353,9 +365,9 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
 }
 
 /* Data utility menu (rail foot → Snapshots / Backup / Restore) */
-#data-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
+#data-menu-overlay,#more-menu-overlay{ display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.45);
   align-items:center; justify-content:center; }
-#data-menu-overlay.show{ display:flex; }
+#data-menu-overlay.show,#more-menu-overlay.show{ display:flex; }
 .dm-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px;
   width:340px; max-width:92vw; box-shadow:0 12px 40px rgba(0,0,0,.6); }
 .dm-head{ display:flex; align-items:center; justify-content:space-between; font-family:IBM Plex Mono,monospace;
@@ -365,6 +377,9 @@ body{padding-left:var(--rail); padding-top:var(--spine-h);}
   border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:8px; cursor:pointer; color:var(--text); }
 .dm-item:hover{ border-color:var(--accent); }
 .dm-item:last-child{ margin-bottom:0; }
+/* destructive item (Reset data) — hint danger, redden on hover */
+.dm-danger .dm-ico{ color:var(--danger); }
+.dm-danger:hover{ border-color:var(--danger); }
 .dm-ico{ font-size:18px; flex-shrink:0; width:24px; text-align:center; }
 .dm-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
 .dm-txt b{ font-size:13px; font-weight:600; }

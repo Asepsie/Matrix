@@ -413,6 +413,24 @@
       <span class="dm-ico">⭱</span>
       <span class="dm-txt"><b data-i18n="Restore">Restore</b><small data-i18n="Load a full backup file (replaces current data)">Load a full backup file (replaces current data)</small></span>
     </button>
+    <button class="dm-item dm-danger" onclick="dataMenuGo('reset')">
+      <span class="dm-ico">↺</span>
+      <span class="dm-txt"><b data-i18n="Reset data">Reset data</b><small data-i18n="Wipe everything back to defaults (a snapshot is taken first)">Wipe everything back to defaults (a snapshot is taken first)</small></span>
+    </button>
+  </div>
+</div>
+<!-- SETTINGS & HELP MENU (rail foot → choose Settings or Help) -->
+<div id="more-menu-overlay">
+  <div class="dm-card">
+    <div class="dm-head"><span data-i18n="MENU">MENU</span><button class="dm-x" onclick="moreMenuClose()" title="Close">✕</button></div>
+    <button class="dm-item" onclick="moreMenuGo('settings')">
+      <span class="dm-ico">⚙</span>
+      <span class="dm-txt"><b data-i18n="Settings">Settings</b><small data-i18n="Preferences, language, rail layout & export branding">Preferences, language, rail layout &amp; export branding</small></span>
+    </button>
+    <button class="dm-item" onclick="moreMenuGo('help')">
+      <span class="dm-ico">?</span>
+      <span class="dm-txt"><b data-i18n="Help">Help</b><small data-i18n="Keyboard shortcuts, quick guide & danger zone">Keyboard shortcuts, quick guide &amp; danger zone</small></span>
+    </button>
   </div>
 </div>
 
@@ -499,10 +517,14 @@
 <div id="rail-layout-overlay" class="overlay">
   <div class="modal-box" style="width:min(920px,96vw);max-height:88vh;overflow-y:auto">
     <h2 data-i18n="⚖ ORGANISE RAIL LAYOUT">⚖ ORGANISE RAIL LAYOUT</h2>
-    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <p data-i18n="Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 6px">Drag a page card to another domain to move it, or within a column to reorder. The ▲/▼ buttons and the dropdown do the same without dragging. Changes apply immediately.</p>
+    <p data-i18n-html="Tap a card's &lt;strong&gt;★&lt;/strong&gt; to include that page — or a utility panel — in &lt;strong&gt;Basics&lt;/strong&gt; (simplified) mode. Basics keeps the rail to just those; &quot;Show advanced&quot; on the rail foot reveals everything." style="font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px">Tap a card's <strong style="color:var(--accent)">★</strong> to include that page — or a utility panel — in <strong style="color:var(--text)">Basics</strong> (simplified) mode. Basics keeps the rail to just those; "Show advanced" on the rail foot reveals everything.</p>
     <div id="rlo-board" class="rlo-board"></div>
     <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
-      <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+      <div style="display:flex;gap:8px">
+        <button class="sm" data-i18n="↺ RESET LAYOUT" onclick="railResetLayout()">↺ RESET LAYOUT</button>
+        <button class="sm" data-i18n="★ RESET BASICS" onclick="railBasicReset()">★ RESET BASICS</button>
+      </div>
       <button class="primary" data-i18n="DONE" onclick="rloClose()">DONE</button>
     </div>
   </div>

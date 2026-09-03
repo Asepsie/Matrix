@@ -39,6 +39,7 @@ document.addEventListener('keydown',e=>{
     if(typeof rloClose==='function')rloClose();
     if(typeof closeCompare==='function')closeCompare();   // Compare is a matrix sub-mode (RAIL_MODAL_OVERLAYS)
     if(typeof dataMenuClose==='function')dataMenuClose();
+    if(typeof moreMenuClose==='function')moreMenuClose();
     // Otherwise Esc mirrors the ← Back button on the open view panel.
     if(!modalWasOpen && typeof railEscMaybeBack==='function') railEscMaybeBack();
   }

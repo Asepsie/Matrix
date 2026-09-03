@@ -47,6 +47,7 @@ export function exportFullBackup(){
     nextMsId,nextSectionId,nextAnnotId,nextActionId,
     sepX,sepY,scaleX,scaleY,yMode,quadrantsByMode,annotations,zoom,
     engDashGroupBy,skillDomains,skillCats,finExclude:[..._finExclude],ktPlans:_ktPlans,gateConfig,
+    anViews:_anViews,
     orgAnnotations:_orgAnnotations,orgLevelH:_orgLevelH,
     orgLevelNames:_orgLevelNames,orgPositions:_orgPositions,
     orgCollapsed:_orgCollapsed,orgScale:_orgScale,
@@ -133,6 +134,9 @@ export function applyBackupState(d){
   // Dataset SWAP — always reset finExclude (keyed by per-dataset eng.id).
   _finExclude=new Set(Array.isArray(d.finExclude)?d.finExclude:[]);
   if(d.ktPlans)        _ktPlans=d.ktPlans;
+  // Dataset SWAP — adopt the backup's saved analytics views, or reset to null so the
+  // new dataset re-seeds the default examples rather than inheriting the old list.
+  _anViews = Array.isArray(d.anViews) ? d.anViews : null;
   if(d.orgAnnotations) _orgAnnotations=d.orgAnnotations;
   if(d.orgPositions)   _orgPositions=d.orgPositions;
   if(d.orgCollapsed)   _orgCollapsed=d.orgCollapsed;

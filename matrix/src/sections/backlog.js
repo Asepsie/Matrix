@@ -14,7 +14,8 @@
  *   blToggleType / blSetGroup        — view controls
  *   _blSetProjectFilter / blSetProjectFilter — project scope (⤢ from the panel)
  *   blQuickAdd                        — add a task to a project
- *   blToggleDone/blCyclePrio/blSetText/blSetAssignee/blSetField/blDelete/blOpenTab — inline edit
+ *   blToggleDone/blSetPrio/blSetText/blSetAssignee/blSetField/blDelete/blOpenTab — inline edit
+ *   blTogglePin                       — pin/unpin to the Executive summary "this week" list
  */
 
 // Active work-item types (module state; not persisted).
@@ -24,6 +25,10 @@ var _blGroupBy  = 'project';
 // Project scope: null = all projects; else a project id (set by the panel ⤢ button).
 var _blProjFilter = null;
 var _blPrioFilter = null;   // unset shows all; else 'High' | 'Medium' | 'Low'
+// Row to briefly highlight after its priority changed — set the row can jump between
+// priority groups (or filter in/out) on the re-render, so we flash + scroll it into
+// view so the change is easy to follow. Format: 'pid_kind_id'. Cleared after render.
+var _blFlash = null;
 
 // Type presentation: label + accent colour used for badges/toggles.
 var _BL_TYPE_META = {
@@ -83,15 +88,35 @@ function _blProjectOptions(selVal){
     .map(function(p){return '<option value="'+p.id+'"'+(selVal===p.id?' selected':'')+'>'+escH(p.name)+'</option>';}).join('');
 }
 
+// A compact project tag (colour dot + name, truncated) with the full name as a tooltip.
+// Shown on every row EXCEPT when the list is already grouped by project (redundant there).
+function _blProjTag(r){
+  return '<span class="bl-projtag" title="'+escH(r.pname||'')+'" onclick="blSetProjectFilter(\''+r.pid+'\')">'
+    +'<span class="bl-projdot" style="background:'+safeColor(r.pcolor)+'"></span>'
+    +'<span class="bl-projtag-lbl">'+escH(r.pname||t('(unnamed project)'))+'</span></span>';
+}
+// A colour-coded priority dropdown — sets the priority to the chosen value directly
+// (replaces the old cycle-on-click dot, so you can jump straight to High/Med/Low/None).
+function _blPrioSelect(r){
+  var cur=r.priority||'';
+  var cls=cur==='High'?'p-high':cur==='Medium'?'p-medium':cur==='Low'?'p-low':'p-none';
+  var opts=[['High',t('High')],['Medium',t('Med')],['Low',t('Low')],['',t('— None')]].map(function(o){
+    return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>';
+  }).join('');
+  return '<select class="bl-prio-sel '+cls+'" title="'+t('Set priority')+'" onchange="blSetPrio('+r.pid+',\''+r.kind+'\','+r.id+',this.value)">'+opts+'</select>';
+}
+
 // one editable backlog row (tasks: full edit; risks/actions: lighter)
-function _blRowHTML(r){
+// showProj: include the project tag (suppressed when grouped by project).
+function _blRowHTML(r,showProj){
   var m=_BL_TYPE_META[r.kind], isTask=r.kind==='todo', raw=r.ref||{};
   var freeText=(raw.assigneeId==null)?(raw.owner||raw.member||''):'';
-  var prTitle=(r.priority||t('No priority'))+' — '+t('click to change');
-  var h='<div class="bl-row'+(r.done?' bl-done':'')+'">'
+  var key=r.pid+'_'+r.kind+'_'+r.id, flash=(_blFlash===key);
+  var h='<div class="bl-row'+(r.done?' bl-done':'')+(flash?' bl-flash':'')+'" id="blrow_'+key+'">'
     +'<input type="checkbox" class="bl-check" '+(r.done?'checked':'')+' onchange="blToggleDone('+r.pid+',\''+r.kind+'\','+r.id+')">'
     +_blChip(t(m.label),m.color)
-    +'<button class="todo-prio '+(r.priority==='High'?'p-high':r.priority==='Medium'?'p-medium':r.priority==='Low'?'p-low':'p-none')+'" title="'+prTitle+'" onclick="blCyclePrio('+r.pid+',\''+r.kind+'\','+r.id+')"></button>'
+    +(showProj?_blProjTag(r):'')
+    +_blPrioSelect(r)
     +'<button class="bl-pin" title="'+(raw.execPin?t('Pinned to Executive summary — click to unpin'):t('Pin to Executive summary (plan your week)'))+'" onclick="blTogglePin('+r.pid+',\''+r.kind+'\','+r.id+')" style="background:none;border:none;cursor:pointer;font-size:12px;line-height:1;padding:0 2px;opacity:'+(raw.execPin?'1':'.3')+';filter:'+(raw.execPin?'none':'grayscale(1)')+'">📌</button>'
     +(isTask
        ?'<input class="bl-text" value="'+escH(r.text)+'" onchange="blSetText('+r.pid+',\'todo\','+r.id+',this.value)">'
@@ -170,6 +195,15 @@ export function renderBacklogTab(){
      +'</div>';
   }
 
+  // ── Legend: explain the priority picker + the pin, which aren't self-evident ────
+  h+='<div class="bl-legend">'
+   +'<span><select class="bl-prio-sel p-high" disabled style="pointer-events:none"><option>'+t('High')+'</option></select> '
+   +t('Set a priority directly — the row flashes if it moves to another group.')+'</span>'
+   +'<span style="opacity:.5">·</span>'
+   +'<span><span style="font-size:12px">📌</span> '
+   +t('Pin an item to surface it on your Executive summary and Home "this week".')+'</span>'
+   +'</div>';
+
   // ── Analytics KPIs ─────────────────────────────────────────────
   h+='<div class="alloc-kpi-grid" style="margin-bottom:14px">'
    +'<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-label">'+t('BACKLOG ITEMS')+'</div>'
@@ -211,11 +245,19 @@ export function renderBacklogTab(){
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:700;color:var(--text)">'+escH(gk)+'</span>'
      +'<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:var(--muted);margin-left:4px">'+t('{n} open',{n:gOpen})+' · '+g.rows.length+' '+t('total')+'</span>'
      +'</div><div>';
-    g.rows.forEach(function(r){ h+=_blRowHTML(r); });
+    g.rows.forEach(function(r){ h+=_blRowHTML(r,_blGroupBy!=='project'); });
     h+='</div></div>';
   });
 
   body.innerHTML=h;
+
+  // A just-reprioritised row may have hopped to a different group (or been filtered
+  // out) — bring the flashed row into view so the change is easy to follow, then clear.
+  if(_blFlash){
+    var fe=G('blrow_'+_blFlash);
+    if(fe&&fe.scrollIntoView) fe.scrollIntoView({block:'nearest'});
+    _blFlash=null;
+  }
 }
 
 // helper: find a project by id
@@ -245,7 +287,8 @@ function blQuickAdd(){
 // inline edits ---------------------------------------------------------------
 function blToggleDone(pid,type,id){ var p=_blProj(pid); if(!p)return; projToggleItemDone(p,type,id); saveState(); renderBacklogTab(); }
 function blTogglePin(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; r.execPin=!r.execPin; saveState(); renderBacklogTab(); }
-function blCyclePrio(pid,type,id){ var p=_blProj(pid); if(!p)return; var r=projItemRaw(p,type,id); if(!r)return; var i=ITEM_PRIOS.indexOf(r.priority||''); projSetItemPriority(p,type,id,ITEM_PRIOS[(i+1)%ITEM_PRIOS.length]); saveState(); renderBacklogTab(); }
+// Set an item's priority to a chosen value (High|Medium|Low|'' none) and flash the row.
+function blSetPrio(pid,type,id,v){ var p=_blProj(pid); if(!p)return; if(!projItemRaw(p,type,id))return; projSetItemPriority(p,type,id,v||''); _blFlash=pid+'_'+type+'_'+id; saveState(); renderBacklogTab(); }
 function blSetText(pid,type,id,v){ var p=_blProj(pid); if(!p)return; projSetItemText(p,type,id,v); saveState(); }
 function blSetAssignee(pid,type,id,v){ var p=_blProj(pid); if(!p)return; var raw=projItemRaw(p,type,id); if(!raw)return; applyAssigneeSelect(raw,type==='action'?'member':'owner',v); saveState(); renderBacklogTab(); }
 function blSetField(pid,type,id,field,v){ var p=_blProj(pid); if(!p)return; projSetItemField(p,type,id,field,v); saveState(); }

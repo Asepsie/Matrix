@@ -214,6 +214,15 @@ export let _srfSearch='';
 /* ── KT (knowledge transfer) plans ── */
 export let _ktPlans={};
 
+/* ── People-Analytics saved views (user-owned shortcuts) ──
+   The customizable list of analytics view shortcuts (built-in story views seeded
+   as editable examples + user-pinned compare views). Rides save/backup/snapshot so
+   it travels with the dataset and is cleared by reset. `null` = "not seeded yet":
+   analytics.js's anEnsureViews() lazily seeds the defaults + migrates any old
+   device-local pins. A loaded value is an array (possibly empty = user deleted all).
+   Distinct from _anState.show (panel show/hide toggles), which stays device-local. */
+export let _anViews=null;
+
 /* ── Gate & PI (configurable stage-gate + increment planning) ──
    Portfolio-level governance config (active methodology + template library +
    increments). One global so it rides save/backup/snapshot; per-project state
